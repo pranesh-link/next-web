@@ -63,12 +63,6 @@ const AboutMeDetails = (props: AboutMeDetailsProps) => {
                 >
                   <CopyButton
                     data-id={lowercase(label)}
-                    // data-clipboard-text={info}
-                    // onClick={() => {
-                    //   clipboard.writeText(info).then(() => {
-                    //     setCopyState(label);
-                    //   });
-                    // }}
                     className={classNames({
                       hide: !canCopy,
                       mobile: !isExport && isMobile && canCopy,

@@ -15,8 +15,8 @@ import AboutMeDetails from "./AboutMeDetails";
 import ContactForm from "@/_components/form/contact/Form";
 import ContactMe from "@/_components/common/ContactMe";
 import Image from "next/image";
-import { BrowserView, MobileView } from "react-device-detect";
 import DisplayPic from "@/_assets/display-pic.png";
+import DownloadAnimation from "@/_assets/download.gif";
 
 interface IAboutProps {
   exportProfile: () => void;
@@ -109,12 +109,8 @@ const About = (_props: IAboutProps) => {
                   className="profile-image"
                   width={125}
                   height={125}
-                  // src={getIconUrl(
-                  //   aboutMe.icon || "",
-                  //   environment,
-                  //   cmsServerConfig
-                  // )}
                   src={DisplayPic}
+                  priority
                 />
               </div>
             </FlexBoxSection>
@@ -136,11 +132,7 @@ const About = (_props: IAboutProps) => {
                   className="profile-image"
                   width={200}
                   height={200}
-                  src={getIconUrl(
-                    aboutMe.icon || "",
-                    environment,
-                    cmsServerConfig
-                  )}
+                  src={DisplayPic}
                   unoptimized
                   priority
                 />
@@ -181,11 +173,7 @@ const About = (_props: IAboutProps) => {
                       width={25}
                       height={25}
                       onClick={downloadResume}
-                      src={getIconUrl(
-                        download.download.icon,
-                        environment,
-                        cmsServerConfig
-                      )}
+                      src={DownloadAnimation}
                       priority
                     />
                     <span className="download-text">

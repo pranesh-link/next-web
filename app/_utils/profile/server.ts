@@ -47,16 +47,13 @@ export const isNetworkOnline = () => navigator.onLine;
 export const getPdfFile = async (url: string) => {
   let hasError = false;
   let blob = {},
-    response,
-    url1 = "";
-  console.log("get pdf file ", url);
+    response;
   try {
     if (url) {
       response = await fetch(url, {
         mode: CORS_MODE,
       });
       blob = await response.blob();
-      url = URL.createObjectURL(blob as Blob);
     } else {
       hasError = true;
     }

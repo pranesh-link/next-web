@@ -11,31 +11,8 @@ import {
 import mockProfileData from "@/_mock/profile";
 import { AppContext } from "@/_store/app/context";
 import { useSearchParams } from "next/navigation";
-import {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { isMobileOnly } from "react-device-detect";
-import type { AppProps } from "next/app";
-import { IsSsrMobileContext, getIsSsrMobile } from "@/_providers/mobile";
-import useMobileDetect from "@/_hooks/use-is-mobile";
-import Device from "@/_device/device";
-import { NextPageContext } from "next";
-
-ProfilePage.getInitialProps = ({ req }: { req: any }) => {
-  let userAgent;
-  if (req) {
-    // if you are on the server and you get a 'req' property from your context
-    userAgent = req.headers["user-agent"]; // get the user-agent from the headers
-  } else {
-    userAgent = navigator.userAgent; // if you are on the client you can access the navigator from the window object
-  }
-  console.log("user agent", userAgent);
-};
+import { useContext, useMemo, useRef, useState } from "react";
+import useMobileDetect from "@/_hooks/use-mobile-detect";
 
 export default function ProfilePage() {
   const homeRef = useRef(null);
@@ -65,25 +42,13 @@ export default function ProfilePage() {
 
   const [isHamburgerMenuOpen, setIsHamburgerMenuOpen] =
     useState<boolean>(false);
-  const [isDarkMode, setIsDarkMode] = useState(
+  const [isDarkMode] = useState(
     isClient ? window.matchMedia("(prefers-color-scheme: dark)").matches : false
   );
-  const [isMobile, setIsMobile] = useState(isMobileOnly);
 
   const profileDataByQueryParam = useMemo(() => {
     return isMock ? mockProfileData : profileData;
   }, [isMock, profileData]);
-
-  const setViewportProps = useCallback(() => {
-    setIsMobile(isClient ? window.innerWidth < 768 : false);
-  }, [isClient]);
-  console.log("isClient", isClient);
-  useEffect(() => {
-    if (isClient) {
-      window.addEventListener("resize", setViewportProps);
-      return () => window.removeEventListener("resize", setViewportProps);
-    }
-  }, [isClient, setViewportProps]);
 
   const mobileDetect = useMobileDetect();
 
