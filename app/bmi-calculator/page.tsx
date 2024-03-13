@@ -19,6 +19,7 @@ import {
 import { BMICalculatorForm } from "./Elements";
 import Fields from "@/_components/bmi-calculator/Fields";
 import BMIResult from "@/_components/bmi-calculator/BMIResult";
+import Head from "next/head";
 
 export default function BMICalculatorPage() {
   const {

@@ -20,6 +20,12 @@ export const PAGE_TITLES = {
   bmiCalculator: "BMI Calculator",
 };
 
+export const SITE_INFO = {
+  DESCRIPTION:
+    "Exemplary Lead UI Engineer, an aspiring Architect to be specializing in React, HTML, CSS, and JavaScript. Dedicated to creating exceptional user interfaces that seamlessly blend form and function. Proven leadership in guiding teams to deliver cutting-edge web experiences.",
+  KEYWORDS:
+    "ui, web, lead engineer, ui architect, react, html, css, javascript, typescript",
+};
 export const DEFAULT_MAINTENANCE_DATA: IMaintenance = {
   isUnderMaintenance: false,
   message: "",
