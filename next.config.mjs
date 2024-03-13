@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 import withImages from "next-images";
 const nextConfig = {
-  output: "export",
   images: {
     formats: ["image/avif", "image/webp"],
     remotePatterns: [
