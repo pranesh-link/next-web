@@ -1,4 +1,5 @@
 import {
+  ILinkInfo,
   IPWA,
   IPreloadSrc,
   IPreloadedFile,
@@ -30,7 +31,7 @@ export interface IAppConfigData {
   hasError: boolean;
   pwa: IPWA;
   maintenance: IMaintenance;
-  links: ISectionInfo;
+  links: ILinkInfo;
   messages: IMessages;
   appConfig: IAppConfig;
   bmiCalculatorForm: IBMICalculatorFormInfo;

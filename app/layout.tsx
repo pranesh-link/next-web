@@ -182,6 +182,7 @@ export default async function RootLayout({
             data: {
               ...basicConfigData,
               isAdmin: false,
+              links,
               preloadedAssets: preloadAssetImages,
               hasError,
               profileData,
@@ -190,10 +191,7 @@ export default async function RootLayout({
             },
           }}
         >
-          <Suspense fallback={<Loading />}>
-            {/* {hasError ? "haserror" : profileData.header.name} */}
-            {children}
-          </Suspense>
+          <Suspense fallback={<Loading />}>{children}</Suspense>
         </AppProviderClient>
       </body>
     </html>
