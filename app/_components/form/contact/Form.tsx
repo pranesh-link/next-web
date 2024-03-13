@@ -31,7 +31,6 @@ import {
   transformMailRequest,
   validateField,
 } from "@/_utils/form";
-import { isMobile } from "react-device-detect";
 import {
   ProgressMessage,
   StatusWrap,
@@ -42,6 +41,7 @@ import {
   FormHeader,
   FormSubmit,
 } from "../Elements";
+import OfflineAnimation from "@/_assets/offline-animation.gif";
 
 interface IContactFormProps {
   closeModal: () => void;
@@ -105,10 +105,7 @@ const ContactForm = (props: IContactFormProps) => {
         preloadedAssets,
         "errorAnimation"
       ),
-      [CONTACT_FORM_STATUS.OFFLINE]: getPreloadedAsset(
-        preloadedAssets,
-        "offlineAnimation"
-      ),
+      [CONTACT_FORM_STATUS.OFFLINE]: OfflineAnimation,
       [CONTACT_FORM_STATUS.REVIEW]: "",
     }),
     [preloadedAssets]
