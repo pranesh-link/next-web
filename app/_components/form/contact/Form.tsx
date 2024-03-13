@@ -42,6 +42,7 @@ import {
   FormSubmit,
 } from "../Elements";
 import OfflineAnimation from "@/_assets/offline-animation.gif";
+import Image from "next/image";
 
 interface IContactFormProps {
   closeModal: () => void;
@@ -266,10 +267,10 @@ const ContactForm = (props: IContactFormProps) => {
     return (
       <>
         {displayStatusInfo.icon && (
-          <img
+          <Image
             className="form-status-image"
             alt="Form status"
-            height="35px"
+            height={35}
             src={displayStatusInfo.icon}
           />
         )}
