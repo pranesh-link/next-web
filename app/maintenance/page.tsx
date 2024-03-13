@@ -11,12 +11,7 @@ import { redirect } from "next/navigation";
 import Image from "next/image";
 import MaintenanceAnimation from "@/_assets/maintenance.gif";
 
-interface IMaintenanceProps {
-  maintenance: IMaintenance;
-  links: ILinkInfo;
-  isMobile: boolean;
-}
-const MaintenancePage = (props: IMaintenanceProps) => {
+const MaintenancePage = () => {
   const {
     data: {
       links,
