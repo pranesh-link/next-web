@@ -76,7 +76,7 @@ const Contact = (props: IContactProps) => {
           dangerouslySetInnerHTML={{
             __html: LABEL_TEXT.developedUsing.replace(
               "{0}",
-              LINKS.NPM_PROFILE_COMPONENT
+              LINKS.NEXT_JS_LIBRARY
             ),
           }}
         />

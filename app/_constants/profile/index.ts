@@ -21,8 +21,7 @@ export const SHORT_INFOS: ShortInfosType[] = [
 ];
 export const EXPANDABLE_INFOS: ExpandableInfosType[] = ["description"];
 export const LINKS = {
-  NPM_PROFILE_COMPONENT:
-    "https://www.npmjs.com/package/react-profile-component",
+  NEXT_JS_LIBRARY: "https://www.npmjs.com/package/next",
 };
 
 export const DEFAULT_PWA: IPWA = {
