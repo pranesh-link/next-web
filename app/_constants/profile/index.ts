@@ -171,8 +171,7 @@ export const LABEL_TEXT: Record<string, string> = {
   role: "Role",
   retry: "Retry",
   close: "Close",
-  developedUsing:
-    "Developed using <a href='{0}' target='_blank'> react-profile-component </a>",
+  developedUsing: "Developed using <a href='{0}' target='_blank'> next </a>",
 };
 
 export const SECTIONS = {
