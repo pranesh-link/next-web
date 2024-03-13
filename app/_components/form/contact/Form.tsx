@@ -106,7 +106,7 @@ const ContactForm = (props: IContactFormProps) => {
         preloadedAssets,
         "errorAnimation"
       ),
-      [CONTACT_FORM_STATUS.OFFLINE]: OfflineAnimation,
+      [CONTACT_FORM_STATUS.OFFLINE]: "", // TODO Fix icon display when device is offline OfflineAnimation
       [CONTACT_FORM_STATUS.REVIEW]: "",
     }),
     [preloadedAssets]
