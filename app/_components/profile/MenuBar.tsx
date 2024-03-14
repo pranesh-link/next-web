@@ -23,12 +23,9 @@ const MenuBar = (props: IMenuBarProps) => {
     isMobile,
   } = React.useContext(ProfileContext);
   const { onMenuChange } = props;
-  const initialOffset = useMemo(() => (isMobile ? 75 : 30), [isMobile]);
+  const initialOffset = useMemo(() => (isMobile ? 80 : 30), [isMobile]);
   const goTo = (section: string) => {
-    scrollTo(
-      `#${section}`,
-      isInstallBannerOpen ? pwaOffset + initialOffset : initialOffset
-    );
+    scrollTo(`#${section}`, initialOffset);
   };
   let timeout: any;
   const menuItems = Object.keys(data.sections)
@@ -63,10 +60,8 @@ const MenuBar = (props: IMenuBarProps) => {
         const { ref, section } = curr;
         const currentRef = refs[ref as RefTypes];
         if (currentRef.current) {
-          let pos = currentRef.current.getBoundingClientRect().top;
-
-          pos = Math.round(
-            isInstallBannerOpen ? pos - pwaOffset - initialOffset : pos - 30
+          const pos = Math.round(
+            currentRef.current.getBoundingClientRect().top - initialOffset
           );
 
           if (index === 0 || (pos <= 0 && pos > result.pos)) {
@@ -78,7 +73,7 @@ const MenuBar = (props: IMenuBarProps) => {
         }
         return result;
       },
-      { section: "aboutMe", pos: isInstallBannerOpen ? pwaOffset : 75 }
+      { section: "aboutMe", pos: 0 }
     );
     if (onMenuChange) {
       onMenuChange(resultPosition.section);
