@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
-import withImages from "next-images";
 const nextConfig = {
+  compiler: {
+    styledComponents: true,
+  },
   images: {
     formats: ["image/avif", "image/webp"],
     remotePatterns: [

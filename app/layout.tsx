@@ -32,6 +32,7 @@ import { AppProviderClient } from "./_providers/app";
 import mockProfileData from "./_mock/profile";
 import { Suspense } from "react";
 import Loading from "./loading";
+import StyledComponentsRegistry from "./_lib/registry";
 
 export const metadata: Metadata = {
   title: PAGE_TITLES.profile,
@@ -191,7 +192,9 @@ export default async function RootLayout({
             },
           }}
         >
-          <Suspense fallback={<Loading />}>{children}</Suspense>
+          <StyledComponentsRegistry>
+            <Suspense fallback={<Loading />}>{children}</Suspense>
+          </StyledComponentsRegistry>
         </AppProviderClient>
       </body>
     </html>
