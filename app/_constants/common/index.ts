@@ -174,3 +174,17 @@ export const DEFAULT_CONFIG_DATA: IConfigData = {
     preloadSrcList: [],
   },
 };
+
+export const HEADER_INFO = {
+  METADATA: {
+    title: PAGE_TITLES.profile,
+    description: SITE_INFO.DESCRIPTION,
+    keywords: SITE_INFO.KEYWORDS,
+  },
+  VIEWPORT: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: true,
+  },
+};
