@@ -182,6 +182,7 @@ export default async function RootLayout({
           value={{
             data: {
               ...basicConfigData,
+              version: process.env?.version || DEFAULT_APP_CONTEXT.data.version,
               isAdmin: false,
               links,
               preloadedAssets: preloadAssetImages,

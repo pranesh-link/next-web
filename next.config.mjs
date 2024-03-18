@@ -1,7 +1,11 @@
 /** @type {import('next').NextConfig} */
+import packageJson from "./package.json" assert { type: "json" };
 const nextConfig = {
   compiler: {
     styledComponents: true,
+  },
+  env: {
+    version: packageJson.version,
   },
   images: {
     formats: ["image/avif", "image/webp"],
