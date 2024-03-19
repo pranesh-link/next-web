@@ -1,9 +1,8 @@
-import { DEV_CMS_URL, ROUTES } from "@/_constants/common";
+import { ROUTES } from "@/_constants/common";
 import { CORS_MODE } from "@/_constants/profile";
 import { NextRequest, NextResponse } from "next/server";
 
 export const config = {
-  //   matcher: ["/((?!api|_next|fonts|examples|[\\w-]+\\.\\w+).*)"],
   matcher: [
     {
       source: "/((?!api|_next/static|_next/image|favicon.ico).*)",
