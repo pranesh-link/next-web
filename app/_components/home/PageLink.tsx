@@ -1,16 +1,26 @@
 import { ROUTES } from "@/_constants/common";
 import styled from "styled-components";
 import Link from "next/link";
+import { useMemo } from "react";
 
 interface IPageLinkProps {
   label: string;
   route: string;
+  searchParams?: { isAdmin?: string };
 }
 
 const PageLink = (props: IPageLinkProps) => {
-  const { label, route } = props;
+  const { label, route, searchParams } = props;
+  const isAdmin = useMemo(() => searchParams?.isAdmin, [searchParams]);
+  const redirectLink = useMemo(
+    () =>
+      isAdmin
+        ? `${ROUTES[`ROUTE_${route}`]}?isAdmin=${isAdmin}`
+        : ROUTES[`ROUTE_${route}`],
+    [isAdmin, route]
+  );
   return (
-    <Redirect className="page-link" href={ROUTES[`ROUTE_${route}`]}>
+    <Redirect className="page-link" href={redirectLink}>
       {label}
     </Redirect>
   );

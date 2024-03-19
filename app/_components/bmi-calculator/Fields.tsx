@@ -2,7 +2,7 @@ import FormField from "@/_components/form/FormField";
 import ResetIcon from "@/_components/svg/ResetIcon";
 import { ActionBtn } from "@/_components/common/Elements";
 import { FormFieldValueType } from "@/_store/profile/types";
-import { FieldsWrap } from "@/bmi-calculator/Elements";
+import { FieldsWrap } from "@/tools/bmi-calculator/Elements";
 import { BMICalculatorFields } from "@/_store/common/types";
 import classNames from "classnames";
 import { useContext, useMemo } from "react";

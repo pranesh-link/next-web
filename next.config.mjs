@@ -1,6 +1,13 @@
 /** @type {import('next').NextConfig} */
 import packageJson from "./package.json" assert { type: "json" };
 const nextConfig = {
+  redirects: async () => [
+    // {
+    //   source: "/bmi:slug*",
+    //   destination: "/tools/bmi-calculator",
+    //   permanent: true,
+    // },
+  ],
   compiler: {
     styledComponents: true,
   },

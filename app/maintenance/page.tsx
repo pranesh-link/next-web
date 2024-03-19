@@ -1,13 +1,8 @@
 "use client";
 import styled from "styled-components";
-import { IMaintenance } from "@/_store/common/types";
-import { useContext, useEffect, useRef } from "react";
-import { getIconUrl } from "@/_utils/profile/server";
-import { ILinkInfo, ISectionInfo } from "@/_store/profile/types";
+import { useContext, useRef } from "react";
 import Contact from "@/_components/profile/sections/Contact";
-import { CMS_SERVER_CONFIG, ENVIRONMENT, ROUTES } from "@/_constants/common";
 import { AppContext } from "@/_store/app/context";
-import { redirect } from "next/navigation";
 import Image from "next/image";
 import MaintenanceAnimation from "@/_assets/maintenance.gif";
 
@@ -17,15 +12,9 @@ const MaintenancePage = () => {
       links,
       currentDevice: { isMobile },
       maintenance,
-      maintenance: { isUnderMaintenance },
     },
   } = useContext(AppContext);
 
-  useEffect(() => {
-    if (!isUnderMaintenance) {
-      //   redirect(ROUTES.ROUTE_PROFILE);
-    }
-  }, [isUnderMaintenance]);
   return (
     <MaintenanceArticle $isMobile={isMobile}>
       <div className="maintenance-info">
@@ -34,6 +23,7 @@ const MaintenancePage = () => {
           height={isMobile ? 300 : 400}
           alt="maintenance"
           src={MaintenanceAnimation}
+          unoptimized
         />
         <h1 dangerouslySetInnerHTML={{ __html: maintenance.message }} />
       </div>

@@ -9,7 +9,11 @@ import {
 import PageLink from "@/_components/home/PageLink";
 import { FlexBoxSection, FlexBox } from "@/_components/common/Elements";
 
-export default function HomePage() {
+export default function HomePage({
+  searchParams,
+}: {
+  searchParams?: { isAdmin?: string };
+}) {
   const {
     data: { appConfig = { homepage: { title: "", pages: [] } } },
   } = useContext(AppContext);
@@ -25,7 +29,12 @@ export default function HomePage() {
           const { id, label } = item;
           if (isInstanceOfPageLink(item)) {
             displayNode = (
-              <PageLink key={id} label={label} route={item.route} />
+              <PageLink
+                key={id}
+                label={label}
+                route={item.route}
+                searchParams={searchParams}
+              />
             );
           } else if (isInstanceOfPageLinkCollection(item)) {
             displayNode = (
@@ -35,7 +44,12 @@ export default function HomePage() {
                   {item.links.map((item) => {
                     const { id, label } = item;
                     return (
-                      <PageLink key={id} label={label} route={item.route} />
+                      <PageLink
+                        key={id}
+                        label={label}
+                        route={item.route}
+                        searchParams={searchParams}
+                      />
                     );
                   })}
                 </FlexBox>
