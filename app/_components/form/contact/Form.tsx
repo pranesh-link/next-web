@@ -271,7 +271,9 @@ const ContactForm = (props: IContactFormProps) => {
             className="form-status-image"
             alt="Form status"
             height={35}
+            width={35}
             src={displayStatusInfo.icon}
+            unoptimized
           />
         )}
       </>

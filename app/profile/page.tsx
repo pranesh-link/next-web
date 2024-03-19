@@ -2,12 +2,7 @@
 
 import { useIsClient } from "@/_hooks/use-is-client";
 import Profile from "@/_components/profile/Profile";
-import {
-  CMS_SERVER_CONFIG,
-  EMAILJS_CONFIG,
-  ENVIRONMENT,
-  WEB_SERVER_CONFIG,
-} from "@/_constants/common";
+import { EMAILJS_CONFIG } from "@/_constants/common";
 import mockProfileData from "@/_mock/profile";
 import { AppContext } from "@/_store/app/context";
 import { useSearchParams } from "next/navigation";
@@ -76,7 +71,6 @@ export default function ProfilePage() {
         setIsHamburgerMenuOpen(isHamburgerMenuOpen)
       }
       onInstallPWA={() => {}}
-      environment={ENVIRONMENT}
       appVersion={version}
       deviceConfig={{ os, osName, browserName, browsers }}
       preloadSrcList={preloadSrcList}
@@ -85,10 +79,6 @@ export default function ProfilePage() {
         serviceId: EMAILJS_CONFIG.SERVICE_ID,
         templateId: EMAILJS_CONFIG.TEMPLATE_ID,
         publicKey: EMAILJS_CONFIG.PUBLIC_KEY,
-      }}
-      serverConfig={{
-        webServerConfig: WEB_SERVER_CONFIG,
-        cmsServerConfig: CMS_SERVER_CONFIG,
       }}
     />
   );

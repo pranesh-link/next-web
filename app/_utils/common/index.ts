@@ -1,15 +1,9 @@
 import {
-  CMS_SERVER_CONFIG,
-  DEFAULT_APP_CONTEXT,
-  ENVIRONMENT,
-} from "@/_constants/common";
-import {
   CONFIG_REF_INFO,
   CONFIG_TYPES,
   DEFAULT_PROFILE_CONFIG_DATA,
   DEFAULT_PROFILE_CONTEXT,
 } from "@/_constants/profile";
-import mockProfileData from "@/_mock/profile";
 import { IAppConfigData } from "@/_store/app/types";
 import {
   IConfigData,
@@ -18,8 +12,6 @@ import {
   IPageLinkCollection,
 } from "@/_store/common/types";
 import {
-  Environment,
-  ICMSServerConfig,
   IHeader,
   ISectionInfo,
   DownloadType,
@@ -59,18 +51,8 @@ export const isInstanceOfPageLinkCollection = (
   item: any
 ): item is IPageLinkCollection => "links" in item;
 
-export const getServerBaseUrl = (
-  env: Environment,
-  cmsConfig: ICMSServerConfig
-) => (env === "development" ? cmsConfig.devCMSUrl : cmsConfig.prodCMSUrl);
-
-export const getJsonResponse = async (
-  env: Environment,
-  jsonToFetch: string,
-  cmsServerConfig: ICMSServerConfig,
-  data?: any
-) => {
-  const JSON_BASE_URL = getServerBaseUrl(env, cmsServerConfig);
+async function getJsonResponse(jsonToFetch: string, data?: any) {
+  const JSON_BASE_URL = process.env.CMS_SERVER;
   let hasError = false;
   data = data || {};
   try {
@@ -83,14 +65,14 @@ export const getJsonResponse = async (
     hasError = true;
   }
   return { data, hasError };
-};
+}
 
-export const getProfileJsonResponse = async (
-  env: Environment,
+async function getProfileJsonResponse(
   jsonToFetch: string,
-  cmsServerConfig: ICMSServerConfig,
   data: IHeader | ISectionInfo | DownloadType | IFormInfo
-) => getJsonResponse(env, jsonToFetch, cmsServerConfig, data);
+) {
+  return getJsonResponse(jsonToFetch, data);
+}
 
 async function fetchSection(
   jsonToFetch: string,
@@ -98,12 +80,7 @@ async function fetchSection(
   name: string,
   hasError: boolean
 ) {
-  const response = await getProfileJsonResponse(
-    ENVIRONMENT,
-    jsonToFetch,
-    CMS_SERVER_CONFIG,
-    data
-  );
+  const response = await getProfileJsonResponse(jsonToFetch, data);
   hasError = response.hasError;
   return {
     name,
@@ -112,11 +89,7 @@ async function fetchSection(
 }
 
 async function fetchData(jsonToFetch: string, name: string, hasError: boolean) {
-  const response = await getJsonResponse(
-    ENVIRONMENT,
-    jsonToFetch,
-    CMS_SERVER_CONFIG
-  );
+  const response = await getJsonResponse(jsonToFetch);
   hasError = response.hasError;
   return { name, data: response.data };
 }

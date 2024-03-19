@@ -270,21 +270,6 @@ export interface IPreloadedAsset {
   image: string;
 }
 
-export interface IWebServerConfig {
-  devWebUrl: string;
-  prodWebUrl: string;
-}
-
-export interface ICMSServerConfig {
-  devCMSUrl: string;
-  prodCMSUrl: string;
-}
-
-export interface IServerConfig {
-  webServerConfig: IWebServerConfig;
-  cmsServerConfig: ICMSServerConfig;
-}
-
 export interface IEmailJsConfig {
   serviceId: string;
   templateId: string;
@@ -300,7 +285,6 @@ export interface IProfileContext {
   preloadedAssets: IPreloadedAsset[];
   currentSection: string;
   appVersion: string;
-  environment: Environment;
   isDarkMode: boolean;
   isExport?: boolean;
   isDownloading?: boolean;
@@ -310,7 +294,6 @@ export interface IProfileContext {
   hasDownloadedProfile?: boolean;
   isContactFormOpen: boolean;
   isModalOpen: boolean;
-  serverConfig: IServerConfig;
   emailJsConfig: IEmailJsConfig;
   pwaOffset: number;
   setIsContactFormOpen: (isContactFormOpen: boolean) => void;
@@ -348,8 +331,6 @@ export type ContactFormValid = Record<string, boolean>;
 export type ContactFormError = Record<string, string>;
 
 export type ContactFormFieldData = string | Record<string, boolean>;
-export type Environment = "development" | "production" | "test";
-
 export type FormFieldValueType =
   | string
   | number

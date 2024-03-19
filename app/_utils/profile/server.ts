@@ -1,15 +1,5 @@
 import { CORS_MODE, SERVER_FILES_LOC } from "@/_constants/profile";
-import {
-  ILink,
-  IPreloadedAsset,
-  IHeader,
-  ISectionInfo,
-  DownloadType,
-  IFormInfo,
-  IWebServerConfig,
-  ICMSServerConfig,
-  Environment,
-} from "@/_store/profile/types";
+import { ILink, IPreloadedAsset } from "@/_store/profile/types";
 
 export const lowercase = (str: string) => str.toLowerCase().replace(/ /g, "");
 
@@ -101,62 +91,14 @@ export const toDataURL = async (url: string, imageId: string) => {
   });
 };
 
-export const getWebUrl = (env: Environment, webConfig: IWebServerConfig) =>
-  env === "development" ? webConfig.devWebUrl : webConfig.prodWebUrl;
+export const getIconUrl = (url: string) => `${process.env.CMS_SERVER}/${url}`;
 
-export const getServerBaseUrl = (
-  env: Environment,
-  cmsConfig: ICMSServerConfig
-) => (env === "development" ? cmsConfig.devCMSUrl : cmsConfig.prodCMSUrl);
-
-export const getIconUrl = (
-  url: string,
-  env: Environment,
-  cmsServerConfig: ICMSServerConfig
-) => `${getServerBaseUrl(env, cmsServerConfig)}/${url}`;
-
-export const getPdfUrl = (
-  env: Environment,
-  fileName: string,
-  cmsServerConfig: ICMSServerConfig
-) => {
-  return `${getServerBaseUrl(
-    env,
-    cmsServerConfig
-  )}${SERVER_FILES_LOC}/${fileName}`;
+export const getPdfUrl = (fileName: string) => {
+  return `${process.env.CMS_SERVER}${SERVER_FILES_LOC}/${fileName}`;
 };
 
 export const getPreloadedAsset = (assets: IPreloadedAsset[], assetId: string) =>
   assets.find((item) => item.id === assetId)?.image || "";
-
-export const getJsonResponse = async (
-  env: Environment,
-  jsonToFetch: string,
-  cmsServerConfig: ICMSServerConfig,
-  data?: any
-) => {
-  const JSON_BASE_URL = getServerBaseUrl(env, cmsServerConfig);
-  let hasError = false;
-  data = data || {};
-  try {
-    const url = `${JSON_BASE_URL}/${jsonToFetch}`;
-    const response = await fetch(url, {
-      mode: CORS_MODE,
-    });
-
-    data = await response.json();
-  } catch (e) {
-    hasError = true;
-  }
-  return { data, hasError };
-};
-
-export const getProfileJsonResponse = async (
-  env: Environment,
-  jsonToFetch: string,
-  cmsServerConfig: ICMSServerConfig,
-  data: IHeader | ISectionInfo | DownloadType | IFormInfo
-) => getJsonResponse(env, jsonToFetch, cmsServerConfig, data);
 
 export const goToLink = (link: string = "", target: string = "_blank") =>
   window.open(link, target);

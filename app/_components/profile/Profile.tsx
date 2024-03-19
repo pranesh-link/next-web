@@ -6,14 +6,11 @@ import MenuBar from "./MenuBar";
 import ProfileSections from "./ProfileSections";
 import { ProfileProvider } from "@/_store/profile/context";
 import {
-  Environment,
   IDeviceConfig,
   IEmailJsConfig,
   IPreloadSrc,
   IPreloadedAsset,
-  IPreloadedFile,
   IProfileData,
-  IServerConfig,
 } from "@/_store/profile/types";
 import { Overlay } from "@/_components/common/Elements";
 
@@ -29,10 +26,8 @@ interface ProfileProps {
   };
   preloadSrcList: IPreloadSrc[];
   preloadedAssets: IPreloadedAsset[];
-  serverConfig: IServerConfig;
   emailJsConfig: IEmailJsConfig;
   appVersion: string;
-  environment: Environment;
   isDarkMode: boolean;
   isDownloading: boolean;
   isMobile: boolean;
@@ -68,11 +63,9 @@ const Profile = (props: ProfileProps) => {
     setIsHamburgerMenuOpen,
     onInstallPWA,
     appVersion,
-    environment,
     preloadSrcList,
     preloadedAssets,
     deviceConfig,
-    serverConfig,
     emailJsConfig,
     isDarkMode,
     showComponentLibUrl = true,
@@ -110,7 +103,6 @@ const Profile = (props: ProfileProps) => {
           isDarkMode,
           deviceConfig,
           appVersion,
-          environment,
           currentSection,
           isExport,
           isDownloading,
@@ -120,7 +112,6 @@ const Profile = (props: ProfileProps) => {
           isModalOpen,
           preloadSrcList,
           preloadedAssets,
-          serverConfig,
           emailJsConfig,
           showComponentLibUrl,
           pwaOffset,

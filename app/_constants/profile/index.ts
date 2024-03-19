@@ -132,7 +132,6 @@ export const DEFAULT_PROFILE_CONTEXT: IProfileContext = {
     browsers: [],
   },
   appVersion: "",
-  environment: "development",
   preloadedAssets: [],
   preloadSrcList: [],
   currentSection: "about",
@@ -145,16 +144,6 @@ export const DEFAULT_PROFILE_CONTEXT: IProfileContext = {
   isModalOpen: false,
   setIsModalOpen: () => {},
   setIsContactFormOpen: () => {},
-  serverConfig: {
-    webServerConfig: {
-      devWebUrl: "",
-      prodWebUrl: "",
-    },
-    cmsServerConfig: {
-      devCMSUrl: "",
-      prodCMSUrl: "",
-    },
-  },
   emailJsConfig: {
     serviceId: "",
     templateId: "",
