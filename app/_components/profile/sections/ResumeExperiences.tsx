@@ -7,9 +7,8 @@ import {
   ModalContentWrap,
   SectionWrapper,
   ProjectLink,
-  CustomModalComponent,
 } from "@/_components/common/Elements";
-import { memo, useContext, useMemo, useState } from "react";
+import { memo, useCallback, useContext, useMemo, useState } from "react";
 import { ProfileContext } from "@/_store/profile/context";
 import { IProjectExperience } from "@/_store/profile/types";
 import {
@@ -19,6 +18,7 @@ import {
   SECTIONS,
 } from "@/_constants/profile";
 import ProjectInfo from "@/_components/common/ProjectInfo";
+import CustomModalComponent from "@/_components/common/ModalComponent";
 
 interface INames {
   projectNames: string[];
@@ -71,6 +71,11 @@ const ResumeExperiences = memo(() => {
     [isMobile]
   );
 
+  const closeModal = useCallback(() => {
+    setIsModalOpen(false);
+    setCurrentProject(null);
+  }, [setIsModalOpen]);
+
   return (
     <>
       {!isExport && currentProject && (
@@ -83,13 +88,7 @@ const ResumeExperiences = memo(() => {
           <ModalContentWrap $direction="column">
             <ModalBanner className="header" />
             <ProjectInfo project={currentProject} />
-            <ActionBtn
-              className="close"
-              onClick={() => {
-                setCurrentProject(null);
-                setIsModalOpen(false);
-              }}
-            >
+            <ActionBtn className="close" onClick={closeModal}>
               {LABEL_TEXT.close}
             </ActionBtn>
             <ModalBanner className="footer" />

@@ -1,5 +1,5 @@
 import classNames from "classnames";
-import { useContext, useState } from "react";
+import { useCallback, useContext, useState } from "react";
 import {
   SectionWrapper,
   SecHeader,
@@ -7,13 +7,13 @@ import {
   FlexBox,
   ModalContentWrap,
   ModalBanner,
-  CustomModalComponent,
   ActionBtn,
 } from "@/_components/common/Elements";
 import { goToLink } from "@/_utils/profile/server";
 import { LABEL_TEXT, SECTIONS } from "@/_constants/profile";
 import { IOpenSource } from "@/_store/profile/types";
 import { ProfileContext } from "@/_store/profile/context";
+import CustomModalComponent from "@/_components/common/ModalComponent";
 
 const OpenSourceProjects = () => {
   const {
@@ -28,14 +28,16 @@ const OpenSourceProjects = () => {
     null
   );
 
+  const closeModal = useCallback(() => {
+    setIsModalOpen(false);
+    setCurrentProject(null);
+  }, [setIsModalOpen]);
+
   return (
     <>
       <CustomModalComponent
         isOpen={!!currentProject}
-        onRequestClose={() => {
-          setCurrentProject(null);
-          setIsModalOpen(false);
-        }}
+        onRequestClose={closeModal}
       >
         {currentProject && (
           <ModalContentWrap
@@ -63,10 +65,7 @@ const OpenSourceProjects = () => {
                 )}
               </FlexBox>
             </section>
-            <ActionBtn
-              className="close"
-              onClick={() => setCurrentProject(null)}
-            >
+            <ActionBtn className="close" onClick={closeModal}>
               {LABEL_TEXT.close}
             </ActionBtn>
             <ModalBanner className="footer" />

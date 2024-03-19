@@ -6,7 +6,6 @@ import {
   FlexBox,
   ModalBanner,
   ModalContentWrap,
-  CustomModalComponent,
 } from "@/_components/common/Elements";
 import { getPdfUrl, getPdfBlob } from "@/_utils/profile/server";
 import styled from "styled-components";
@@ -17,6 +16,7 @@ import ContactMe from "@/_components/common/ContactMe";
 import Image from "next/image";
 import DisplayPic from "@/_assets/display-pic.png";
 import DownloadAnimation from "@/_assets/download.gif";
+import CustomModalComponent from "@/_components/common/ModalComponent";
 
 interface IAboutProps {
   exportProfile: () => void;
@@ -37,7 +37,6 @@ const About = (_props: IAboutProps) => {
     refs: { homeRef: refObj },
     preloadSrcList,
   } = React.useContext(ProfileContext);
-
   const pdfFileName = preloadSrcList.find(
     (item) => item.id === "resume"
   )?.fileName;

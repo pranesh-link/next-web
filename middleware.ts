@@ -17,8 +17,9 @@ export const config = {
 export async function middleware(req: NextRequest) {
   try {
     const jsonResponse = await (
-      await fetch(`${process.env.CMS_SERVER}/maintenance.json`, {
+      await fetch(`${process.env.NEXT_PUBLIC_CMS_SERVER}/maintenance.json`, {
         mode: CORS_MODE,
+        cache: "no-store",
       })
     ).json();
     const { searchParams, pathname } = req.nextUrl;

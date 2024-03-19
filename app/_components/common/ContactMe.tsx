@@ -86,4 +86,8 @@ const ContactMeButton = styled(ActionBtn)`
       margin-right: 0;
     }
   }
+
+  @media only screen and (min-width: 768px) {
+    background: #3e3e3e !important;
+  }
 `;
