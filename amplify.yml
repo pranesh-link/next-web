@@ -6,6 +6,7 @@ frontend:
         - yarn
     build:
       commands:
+        - export NEXT_SHARP_PATH=/tmp/node_modules/sharp
         - yarn build
   artifacts:
     baseDirectory: .next
