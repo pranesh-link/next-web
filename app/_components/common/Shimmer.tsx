@@ -1,3 +1,4 @@
+"use client";
 import styled from "styled-components";
 
 const Shimmer = () => {
@@ -22,6 +23,8 @@ const ShimmerOverlay = styled.div`
   width: 100%;
   border-radius: 15px;
   background: linear-gradient(-45deg, #ccc 40%, #faf9f6 50%, #eee 60%);
+  box-shadow: transparent 0px -1px 0px 0px,
+    rgba(240, 240, 240, 0.3) 0px -1px 0px inset, #ccc 0px 2px 12px;
   background-size: 300%;
   background-position-x: 100%;
   animation: shimmer 5s infinite linear;

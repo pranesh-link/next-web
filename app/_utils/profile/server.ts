@@ -42,6 +42,7 @@ export const getPdfFile = async (url: string) => {
     if (url) {
       response = await fetch(url, {
         mode: CORS_MODE,
+        cache: "no-store",
       });
       blob = await response.blob();
     } else {
@@ -91,10 +92,11 @@ export const toDataURL = async (url: string, imageId: string) => {
   });
 };
 
-export const getIconUrl = (url: string) => `${process.env.CMS_SERVER}/${url}`;
+export const getIconUrl = (url: string) =>
+  `${process.env.NEXT_PUBLIC_CMS_SERVER}/${url}`;
 
 export const getPdfUrl = (fileName: string) => {
-  return `${process.env.CMS_SERVER}${SERVER_FILES_LOC}/${fileName}`;
+  return `${process.env.NEXT_PUBLIC_CMS_SERVER}${SERVER_FILES_LOC}/${fileName}`;
 };
 
 export const getPreloadedAsset = (assets: IPreloadedAsset[], assetId: string) =>

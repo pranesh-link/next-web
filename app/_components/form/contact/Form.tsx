@@ -8,11 +8,7 @@ import {
   useState,
 } from "react";
 import emailjs from "@emailjs/browser";
-import {
-  ActionBtn,
-  CustomModalComponent,
-  FlexBox,
-} from "@/_components/common/Elements";
+import { ActionBtn, FlexBox } from "@/_components/common/Elements";
 import classNames from "classnames";
 import {
   ContactFormData,
@@ -41,8 +37,8 @@ import {
   FormHeader,
   FormSubmit,
 } from "../Elements";
-import OfflineAnimation from "@/_assets/offline-animation.gif";
 import Image from "next/image";
+import CustomModalComponent from "@/_components/common/ModalComponent";
 
 interface IContactFormProps {
   closeModal: () => void;

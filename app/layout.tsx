@@ -11,7 +11,7 @@ import {
   fetchBaseConfig,
   fetchImages,
   fetchProfileData,
-} from "./_utils/common";
+} from "./_utils/common/data-fetch";
 import { IPreloadSrc } from "@/_store/profile/types";
 import { AppProviderClient } from "./_providers/app";
 import mockProfileData from "./_mock/profile";
@@ -41,14 +41,11 @@ export default async function RootLayout({
     jsonConfig,
     preloadSrcList,
   } = await fetchBaseConfig(basicConfigData, hasError));
-  // Image preloading
-  preloadAssetImages = await fetchImages(preloadSrcList);
-  // Profile info fetch
-  ({ data: profileData, hasError } = await fetchProfileData(
-    jsonConfig,
-    profileData,
-    hasError
-  ));
+  // Image preloading and profile data fetch
+  [preloadAssetImages, { data: profileData, hasError }] = await Promise.all([
+    fetchImages(preloadSrcList),
+    fetchProfileData(jsonConfig, profileData, hasError),
+  ]);
 
   return (
     <html lang="en">
@@ -63,7 +60,7 @@ export default async function RootLayout({
               preloadedAssets: preloadAssetImages,
               hasError,
               profileData,
-              preloadSrcList: basicConfigData?.preloadSrcList || [],
+              preloadSrcList,
               currentDevice: { osName, browserName, isMobile: isMobileOnly },
             },
           }}
