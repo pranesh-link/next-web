@@ -44,15 +44,3 @@ export interface IMessages {
     redirection: string;
   };
 }
-
-export interface IWebServerConfig {
-  devWebUrl: string;
-  prodWebUrl: string;
-}
-
-export interface ICMSServerConfig {
-  devCMSUrl: string;
-  prodCMSUrl: string;
-}
-
-export type AppEnvironment = "development" | "production" | "test";

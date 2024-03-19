@@ -8,7 +8,7 @@ import {
   ModalContentWrap,
   CustomModalComponent,
 } from "@/_components/common/Elements";
-import { getIconUrl, getPdfUrl, getPdfBlob } from "@/_utils/profile/server";
+import { getPdfUrl, getPdfBlob } from "@/_utils/profile/server";
 import styled from "styled-components";
 import { ProfileContext } from "@/_store/profile/context";
 import AboutMeDetails from "./AboutMeDetails";
@@ -27,7 +27,6 @@ const About = (_props: IAboutProps) => {
     setIsContactFormOpen,
     setIsModalOpen,
     hasDownloadedProfile,
-    environment,
     isExport,
     isMobile,
     isDownloading,
@@ -37,7 +36,6 @@ const About = (_props: IAboutProps) => {
     },
     refs: { homeRef: refObj },
     preloadSrcList,
-    serverConfig: { cmsServerConfig },
   } = React.useContext(ProfileContext);
 
   const pdfFileName = preloadSrcList.find(
@@ -63,9 +61,7 @@ const About = (_props: IAboutProps) => {
   };
 
   const downloadResume = async () => {
-    const blob = await getPdfBlob(
-      getPdfUrl(environment, pdfFileName || "", cmsServerConfig)
-    );
+    const blob = await getPdfBlob(getPdfUrl(pdfFileName || ""));
     const url = URL.createObjectURL(blob.blob as Blob);
     downloadFile(url);
   };
