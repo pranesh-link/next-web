@@ -297,17 +297,6 @@ export const SectionsWrapper = styled.section`
   }
 `;
 
-interface CloseButtonProps {
-  onClose: MouseEventHandler<HTMLButtonElement>;
-  icon: string;
-  width: string;
-}
-export const CloseButton = (props: CloseButtonProps) => (
-  <i className="material-icons" onClick={props.onClose}>
-    <img src={props.icon} alt="Close icon" width={props.width} />
-  </i>
-);
-
 export const AutoCloseToastMessage = styled.div`
   font-family: Open Sans, sans-serif !important;
   text-align: center;
@@ -693,7 +682,6 @@ export const CustomModalComponent = styled(ModalComponent)`
 const exports = {
   ActionBtn,
   AutoCloseToastMessage,
-  CloseButton,
   CustomModalComponent,
   Desc,
   FlexBox,

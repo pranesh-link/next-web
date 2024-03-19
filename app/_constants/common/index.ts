@@ -12,20 +12,15 @@ export const ROUTES: Record<string, string> = {
   ROUTE_HOME: "/",
   ROUTE_PROFILE: "/profile",
   ROUTE_MAINTENANCE: "/maintenance",
-  ROUTE_BMICALCULATOR: "/bmi-calculator",
+  ROUTE_BMICALCULATOR: "/tools/bmi-calculator",
 };
 
 export const PAGE_TITLES = {
+  home: "Pranesh | Lead UI Engineer",
   profile: "Pranesh | Lead UI Engineer",
   bmiCalculator: "BMI Calculator",
 };
 
-export const SITE_INFO = {
-  DESCRIPTION:
-    "Exemplary Lead UI Engineer, an aspiring Architect to be specializing in React, HTML, CSS, and JavaScript. Dedicated to creating exceptional user interfaces that seamlessly blend form and function. Proven leadership in guiding teams to deliver cutting-edge web experiences.",
-  KEYWORDS:
-    "ui, web, lead engineer, ui architect, react, html, css, javascript, typescript",
-};
 export const DEFAULT_MAINTENANCE_DATA: IMaintenance = {
   isUnderMaintenance: false,
   message: "",
@@ -178,8 +173,10 @@ export const DEFAULT_CONFIG_DATA: IConfigData = {
 export const HEADER_INFO = {
   METADATA: {
     title: PAGE_TITLES.profile,
-    description: SITE_INFO.DESCRIPTION,
-    keywords: SITE_INFO.KEYWORDS,
+    description:
+      "Exemplary Lead UI Engineer, an aspiring Architect to be specializing in React, HTML, CSS, and JavaScript. Dedicated to creating exceptional user interfaces that seamlessly blend form and function. Proven leadership in guiding teams to deliver cutting-edge web experiences.",
+    keywords:
+      "ui, web, lead engineer, ui architect, react, next, html, css, javascript, typescript",
   },
   VIEWPORT: {
     width: "device-width",

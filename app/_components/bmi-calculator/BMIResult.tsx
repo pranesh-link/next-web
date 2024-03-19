@@ -8,7 +8,7 @@ import { AppContext } from "@/_store/app/context";
 import { findAndReplace } from "@/_utils/common";
 import { IBMIRange, IWeightSuggestConfig } from "@/_store/common/types";
 import { getBMIRangePercentForGauge } from "@/_utils/bmi-calculator";
-import { BMIChart, BMIRangeInfo } from "@/bmi-calculator/Elements";
+import { BMIChart, BMIRangeInfo } from "@/tools/bmi-calculator/Elements";
 
 interface IBMIResultProps {
   weightSuggestConfig: IWeightSuggestConfig;
