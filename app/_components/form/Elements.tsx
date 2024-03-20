@@ -29,10 +29,10 @@ const FieldWrap = styled(FlexBoxSection)`
   }
   .phone-input {
     width: 100%;
-    font-family: Open Sans, sans-serif !important;
+    font-family: var(--font), arial, helvetica, sans-serif;
     input {
       border-color: transparent;
-      font-family: Open Sans, sans-serif !important;
+      font-family: var(--font), arial, helvetica, sans-serif;
       outline: none;
       border-radius: 5px;
       height: 25px;
@@ -58,7 +58,7 @@ const TextInput = styled.input`
   border-radius: 5px;
   border-color: transparent;
   outline: none;
-  font-family: Open Sans, sans-serif !important;
+  font-family: var(--font), arial, helvetica, sans-serif;
   font-size: 14px;
   @media only screen and (max-width: 767px) {
     &.error {
@@ -74,7 +74,7 @@ const TextArea = styled.textarea`
   border-color: transparent;
   outline: none;
   min-height: 100px;
-  font-family: Open Sans, sans-serif !important;
+  font-family: var(--font), arial, helvetica, sans-serif;
   font-size: 14px;
   @media only screen and (max-width: 767px) {
     &.error {
@@ -239,7 +239,7 @@ const FormSubmit = styled(ActionBtn)`
   border-color: transparent;
   border-radius: 20px;
   padding: 10px 25px;
-  font-family: Open Sans, sans-serif !important;
+  font-family: var(--font), arial, helvetica, sans-serif;
   opacity: 0.85;
   &:not(.disabled):hover {
     opacity: 1;
