@@ -5,7 +5,6 @@ import { AppContext } from "@/_store/app/context";
 import Image from "next/image";
 import MaintenanceAnimation from "@/_assets/maintenance.gif";
 import Contact from "@/_components/profile/sections/Contact";
-import dynamic from "next/dynamic";
 
 const MaintenancePage = () => {
   const {
