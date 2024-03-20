@@ -1,5 +1,3 @@
-"use client";
-
 import classNames from "classnames";
 import { useContext, useMemo } from "react";
 import GaugeChart from "react-gauge-chart";

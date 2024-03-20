@@ -34,6 +34,14 @@ export async function middleware(req: NextRequest) {
       return NextResponse.rewrite(req.nextUrl);
     }
 
+    if (
+      pathname === ROUTES.ROUTE_MAINTENANCE &&
+      !jsonResponse.isUnderMaintenance
+    ) {
+      req.nextUrl.pathname = "/";
+      return NextResponse.redirect(req.nextUrl);
+    }
+
     if (pathname.startsWith("/bmi")) {
       req.nextUrl.pathname = ROUTES.ROUTE_BMICALCULATOR;
       return NextResponse.redirect(req.nextUrl, { status: 308 });

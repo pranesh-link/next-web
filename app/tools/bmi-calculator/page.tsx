@@ -1,5 +1,12 @@
 "use client";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  ComponentType,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { AppContext } from "@/_store/app/context";
 import { FormHeader } from "@/_components/form/Elements";
 import { FormFieldValueType } from "@/_store/profile/types";
@@ -17,9 +24,7 @@ import {
   validateBMIFieldInputForRanges,
 } from "@/_utils/bmi-calculator";
 import { BMICalculatorForm } from "./Elements";
-import Fields from "@/_components/bmi-calculator/Fields";
-import BMIResult from "@/_components/bmi-calculator/BMIResult";
-import Head from "next/head";
+import dynamic from "next/dynamic";
 
 export default function BMICalculatorPage() {
   const {
@@ -135,6 +140,20 @@ export default function BMICalculatorPage() {
     },
     [fieldError, fields]
   );
+
+  const BMIResult: any =
+    hasValidFieldValues && isValidBMI ? (
+      dynamic(() => import("@/_components/bmi-calculator/BMIResult"), {
+        ssr: false,
+      })
+    ) : (
+      <></>
+    );
+
+  const Fields = dynamic(() => import("@/_components/bmi-calculator/Fields"), {
+    ssr: false,
+  });
+
   return showForm ? (
     <BMICalculatorForm>
       <FormHeader>{header}</FormHeader>
