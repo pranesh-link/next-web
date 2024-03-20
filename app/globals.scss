@@ -1,11 +1,6 @@
-/* @tailwind base;
-@tailwind components;
-@tailwind utilities; */
-
-@import "~typeface-open-sans/index.css";
 body {
   margin: 0;
-  font-family: Open Sans, sans-serif !important;
+  font-family: var(--font), arial, helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-size: 15px;
@@ -17,7 +12,7 @@ html {
   scroll-behavior: smooth;
 }
 button {
-  font-family: Open Sans, sans-serif !important;
+  font-family: var(--font), arial, helvetica, sans-serif;
   font-size: 15px;
 }
 

@@ -296,7 +296,7 @@ export const SectionsWrapper = styled.section`
 `;
 
 export const AutoCloseToastMessage = styled.div`
-  font-family: Open Sans, sans-serif !important;
+  font-family: var(--font), arial, helvetica, sans-serif;
   text-align: center;
   font-style: italic;
   letter-spacing: 0.5px;

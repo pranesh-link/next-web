@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import "./globals.css";
+
+import "./globals.scss";
 import {
   DEFAULT_APP_CONTEXT,
   DEFAULT_CONFIG_DATA,
@@ -18,10 +19,17 @@ import mockProfileData from "./_mock/profile";
 import { Suspense } from "react";
 import Loading from "./loading";
 import StyledComponentsRegistry from "./_lib/registry";
+import { Work_Sans } from "next/font/google";
 
 export const metadata: Metadata = HEADER_INFO.METADATA;
 
 export const viewport: Viewport = HEADER_INFO.VIEWPORT;
+
+const font = Work_Sans({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font",
+});
 
 export default async function RootLayout({
   children,
@@ -48,7 +56,7 @@ export default async function RootLayout({
   ]);
 
   return (
-    <html lang="en">
+    <html lang="en" className={font.className}>
       <body>
         <AppProviderClient
           value={{
