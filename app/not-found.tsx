@@ -1,10 +1,11 @@
 "use client";
-import { useContext, useMemo } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
 import { AppContext } from "@/_store/app/context";
 import { FlexBox } from "@/_components/common/Elements";
 import { ROUTES } from "@/_constants/common";
 import RedirectLink from "@/_components/common/RedirectLink";
+import { redirect } from "next/navigation";
 
 const NotFoundPage = () => {
   const {
@@ -16,11 +17,34 @@ const NotFoundPage = () => {
     },
   } = useContext(AppContext);
 
+  const [counter, setCounter] = useState(5);
+  const [timer, updateTimer] = useState<any>("");
+
+  const redirectMessage = useMemo(() => {
+    return labels.goToHomePage.replace("{0}", `${counter}`);
+  }, [counter, labels.goToHomePage]);
+
+  useEffect(() => {
+    if (counter === 0) {
+      redirect(ROUTES.ROUTE_HOME);
+    }
+  }, [counter]);
+
+  useEffect(() => {
+    (() => {
+      clearInterval(timer);
+      const timerId = setInterval(() => {
+        setCounter((prevCounter) => prevCounter - 1);
+      }, 1000);
+      updateTimer(timerId);
+    })();
+  }, [timer]);
+
   const showContent = useMemo(() => title, [title]);
   return showContent ? (
     <NotFoundPageWrapper $direction="column" $alignItems="center">
       <NotFoundTitle dangerouslySetInnerHTML={{ __html: title }} />
-      <RedirectLink route={ROUTES.ROUTE_HOME} label={labels.goToHomePage} />
+      <p className="redirecting-you">{redirectMessage}</p>
     </NotFoundPageWrapper>
   ) : null;
 };
@@ -33,10 +57,17 @@ const NotFoundPageWrapper = styled(FlexBox)`
   width: 100%;
   top: 0;
   background: #faf6f9;
+  .redirecting-you {
+    font-size: 16px;
+    font-weight: 500;
+  }
 `;
 
 const NotFoundTitle = styled.div`
   margin: 0 auto;
   margin-top: 50px;
   text-align: center;
+  h1 {
+    color: #ee4b2b;
+  }
 `;
