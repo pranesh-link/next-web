@@ -4,7 +4,6 @@ import styled from "styled-components";
 import { AppContext } from "@/_store/app/context";
 import { FlexBox } from "@/_components/common/Elements";
 import { ROUTES } from "@/_constants/common";
-import RedirectLink from "@/_components/common/RedirectLink";
 import { redirect } from "next/navigation";
 
 const NotFoundPage = () => {
@@ -38,7 +37,8 @@ const NotFoundPage = () => {
       }, 1000);
       updateTimer(timerId);
     })();
-  }, [timer]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const showContent = useMemo(() => title, [title]);
   return showContent ? (
