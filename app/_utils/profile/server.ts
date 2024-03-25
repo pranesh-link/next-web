@@ -54,6 +54,11 @@ export const getPdfFile = async (url: string) => {
 
 export const getPdfBlob = async (url: string) => getPdfFile(url);
 
+export const getPdfObjectUrl = async (fileName: string = "") => {
+  const blob = await getPdfBlob(getPdfUrl(fileName));
+  return URL.createObjectURL(blob.blob as Blob);
+};
+
 export const isEmptyObject = (obj: Object) => Object.keys(obj).length === 0;
 
 export const isObject = (val: any): val is Object => typeof val === "object";

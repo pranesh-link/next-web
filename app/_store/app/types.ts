@@ -2,14 +2,11 @@ import {
   ILinkInfo,
   IPWA,
   IPreloadSrc,
-  IPreloadedFile,
   IProfileData,
-  ISectionInfo,
 } from "@/_store/profile/types";
 import {
   IAppConfig,
   IBMICalculatorFormInfo,
-  IConfigDataParams,
   IMaintenance,
 } from "../common/types";
 
@@ -38,9 +35,7 @@ export interface IAppConfigData {
 }
 
 export interface IMessages {
-  homepage: {
-    title: string;
-    underConstruction: string;
-    redirection: string;
+  common: {
+    offline: string;
   };
 }
