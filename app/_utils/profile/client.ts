@@ -1,7 +1,5 @@
 "use client";
 
-import { CORS_MODE } from "@/_constants/profile";
-
 export const setLocalStorage = (key: string, value: any) =>
   localStorage.setItem(key, JSON.stringify({ value }));
 

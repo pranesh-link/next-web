@@ -28,7 +28,7 @@ async function getJsonResponse(jsonToFetch: string, data?: any) {
     data = await (
       await fetch(url, {
         mode: "cors",
-        next: { revalidate: 1800 },
+        cache: "no-cache",
       })
     ).json();
   } catch (e) {

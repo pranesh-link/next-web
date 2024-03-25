@@ -16,6 +16,8 @@ export const config = {
 
 export async function middleware(req: NextRequest) {
   try {
+    const requestHeaders = new Headers(req.headers);
+    requestHeaders.set("x-pathname", req.nextUrl.pathname);
     const jsonResponse = await (
       await fetch(`${process.env.NEXT_PUBLIC_CMS_SERVER}/maintenance.json`, {
         mode: CORS_MODE,
@@ -46,6 +48,12 @@ export async function middleware(req: NextRequest) {
       req.nextUrl.pathname = ROUTES.ROUTE_BMICALCULATOR;
       return NextResponse.redirect(req.nextUrl, { status: 308 });
     }
+
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
   } catch (e) {
     console.error("error", e);
   }

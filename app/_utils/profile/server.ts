@@ -32,8 +32,6 @@ export const isBannerHidden = (hideTime: number) => {
   return false;
 };
 
-export const isNetworkOnline = () => navigator.onLine;
-
 export const getPdfFile = async (url: string) => {
   let hasError = false;
   let blob = {},

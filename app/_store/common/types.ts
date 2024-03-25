@@ -108,3 +108,10 @@ export interface IWeightSuggestConfig {
   diffToIdealWeight: number;
   idealWeightRanges: IMinMax;
 }
+
+export enum FILE_DOWNLOAD_STATES {
+  IDLE = "idle",
+  INPROGRESS = "inprogress",
+  OFFLINE = "offline",
+  RETRY = "retry",
+}

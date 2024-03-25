@@ -128,6 +128,7 @@ const mockProfileData: IProfileData = {
   download: {
     type: "static",
     staticFileUrl: "files/myResume.pdf",
+    messages: {},
     download: {
       disabled: false,
       message: "for my Resume",

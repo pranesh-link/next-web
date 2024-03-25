@@ -100,6 +100,7 @@ export const DEFAULT_PROFILE_CONTEXT: IProfileContext = {
     download: {
       type: "",
       staticFileUrl: "",
+      messages: {},
       download: {
         message: "",
         icon: "",
