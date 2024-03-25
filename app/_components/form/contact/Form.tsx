@@ -20,7 +20,7 @@ import {
 } from "@/_store/profile/types";
 import FormField from "../FormField";
 import { ProfileContext } from "@/_store/profile/context";
-import { getPreloadedAsset, isNetworkOnline } from "@/_utils/profile/server";
+import { getPreloadedAsset } from "@/_utils/profile/server";
 import {
   getDecryptedConfig,
   getDefaultContactFormData,
@@ -72,11 +72,9 @@ const ContactForm = (props: IContactFormProps) => {
   const [formError, setFormError] = useState<ContactFormError | null>(null);
   const [formDisabled, setFormDisabled] = useState<boolean>(true);
   const [contactFormStatus, setContactFormStatus] = useState(
-    isNetworkOnline()
-      ? CONTACT_FORM_STATUS.FORM_FILL
-      : CONTACT_FORM_STATUS.OFFLINE
+    CONTACT_FORM_STATUS.FORM_FILL
   );
-  const [online, setOnline] = useState(isNetworkOnline());
+  const [online, setOnline] = useState(true);
   const [allowRetry, setAllowRetry] = useState(false);
   const [hasReviewedForm, setHasReviewedForm] = useState<boolean>(false);
 
