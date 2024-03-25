@@ -39,6 +39,8 @@ import {
 } from "../Elements";
 import Image from "next/image";
 import CustomModalComponent from "@/_components/common/ModalComponent";
+import useIsOnline from "@/_hooks/use-is-online";
+import FormStatusModal from "@/_components/modal/form/FormStatusModal";
 
 interface IContactFormProps {
   closeModal: () => void;
@@ -74,7 +76,7 @@ const ContactForm = (props: IContactFormProps) => {
   const [contactFormStatus, setContactFormStatus] = useState(
     CONTACT_FORM_STATUS.FORM_FILL
   );
-  const [online, setOnline] = useState(true);
+  const online = useIsOnline();
   const [allowRetry, setAllowRetry] = useState(false);
   const [hasReviewedForm, setHasReviewedForm] = useState<boolean>(false);
 
@@ -118,12 +120,12 @@ const ContactForm = (props: IContactFormProps) => {
       form.key
     );
 
-    const transformedPaylod = transformMailRequest(
+    const transformedPayload = transformMailRequest(
       formData,
       form.transformFields
     );
 
-    emailjs.send(serviceId, templateId, transformedPaylod, publicKey).then(
+    emailjs.send(serviceId, templateId, transformedPayload, publicKey).then(
       () => {
         setContactFormStatus(CONTACT_FORM_STATUS.SUCCESS);
         setTimeout(() => resetFields(), 3000);
@@ -163,30 +165,13 @@ const ContactForm = (props: IContactFormProps) => {
     }
   };
 
-  const isFormSubmit = useMemo(
-    () => contactFormStatus === CONTACT_FORM_STATUS.SENDING,
-    [contactFormStatus]
-  );
-
   const displayStatus = useMemo(
-    () =>
-      [
-        CONTACT_FORM_STATUS.SUCCESS,
-        CONTACT_FORM_STATUS.ERROR,
-        CONTACT_FORM_STATUS.SENDING,
-        CONTACT_FORM_STATUS.OFFLINE,
-        CONTACT_FORM_STATUS.REVIEW,
-      ].indexOf(contactFormStatus) > -1,
+    () => [CONTACT_FORM_STATUS.FORM_FILL].indexOf(contactFormStatus) === -1,
     [contactFormStatus]
   );
 
   const isSending = useMemo(
     () => contactFormStatus === CONTACT_FORM_STATUS.SENDING,
-    [contactFormStatus]
-  );
-
-  const isSuccess = useMemo(
-    () => contactFormStatus === CONTACT_FORM_STATUS.SUCCESS,
     [contactFormStatus]
   );
 
@@ -197,11 +182,6 @@ const ContactForm = (props: IContactFormProps) => {
 
   const isOffline = useMemo(
     () => contactFormStatus === CONTACT_FORM_STATUS.OFFLINE,
-    [contactFormStatus]
-  );
-
-  const isReview = useMemo(
-    () => contactFormStatus === CONTACT_FORM_STATUS.REVIEW,
     [contactFormStatus]
   );
 
@@ -257,106 +237,28 @@ const ContactForm = (props: IContactFormProps) => {
     isOffline,
   ]);
 
-  const StatusIcon = () => {
-    return (
-      <>
-        {displayStatusInfo.icon && (
-          <Image
-            className="form-status-image"
-            alt="Form status"
-            height={35}
-            width={35}
-            src={displayStatusInfo.icon}
-            unoptimized
-          />
-        )}
-      </>
-    );
-  };
-
   useEffect(() => {
     if (online && contactFormStatus === CONTACT_FORM_STATUS.OFFLINE) {
       setContactFormStatus(CONTACT_FORM_STATUS.FORM_FILL);
     }
   }, [online, contactFormStatus]);
 
-  useEffect(() => {
-    window.addEventListener("online", () => setOnline(true));
-    window.addEventListener("offline", () => setOnline(false));
-
-    return () => {
-      window.addEventListener("online", () => setOnline(true));
-      window.addEventListener("offline", () => setOnline(false));
-    };
-  }, []);
-
-  // eslint-disable-next-line react/display-name
-  const IconMessage = memo(() => {
-    return (
-      <>
-        <StatusIcon />
-        <ProgressMessage
-          dangerouslySetInnerHTML={{ __html: displayStatusInfo.message }}
-        />
-      </>
-    );
-  });
-
   return (
     <>
-      <CustomModalComponent
+      <FormStatusModal
+        allowRetry={allowRetry}
+        displayStatusInfo={displayStatusInfo}
+        formStatus={contactFormStatus}
+        handleReviewAndEdit={handleReviewAndEdit}
+        isSending={isSending}
+        isError={isError}
+        isOffline={isOffline}
         isOpen={displayStatus}
-        className="contact-form-status-modal-content"
-        shouldCloseOnOverlayClick={true}
-        onRequestClose={() => {
-          if (isError || isOffline) {
-            setContactFormStatus(CONTACT_FORM_STATUS.FORM_FILL);
-          }
-        }}
-      >
-        <StatusWrap $direction="column">
-          <StatusMessage
-            $direction={isError || isOffline ? "column" : "row"}
-            $justifyContent="space-evenly"
-            $alignItems="center"
-            className={classNames(contactFormStatus, {
-              "high-border": isSending || isSuccess,
-            })}
-          >
-            {isError || isOffline ? (
-              <FlexBox $alignItems="center">
-                <IconMessage />
-              </FlexBox>
-            ) : (
-              <IconMessage />
-            )}
-
-            <Retry
-              href=""
-              className={classNames({
-                hide: !allowRetry,
-              })}
-              onClick={sendEmail}
-            >
-              {displayStatusInfo.retryMessage}
-            </Retry>
-          </StatusMessage>
-          {isReview && (
-            <ActionsWrap
-              className={classNames({ "review-status": isReview })}
-              $justifyContent="center"
-              $alignItems="center"
-            >
-              <ActionBtn className="review-edit" onClick={handleReviewAndEdit}>
-                {label.reviewEdit}
-              </ActionBtn>
-              <ActionBtn className="send" onClick={sendEmail}>
-                {label.submit}
-              </ActionBtn>
-            </ActionsWrap>
-          )}
-        </StatusWrap>
-      </CustomModalComponent>
+        label={label}
+        retry={sendEmail}
+        setFormStatus={setContactFormStatus}
+        submit={sendEmail}
+      />
       <Form onSubmit={handleFormSubmit}>
         <FormHeader>{form.header}</FormHeader>
         {fields.map((field, index) => {
@@ -372,7 +274,7 @@ const ContactForm = (props: IContactFormProps) => {
               fieldError={formError?.[fieldName]}
               updateInput={updateInput}
               validateField={handleValidation}
-              isFormSubmit={isFormSubmit}
+              isFormSubmit={isSending}
             />
           );
         })}
@@ -382,13 +284,13 @@ const ContactForm = (props: IContactFormProps) => {
             {label.close}
           </ActionBtn>
           <FormSubmit
-            disabled={formDisabled || isFormSubmit}
+            disabled={formDisabled || isSending}
             className={classNames({
-              disabled: formDisabled || isFormSubmit,
+              disabled: formDisabled || isSending,
             })}
             type="submit"
           >
-            {isFormSubmit ? label.submitting : label.submit}
+            {isSending ? label.submitting : label.submit}
           </FormSubmit>
         </ActionsWrap>
       </Form>

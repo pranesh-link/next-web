@@ -13,7 +13,7 @@ import Contact from "./sections/Contact";
 import classNames from "classnames";
 import ResumeExperiences from "./sections/ResumeExperiences";
 import { SECTION_ORDER_DISPLAY } from "@/_constants/profile";
-import VersionModal from "@/_components/common/VersionModal";
+import VersionModal from "@/_components/modal/common/VersionModal";
 import OpenSourceProjects from "./sections/OpenSourceProjects";
 
 interface IProfileSectionsProps {

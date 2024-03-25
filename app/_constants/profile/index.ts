@@ -140,7 +140,6 @@ export const DEFAULT_PROFILE_CONTEXT: IProfileContext = {
   isDownloading: false,
   isMobile: false,
   isInstallBannerOpen: false,
-  hasDownloadedProfile: false,
   isContactFormOpen: false,
   isModalOpen: false,
   setIsModalOpen: () => {},

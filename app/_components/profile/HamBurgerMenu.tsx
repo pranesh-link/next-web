@@ -13,7 +13,7 @@ import MenuBar from "./MenuBar";
 import { ComponentType } from "react";
 import { TransitionProps } from "react-transition-group/Transition";
 import { isSupportedBrowserAndOS } from "@/_utils/profile/server";
-import VersionModal from "@/_components/common/VersionModal";
+import VersionModal from "@/_components/modal/common/VersionModal";
 import { ProfileContext } from "@/_store/profile/context";
 import CloseIcon from "@/_components/svg/CloseIcon";
 import HamburgerIcon from "@/_components/svg/HamburgerIcon";

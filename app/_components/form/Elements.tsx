@@ -174,9 +174,9 @@ const Form = styled.form`
 `;
 
 const StatusWrap = styled(FlexBox)`
-  border-radius: min(50px, (480px - 400px + 1px) * 9999);
+  border-radius: 5px;
   background: #f0f0f0;
-  padding: 5px 15px;
+  padding: 15px;
   @media only screen and (max-width: 767px) {
     width: 100%;
   }

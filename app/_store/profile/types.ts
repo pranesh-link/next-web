@@ -291,7 +291,6 @@ export interface IProfileContext {
   isMobile: boolean;
   showComponentLibUrl: boolean;
   isInstallBannerOpen: boolean;
-  hasDownloadedProfile?: boolean;
   isContactFormOpen: boolean;
   isModalOpen: boolean;
   emailJsConfig: IEmailJsConfig;
