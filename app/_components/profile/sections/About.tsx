@@ -137,7 +137,7 @@ const About = (_props: IAboutProps) => {
               __html: download.messages[downloadState],
             }}
           />
-          <ProgressBar />
+          {downloadState === FILE_DOWNLOAD_STATES.INPROGRESS && <ProgressBar />}
           <Retry
             href=""
             className={classNames({
