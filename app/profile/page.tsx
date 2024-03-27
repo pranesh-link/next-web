@@ -20,7 +20,7 @@ export default function ProfilePage() {
   const {
     data: {
       appConfig = { pwa: { os: [], browsers: [] } },
-      currentDevice: { browserName, osName },
+      currentDevice: { browserName, osName, isMobile },
       version,
       preloadedAssets,
       preloadSrcList,
@@ -45,6 +45,7 @@ export default function ProfilePage() {
     return isMock ? mockProfileData : profileData;
   }, [isMock, profileData]);
 
+  // TODO handle viewport change
   const mobileDetect = useMobileDetect();
 
   return (
@@ -62,7 +63,7 @@ export default function ProfilePage() {
         openSourceRef,
       }}
       isDownloading={false}
-      isMobile={mobileDetect.isMobile()}
+      isMobile={isMobile}
       isInstallBannerOpen={false}
       hasPWAInstalled={false}
       isHamburgerMenuOpen={isHamburgerMenuOpen}
