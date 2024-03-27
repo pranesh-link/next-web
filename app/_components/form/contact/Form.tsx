@@ -41,6 +41,7 @@ import Image from "next/image";
 import CustomModalComponent from "@/_components/common/ModalComponent";
 import useIsOnline from "@/_hooks/use-is-online";
 import FormStatusModal from "@/_components/modal/form/FormStatusModal";
+import { AppContext } from "@/_store/app/context";
 
 interface IContactFormProps {
   closeModal: () => void;
@@ -52,10 +53,17 @@ const ContactForm = (props: IContactFormProps) => {
       forms: { contactForm: form },
     },
     emailJsConfig,
+    preloadedAssets,
   } = useContext(ProfileContext);
-  const { preloadedAssets } = useContext(ProfileContext);
+  const {
+    data: {
+      messages: {
+        common: { offline: offlineMessage, retry: retryMessage },
+      },
+    },
+  } = useContext(AppContext);
 
-  const { statusMessages, messages, label, fields } = form;
+  const { statusMessages, label, fields } = form;
 
   const defaultFormData = useMemo(
     () => getDefaultContactFormData(fields),
@@ -147,6 +155,7 @@ const ContactForm = (props: IContactFormProps) => {
     if (online) {
       handleMailRequest();
     } else {
+      console.log("allow retry");
       setContactFormStatus(CONTACT_FORM_STATUS.OFFLINE);
       setAllowRetry(true);
     }
@@ -162,6 +171,7 @@ const ContactForm = (props: IContactFormProps) => {
       }
     } else {
       setContactFormStatus(CONTACT_FORM_STATUS.OFFLINE);
+      setAllowRetry(true);
     }
   };
 
@@ -224,17 +234,24 @@ const ContactForm = (props: IContactFormProps) => {
 
   const displayStatusInfo = useMemo(() => {
     const icon = formStatusIconMap[contactFormStatus];
-    const message = statusMessages[contactFormStatus];
-    const retryMessage = isError || isOffline ? messages.retry : "";
+    const message =
+      contactFormStatus === CONTACT_FORM_STATUS.OFFLINE
+        ? offlineMessage
+        : statusMessages[contactFormStatus];
 
-    return { icon, message, retryMessage };
+    return {
+      icon,
+      message,
+      retryMessage: isError || isOffline ? retryMessage : "",
+    };
   }, [
     formStatusIconMap,
     contactFormStatus,
     statusMessages,
-    messages.retry,
     isError,
     isOffline,
+    offlineMessage,
+    retryMessage,
   ]);
 
   useEffect(() => {

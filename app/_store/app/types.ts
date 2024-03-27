@@ -37,5 +37,6 @@ export interface IAppConfigData {
 export interface IMessages {
   common: {
     offline: string;
+    retry: string;
   };
 }

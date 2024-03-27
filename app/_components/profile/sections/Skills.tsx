@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import { memo, useContext } from "react";
+import { memo, useContext, useMemo } from "react";
 import { ISkill } from "@/_store/profile/types";
 import {
   FlexBox,
@@ -12,6 +12,7 @@ import { ProfileContext } from "@/_store/profile/context";
 import { SECTIONS } from "@/_constants/profile";
 import StarIcon from "@/_components/svg/StarIcon";
 import StarUnfilledIcon from "@/_components/svg/StarUnfilledIcon";
+import SkillWithStars from "../SkillWithStars";
 
 const Skills = () => {
   const {
@@ -23,35 +24,19 @@ const Skills = () => {
     },
   } = useContext(ProfileContext);
 
-  const SKILL_ICON_TEXT_MAP = {
-    filled: {
-      icon: <StarIcon />,
-      text: "Star filled",
-    },
-    unfilled: {
-      icon: <StarUnfilledIcon />,
-      text: "Star unfilled",
-    },
-  };
-
-  // eslint-disable-next-line react/display-name
-  const SkillWithStars = memo(({ starNum }: { starNum: number }) => {
-    const { filled, unfilled } = SKILL_ICON_TEXT_MAP;
-    return (
-      <FlexBox className="stars">
-        {Array(5)
-          .fill(null)
-          .map((_item, index) => {
-            const skillParams = index + 1 <= starNum ? filled : unfilled;
-            return (
-              <div key={index} className="star">
-                {skillParams.icon}
-              </div>
-            );
-          })}
-      </FlexBox>
-    );
-  });
+  const sortedSkillsByRating = useMemo(
+    () =>
+      skills.info.sort((a, b) => {
+        if (a.star > b.star) {
+          return -1;
+        } else if (a.star < b.star) {
+          return 1;
+        } else {
+          return 0;
+        }
+      }),
+    [skills.info]
+  );
 
   const getColumnData = (skill: ISkill) => (
     <FlexBox className="skill">
@@ -63,7 +48,7 @@ const Skills = () => {
   );
 
   const getStarredSkillsData = () =>
-    skills.info.map((skill: ISkill, index: number) => (
+    sortedSkillsByRating.map((skill: ISkill, index: number) => (
       <div key={index}>{getColumnData(skill)}</div>
     ));
 

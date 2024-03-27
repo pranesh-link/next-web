@@ -269,6 +269,10 @@ const ProgressMessage = styled.p`
   align-items: center;
   margin-left: 10px;
   font-weight: 600;
+  &.offline {
+    margin: 0 auto;
+    text-align: center;
+  }
 `;
 
 const FormHeader = styled.h2`

@@ -93,7 +93,6 @@ export interface IFieldErrorMessages {
 
 export interface IFormMessages {
   mandatoryError: string;
-  retry: string;
 }
 export interface IFormField {
   id: string;

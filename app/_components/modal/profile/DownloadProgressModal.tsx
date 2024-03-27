@@ -30,7 +30,7 @@ export default function DownloadProgressModal(
   const {
     data: {
       messages: {
-        common: { offline },
+        common: { offline, retry },
       },
     },
   } = useContext(AppContext);
@@ -65,7 +65,7 @@ export default function DownloadProgressModal(
             retryDownload();
           }}
         >
-          {LABEL_TEXT.retry}
+          {retry}
         </Retry>
       </DownloadingFileMessage>
     </CustomModalComponent>

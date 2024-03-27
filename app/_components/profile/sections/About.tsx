@@ -7,32 +7,17 @@ import React, {
   useRef,
   useState,
 } from "react";
-import {
-  FlexBoxSection,
-  Desc,
-  ModalBanner,
-  ModalContentWrap,
-} from "@/_components/common/Elements";
-import {
-  getPdfUrl,
-  getPdfBlob,
-  getPdfObjectUrl,
-} from "@/_utils/profile/server";
+import { FlexBoxSection, Desc } from "@/_components/common/Elements";
+import { getPdfObjectUrl } from "@/_utils/profile/server";
 import { ProfileContext } from "@/_store/profile/context";
 import AboutMeDetails from "./AboutMeDetails";
-import ContactForm from "@/_components/form/contact/Form";
 import ContactMe from "@/_components/common/ContactMe";
 import Image from "next/image";
 import DisplayPic from "@/_assets/display-pic.png";
 import DownloadAnimation from "@/_assets/download.gif";
-import CustomModalComponent from "@/_components/common/ModalComponent";
-import { Retry } from "@/_components/form/Elements";
 import { FILE_DOWNLOAD_STATES } from "@/_store/common/types";
-import ProgressBar from "@/_components/common/ProgressBar";
 import useIsOnline from "@/_hooks/use-is-online";
-import { AppContext } from "@/_store/app/context";
-import { LABEL_TEXT } from "@/_constants/profile";
-import { DownloadingFileMessage, InterestedInProfile } from "./Elements";
+import { InterestedInProfile } from "./Elements";
 import DownloadProgressModal from "@/_components/modal/profile/DownloadProgressModal";
 import ContactModal from "@/_components/modal/profile/ContactModal";
 
@@ -51,9 +36,7 @@ const About = (_props: IAboutProps) => {
     refs: { homeRef: refObj },
     preloadSrcList,
   } = useContext(ProfileContext);
-  const {
-    data: { messages },
-  } = useContext(AppContext);
+
   const pdfFileName = preloadSrcList.find(
     (item) => item.id === "resume"
   )?.fileName;

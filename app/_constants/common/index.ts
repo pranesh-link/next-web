@@ -31,7 +31,7 @@ export const DEFAULT_APP_CONTEXT: IAppContext = {
       actionButtonLabel: "",
       defaultMaxLength: 3,
       label: {},
-      messages: { mandatoryError: "", retry: "" },
+      messages: { mandatoryError: "" },
       statusMessages: {
         error: "",
         form_fill: "",
@@ -69,10 +69,9 @@ export const DEFAULT_APP_CONTEXT: IAppContext = {
     preloadedAssets: [],
     preloadSrcList: [],
     messages: {
-      homepage: {
-        title: "",
-        underConstruction: "",
-        redirection: "",
+      common: {
+        offline: "",
+        retry: "",
       },
     },
     profileData: DEFAULT_PROFILE_CONTEXT.data,
