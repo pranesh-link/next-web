@@ -15,7 +15,10 @@ export default function HomePage({
   searchParams?: { isAdmin?: string };
 }) {
   const {
-    data: { appConfig = { homepage: { title: "", pages: [] } } },
+    data: {
+      currentDevice: { isMobile },
+      appConfig = { homepage: { title: "", pages: [] } },
+    },
   } = useContext(AppContext);
   const {
     homepage: { title, pages },

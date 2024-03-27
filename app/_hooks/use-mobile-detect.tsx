@@ -1,27 +1,16 @@
-import { useEffect } from "react";
+"use client";
+import { useEffect, useState } from "react";
 
-const getMobileDetect = (userAgent: NavigatorID["userAgent"]) => {
-  const isAndroid = () => Boolean(userAgent.match(/Android/i));
-  const isIos = () => Boolean(userAgent.match(/iPhone|iPad|iPod/i));
-  const isOpera = () => Boolean(userAgent.match(/Opera Mini/i));
-  const isWindows = () => Boolean(userAgent.match(/IEMobile/i));
-  const isSSR = () => Boolean(userAgent.match(/SSR/i));
-  const isMobile = () =>
-    Boolean(isAndroid() || isIos() || isOpera() || isWindows());
-  const isDesktop = () => Boolean(!isMobile() && !isSSR());
-  return {
-    isMobile,
-    isDesktop,
-    isAndroid,
-    isIos,
-    isSSR,
-  };
-};
 const useMobileDetect = () => {
-  useEffect(() => {}, []);
-  const userAgent =
-    typeof navigator === "undefined" ? "SSR" : navigator.userAgent;
-  return getMobileDetect(userAgent);
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined" ? window.innerWidth < 768 : false
+  );
+  const setViewportProps = () => setIsMobile(window.innerWidth < 768);
+  useEffect(() => {
+    window.addEventListener("resize", setViewportProps);
+    return () => window.removeEventListener("resize", setViewportProps);
+  }, []);
+  return isMobile;
 };
 
 export default useMobileDetect;

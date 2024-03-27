@@ -1,6 +1,6 @@
 import { ROUTES } from "@/_constants/common";
 import { CORS_MODE } from "@/_constants/profile";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, userAgent } from "next/server";
 
 export const config = {
   matcher: [
@@ -15,9 +15,12 @@ export const config = {
 };
 
 export async function middleware(req: NextRequest) {
+  const deviceType =
+    userAgent(req).device.type === "mobile" ? "mobile" : "desktop";
   try {
     const requestHeaders = new Headers(req.headers);
     requestHeaders.set("x-pathname", req.nextUrl.pathname);
+    requestHeaders.set("x-devicetype", deviceType);
     const jsonResponse = await (
       await fetch(`${process.env.NEXT_PUBLIC_CMS_SERVER}/maintenance.json`, {
         mode: CORS_MODE,
@@ -41,12 +44,21 @@ export async function middleware(req: NextRequest) {
       !jsonResponse.isUnderMaintenance
     ) {
       req.nextUrl.pathname = "/";
-      return NextResponse.redirect(req.nextUrl);
+      return NextResponse.redirect(req.nextUrl, { headers: requestHeaders });
     }
 
     if (pathname.startsWith("/bmi")) {
       req.nextUrl.pathname = ROUTES.ROUTE_BMICALCULATOR;
-      return NextResponse.redirect(req.nextUrl, { status: 308 });
+      return NextResponse.redirect(req.nextUrl, {
+        headers: requestHeaders,
+        status: 308,
+      });
+    }
+
+    if (pathname.includes("aishr")) {
+      return NextResponse.redirect(
+        `${process.env.NEXT_PUBLIC_CMS_SERVER}/files/Aishwarya_G_S_Resume.pdf`
+      );
     }
 
     return NextResponse.next({
