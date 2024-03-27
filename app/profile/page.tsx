@@ -20,7 +20,7 @@ export default function ProfilePage() {
   const {
     data: {
       appConfig = { pwa: { os: [], browsers: [] } },
-      currentDevice: { browserName, osName, isMobile },
+      currentDevice: { browserName, osName },
       version,
       preloadedAssets,
       preloadSrcList,
@@ -63,7 +63,7 @@ export default function ProfilePage() {
         openSourceRef,
       }}
       isDownloading={false}
-      isMobile={isMobile}
+      isMobile={mobileDetect}
       isInstallBannerOpen={false}
       hasPWAInstalled={false}
       isHamburgerMenuOpen={isHamburgerMenuOpen}

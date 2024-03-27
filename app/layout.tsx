@@ -39,7 +39,8 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const isMobile = headers().get("x-devicetype") === "mobile";
+  // TODO fix below in prod
+  // const isMobile = headers().get("x-devicetype") === "mobile";
   let basicConfigData = DEFAULT_APP_CONTEXT.data;
   let hasError = false;
   let jsonConfig: IConfigData["jsonConfig"] = DEFAULT_CONFIG_DATA.jsonConfig;
@@ -73,7 +74,7 @@ export default async function RootLayout({
               hasError,
               profileData,
               preloadSrcList,
-              currentDevice: { osName, browserName, isMobile },
+              currentDevice: { osName, browserName, isMobile: isMobileOnly },
             },
           }}
         >
