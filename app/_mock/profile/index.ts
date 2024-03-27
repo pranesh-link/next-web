@@ -168,7 +168,6 @@ const mockProfileData: IProfileData = {
           "<span>You seem to be offline.</span> <span> Please check your network connection and try again.</span>",
       },
       messages: {
-        retry: "Try again",
         mandatoryError: "* This field is required",
       },
       transformFields: [
