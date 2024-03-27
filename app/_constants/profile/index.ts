@@ -60,7 +60,6 @@ export const DEFAULT_PROFILE_CONTEXT: IProfileContext = {
           review: "",
         },
         messages: {
-          retry: "",
           mandatoryError: "",
         },
         name: "",

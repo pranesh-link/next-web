@@ -25,8 +25,7 @@ interface INames {
   clientNames: string[];
 }
 
-// eslint-disable-next-line react/display-name
-const ResumeExperiences = memo(() => {
+function ResumeExperiences() {
   const {
     data: {
       sections: { experiences },
@@ -171,6 +170,6 @@ const ResumeExperiences = memo(() => {
       </section>
     </>
   );
-});
+}
 
-export default ResumeExperiences;
+export default memo(ResumeExperiences);

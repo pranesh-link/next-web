@@ -7,6 +7,7 @@ import {
   StatusMessage,
   StatusWrap,
 } from "@/_components/form/Elements";
+import StatusIconMessage from "@/_components/form/StatusIconMessage";
 import { CONTACT_FORM_STATUS } from "@/_store/profile/types";
 import classNames from "classnames";
 import Image from "next/image";
@@ -62,34 +63,13 @@ export default function FormStatusModal(props: IFormStatusModalProps) {
     [formStatus]
   );
 
-  const StatusIcon = () => {
-    return (
-      <>
-        {displayStatusInfo.icon && (
-          <Image
-            className="form-status-image"
-            alt="Form status"
-            height={35}
-            width={35}
-            src={displayStatusInfo.icon}
-            unoptimized
-          />
-        )}
-      </>
-    );
-  };
-
-  // eslint-disable-next-line react/display-name
-  const IconMessage = memo(() => {
-    return (
-      <>
-        <StatusIcon />
-        <ProgressMessage
-          dangerouslySetInnerHTML={{ __html: displayStatusInfo.message }}
-        />
-      </>
-    );
-  });
+  const IconMessage = () => (
+    <StatusIconMessage
+      icon={displayStatusInfo.icon}
+      isOffline={isOffline}
+      message={displayStatusInfo.message}
+    />
+  );
 
   return (
     <CustomModalComponent
