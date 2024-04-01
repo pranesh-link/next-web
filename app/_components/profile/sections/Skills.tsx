@@ -39,12 +39,12 @@ const Skills = () => {
   );
 
   const getColumnData = (skill: ISkill) => (
-    <FlexBox className="skill">
+    <Grid className="skill" $gridTemplateColumns="1.2fr 1fr">
       <div className="skill-label">
         <strong>{skill.label}</strong>
       </div>
       <SkillWithStars starNum={skill.star} />
-    </FlexBox>
+    </Grid>
   );
 
   const getStarredSkillsData = () =>
