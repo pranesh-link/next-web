@@ -1,5 +1,16 @@
+import DisplayPic from "@/_assets/display-pic.png";
+import DownloadAnimation from "@/_assets/download.gif";
+import ContactMe from "@/_components/common/ContactMe";
+import { Desc, FlexBoxSection } from "@/_components/common/Elements";
+import LazyLoadedImage from "@/_components/common/LazyLoadedImage";
+import ContactModal from "@/_components/modal/profile/ContactModal";
+import DownloadProgressModal from "@/_components/modal/profile/DownloadProgressModal";
+import useIsOnline from "@/_hooks/use-is-online";
+import { FILE_DOWNLOAD_STATES } from "@/_store/common/types";
+import { ProfileContext } from "@/_store/profile/context";
+import { getPdfObjectUrl } from "@/_utils/profile/server";
 import classNames from "classnames";
-import React, {
+import {
   useCallback,
   useContext,
   useEffect,
@@ -7,19 +18,8 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { FlexBoxSection, Desc } from "@/_components/common/Elements";
-import { getPdfObjectUrl } from "@/_utils/profile/server";
-import { ProfileContext } from "@/_store/profile/context";
 import AboutMeDetails from "./AboutMeDetails";
-import ContactMe from "@/_components/common/ContactMe";
-import Image from "next/image";
-import DisplayPic from "@/_assets/display-pic.png";
-import DownloadAnimation from "@/_assets/download.gif";
-import { FILE_DOWNLOAD_STATES } from "@/_store/common/types";
-import useIsOnline from "@/_hooks/use-is-online";
 import { InterestedInProfile } from "./Elements";
-import DownloadProgressModal from "@/_components/modal/profile/DownloadProgressModal";
-import ContactModal from "@/_components/modal/profile/ContactModal";
 
 interface IAboutProps {
   exportProfile: () => void;
@@ -116,8 +116,8 @@ const About = (_props: IAboutProps) => {
               className="image"
             >
               <div className="image-wrap">
-                <Image
-                  alt=""
+                <LazyLoadedImage
+                  alt="profile-image"
                   className="profile-image"
                   width={125}
                   height={125}
@@ -139,7 +139,7 @@ const About = (_props: IAboutProps) => {
               className="image"
             >
               <div className="image-wrap">
-                <Image
+                <LazyLoadedImage
                   alt="profile-image"
                   className="profile-image"
                   width={200}
@@ -171,7 +171,7 @@ const About = (_props: IAboutProps) => {
               >
                 Placeholder
               </a>
-              <Image
+              <LazyLoadedImage
                 className="download"
                 alt="Click here"
                 width={25}

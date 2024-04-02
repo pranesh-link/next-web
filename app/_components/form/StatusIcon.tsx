@@ -1,9 +1,9 @@
-import Image from "next/image";
 import { memo } from "react";
+import LazyLoadedImage from "../common/LazyLoadedImage";
 
 function StatusIcon({ icon }: { icon: string }) {
   return (
-    <Image
+    <LazyLoadedImage
       className="form-status-image"
       alt="Form status"
       height={35}
