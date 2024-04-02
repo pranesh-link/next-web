@@ -1,28 +1,24 @@
+import { IPreloadSrc } from "@/_store/profile/types";
 import type { Metadata, Viewport } from "next";
-
-import "./globals.scss";
+import { Work_Sans } from "next/font/google";
+import { Suspense } from "react";
+import { browserName, isMobileOnly, osName } from "react-device-detect";
 import {
   DEFAULT_APP_CONTEXT,
   DEFAULT_CONFIG_DATA,
   HEADER_INFO,
-  ROUTES,
 } from "./_constants/common";
+import StyledComponentsRegistry from "./_lib/registry";
+import mockProfileData from "./_mock/profile";
+import { AppProviderClient } from "./_providers/app";
 import { IConfigData } from "./_store/common/types";
-import { osName, browserName, isMobileOnly } from "react-device-detect";
 import {
   fetchBaseConfig,
   fetchImages,
   fetchProfileData,
 } from "./_utils/common/data-fetch";
-import { IPreloadSrc } from "@/_store/profile/types";
-import { AppProviderClient } from "./_providers/app";
-import mockProfileData from "./_mock/profile";
-import { Suspense } from "react";
+import "./globals.scss";
 import Loading from "./loading";
-import StyledComponentsRegistry from "./_lib/registry";
-import { Work_Sans } from "next/font/google";
-import { headers } from "next/headers";
-import useWindowSize from "./_hooks/use-mobile-detect";
 
 export const metadata: Metadata = HEADER_INFO.METADATA;
 

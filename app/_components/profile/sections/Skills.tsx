@@ -1,17 +1,10 @@
-import styled from "styled-components";
-import { memo, useContext, useMemo } from "react";
-import { ISkill } from "@/_store/profile/types";
-import {
-  FlexBox,
-  FlexBoxSection,
-  Grid,
-  SecHeader,
-} from "@/_components/common/Elements";
-import classNames from "classnames";
-import { ProfileContext } from "@/_store/profile/context";
+import { FlexBoxSection, Grid, SecHeader } from "@/_components/common/Elements";
 import { SECTIONS } from "@/_constants/profile";
-import StarIcon from "@/_components/svg/StarIcon";
-import StarUnfilledIcon from "@/_components/svg/StarUnfilledIcon";
+import { ProfileContext } from "@/_store/profile/context";
+import { ISkill } from "@/_store/profile/types";
+import classNames from "classnames";
+import { useContext, useMemo } from "react";
+import styled from "styled-components";
 import SkillWithStars from "../SkillWithStars";
 
 const Skills = () => {

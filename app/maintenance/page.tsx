@@ -1,10 +1,10 @@
 "use client";
-import styled from "styled-components";
-import { useContext, useRef } from "react";
-import { AppContext } from "@/_store/app/context";
-import Image from "next/image";
 import MaintenanceAnimation from "@/_assets/maintenance.gif";
+import LazyLoadedImage from "@/_components/common/LazyLoadedImage";
 import Contact from "@/_components/profile/sections/Contact";
+import { AppContext } from "@/_store/app/context";
+import { useContext, useRef } from "react";
+import styled from "styled-components";
 
 const MaintenancePage = () => {
   const {
@@ -18,7 +18,7 @@ const MaintenancePage = () => {
   return (
     <MaintenanceArticle $isMobile={isMobile}>
       <div className="maintenance-info">
-        <Image
+        <LazyLoadedImage
           className="maintenance-image"
           height={isMobile ? 300 : 400}
           alt="maintenance"

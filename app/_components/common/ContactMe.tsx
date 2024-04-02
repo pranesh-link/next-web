@@ -1,13 +1,13 @@
-import styled from "styled-components";
 import { ActionBtn } from "@/_components/common/Elements";
 import { ProfileContext } from "@/_store/profile/context";
-import React, { useMemo } from "react";
 import {
   getPreloadedAsset,
   isSupportedBrowserAndOS,
 } from "@/_utils/profile/server";
 import classNames from "classnames";
-import Image from "next/image";
+import React, { useMemo } from "react";
+import styled from "styled-components";
+import LazyLoadedImage from "./LazyLoadedImage";
 
 const ContactMe = () => {
   const {
@@ -38,7 +38,12 @@ const ContactMe = () => {
         setIsModalOpen(true);
       }}
     >
-      <Image alt="contact-me" height={25} width={25} src={contactMeIcon} />
+      <LazyLoadedImage
+        alt="contact-me"
+        height={25}
+        width={25}
+        src={contactMeIcon}
+      />
       {!isMobile && <>{contactForm.actionButtonLabel}</>}
     </ContactMeButton>
   );
