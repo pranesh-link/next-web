@@ -1,12 +1,12 @@
+import { FlexBoxSection } from "@/_components/common/Elements";
+import { SECTION_ORDER_DISPLAY } from "@/_constants/profile";
+import { ProfileContext } from "@/_store/profile/page/context";
+import { ProfileSectionType, RefTypes } from "@/_store/profile/types";
+import { scrollTo } from "@/_utils/common/ScrollTo";
+import { uppercase } from "@/_utils/profile/server";
 import classNames from "classnames";
 import React, { useEffect, useMemo } from "react";
 import styled from "styled-components";
-import { FlexBoxSection } from "@/_components/common/Elements";
-import { ProfileContext } from "@/_store/profile/context";
-import { ProfileSectionType, RefTypes } from "@/_store/profile/types";
-import { scrollTo } from "@/_utils/common/ScrollTo";
-import { SECTION_ORDER_DISPLAY } from "@/_constants/profile";
-import { uppercase } from "@/_utils/profile/server";
 
 interface IMenuBarProps {
   isMobileMenu?: boolean;

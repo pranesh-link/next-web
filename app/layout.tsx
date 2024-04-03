@@ -9,14 +9,9 @@ import {
   HEADER_INFO,
 } from "./_constants/common";
 import StyledComponentsRegistry from "./_lib/registry";
-import mockProfileData from "./_mock/profile";
 import { AppProviderClient } from "./_providers/app";
 import { IConfigData } from "./_store/common/types";
-import {
-  fetchBaseConfig,
-  fetchImages,
-  fetchProfileData,
-} from "./_utils/common/data-fetch";
+import { fetchBaseConfig } from "./_utils/common/data-fetch";
 import "./globals.scss";
 import Loading from "./loading";
 
@@ -41,8 +36,7 @@ export default async function RootLayout({
   let hasError = false;
   let jsonConfig: IConfigData["jsonConfig"] = DEFAULT_CONFIG_DATA.jsonConfig;
   let preloadAssetImages: { id: any; image: any }[] = [],
-    preloadSrcList: IPreloadSrc[] = [],
-    profileData = mockProfileData;
+    preloadSrcList: IPreloadSrc[] = [];
   // Base config fetch
   ({
     data: basicConfigData,
@@ -50,11 +44,6 @@ export default async function RootLayout({
     jsonConfig,
     preloadSrcList,
   } = await fetchBaseConfig(basicConfigData, hasError));
-  // Image preloading and profile data fetch
-  [preloadAssetImages, { data: profileData, hasError }] = await Promise.all([
-    fetchImages(preloadSrcList),
-    fetchProfileData(jsonConfig, profileData, hasError),
-  ]);
 
   return (
     <html lang="en" className={font.className}>
@@ -66,9 +55,7 @@ export default async function RootLayout({
               version: process.env?.version || DEFAULT_APP_CONTEXT.data.version,
               isAdmin: false,
               links: basicConfigData.links,
-              preloadedAssets: preloadAssetImages,
               hasError,
-              profileData,
               preloadSrcList,
               currentDevice: { osName, browserName, isMobile: isMobileOnly },
             },

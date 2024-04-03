@@ -1,8 +1,8 @@
+import { ProfileContext } from "@/_store/profile/page/context";
 import { useContext } from "react";
 import { ModalBanner, ModalContentWrap } from "../../common/Elements";
 import CustomModalComponent from "../../common/ModalComponent";
 import ContactForm from "../../form/contact/Form";
-import { ProfileContext } from "@/_store/profile/context";
 
 export default function ContactModal({ isOpen }: { isOpen: boolean }) {
   const { setIsContactFormOpen, setIsModalOpen } = useContext(ProfileContext);

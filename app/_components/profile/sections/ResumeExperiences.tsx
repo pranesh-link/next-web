@@ -1,24 +1,24 @@
-import classNames from "classnames";
 import {
-  SecHeader,
   ActionBtn,
   FlexBox,
   ModalBanner,
   ModalContentWrap,
-  SectionWrapper,
   ProjectLink,
+  SecHeader,
+  SectionWrapper,
 } from "@/_components/common/Elements";
-import { memo, useCallback, useContext, useMemo, useState } from "react";
-import { ProfileContext } from "@/_store/profile/context";
-import { IProjectExperience } from "@/_store/profile/types";
+import CustomModalComponent from "@/_components/common/ModalComponent";
+import ProjectInfo from "@/_components/common/ProjectInfo";
 import {
   EXPERIENCE_TYPES,
   LABELS,
   LABEL_TEXT,
   SECTIONS,
 } from "@/_constants/profile";
-import ProjectInfo from "@/_components/common/ProjectInfo";
-import CustomModalComponent from "@/_components/common/ModalComponent";
+import { ProfileContext } from "@/_store/profile/page/context";
+import { IProjectExperience } from "@/_store/profile/types";
+import classNames from "classnames";
+import { memo, useCallback, useContext, useMemo, useState } from "react";
 
 interface INames {
   projectNames: string[];

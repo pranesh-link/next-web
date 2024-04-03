@@ -1,13 +1,13 @@
 "use client";
-import React, { useCallback, useContext } from "react";
+import { FlexBox, FlexBoxSection } from "@/_components/common/Elements";
+import PageLink from "@/_components/home/PageLink";
 import { AppContext } from "@/_store/app/context";
-import styled from "styled-components";
 import {
   isInstanceOfPageLink,
   isInstanceOfPageLinkCollection,
 } from "@/_utils/common";
-import PageLink from "@/_components/home/PageLink";
-import { FlexBoxSection, FlexBox } from "@/_components/common/Elements";
+import React, { useContext } from "react";
+import styled from "styled-components";
 
 export default function HomePage({
   searchParams,

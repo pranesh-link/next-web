@@ -7,7 +7,7 @@ import ContactModal from "@/_components/modal/profile/ContactModal";
 import DownloadProgressModal from "@/_components/modal/profile/DownloadProgressModal";
 import useIsOnline from "@/_hooks/use-is-online";
 import { FILE_DOWNLOAD_STATES } from "@/_store/common/types";
-import { ProfileContext } from "@/_store/profile/context";
+import { ProfileContext } from "@/_store/profile/page/context";
 import { getPdfObjectUrl } from "@/_utils/profile/server";
 import classNames from "classnames";
 import {

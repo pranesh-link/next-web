@@ -1,19 +1,19 @@
+import {
+  ActionBtn,
+  FlexBox,
+  ModalBanner,
+  ModalContentWrap,
+  ProjectLink,
+  SecHeader,
+  SectionWrapper,
+} from "@/_components/common/Elements";
+import CustomModalComponent from "@/_components/common/ModalComponent";
+import { LABEL_TEXT, SECTIONS } from "@/_constants/profile";
+import { ProfileContext } from "@/_store/profile/page/context";
+import { IOpenSource } from "@/_store/profile/types";
+import { goToLink } from "@/_utils/profile/server";
 import classNames from "classnames";
 import { useCallback, useContext, useState } from "react";
-import {
-  SectionWrapper,
-  SecHeader,
-  ProjectLink,
-  FlexBox,
-  ModalContentWrap,
-  ModalBanner,
-  ActionBtn,
-} from "@/_components/common/Elements";
-import { goToLink } from "@/_utils/profile/server";
-import { LABEL_TEXT, SECTIONS } from "@/_constants/profile";
-import { IOpenSource } from "@/_store/profile/types";
-import { ProfileContext } from "@/_store/profile/context";
-import CustomModalComponent from "@/_components/common/ModalComponent";
 
 const OpenSourceProjects = () => {
   const {

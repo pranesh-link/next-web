@@ -1,8 +1,8 @@
+import { Desc, SecHeader } from "@/_components/common/Elements";
+import { SECTIONS } from "@/_constants/profile";
+import { ProfileContext } from "@/_store/profile/page/context";
 import classNames from "classnames";
 import { useContext } from "react";
-import { SecHeader, Desc } from "@/_components/common/Elements";
-import { ProfileContext } from "@/_store/profile/context";
-import { SECTIONS } from "@/_constants/profile";
 
 const Education = () => {
   const {

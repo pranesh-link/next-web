@@ -1,13 +1,14 @@
 "use client";
 
-import { useIsClient } from "@/_hooks/use-is-client";
 import Profile from "@/_components/profile/Profile";
 import { EMAILJS_CONFIG } from "@/_constants/common";
+import { useIsClient } from "@/_hooks/use-is-client";
+import useMobileDetect from "@/_hooks/use-mobile-detect";
 import mockProfileData from "@/_mock/profile";
 import { AppContext } from "@/_store/app/context";
+import { ProfileLayoutContext } from "@/_store/profile/layout/context";
 import { useSearchParams } from "next/navigation";
 import { useContext, useMemo, useRef, useState } from "react";
-import useMobileDetect from "@/_hooks/use-mobile-detect";
 
 export default function ProfilePage() {
   const homeRef = useRef(null);
@@ -22,12 +23,14 @@ export default function ProfilePage() {
       appConfig = { pwa: { os: [], browsers: [] } },
       currentDevice: { browserName, osName },
       version,
-      preloadedAssets,
       preloadSrcList,
-      profileData,
+      // profileData,
       hasError, // TODO show retry
     },
   } = useContext(AppContext);
+  const {
+    data: { profileData, preloadedAssets },
+  } = useContext(ProfileLayoutContext);
   const {
     pwa: { os, browsers },
   } = appConfig;

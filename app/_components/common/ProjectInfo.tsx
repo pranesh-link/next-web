@@ -1,14 +1,14 @@
-import React from "react";
-import styled from "styled-components";
 import { FlexBox, FlexBoxSection } from "@/_components/common/Elements";
-import { IProjectExperience } from "@/_store/profile/types";
-import classNames from "classnames";
 import {
   EXPANDABLE_INFOS,
   LABEL_TEXT,
   SHORT_INFOS,
 } from "@/_constants/profile";
-import { ProfileContext } from "@/_store/profile/context";
+import { ProfileContext } from "@/_store/profile/page/context";
+import { IProjectExperience } from "@/_store/profile/types";
+import classNames from "classnames";
+import React from "react";
+import styled from "styled-components";
 
 interface IProjectInfoProps {
   project: IProjectExperience;

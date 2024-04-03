@@ -1,11 +1,4 @@
-import classNames from "classnames";
-import { useContext } from "react";
-import styled from "styled-components";
-import CopyToClipboard from "react-copy-to-clipboard";
 import { FlexBoxSection, Grid } from "@/_components/common/Elements";
-import { getHref, lowercase } from "@/_utils/profile/server";
-import { ProfileContext } from "@/_store/profile/context";
-import { AboutMeDetailType } from "@/_store/profile/types";
 import {
   CopyIcon,
   LocationIcon,
@@ -13,6 +6,13 @@ import {
   MobileIcon,
   TickIcon,
 } from "@/_components/svg";
+import { ProfileContext } from "@/_store/profile/page/context";
+import { AboutMeDetailType } from "@/_store/profile/types";
+import { getHref, lowercase } from "@/_utils/profile/server";
+import classNames from "classnames";
+import { useContext } from "react";
+import CopyToClipboard from "react-copy-to-clipboard";
+import styled from "styled-components";
 
 interface AboutMeDetailsProps {
   copyState: string;

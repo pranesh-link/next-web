@@ -1,5 +1,5 @@
-import { IAppContext } from "@/_store/app/types";
 import { DEFAULT_PROFILE_CONTEXT, DEFAULT_PWA } from "@/_constants/profile";
+import { IAppContext } from "@/_store/app/types";
 import { IConfigData, IMaintenance } from "@/_store/common/types";
 
 export const ROUTES: Record<string, string> = {
@@ -66,7 +66,6 @@ export const DEFAULT_APP_CONTEXT: IAppContext = {
     },
     version: "1.0.0",
     isAdmin: false,
-    preloadedAssets: [],
     preloadSrcList: [],
     messages: {
       common: {
@@ -74,7 +73,6 @@ export const DEFAULT_APP_CONTEXT: IAppContext = {
         retry: "",
       },
     },
-    profileData: DEFAULT_PROFILE_CONTEXT.data,
     hasError: false,
     links: DEFAULT_PROFILE_CONTEXT.data.sections.links,
     pwa: DEFAULT_PWA,
