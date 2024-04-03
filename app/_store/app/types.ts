@@ -1,9 +1,4 @@
-import {
-  ILinkInfo,
-  IPWA,
-  IPreloadSrc,
-  IProfileData,
-} from "@/_store/profile/types";
+import { ILinkInfo, IPWA, IPreloadSrc } from "@/_store/profile/types";
 import {
   IAppConfig,
   IBMICalculatorFormInfo,
@@ -22,9 +17,7 @@ export interface IAppConfigData {
   };
   version: string;
   isAdmin: boolean;
-  preloadedAssets: { id: string; image: string }[];
   preloadSrcList: IPreloadSrc[];
-  profileData: IProfileData;
   hasError: boolean;
   pwa: IPWA;
   maintenance: IMaintenance;

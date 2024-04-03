@@ -1,23 +1,27 @@
 import { FlexBox } from "@/_components/common/Elements";
-import { getRemainingCharacters, isStringBooleanRecord } from "@/_utils/form";
-import { FormFieldValueType, IFormField } from "@/_store/profile/types";
 import { FIELD_TYPES } from "@/_constants/profile";
+import { ProfileContext } from "@/_store/profile/page/context";
+import { FormFieldValueType, IFormField } from "@/_store/profile/types";
+import {
+  getErrorMessage,
+  getRemainingCharPercentMap,
+  getRemainingCharacters,
+  isStringBooleanRecord,
+} from "@/_utils/form";
 import classNames from "classnames";
 import { useContext, useMemo } from "react";
-import { ProfileContext } from "@/_store/profile/context";
 import { isMobile } from "react-device-detect";
 import {
+  Error,
+  FieldLabel,
   FieldWrap,
   InputWrap,
-  FieldLabel,
   RemainingCharacters,
-  Error,
 } from "./Elements";
-import TextField from "./fields/TextField";
-import TextAreaField from "./fields/TextAreaField";
-import MobileField from "./fields/MobileField";
 import CheckboxField from "./fields/CheckboxField";
-import { getErrorMessage, getRemainingCharPercentMap } from "@/_utils/form";
+import MobileField from "./fields/MobileField";
+import TextAreaField from "./fields/TextAreaField";
+import TextField from "./fields/TextField";
 
 interface IFormFieldProps {
   field: IFormField;

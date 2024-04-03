@@ -1,10 +1,4 @@
-import React, { useContext, useMemo } from "react";
 import { FlexBox, FlexBoxSection } from "@/_components/common/Elements";
-import { ILink, ILinkInfo, LinkType } from "@/_store/profile/types";
-import { getFilteredLinks } from "@/_utils/profile/server";
-import styled from "styled-components";
-import { ProfileContext } from "@/_store/profile/context";
-import { LABEL_TEXT, LINKS, SECTIONS } from "@/_constants/profile";
 import {
   FacebookIcon,
   GithubIcon,
@@ -12,6 +6,12 @@ import {
   TwitterIcon,
   WhatsAppIcon,
 } from "@/_components/svg";
+import { LABEL_TEXT, LINKS, SECTIONS } from "@/_constants/profile";
+import { ProfileContext } from "@/_store/profile/page/context";
+import { ILink, ILinkInfo, LinkType } from "@/_store/profile/types";
+import { getFilteredLinks } from "@/_utils/profile/server";
+import React, { useContext, useMemo } from "react";
+import styled from "styled-components";
 
 interface IContactProps {
   links?: ILinkInfo;

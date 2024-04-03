@@ -1,47 +1,35 @@
+import { ActionBtn } from "@/_components/common/Elements";
+import FormStatusModal from "@/_components/modal/form/FormStatusModal";
+import useIsOnline from "@/_hooks/use-is-online";
+import { AppContext } from "@/_store/app/context";
+import { ProfileContext } from "@/_store/profile/page/context";
 import {
-  FormEvent,
-  memo,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-import emailjs from "@emailjs/browser";
-import { ActionBtn, FlexBox } from "@/_components/common/Elements";
-import classNames from "classnames";
-import {
+  CONTACT_FORM_STATUS,
   ContactFormData,
   ContactFormError,
   ContactFormFields,
   ContactFormValid,
-  CONTACT_FORM_STATUS,
   FormFieldValueType,
 } from "@/_store/profile/types";
-import FormField from "../FormField";
-import { ProfileContext } from "@/_store/profile/context";
-import { getPreloadedAsset } from "@/_utils/profile/server";
 import {
   getDecryptedConfig,
   getDefaultContactFormData,
   transformMailRequest,
   validateField,
 } from "@/_utils/form";
+import { getPreloadedAsset } from "@/_utils/profile/server";
+import emailjs from "@emailjs/browser";
+import classNames from "classnames";
 import {
-  ProgressMessage,
-  StatusWrap,
-  StatusMessage,
-  Retry,
-  ActionsWrap,
-  Form,
-  FormHeader,
-  FormSubmit,
-} from "../Elements";
-import Image from "next/image";
-import CustomModalComponent from "@/_components/common/ModalComponent";
-import useIsOnline from "@/_hooks/use-is-online";
-import FormStatusModal from "@/_components/modal/form/FormStatusModal";
-import { AppContext } from "@/_store/app/context";
+  FormEvent,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { ActionsWrap, Form, FormHeader, FormSubmit } from "../Elements";
+import FormField from "../FormField";
 
 interface IContactFormProps {
   closeModal: () => void;
@@ -155,7 +143,6 @@ const ContactForm = (props: IContactFormProps) => {
     if (online) {
       handleMailRequest();
     } else {
-      console.log("allow retry");
       setContactFormStatus(CONTACT_FORM_STATUS.OFFLINE);
       setAllowRetry(true);
     }

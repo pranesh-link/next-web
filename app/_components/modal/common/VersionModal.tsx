@@ -1,6 +1,6 @@
-import { useContext } from "react";
 import { FlexBox } from "@/_components/common/Elements";
-import { ProfileContext } from "@/_store/profile/context";
+import { ProfileContext } from "@/_store/profile/page/context";
+import { useContext } from "react";
 import CustomModalComponent from "../../common/ModalComponent";
 
 interface IVersionModalProps {

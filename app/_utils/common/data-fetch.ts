@@ -1,21 +1,22 @@
 import {
   CONFIG_REF_INFO,
   CONFIG_TYPES,
-  DEFAULT_PROFILE_CONTEXT,
+  CORS_MODE,
   DEFAULT_PROFILE_CONFIG_DATA,
+  DEFAULT_PROFILE_CONTEXT,
 } from "@/_constants/profile";
 import { IAppConfigData } from "@/_store/app/types";
 import { IConfigData, IConfigDataParams } from "@/_store/common/types";
 import {
-  IHeader,
-  ISectionInfo,
   DownloadType,
-  IFormInfo,
-  IPreloadSrc,
-  IProfileData,
-  IProfileConfigData,
-  IExperienceJsonInfo,
   IExperience,
+  IExperienceJsonInfo,
+  IFormInfo,
+  IHeader,
+  IPreloadSrc,
+  IProfileConfigData,
+  IProfileData,
+  ISectionInfo,
 } from "@/_store/profile/types";
 import { getImage } from ".";
 
@@ -27,8 +28,10 @@ async function getJsonResponse(jsonToFetch: string, data?: any) {
     const url = `${JSON_BASE_URL}/${jsonToFetch}`;
     data = await (
       await fetch(url, {
-        mode: "cors",
-        cache: "no-cache",
+        mode: CORS_MODE,
+        next: {
+          revalidate: 43200,
+        },
       })
     ).json();
   } catch (e) {

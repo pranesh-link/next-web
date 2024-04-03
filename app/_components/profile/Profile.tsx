@@ -1,10 +1,6 @@
 "use client";
-import styled from "styled-components";
-import React, { useEffect, useState } from "react";
-import HamBurgerMenu from "./HamBurgerMenu";
-import MenuBar from "./MenuBar";
-import ProfileSections from "./ProfileSections";
-import { ProfileProvider } from "@/_store/profile/context";
+import { Overlay } from "@/_components/common/Elements";
+import { ProfileProvider } from "@/_store/profile/page/context";
 import {
   IDeviceConfig,
   IEmailJsConfig,
@@ -12,7 +8,11 @@ import {
   IPreloadedAsset,
   IProfileData,
 } from "@/_store/profile/types";
-import { Overlay } from "@/_components/common/Elements";
+import React, { useEffect, useState } from "react";
+import styled from "styled-components";
+import HamBurgerMenu from "./HamBurgerMenu";
+import MenuBar from "./MenuBar";
+import ProfileSections from "./ProfileSections";
 
 interface ProfileProps {
   profileData: IProfileData;

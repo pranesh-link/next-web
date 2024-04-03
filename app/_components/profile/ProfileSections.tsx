@@ -1,20 +1,20 @@
-import React, { useContext, useMemo, useState } from "react";
-import styled from "styled-components";
 import {
   FlexBox,
   SectionsWrapper,
   Version,
 } from "@/_components/common/Elements";
-import { ProfileContext } from "@/_store/profile/context";
-import Skills from "./sections/Skills";
-import About from "./sections/About";
-import Education from "./sections/Education";
-import Contact from "./sections/Contact";
-import classNames from "classnames";
-import ResumeExperiences from "./sections/ResumeExperiences";
-import { SECTION_ORDER_DISPLAY } from "@/_constants/profile";
 import VersionModal from "@/_components/modal/common/VersionModal";
+import { SECTION_ORDER_DISPLAY } from "@/_constants/profile";
+import { ProfileContext } from "@/_store/profile/page/context";
+import classNames from "classnames";
+import React, { useContext, useMemo, useState } from "react";
+import styled from "styled-components";
+import About from "./sections/About";
+import Contact from "./sections/Contact";
+import Education from "./sections/Education";
 import OpenSourceProjects from "./sections/OpenSourceProjects";
+import ResumeExperiences from "./sections/ResumeExperiences";
+import Skills from "./sections/Skills";
 
 interface IProfileSectionsProps {
   exportProfile?: () => void;

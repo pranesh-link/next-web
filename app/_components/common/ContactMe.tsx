@@ -1,5 +1,5 @@
 import { ActionBtn } from "@/_components/common/Elements";
-import { ProfileContext } from "@/_store/profile/context";
+import { ProfileContext } from "@/_store/profile/page/context";
 import {
   getPreloadedAsset,
   isSupportedBrowserAndOS,

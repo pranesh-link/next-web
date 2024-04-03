@@ -1,24 +1,29 @@
 "use client";
-import classNames from "classnames";
-import React, { useContext, useEffect, useMemo, useState } from "react";
-import { Transition } from "react-transition-group";
-import styled from "styled-components";
 import {
   ActionBtn,
   FlexBox,
   FlexBoxSection,
   Version,
 } from "@/_components/common/Elements";
-import MenuBar from "./MenuBar";
-import { ComponentType } from "react";
-import { TransitionProps } from "react-transition-group/Transition";
-import { isSupportedBrowserAndOS } from "@/_utils/profile/server";
 import VersionModal from "@/_components/modal/common/VersionModal";
-import { ProfileContext } from "@/_store/profile/context";
 import CloseIcon from "@/_components/svg/CloseIcon";
 import HamburgerIcon from "@/_components/svg/HamburgerIcon";
 import MobileApplicationIcon from "@/_components/svg/MobileApplicationIcon";
 import { useIsClient } from "@/_hooks/use-is-client";
+import { ProfileContext } from "@/_store/profile/page/context";
+import { isSupportedBrowserAndOS } from "@/_utils/profile/server";
+import classNames from "classnames";
+import React, {
+  ComponentType,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { Transition } from "react-transition-group";
+import { TransitionProps } from "react-transition-group/Transition";
+import styled from "styled-components";
+import MenuBar from "./MenuBar";
 
 const TransitionComponent = Transition as ComponentType<TransitionProps>;
 

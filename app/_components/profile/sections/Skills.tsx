@@ -1,6 +1,6 @@
 import { FlexBoxSection, Grid, SecHeader } from "@/_components/common/Elements";
 import { SECTIONS } from "@/_constants/profile";
-import { ProfileContext } from "@/_store/profile/context";
+import { ProfileContext } from "@/_store/profile/page/context";
 import { ISkill } from "@/_store/profile/types";
 import classNames from "classnames";
 import { useContext, useMemo } from "react";

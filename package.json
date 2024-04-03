@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "tsc --noEmit && next dev",
-    "build": "next build",
+    "build": "rm -rf .next && next build",
     "start": "next start",
     "lint": "next lint",
     "serve": "next build && next start",

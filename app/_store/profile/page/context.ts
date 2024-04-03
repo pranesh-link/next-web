@@ -1,7 +1,7 @@
 "use client";
-import React from "react";
-import { IProfileContext } from "./types";
 import { DEFAULT_PROFILE_CONTEXT } from "@/_constants/profile";
+import React from "react";
+import { IProfileContext } from "../types";
 
 const ProfileContext = React.createContext<IProfileContext>(
   DEFAULT_PROFILE_CONTEXT
@@ -9,4 +9,4 @@ const ProfileContext = React.createContext<IProfileContext>(
 
 const { Provider: ProfileProvider, Consumer: ProfileConsumer } = ProfileContext;
 
-export { ProfileProvider, ProfileConsumer, ProfileContext };
+export { ProfileConsumer, ProfileContext, ProfileProvider };
