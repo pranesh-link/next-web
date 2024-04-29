@@ -1,18 +1,18 @@
 import { ROUTES } from "@/_constants/common";
 import { CORS_MODE } from "@/_constants/profile";
 import { NextRequest, NextResponse, userAgent } from "next/server";
-
-export const config = {
-  matcher: [
-    {
-      source: "/((?!api|_next/static|_next/image|favicon.ico).*)",
-      missing: [
-        { type: "header", key: "next-router-prefetch" },
-        { type: "header", key: "purpose", value: "prefetch" },
-      ],
-    },
-  ],
-};
+// Disable path matcher temporarily
+// export const config = {
+//   matcher: [
+//     {
+//       source: "/((?!api|_next/static|_next/image|favicon.ico).*)",
+//       missing: [
+//         { type: "header", key: "next-router-prefetch" },
+//         { type: "header", key: "purpose", value: "prefetch" },
+//       ],
+//     },
+//   ],
+// };
 
 export async function middleware(req: NextRequest) {
   const deviceType =
