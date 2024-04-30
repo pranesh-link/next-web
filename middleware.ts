@@ -1,18 +1,20 @@
 import { ROUTES } from "@/_constants/common";
-import { CORS_MODE } from "@/_constants/profile";
+import { getApiUrl } from "@/_utils/common";
 import { NextRequest, NextResponse, userAgent } from "next/server";
-// Disable path matcher temporarily
-// export const config = {
-//   matcher: [
-//     {
-//       source: "/((?!api|_next/static|_next/image|favicon.ico).*)",
-//       missing: [
-//         { type: "header", key: "next-router-prefetch" },
-//         { type: "header", key: "purpose", value: "prefetch" },
-//       ],
-//     },
-//   ],
-// };
+
+export const config = {
+  matcher: [
+    {
+      source: "/((?!api|_next/static|_next/image|favicon.ico).*)",
+      missing: [
+        { type: "header", key: "next-router-prefetch" },
+        { type: "header", key: "purpose", value: "prefetch" },
+      ],
+    },
+  ],
+};
+
+export const dynamic = "force-dynamic";
 
 export async function middleware(req: NextRequest) {
   const deviceType =
@@ -21,12 +23,7 @@ export async function middleware(req: NextRequest) {
     const requestHeaders = new Headers(req.headers);
     requestHeaders.set("x-pathname", req.nextUrl.pathname);
     requestHeaders.set("x-devicetype", deviceType);
-    const jsonResponse = await (
-      await fetch(`${process.env.NEXT_PUBLIC_CMS_SERVER}/maintenance.json`, {
-        mode: CORS_MODE,
-        cache: "no-store",
-      })
-    ).json();
+    const jsonResponse = await (await fetch(getApiUrl("maintenance"))).json();
     const { searchParams, pathname } = req.nextUrl;
 
     const showMaintenancePage =

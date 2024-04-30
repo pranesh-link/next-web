@@ -2,7 +2,11 @@ import type { Metadata, Viewport } from "next";
 import { Work_Sans } from "next/font/google";
 import { Suspense } from "react";
 import { browserName, isMobileOnly, osName } from "react-device-detect";
-import { DEFAULT_APP_CONTEXT, HEADER_INFO } from "./_constants/common";
+import {
+  DEFAULT_APP_CONTEXT,
+  HEADER_INFO,
+  REVALIDATE_CONFIG,
+} from "./_constants/common";
 import StyledComponentsRegistry from "./_lib/registry";
 import { AppProviderClient } from "./_providers/app";
 import { getApiUrl } from "./_utils/common";
@@ -33,7 +37,7 @@ export default async function RootLayout({
     data: basicConfigData = DEFAULT_APP_CONTEXT.data,
     hasError,
     preloadSrcList,
-  } = await (await fetch(getApiUrl("app"))).json();
+  } = await (await fetch(getApiUrl("app"), { next: REVALIDATE_CONFIG })).json();
 
   return (
     <html lang="en" className={font.className}>
