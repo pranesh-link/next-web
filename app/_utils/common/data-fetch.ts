@@ -47,7 +47,7 @@ async function getProfileJsonResponse(
   return getJsonResponse(jsonToFetch, data);
 }
 
-async function fetchSection(
+export async function fetchSection(
   jsonToFetch: string,
   data: ISectionInfo | IHeader | DownloadType,
   name: string,
@@ -61,7 +61,11 @@ async function fetchSection(
   };
 }
 
-async function fetchData(jsonToFetch: string, name: string, hasError: boolean) {
+export async function fetchData(
+  jsonToFetch: string,
+  name: string,
+  hasError: boolean
+) {
   const response = await getJsonResponse(jsonToFetch);
   hasError = response.hasError;
   return { name, data: response.data };

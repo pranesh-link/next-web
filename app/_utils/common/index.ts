@@ -1,27 +1,4 @@
-import {
-  CONFIG_REF_INFO,
-  CONFIG_TYPES,
-  DEFAULT_PROFILE_CONFIG_DATA,
-  DEFAULT_PROFILE_CONTEXT,
-} from "@/_constants/profile";
-import { IAppConfigData } from "@/_store/app/types";
-import {
-  IConfigData,
-  IConfigDataParams,
-  IPageLink,
-  IPageLinkCollection,
-} from "@/_store/common/types";
-import {
-  IHeader,
-  ISectionInfo,
-  DownloadType,
-  IFormInfo,
-  IPreloadSrc,
-  IProfileConfigData,
-  IExperienceJsonInfo,
-  IExperience,
-  IProfileData,
-} from "@/_store/profile/types";
+import { IPageLink, IPageLinkCollection } from "@/_store/common/types";
 
 export const getImage = async (fileName: string, id: string) => {
   const image = await import(`@/_assets/${fileName}`);
@@ -50,3 +27,7 @@ export const isInstanceOfPageLink = (item: any): item is IPageLink =>
 export const isInstanceOfPageLinkCollection = (
   item: any
 ): item is IPageLinkCollection => "links" in item;
+
+export const getApiUrl = (path: string) => {
+  return `${process.env.NEXT_PUBLIC_SITE_URL!}/api/${path}`;
+};
