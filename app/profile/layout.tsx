@@ -2,6 +2,8 @@ import mockProfileData from "@/_mock/profile";
 import { ProfileLayoutProviderClient } from "@/_providers/profile/ProfileLayoutProvider";
 import { getApiUrl } from "@/_utils/common";
 
+export const dynamic = "force-dynamic";
+
 export default async function Layout({
   children,
 }: Readonly<{

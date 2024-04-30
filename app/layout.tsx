@@ -19,6 +19,8 @@ const font = Work_Sans({
   variable: "--font",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function RootLayout({
   children,
 }: Readonly<{
