@@ -162,3 +162,7 @@ export const HEADER_INFO = {
     userScalable: true,
   },
 };
+
+export const REVALIDATE_CONFIG = {
+  revalidate: 43200,
+};

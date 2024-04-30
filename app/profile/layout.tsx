@@ -1,3 +1,4 @@
+import { REVALIDATE_CONFIG } from "@/_constants/common";
 import mockProfileData from "@/_mock/profile";
 import { ProfileLayoutProviderClient } from "@/_providers/profile/ProfileLayoutProvider";
 import { getApiUrl } from "@/_utils/common";
@@ -10,7 +11,7 @@ export default async function Layout({
   children: React.ReactNode;
 }>) {
   const { profileData = mockProfileData, preloadedAssets } = await (
-    await fetch(getApiUrl("profile"))
+    await fetch(getApiUrl("profile"), { next: REVALIDATE_CONFIG })
   ).json();
 
   return (
