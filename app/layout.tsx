@@ -1,17 +1,11 @@
-import { IPreloadSrc } from "@/_store/profile/types";
 import type { Metadata, Viewport } from "next";
 import { Work_Sans } from "next/font/google";
 import { Suspense } from "react";
 import { browserName, isMobileOnly, osName } from "react-device-detect";
-import {
-  DEFAULT_APP_CONTEXT,
-  DEFAULT_CONFIG_DATA,
-  HEADER_INFO,
-} from "./_constants/common";
+import { DEFAULT_APP_CONTEXT, HEADER_INFO } from "./_constants/common";
 import StyledComponentsRegistry from "./_lib/registry";
 import { AppProviderClient } from "./_providers/app";
-import { IConfigData } from "./_store/common/types";
-import { fetchBaseConfig } from "./_utils/common/data-fetch";
+import { getApiUrl } from "./_utils/common";
 import "./globals.scss";
 import Loading from "./loading";
 
@@ -32,18 +26,12 @@ export default async function RootLayout({
 }>) {
   // TODO fix below in prod
   // const isMobile = headers().get("x-devicetype") === "mobile";
-  let basicConfigData = DEFAULT_APP_CONTEXT.data;
-  let hasError = false;
-  let jsonConfig: IConfigData["jsonConfig"] = DEFAULT_CONFIG_DATA.jsonConfig;
-  let preloadAssetImages: { id: any; image: any }[] = [],
-    preloadSrcList: IPreloadSrc[] = [];
-  // Base config fetch
-  ({
-    data: basicConfigData,
+
+  const {
+    data: basicConfigData = DEFAULT_APP_CONTEXT.data,
     hasError,
-    jsonConfig,
     preloadSrcList,
-  } = await fetchBaseConfig(basicConfigData, hasError));
+  } = await (await fetch(getApiUrl("app"))).json();
 
   return (
     <html lang="en" className={font.className}>
