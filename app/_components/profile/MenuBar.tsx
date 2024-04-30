@@ -163,8 +163,10 @@ const MenuWrapper = styled.nav`
       }
     }
   }
-  &:not(.mobile) {
-    @media screen and (max-width: 767px) {
+
+  @media only screen and (max-width: 767px) {
+    border-radius: 0px;
+    &:not(.mobile) {
       display: none;
       right: 0;
     }
