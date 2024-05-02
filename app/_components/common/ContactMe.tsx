@@ -40,8 +40,8 @@ const ContactMe = () => {
     >
       <LazyLoadedImage
         alt="contact-me"
-        height={25}
-        width={25}
+        height={30}
+        width={30}
         src={contactMeIcon}
       />
       {!isMobile && <>{contactForm.actionButtonLabel}</>}
@@ -58,7 +58,7 @@ const ContactMeButton = styled(ActionBtn)`
   position: fixed;
   color: #fff;
   padding: 10px 20px;
-  background: #3e3e3e;
+  background: #3f9c35;
   border-radius: 50px;
   right: 30px;
   bottom: 100px;
@@ -73,26 +73,21 @@ const ContactMeButton = styled(ActionBtn)`
     margin-right: 5px;
   }
   &:hover {
-    background: #000;
-    border: 1px solid #fff;
+    box-shadow: transparent 0px -1px 0px 0px,
+      rgba(240, 240, 240, 0.3) 0px -1px 0px inset, rgb(63, 156, 53) 0px 2px 12px;
   }
   @media only screen and (max-width: 767px) {
     padding: 5px;
-    background: #3fc935;
     right: 20px;
     animation: blinker 5s linear infinite;
     box-shadow: rgb(0 0 0 / 20%) 0 -1px 0px 1px, inset #304701 0 -1px 0px,
       #3f9c35 0 2px 12px;
     &:hover {
       border: none;
-      background: #3fc935;
+      background: #3f9c35;
     }
     img {
       margin-right: 0;
     }
-  }
-
-  @media only screen and (min-width: 768px) {
-    background: #3e3e3e !important;
   }
 `;

@@ -1,7 +1,7 @@
 "use client";
-import React, { useContext } from "react";
+import { useContext } from "react";
 import styled from "styled-components";
-import { FlexBoxSection, ActionBtn } from "./_components/common/Elements";
+import { ActionBtn, FlexBoxSection } from "./_components/common/Elements";
 import { LABEL_TEXT, MESSAGES } from "./_constants/profile";
 import { AppContext } from "./_store/app/context";
 
@@ -51,7 +51,7 @@ const ErrorWrapper = styled(FlexBoxSection)`
     border-radius: 20px;
     color: #f0f0f0;
     &:hover {
-      background: #3fc935;
+      background: #3f9c35;
     }
   }
 `;

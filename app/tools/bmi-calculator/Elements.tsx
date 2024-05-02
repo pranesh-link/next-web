@@ -1,6 +1,6 @@
-import styled from "styled-components";
-import { Grid, FlexBox } from "@/_components/common/Elements";
+import { FlexBox, Grid } from "@/_components/common/Elements";
 import { Form } from "@/_components/form/Elements";
+import styled from "styled-components";
 
 const BMICalculatorForm = styled(Form)`
   position: absolute;
@@ -58,13 +58,13 @@ const BMICalculatorForm = styled(Form)`
     }
     .ideal-weight,
     .healthy-bmi {
-      color: #3fc935;
+      color: #3f9c35;
     }
 
     &.gain {
       .weight-direction,
       .weight-to-adjust {
-        color: #3fc935;
+        color: #3f9c35;
       }
     }
     &.reduce {
@@ -89,7 +89,7 @@ const BMICalculatorForm = styled(Form)`
     .max {
       font-weight: 700;
       font-style: italic;
-      color: #3fc935;
+      color: #3f9c35;
       font-size: 16px;
     }
   }

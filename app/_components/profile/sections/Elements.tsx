@@ -17,6 +17,11 @@ const InterestedInProfile = styled(FlexBox)<{
     margin-right: 5px;
     border-radius: 5px;
     cursor: pointer;
+    &:hover {
+      box-shadow: transparent 0px -1px 0px 0px,
+        rgba(240, 240, 240, 0.3) 0px -1px 0px inset,
+        rgb(63, 156, 53) 0px 2px 12px;
+    }
   }
 
   .download-text {

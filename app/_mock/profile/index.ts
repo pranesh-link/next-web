@@ -163,7 +163,7 @@ const mockProfileData: IProfileData = {
         error:
           "<span>Something went wrong. </span> <span> Please try sending again.</span>",
         review:
-          "<span> Your request is about to be sent. </span> <span> You can <i style='color: #b21807'><b>review and edit</b></i> or <i style='color: #3fc935'><b>send</b></i> the request now.</span>",
+          "<span> Your request is about to be sent. </span> <span> You can <i style='color: #b21807'><b>review and edit</b></i> or <i style='color: #3f9c35'><b>send</b></i> the request now.</span>",
         offline:
           "<span>You seem to be offline.</span> <span> Please check your network connection and try again.</span>",
       },
