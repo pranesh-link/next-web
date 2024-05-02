@@ -42,7 +42,7 @@ export default function HomePage({
           } else if (isInstanceOfPageLinkCollection(item)) {
             displayNode = (
               <React.Fragment key={id}>
-                <h3 className="homepage-redirection tools">{label}</h3>
+                <h2 className="tools">{label}</h2>
                 <FlexBox>
                   {item.links.map((item) => {
                     const { id, label } = item;
