@@ -158,7 +158,6 @@ export const HEADER_INFO = {
   VIEWPORT: {
     width: "device-width",
     initialScale: 1,
-    maximumScale: 1,
     userScalable: true,
   },
 };
