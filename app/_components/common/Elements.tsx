@@ -423,7 +423,7 @@ export const Overlay = styled.div<{
 
 export const ModalBanner = styled.div`
   height: 5px;
-  background: #3fc935;
+  background: #3f9c35;
   position: fixed;
   width: 100%;
   &.header {
@@ -566,7 +566,7 @@ export const SectionWrapper = styled(FlexBoxSection)`
         align-items: center;
         &::before {
           content: "✓";
-          color: #3fc935;
+          color: #3f9c35;
           font-size: 20px;
           font-weight: bold;
           margin-right: 10px;

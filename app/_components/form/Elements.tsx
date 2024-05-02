@@ -1,9 +1,9 @@
-import styled from "styled-components";
 import {
-  FlexBoxSection,
-  FlexBox,
   ActionBtn,
+  FlexBox,
+  FlexBoxSection,
 } from "@/_components/common/Elements";
+import styled from "styled-components";
 
 const FieldLabel = styled.label`
   flex-basis: 30%;
@@ -227,7 +227,7 @@ const ActionsWrap = styled(FlexBoxSection)`
   }
 
   .send {
-    background: #3fc935;
+    background: #3f9c35;
   }
 `;
 
@@ -258,7 +258,7 @@ const Retry = styled.a`
   margin-left: 10px;
   margin-top: 10px;
   font-weight: bold;
-  color: #3fc935;
+  color: #3f9c35;
   letter-spacing: 0.3px;
   flex-basis: 15%;
 `;
@@ -282,23 +282,23 @@ const FormHeader = styled.h2`
 `;
 
 export {
+  ActionsWrap,
+  CheckboxInput,
+  CheckboxInputLabel,
+  CheckboxInputWrap,
   CheckboxTick,
   Error,
   FieldLabel,
   FieldWrap,
+  Form,
+  FormHeader,
+  FormSubmit,
   InputWrap,
+  ProgressMessage,
   RemainingCharacters,
+  Retry,
+  StatusMessage,
+  StatusWrap,
   TextArea,
   TextInput,
-  CheckboxInput,
-  CheckboxInputLabel,
-  CheckboxInputWrap,
-  Form,
-  StatusWrap,
-  StatusMessage,
-  ActionsWrap,
-  FormSubmit,
-  Retry,
-  ProgressMessage,
-  FormHeader,
 };

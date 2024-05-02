@@ -182,6 +182,7 @@ const MenuBtn = styled.button`
   font-weight: bold;
   padding: 20px;
   &:hover {
-    color: #00b2e2;
+    background: #3498db;
+    opacity: 0.95;
   }
 `;

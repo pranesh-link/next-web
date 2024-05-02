@@ -70,7 +70,7 @@ const AboutMeDetails = (props: AboutMeDetailsProps) => {
                     })}
                   >
                     {copied ? (
-                      <TickIcon fillColor="#3fc935" strokeWidth={5} />
+                      <TickIcon fillColor="#3f9c35" strokeWidth={5} />
                     ) : (
                       <CopyIcon />
                     )}
