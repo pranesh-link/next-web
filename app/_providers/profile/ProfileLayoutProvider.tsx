@@ -10,7 +10,11 @@ export function ProfileLayoutProviderClient({
 }: {
   children: ReactNode;
   value: {
-    data: { profileData: IProfileData; preloadedAssets: IPreloadedAsset[] };
+    data: {
+      profileData: IProfileData;
+      preloadedAssets: IPreloadedAsset[];
+      hasError: boolean;
+    };
   };
 }) {
   return (
