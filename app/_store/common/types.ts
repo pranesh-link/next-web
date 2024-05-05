@@ -114,4 +114,5 @@ export enum FILE_DOWNLOAD_STATES {
   INPROGRESS = "inprogress",
   OFFLINE = "offline",
   RETRY = "retry",
+  ERROR = "error",
 }

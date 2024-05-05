@@ -2,14 +2,10 @@ import type { Metadata, Viewport } from "next";
 import { Work_Sans } from "next/font/google";
 import { Suspense } from "react";
 import { browserName, isMobileOnly, osName } from "react-device-detect";
-import {
-  DEFAULT_APP_CONTEXT,
-  HEADER_INFO,
-  REVALIDATE_CONFIG,
-} from "./_constants/common";
+import { DEFAULT_APP_CONTEXT, HEADER_INFO } from "./_constants/common";
 import StyledComponentsRegistry from "./_lib/registry";
 import { AppProviderClient } from "./_providers/app";
-import { getApiUrl } from "./_utils/common";
+import { getApiData } from "./api/utils";
 import "./globals.scss";
 import Loading from "./loading";
 
@@ -32,12 +28,20 @@ export default async function RootLayout({
 }>) {
   // TODO fix below in prod
   // const isMobile = headers().get("x-devicetype") === "mobile";
-
-  const {
-    data: basicConfigData = DEFAULT_APP_CONTEXT.data,
-    hasError,
-    preloadSrcList,
-  } = await (await fetch(getApiUrl("app"), { next: REVALIDATE_CONFIG })).json();
+  let error = false;
+  let basicConfigData = DEFAULT_APP_CONTEXT.data,
+    hasError = false,
+    preloadSrcList = [];
+  try {
+    ({
+      data: basicConfigData = DEFAULT_APP_CONTEXT.data,
+      hasError,
+      preloadSrcList,
+    } = await getApiData("app"));
+    error = false;
+  } catch (error) {
+    error = true;
+  }
 
   return (
     <html lang="en" className={font.className}>

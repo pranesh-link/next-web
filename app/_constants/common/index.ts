@@ -163,5 +163,5 @@ export const HEADER_INFO = {
 };
 
 export const REVALIDATE_CONFIG = {
-  revalidate: 43200,
+  revalidate: Number(process?.env?.NEXT_PUBLIC_REVALIDATE) ?? 0,
 };
