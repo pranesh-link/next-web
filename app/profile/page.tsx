@@ -24,12 +24,14 @@ export default function ProfilePage() {
       currentDevice: { browserName, osName },
       version,
       preloadSrcList,
-      hasError, // TODO show retry
     },
   } = useContext(AppContext);
   const {
-    data: { profileData, preloadedAssets },
+    data: { profileData, preloadedAssets, hasError },
   } = useContext(ProfileLayoutContext);
+  if (hasError) {
+    throw new Error("failed to fetch data");
+  }
   const {
     pwa: { os, browsers },
   } = appConfig;

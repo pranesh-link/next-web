@@ -1,5 +1,6 @@
 import mockProfileData from "@/_mock/profile";
 import { ProfileLayoutProviderClient } from "@/_providers/profile/ProfileLayoutProvider";
+import { IPreloadedAsset } from "@/_store/profile/types";
 import { getApiData } from "@/api/utils";
 
 export const dynamic = "force-dynamic";
@@ -9,13 +10,21 @@ export default async function Layout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const { profileData = mockProfileData, preloadedAssets } = await getApiData(
-    "profile"
+  let profileData = mockProfileData,
+    hasError = false,
+    preloadedAssets: IPreloadedAsset[] = [];
+  await getApiData("profile").then(
+    (success) => {
+      ({ profileData, preloadedAssets } = success);
+    },
+    () => {
+      hasError = true;
+    }
   );
 
   return (
     <ProfileLayoutProviderClient
-      value={{ data: { profileData, preloadedAssets } }}
+      value={{ data: { profileData, preloadedAssets, hasError } }}
     >
       {children}
     </ProfileLayoutProviderClient>

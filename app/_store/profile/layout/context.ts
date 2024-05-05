@@ -4,9 +4,13 @@ import React from "react";
 import { IPreloadedAsset, IProfileData } from "../types";
 
 const ProfileLayoutContext = React.createContext<{
-  data: { profileData: IProfileData; preloadedAssets: IPreloadedAsset[] };
+  data: {
+    profileData: IProfileData;
+    preloadedAssets: IPreloadedAsset[];
+    hasError: boolean;
+  };
 }>({
-  data: { profileData: mockProfileData, preloadedAssets: [] },
+  data: { profileData: mockProfileData, preloadedAssets: [], hasError: false },
 });
 
 const { Provider: ProfileLayoutProvider, Consumer: ProfileLayoutConsumer } =
