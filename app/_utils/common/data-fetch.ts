@@ -23,20 +23,15 @@ import { getImage } from ".";
 
 async function getJsonResponse(jsonToFetch: string, data?: any) {
   const JSON_BASE_URL = process.env.NEXT_PUBLIC_CMS_SERVER;
-  let hasError = false;
   data = data || {};
-  try {
-    const url = `${JSON_BASE_URL}/${jsonToFetch}`;
-    data = await (
-      await fetch(url, {
-        mode: CORS_MODE,
-        next: REVALIDATE_CONFIG,
-      })
-    ).json();
-  } catch (e) {
-    hasError = true;
-  }
-  return { data, hasError };
+  const url = `${JSON_BASE_URL}/${jsonToFetch}`;
+  data = await (
+    await fetch(url, {
+      mode: CORS_MODE,
+      next: REVALIDATE_CONFIG,
+    })
+  ).json();
+  return data;
 }
 
 async function getProfileJsonResponse(
@@ -49,37 +44,23 @@ async function getProfileJsonResponse(
 export async function fetchSection(
   jsonToFetch: string,
   data: ISectionInfo | IHeader | DownloadType,
-  name: string,
-  hasError: boolean
+  name: string
 ) {
   const response = await getProfileJsonResponse(jsonToFetch, data);
-  hasError = response.hasError;
   return {
     name,
-    data: response.data as ISectionInfo,
+    data: response as ISectionInfo,
   };
 }
 
-export async function fetchData(
-  jsonToFetch: string,
-  name: string,
-  hasError: boolean
-) {
+export async function fetchData(jsonToFetch: string, name: string) {
   const response = await getJsonResponse(jsonToFetch);
-  hasError = response.hasError;
-  return { name, data: response.data };
+  return { name, data: response };
 }
 
-export const fetchBaseConfig = async (
-  basicConfigData: IAppConfigData,
-  hasError: boolean
-) => {
+export const fetchBaseConfig = async (basicConfigData: IAppConfigData) => {
   let config: any = (
-    (await fetchData(
-      CONFIG_REF_INFO.ref,
-      CONFIG_REF_INFO.name,
-      hasError
-    )) as unknown as {
+    (await fetchData(CONFIG_REF_INFO.ref, CONFIG_REF_INFO.name)) as unknown as {
       data: IConfigData;
     }
   ).data;
@@ -89,8 +70,8 @@ export const fetchBaseConfig = async (
     (jsonConfig?.defaultConfig || []).map((data: IConfigDataParams) => {
       const { name, type, ref } = data;
       return type === CONFIG_TYPES.PROFILECONFIG
-        ? fetchSection(ref, basicConfigData.links, name, hasError)
-        : fetchData(ref, name, hasError);
+        ? fetchSection(ref, basicConfigData.links, name)
+        : fetchData(ref, name);
     })
   );
   basicConfigData = {
@@ -103,7 +84,6 @@ export const fetchBaseConfig = async (
 
   return {
     data: basicConfigData,
-    hasError,
     jsonConfig,
     preloadSrcList: appConfig?.preloadSrcList,
   };
@@ -123,8 +103,7 @@ export const fetchImages = async (preloadSrcList: IPreloadSrc[]) => {
 
 export const fetchProfileData = async (
   jsonConfig: IConfigData["jsonConfig"],
-  profileData: IProfileData,
-  hasError: boolean
+  profileData: IProfileData
 ) => {
   const DEFAULT_SECTIONS_DETAILS =
     DEFAULT_PROFILE_CONTEXT.data.sections.details;
@@ -138,7 +117,7 @@ export const fetchProfileData = async (
   } = (
     await Promise.all(
       (jsonConfig?.profileConfig || []).map((data: IConfigDataParams) =>
-        fetchSection(data.ref, DEFAULT_SECTIONS_DETAILS, data.name, hasError)
+        fetchSection(data.ref, DEFAULT_SECTIONS_DETAILS, data.name)
       )
     )
   ).reduce(
@@ -154,7 +133,7 @@ export const fetchProfileData = async (
   const experienceData = (
     await Promise.all(
       (experiences.info as any[]).map((data: IExperienceJsonInfo) =>
-        fetchSection(data.ref, DEFAULT_SECTIONS_DETAILS, data.name, hasError)
+        fetchSection(data.ref, DEFAULT_SECTIONS_DETAILS, data.name)
       )
     )
   ).map((data) => data.data);
@@ -177,5 +156,5 @@ export const fetchProfileData = async (
     labels: profileLabels,
   };
 
-  return { data: profileData, hasError };
+  return { data: profileData };
 };

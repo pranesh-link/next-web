@@ -24,7 +24,6 @@ export default function ProfilePage() {
       currentDevice: { browserName, osName },
       version,
       preloadSrcList,
-      // profileData,
       hasError, // TODO show retry
     },
   } = useContext(AppContext);

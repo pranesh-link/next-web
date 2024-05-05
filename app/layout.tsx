@@ -28,20 +28,19 @@ export default async function RootLayout({
 }>) {
   // TODO fix below in prod
   // const isMobile = headers().get("x-devicetype") === "mobile";
-  let error = false;
+  let hasError = false;
   let basicConfigData = DEFAULT_APP_CONTEXT.data,
-    hasError = false,
-    preloadSrcList = [];
-  try {
-    ({
-      data: basicConfigData = DEFAULT_APP_CONTEXT.data,
-      hasError,
-      preloadSrcList,
-    } = await getApiData("app"));
-    error = false;
-  } catch (error) {
-    error = true;
-  }
+    preloadSrcList: any[] = [];
+
+  await getApiData("app").then(
+    (success) => {
+      ({ data: basicConfigData = DEFAULT_APP_CONTEXT.data, preloadSrcList } =
+        success);
+    },
+    () => {
+      hasError = true;
+    }
+  );
 
   return (
     <html lang="en" className={font.className}>

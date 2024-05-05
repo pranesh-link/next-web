@@ -9,6 +9,8 @@ import {
 import React, { useContext } from "react";
 import styled from "styled-components";
 
+export const dynamicParams = false;
+
 export default function HomePage({
   searchParams,
 }: {
@@ -18,8 +20,12 @@ export default function HomePage({
     data: {
       currentDevice: { isMobile },
       appConfig = { homepage: { title: "", pages: [] } },
+      hasError,
     },
   } = useContext(AppContext);
+  if (hasError) {
+    throw new Error("Failed to fetch data");
+  }
   const {
     homepage: { title, pages },
   } = appConfig;
