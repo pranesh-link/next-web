@@ -1,7 +1,6 @@
-import { REVALIDATE_CONFIG } from "@/_constants/common";
 import mockProfileData from "@/_mock/profile";
 import { ProfileLayoutProviderClient } from "@/_providers/profile/ProfileLayoutProvider";
-import { getApiUrl } from "@/_utils/common";
+import { getApiData } from "@/api/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -10,9 +9,9 @@ export default async function Layout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const { profileData = mockProfileData, preloadedAssets } = await (
-    await fetch(getApiUrl("profile"), { next: REVALIDATE_CONFIG })
-  ).json();
+  const { profileData = mockProfileData, preloadedAssets } = await getApiData(
+    "profile"
+  );
 
   return (
     <ProfileLayoutProviderClient

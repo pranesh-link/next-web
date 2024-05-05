@@ -1,12 +1,11 @@
-import { FILE_DOWNLOAD_STATES } from "@/_store/common/types";
-import CustomModalComponent from "../../common/ModalComponent";
-import { DownloadingFileMessage } from "../../profile/sections/Elements";
-import ProgressBar from "../../common/ProgressBar";
-import classNames from "classnames";
-import { Retry } from "../../form/Elements";
-import { LABEL_TEXT } from "@/_constants/profile";
-import { useContext, useMemo } from "react";
 import { AppContext } from "@/_store/app/context";
+import { FILE_DOWNLOAD_STATES } from "@/_store/common/types";
+import classNames from "classnames";
+import { useContext, useMemo } from "react";
+import CustomModalComponent from "../../common/ModalComponent";
+import ProgressBar from "../../common/ProgressBar";
+import { Retry } from "../../form/Elements";
+import { DownloadingFileMessage } from "../../profile/sections/Elements";
 
 interface IDownloadProgressModalProps {
   showModal: boolean;
@@ -43,6 +42,14 @@ export default function DownloadProgressModal(
     [downloadMessages, downloadState, offline]
   );
 
+  const hideRetry = useMemo(
+    () =>
+      [FILE_DOWNLOAD_STATES.OFFLINE, FILE_DOWNLOAD_STATES.ERROR].every(
+        (item) => item !== downloadState
+      ),
+    [downloadState]
+  );
+
   return (
     <CustomModalComponent
       isOpen={showDownloadModal}
@@ -58,7 +65,7 @@ export default function DownloadProgressModal(
         <Retry
           href=""
           className={classNames({
-            hide: downloadState !== FILE_DOWNLOAD_STATES.OFFLINE,
+            hide: hideRetry,
           })}
           onClick={(e) => {
             e.preventDefault();

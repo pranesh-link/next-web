@@ -47,9 +47,11 @@ const About = (_props: IAboutProps) => {
 
   const showDownloadModal = useMemo(
     () =>
-      [FILE_DOWNLOAD_STATES.INPROGRESS, FILE_DOWNLOAD_STATES.OFFLINE].some(
-        (item) => item === downloadState
-      ),
+      [
+        FILE_DOWNLOAD_STATES.INPROGRESS,
+        FILE_DOWNLOAD_STATES.ERROR,
+        FILE_DOWNLOAD_STATES.OFFLINE,
+      ].some((item) => item === downloadState),
     [downloadState]
   );
 
@@ -72,9 +74,13 @@ const About = (_props: IAboutProps) => {
   const downloadResume = async () => {
     if (online) {
       setDownloadState(FILE_DOWNLOAD_STATES.INPROGRESS);
-      const fileObjectUrl = await getPdfObjectUrl(pdfFileName);
-      downloadFile(fileObjectUrl);
-      resetDownloadState();
+      try {
+        const fileObjectUrl = await getPdfObjectUrl(pdfFileName);
+        downloadFile(fileObjectUrl);
+        resetDownloadState();
+      } catch (error) {
+        setDownloadState(FILE_DOWNLOAD_STATES.ERROR);
+      }
     } else {
       setDownloadState(FILE_DOWNLOAD_STATES.OFFLINE);
     }

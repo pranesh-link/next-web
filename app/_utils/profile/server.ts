@@ -33,30 +33,22 @@ export const isBannerHidden = (hideTime: number) => {
 };
 
 export const getPdfFile = async (url: string) => {
-  let hasError = false;
-  let blob = {},
-    response;
-  try {
-    if (url) {
-      response = await fetch(url, {
-        mode: CORS_MODE,
-        cache: "no-store",
-      });
-      blob = await response.blob();
-    } else {
-      hasError = true;
-    }
-  } catch (e) {
-    hasError = true;
+  let blob = {};
+  if (url) {
+    const response = await fetch(url, {
+      mode: CORS_MODE,
+      cache: "no-store",
+    });
+    blob = await response.blob();
   }
-  return { blob, hasError };
+  return blob;
 };
 
 export const getPdfBlob = async (url: string) => getPdfFile(url);
 
 export const getPdfObjectUrl = async (fileName: string = "") => {
   const blob = await getPdfBlob(getPdfUrl(fileName));
-  return URL.createObjectURL(blob.blob as Blob);
+  return URL.createObjectURL(blob as Blob);
 };
 
 export const isEmptyObject = (obj: Object) => Object.keys(obj).length === 0;
