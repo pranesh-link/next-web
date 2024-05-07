@@ -1,11 +1,7 @@
 "use client";
 
-import dynamic from "next/dynamic";
+import BMICalculator from "@/_components/bmi-calculator/BMICalculator";
 
-const DynamicBMICalculatorC = dynamic(
-  () => import("@/_components/bmi-calculator/BMICalculator"),
-  { ssr: false }
-);
 export default function BMICalculatorPage() {
-  return <DynamicBMICalculatorC />;
+  return <BMICalculator />;
 }
