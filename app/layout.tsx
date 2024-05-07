@@ -1,3 +1,4 @@
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata, Viewport } from "next";
 import { Work_Sans } from "next/font/google";
 import { Suspense } from "react";
@@ -62,6 +63,7 @@ export default async function RootLayout({
             <Suspense fallback={<Loading />}>{children}</Suspense>
           </StyledComponentsRegistry>
         </AppProviderClient>
+        <SpeedInsights />
       </body>
     </html>
   );
