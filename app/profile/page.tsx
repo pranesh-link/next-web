@@ -1,14 +1,18 @@
 "use client";
 
-import Profile from "@/_components/profile/Profile";
 import { EMAILJS_CONFIG } from "@/_constants/common";
 import { useIsClient } from "@/_hooks/use-is-client";
 import useMobileDetect from "@/_hooks/use-mobile-detect";
 import mockProfileData from "@/_mock/profile";
 import { AppContext } from "@/_store/app/context";
 import { ProfileLayoutContext } from "@/_store/profile/layout/context";
+import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useContext, useMemo, useRef, useState } from "react";
+
+const DynamicProfileC = dynamic(() => import("@/_components/profile/Profile"), {
+  ssr: false,
+});
 
 export default function ProfilePage() {
   const homeRef = useRef(null);
@@ -53,7 +57,7 @@ export default function ProfilePage() {
   const mobileDetect = useMobileDetect();
 
   return (
-    <Profile
+    <DynamicProfileC
       isExport={false}
       isDarkMode={isDarkMode}
       profileData={profileDataByQueryParam}
