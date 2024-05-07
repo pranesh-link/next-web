@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata, Viewport } from "next";
 import { Work_Sans } from "next/font/google";
@@ -64,6 +65,7 @@ export default async function RootLayout({
           </StyledComponentsRegistry>
         </AppProviderClient>
         <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );
