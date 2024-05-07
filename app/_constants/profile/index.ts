@@ -1,4 +1,3 @@
-import React from "react";
 import {
   ExpandableInfosType,
   IProfileConfigData,
@@ -6,6 +5,7 @@ import {
   IPWA,
   ShortInfosType,
 } from "@/_store/profile/types";
+import React from "react";
 
 export const CORS_MODE = "cors";
 export const TOAST_POSITION = "top-center";
@@ -158,6 +158,7 @@ export const LABEL_TEXT: Record<string, string> = {
   softwareTech: "Software/Technologies",
   role: "Role",
   retry: "Retry",
+  retrying: "Retrying...",
   close: "Close",
   developedUsing: "Developed using <a href='{0}' target='_blank'> next </a>",
 };
