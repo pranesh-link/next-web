@@ -9,7 +9,8 @@ const withPWAConfig = withPWA({
   skipWaiting: true,
   reloadOnOnline: true,
   runtimeCaching,
-  scope: ".",
+  scope: "/",
+
   disable: process.env.NODE_ENV === "development",
 });
 const nextConfig = {
