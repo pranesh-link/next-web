@@ -17,6 +17,7 @@ const ShimmerWrap = styled.div`
   height: 100%;
   padding: 25px;
   z-index: 200;
+  background: #f0f0f0;
 `;
 const ShimmerOverlay = styled.div`
   height: 100%;

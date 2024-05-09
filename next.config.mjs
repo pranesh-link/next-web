@@ -1,5 +1,17 @@
 /** @type {import('next').NextConfig} */
+import withPWA from "next-pwa";
+import runtimeCaching from "next-pwa/cache.js";
 import packageJson from "./package.json" assert { type: "json" };
+
+const withPWAConfig = withPWA({
+  dest: "public",
+  register: true,
+  skipWaiting: true,
+  reloadOnOnline: true,
+  runtimeCaching,
+  scope: ".",
+  disable: process.env.NODE_ENV === "development",
+});
 const nextConfig = {
   compiler: {
     styledComponents: true,
@@ -21,4 +33,4 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withPWAConfig(nextConfig);
