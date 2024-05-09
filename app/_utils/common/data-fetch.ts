@@ -1,4 +1,3 @@
-import { REVALIDATE_CONFIG } from "@/_constants/common";
 import {
   CONFIG_REF_INFO,
   CONFIG_TYPES,
@@ -28,7 +27,7 @@ async function getJsonResponse(jsonToFetch: string, data?: any) {
   data = await (
     await fetch(url, {
       mode: CORS_MODE,
-      next: REVALIDATE_CONFIG,
+      cache: "no-store",
     })
   ).json();
   return data;

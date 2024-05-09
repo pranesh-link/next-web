@@ -5,7 +5,8 @@ import { NextRequest, NextResponse, userAgent } from "next/server";
 export const config = {
   matcher: [
     {
-      source: "/((?!api|_next/static|_next/image|favicon.ico).*)",
+      source:
+        "/((?!api|_next/static|_next/image|favicon.ico|manifest.json|robots.txt|sitemap.xml).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },
@@ -57,7 +58,6 @@ export async function middleware(req: NextRequest) {
         `${process.env.NEXT_PUBLIC_CMS_SERVER}/files/Aishwarya_G_S_Resume.pdf`
       );
     }
-
     return NextResponse.next({
       request: {
         headers: requestHeaders,

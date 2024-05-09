@@ -4,6 +4,7 @@ import type { Metadata, Viewport } from "next";
 import { Work_Sans } from "next/font/google";
 import { Suspense } from "react";
 import { browserName, isMobileOnly, osName } from "react-device-detect";
+import GoToHome from "./_components/common/GoToHome";
 import { DEFAULT_APP_CONTEXT, HEADER_INFO } from "./_constants/common";
 import StyledComponentsRegistry from "./_lib/registry";
 import { AppProviderClient } from "./_providers/app";
@@ -46,6 +47,7 @@ export default async function RootLayout({
 
   return (
     <html lang="en" className={font.className}>
+      <link rel="manifest" href="/manifest.json" />
       <body>
         <AppProviderClient
           value={{
@@ -61,7 +63,10 @@ export default async function RootLayout({
           }}
         >
           <StyledComponentsRegistry>
-            <Suspense fallback={<Loading />}>{children}</Suspense>
+            <Suspense fallback={<Loading />}>
+              <GoToHome />
+              {children}
+            </Suspense>
           </StyledComponentsRegistry>
         </AppProviderClient>
         <SpeedInsights />
