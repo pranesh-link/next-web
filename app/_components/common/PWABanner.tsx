@@ -7,7 +7,11 @@ import {
 import { useAppDispatch, useAppSelector } from "@/_redux/hooks";
 import type { AppDispatch } from "@/_redux/store";
 import { AppContext } from "@/_store/app/context";
-import { getLocalStorage, setLocalStorage } from "@/_utils/profile/client";
+import {
+  clearLocalStorage,
+  getLocalStorage,
+  setLocalStorage,
+} from "@/_utils/profile/client";
 import { isSupportedBrowserAndOS } from "@/_utils/profile/server";
 import classNames from "classnames";
 import { usePathname } from "next/navigation";
@@ -80,11 +84,7 @@ const PWABanner = function (props: PWABannerProps) {
       }}
     >
       {isAppInstalledState && !isStandAlone ? (
-        <a
-          href="" //{getWebUrl(environment, webServerConfig)}
-          target="_blank"
-          rel="noreferrer"
-        >
+        <a href="" target="_blank" rel="noreferrer">
           {messages.open}
         </a>
       ) : (
@@ -98,6 +98,7 @@ const PWABanner = function (props: PWABannerProps) {
   }, [browsers, os, browserName, osName]);
 
   const handleBeforeInstallPrompt = (e: any) => {
+    clearLocalStorage();
     e.preventDefault();
     setPrompt(e);
   };
@@ -137,8 +138,13 @@ const PWABanner = function (props: PWABannerProps) {
   }, [dispatchPwaOffsetUpdate]);
 
   const showPWABanner = useMemo(() => {
-    return pathname !== "/maintenance" && !isPwaDismissed && !isStandAlone;
-  }, [isPwaDismissed, isStandAlone, pathname]);
+    return (
+      pathname !== "/maintenance" &&
+      !isAppInstalledState &&
+      !isPwaDismissed &&
+      !isStandAlone
+    );
+  }, [isAppInstalledState, isPwaDismissed, isStandAlone, pathname]);
 
   useEffect(() => {
     dispatch(updateShowPwaBanner(showPWABanner));

@@ -184,6 +184,7 @@ const About = (_props: IAboutProps) => {
                 height={25}
                 onClick={downloadResume}
                 src={DownloadAnimation}
+                unoptimized
                 priority
               />
 
