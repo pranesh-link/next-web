@@ -1,8 +1,6 @@
-import MaintenanceAnimation from "@/_assets/maintenance.gif";
 import { AppContext } from "@/_store/app/context";
-import { useContext, useRef } from "react";
+import { useContext, useMemo, useRef } from "react";
 import { styled } from "styled-components";
-import LazyLoadedImage from "../common/LazyLoadedImage";
 import Contact from "../profile/sections/Contact";
 
 function Maintenance() {
@@ -14,16 +12,24 @@ function Maintenance() {
     },
   } = useContext(AppContext);
 
+  const maintenanceVideoSrc = useMemo(() => {
+    return `${process.env.NEXT_PUBLIC_SITE_URL}/maintenance.mp4`;
+  }, []);
+
   return (
     <MaintenanceArticle $isMobile={isMobile}>
       <div className="maintenance-info">
-        <LazyLoadedImage
-          className="maintenance-image"
+        <video
+          controls={false}
+          autoPlay
+          loop
+          muted
           height={isMobile ? 300 : 400}
-          alt="maintenance"
-          src={MaintenanceAnimation}
-          unoptimized
-        />
+          width={"100%"}
+        >
+          <source src={maintenanceVideoSrc} type="video/mp4" />
+          Your browser does not support the video tag
+        </video>
         <h1 dangerouslySetInnerHTML={{ __html: maintenance.message }} />
       </div>
       <div className="contact-links">
@@ -75,7 +81,14 @@ const MaintenanceArticle = styled.article<{ $isMobile: boolean }>`
 
   h1 {
     font-size: ${(props) => (props.$isMobile ? "30px" : "50px")};
+    margin-top: 5px;
     font-weight: 100;
     text-align: center;
+  }
+
+  @media only screen and (max-width: 767px) {
+    .maintenance-info {
+      padding: 20px 0px;
+    }
   }
 `;

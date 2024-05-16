@@ -5,10 +5,10 @@ import { usePathname } from "next/navigation";
 import RedirectLink from "./RedirectLink";
 
 export default function GoToHome() {
-  const router = usePathname();
+  const pathname = usePathname();
   const pwaOffsetState = useAppSelector((state) => state.app.pwaOffset);
 
-  return router !== "/" ? (
+  return pathname !== "/" && pathname !== "/maintenance" ? (
     <RedirectLink offset={pwaOffsetState} route="/" label="Home" />
   ) : null;
 }

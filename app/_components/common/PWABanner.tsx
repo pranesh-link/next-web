@@ -10,6 +10,7 @@ import { AppContext } from "@/_store/app/context";
 import { getLocalStorage, setLocalStorage } from "@/_utils/profile/client";
 import { isSupportedBrowserAndOS } from "@/_utils/profile/server";
 import classNames from "classnames";
+import { usePathname } from "next/navigation";
 import React, {
   useCallback,
   useContext,
@@ -35,6 +36,7 @@ const PWABanner = function (props: PWABannerProps) {
       currentDevice: { osName, browserName },
     },
   } = useContext(AppContext);
+  const pathname = usePathname();
 
   const [prompt, setPrompt] = useState<any>(null);
   const [isStandAlone, setIsStandAlone] = useState<boolean>(false);
@@ -135,13 +137,12 @@ const PWABanner = function (props: PWABannerProps) {
   }, [dispatchPwaOffsetUpdate]);
 
   const showPWABanner = useMemo(() => {
-    return !isPwaDismissed && !isStandAlone;
-  }, [isPwaDismissed, isStandAlone]);
+    return pathname !== "/maintenance" && !isPwaDismissed && !isStandAlone;
+  }, [isPwaDismissed, isStandAlone, pathname]);
 
   useEffect(() => {
     dispatch(updateShowPwaBanner(showPWABanner));
   }, [showPWABanner, dispatch]);
-  console.log("isStandAlone", isStandAlone);
 
   useLayoutEffect(() => {
     if (showPWABannerState) {
