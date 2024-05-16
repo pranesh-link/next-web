@@ -3,6 +3,7 @@ import {
   DEFAULT_BMI_CALCULATOR_FORM_ERROR,
   PAGE_TITLES,
 } from "@/_constants/common";
+import { useAppSelector } from "@/_redux/hooks";
 import { AppContext } from "@/_store/app/context";
 import { BMICalculatorFormData } from "@/_store/common/types";
 import { FormFieldValueType } from "@/_store/profile/types";
@@ -40,6 +41,8 @@ function BMICalculator() {
   const [fieldError, setFieldError] = useState(
     DEFAULT_BMI_CALCULATOR_FORM_ERROR
   );
+
+  const pwaOffsetState = useAppSelector((state) => state.app.pwaOffset);
 
   useEffect(() => {
     document.title = PAGE_TITLES.bmiCalculator;
@@ -134,7 +137,8 @@ function BMICalculator() {
     [fieldError, fields]
   );
   return showForm ? (
-    <BMICalculatorForm>
+    // <FormWrapper>
+    <BMICalculatorForm offset={pwaOffsetState}>
       <FormHeader>{header}</FormHeader>
       <Fields
         fieldError={fieldError}
@@ -154,7 +158,8 @@ function BMICalculator() {
         />
       )}
     </BMICalculatorForm>
-  ) : null;
+  ) : // </FormWrapper>
+  null;
 }
 
 export default BMICalculator;

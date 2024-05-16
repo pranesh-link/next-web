@@ -1,3 +1,4 @@
+"use client";
 import styled from "styled-components";
 
 export const ActionBtn = styled.button`
@@ -12,6 +13,7 @@ export const FlexBox = styled.div<{
   $alignItems?: ALIGN_ITEMS;
   $flexWrap?: FLEX_WRAP;
   $flexBasis?: string;
+  $gap?: number;
 }>`
   display: flex;
   flex-direction: ${(props) => props.$direction || "row"};
@@ -19,6 +21,7 @@ export const FlexBox = styled.div<{
   align-items: ${(props) => props.$alignItems || "normal"};
   flex-wrap: ${(props) => props.$flexWrap || "nowrap"};
   flex-basis: ${(props) => props.$flexBasis || "auto"};
+  gap: ${(props) => props.$gap || 0}px;
 `;
 
 export const FlexBoxSection = styled.section<{
@@ -303,18 +306,18 @@ export const AutoCloseToastMessage = styled.div`
   color: #3f9c35;
 `;
 
-export const PWAWrapper = styled(FlexBox)<{ top?: string; bottom?: string }>`
+export const PWAWrapper = styled(FlexBox)<{ $top?: string; $bottom?: string }>`
   position: fixed;
-  z-index: 20;
-  ${({ top }) =>
-    top &&
+  z-index: 200;
+  ${({ $top }) =>
+    $top &&
     `
-    top: ${top};
+    top: ${$top};
   `}
-  ${({ bottom }) =>
-    bottom &&
+  ${({ $bottom }) =>
+    $bottom &&
     `
-    bottom: ${bottom};
+    bottom: ${$bottom};
   `}
   background: #8f00ff;
   width: 100%;
@@ -343,7 +346,7 @@ export const PWAWrapper = styled(FlexBox)<{ top?: string; bottom?: string }>`
     font-weight: bold;
     &.install {
       background: #fff;
-      margin-right: 15px;
+      margin-right: 10px;
       color: #8f00ff;
       padding: 10px 0;
       border-radius: 25px;
@@ -353,6 +356,7 @@ export const PWAWrapper = styled(FlexBox)<{ top?: string; bottom?: string }>`
       }
     }
     &.not-now {
+      margin-left: 5px;
       color: rgb(170, 187, 187, 0.8);
     }
   }
@@ -608,6 +612,10 @@ export const ProjectLink = styled(ActionBtn)`
   }
 `;
 
+export const PageContainer = styled.div<{ $paddingTop?: number }>`
+  padding-top: ${(props) => props.$paddingTop || 0}px;
+  transition: all 1s ease-out;
+`;
 const exports = {
   ActionBtn,
   AutoCloseToastMessage,

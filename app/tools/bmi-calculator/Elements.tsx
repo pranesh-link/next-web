@@ -2,10 +2,9 @@ import { FlexBox, Grid } from "@/_components/common/Elements";
 import { Form } from "@/_components/form/Elements";
 import styled from "styled-components";
 
-const BMICalculatorForm = styled(Form)`
-  position: absolute;
+const BMICalculatorForm = styled(Form)<{ offset: number }>`
   width: 100%;
-  height: 100%;
+  height: calc(100vh - ${(props) => props.offset ?? 0}px);
   top: 0;
   bottom: 0;
   padding-bottom: 30px;
@@ -141,4 +140,7 @@ const BMIChart = styled(Grid)`
   margin-top: 30px;
 `;
 
-export { BMICalculatorForm, BMIChart, BMIRangeInfo, FieldsWrap };
+const FormWrapper = styled.div`
+  position: relative;
+`;
+export { BMICalculatorForm, BMIChart, BMIRangeInfo, FieldsWrap, FormWrapper };

@@ -19,6 +19,7 @@ function HomePage({ searchParams }: { searchParams?: { isAdmin?: string } }) {
   if (hasError) {
     throw new Error("Failed to fetch data");
   }
+
   const {
     homepage: { title, pages },
   } = appConfig;

@@ -10,8 +10,7 @@ const withPWAConfig = withPWA({
   reloadOnOnline: true,
   runtimeCaching,
   scope: "/",
-
-  disable: process.env.NODE_ENV === "development",
+  disable: process.env.NEXT_PUBLIC_DISABLE_PWA === "true",
 });
 const nextConfig = {
   compiler: {

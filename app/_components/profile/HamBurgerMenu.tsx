@@ -10,7 +10,11 @@ import CloseIcon from "@/_components/svg/CloseIcon";
 import HamburgerIcon from "@/_components/svg/HamburgerIcon";
 import MobileApplicationIcon from "@/_components/svg/MobileApplicationIcon";
 import { useIsClient } from "@/_hooks/use-is-client";
+import { updateIsAppInstalled } from "@/_redux/actions/app";
+import { useAppDispatch, useAppSelector } from "@/_redux/hooks";
+import { AppDispatch } from "@/_redux/store";
 import { ProfileContext } from "@/_store/profile/page/context";
+import { setLocalStorage } from "@/_utils/profile/client";
 import { isSupportedBrowserAndOS } from "@/_utils/profile/server";
 import classNames from "classnames";
 import React, {
@@ -32,18 +36,23 @@ interface IHamburgerMenuProps {
   hasPWAInstalled: boolean;
   setIsOpen: (isOpen: boolean) => void;
   onMenuChange: (section: string) => void;
-  onInstallPWA: () => void;
 }
 
 const HamBurgerMenu = (props: IHamburgerMenuProps) => {
-  const { isOpen, hasPWAInstalled, setIsOpen, onMenuChange, onInstallPWA } =
-    props;
+  const { isOpen, hasPWAInstalled, setIsOpen, onMenuChange } = props;
   const contentRef = React.useRef<HTMLDivElement>(null);
   const {
     appVersion: version,
     deviceConfig: { browserName, browsers, os, osName },
   } = useContext(ProfileContext);
   const isClient = useIsClient();
+  const showPWABannerState = useAppSelector((state) => state.app.showPwaBanner);
+
+  const dispatch = useAppDispatch<AppDispatch>();
+
+  const isAppInstalledState = useAppSelector(
+    (state) => state.app.isAppInstalled
+  );
 
   const hasPWASupport = useMemo(
     () => isSupportedBrowserAndOS(browsers, os, browserName, osName),
@@ -51,11 +60,22 @@ const HamBurgerMenu = (props: IHamburgerMenuProps) => {
   );
 
   const [hamburgerClicked, setHamburgerClicked] = useState<boolean>(false);
+  const [hideMenu, setHideMenu] = useState<boolean>(window.innerWidth > 767);
+  const [prompt, setPrompt] = useState<any>(null);
   const [displayVersionModal, setDisplayVersionModal] =
     useState<boolean>(false);
   const scrollbarSize = isClient
     ? window.innerWidth - document.documentElement.clientWidth
     : 0;
+
+  const handleBeforeInstallPrompt = (e: any) => {
+    e.preventDefault();
+    setPrompt(e);
+  };
+
+  const handleResize = () => {
+    setHideMenu(window.innerWidth > 767);
+  };
 
   useEffect(() => {
     // On open scroll to top of content div
@@ -75,6 +95,27 @@ const HamBurgerMenu = (props: IHamburgerMenuProps) => {
     }, 100);
     //eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
+
+  useEffect(() => {
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener(
+        "beforeinstallprompt",
+        handleBeforeInstallPrompt
+      );
+    };
+  }, []);
+
+  const onInstallPWA = async () => {
+    if (isAppInstalledState) {
+      return;
+    }
+    const response = await prompt.prompt();
+    const isInstalled = response.outcome === "accepted";
+    dispatch(updateIsAppInstalled(isInstalled));
+    setLocalStorage("isAppInstalled", isInstalled);
+  };
 
   return (
     <>
@@ -104,7 +145,7 @@ const HamBurgerMenu = (props: IHamburgerMenuProps) => {
         }}
       >
         {(state) => (
-          <Menu className={state}>
+          <Menu className={classNames(state, { hide: hideMenu })}>
             <ContentSection $direction="column" $justifyContent="space-around">
               <FlexBox $justifyContent="flex-end">
                 <ActionBtn
@@ -119,7 +160,7 @@ const HamBurgerMenu = (props: IHamburgerMenuProps) => {
                 closeHamburgerMenu={() => setIsOpen(false)}
                 onMenuChange={(section) => onMenuChange(section)}
               />
-              {hasPWASupport && !hasPWAInstalled && (
+              {showPWABannerState && (
                 <FlexBox $justifyContent="center">
                   <ActionBtn
                     className="install-app-button"
