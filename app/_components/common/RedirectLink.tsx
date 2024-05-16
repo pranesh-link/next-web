@@ -26,6 +26,7 @@ const RedirectLink = (props: IRedirectLinkProps) => {
           height={30}
           width={30}
           alt="back-arrow"
+          unoptimized
         />
       )}
       <span>{label}</span>

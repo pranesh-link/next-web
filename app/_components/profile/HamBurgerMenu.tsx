@@ -14,7 +14,7 @@ import { updateIsAppInstalled } from "@/_redux/actions/app";
 import { useAppDispatch, useAppSelector } from "@/_redux/hooks";
 import { AppDispatch } from "@/_redux/store";
 import { ProfileContext } from "@/_store/profile/page/context";
-import { setLocalStorage } from "@/_utils/profile/client";
+import { clearLocalStorage, setLocalStorage } from "@/_utils/profile/client";
 import { isSupportedBrowserAndOS } from "@/_utils/profile/server";
 import classNames from "classnames";
 import React, {
@@ -69,6 +69,7 @@ const HamBurgerMenu = (props: IHamburgerMenuProps) => {
     : 0;
 
   const handleBeforeInstallPrompt = (e: any) => {
+    clearLocalStorage();
     e.preventDefault();
     setPrompt(e);
   };
@@ -104,6 +105,7 @@ const HamBurgerMenu = (props: IHamburgerMenuProps) => {
         "beforeinstallprompt",
         handleBeforeInstallPrompt
       );
+      window.removeEventListener("resize", handleResize);
     };
   }, []);
 
