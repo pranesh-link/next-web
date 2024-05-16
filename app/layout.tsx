@@ -1,16 +1,21 @@
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata, Viewport } from "next";
+import dynamicImport from "next/dynamic";
 import { Work_Sans } from "next/font/google";
 import { Suspense } from "react";
 import { browserName, isMobileOnly, osName } from "react-device-detect";
 import GoToHome from "./_components/common/GoToHome";
+import PageWrapper from "./_components/common/PageWrapper";
 import { DEFAULT_APP_CONTEXT, HEADER_INFO } from "./_constants/common";
 import StyledComponentsRegistry from "./_lib/registry";
 import { AppProviderClient } from "./_providers/app";
+import StoreProvider from "./_providers/store";
 import { getApiData } from "./api/utils";
 import "./globals.scss";
 import Loading from "./loading";
+
+const PWABanner = dynamicImport(() => import("@/_components/common/PWABanner"));
 
 export const metadata: Metadata = HEADER_INFO.METADATA;
 
@@ -23,7 +28,6 @@ const font = Work_Sans({
 });
 
 export const dynamic = "force-dynamic";
-
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -31,8 +35,8 @@ export default async function RootLayout({
 }>) {
   // TODO fix below in prod
   // const isMobile = headers().get("x-devicetype") === "mobile";
-  let hasError = false;
-  let basicConfigData = DEFAULT_APP_CONTEXT.data,
+  let hasError = false,
+    basicConfigData = DEFAULT_APP_CONTEXT.data,
     preloadSrcList: any[] = [];
 
   await getApiData("app").then(
@@ -49,26 +53,34 @@ export default async function RootLayout({
     <html lang="en" className={font.className}>
       <link rel="manifest" href="/manifest.json" />
       <body>
-        <AppProviderClient
-          value={{
-            data: {
-              ...basicConfigData,
-              version: process.env?.version || DEFAULT_APP_CONTEXT.data.version,
-              isAdmin: false,
-              links: basicConfigData.links,
-              hasError,
-              preloadSrcList,
-              currentDevice: { osName, browserName, isMobile: isMobileOnly },
-            },
-          }}
-        >
-          <StyledComponentsRegistry>
-            <Suspense fallback={<Loading />}>
-              <GoToHome />
-              {children}
-            </Suspense>
-          </StyledComponentsRegistry>
-        </AppProviderClient>
+        <StoreProvider>
+          <AppProviderClient
+            value={{
+              data: {
+                ...basicConfigData,
+                version:
+                  process.env?.version || DEFAULT_APP_CONTEXT.data.version,
+                isAdmin: false,
+                links: basicConfigData.links,
+                hasError,
+                preloadSrcList,
+                currentDevice: {
+                  osName,
+                  browserName,
+                  isMobile: isMobileOnly,
+                },
+              },
+            }}
+          >
+            <StyledComponentsRegistry>
+              <Suspense fallback={<Loading />}>
+                <PWABanner isMobile={false} />
+                <GoToHome />
+                <PageWrapper>{children}</PageWrapper>
+              </Suspense>
+            </StyledComponentsRegistry>
+          </AppProviderClient>
+        </StoreProvider>
         <SpeedInsights />
         <Analytics />
       </body>

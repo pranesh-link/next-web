@@ -40,7 +40,6 @@ interface ProfileProps {
   pwaOffset: number;
   setIsDownloading: (isDownloading: boolean) => void;
   setIsHamburgerMenuOpen: (isHamburgerMenuOpen: boolean) => void;
-  onInstallPWA: () => void;
 }
 
 const Profile = (props: ProfileProps) => {
@@ -61,7 +60,6 @@ const Profile = (props: ProfileProps) => {
     isExport,
     hasPWAInstalled,
     setIsHamburgerMenuOpen,
-    onInstallPWA,
     appVersion,
     preloadSrcList,
     preloadedAssets,
@@ -124,7 +122,6 @@ const Profile = (props: ProfileProps) => {
           hasPWAInstalled={hasPWAInstalled}
           setIsOpen={(isOpen) => setIsHamburgerMenuOpen(isOpen)}
           onMenuChange={(section) => setCurrentSection(section)}
-          onInstallPWA={onInstallPWA}
         />
         {isMobile && <Swipe onTouchMove={() => setIsHamburgerMenuOpen(true)} />}
         <MenuBar onMenuChange={(section) => setCurrentSection(section)} />

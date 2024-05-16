@@ -1,18 +1,27 @@
 "use client";
 
-export const setLocalStorage = (key: string, value: any) =>
-  localStorage.setItem(key, JSON.stringify({ value }));
+export const setLocalStorage = (key: string, value: any) => {
+  if (typeof window !== "undefined") {
+    localStorage.setItem(key, JSON.stringify({ value }));
+  }
+};
 
 export const getLocalStorage = (key: string) => {
-  const itemStr = localStorage.getItem(key);
+  if (typeof window !== "undefined") {
+    const itemStr = localStorage.getItem(key);
 
-  if (!itemStr) {
+    if (!itemStr) {
+      return null;
+    }
+    const item = JSON.parse(itemStr);
+    return item.value;
+  } else {
     return null;
   }
-  const item = JSON.parse(itemStr);
-  return item.value;
 };
 
 export const clearLocalStorage = (key?: string) => {
-  key ? localStorage.removeItem(key) : localStorage.clear();
+  if (typeof window !== "undefined") {
+    key ? localStorage.removeItem(key) : localStorage.clear();
+  }
 };

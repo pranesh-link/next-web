@@ -14,14 +14,8 @@ interface IMenuBarProps {
   onMenuChange?: (section: string) => void;
 }
 const MenuBar = (props: IMenuBarProps) => {
-  const {
-    refs,
-    data,
-    currentSection,
-    isInstallBannerOpen,
-    pwaOffset,
-    isMobile,
-  } = React.useContext(ProfileContext);
+  const { refs, data, currentSection, isMobile } =
+    React.useContext(ProfileContext);
   const { onMenuChange } = props;
   const initialOffset = useMemo(() => (isMobile ? 80 : 30), [isMobile]);
   const goTo = (section: string) => {
@@ -94,8 +88,7 @@ const MenuBar = (props: IMenuBarProps) => {
     });
     return () => window.removeEventListener("scroll", handleScroll);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pwaOffset, initialOffset]);
-
+  }, [initialOffset]);
   return (
     <MenuWrapper
       className={classNames("wrapper", { mobile: props.isMobileMenu })}

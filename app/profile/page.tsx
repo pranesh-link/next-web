@@ -79,7 +79,6 @@ export default function ProfilePage() {
       setIsHamburgerMenuOpen={(isHamburgerMenuOpen: boolean) =>
         setIsHamburgerMenuOpen(isHamburgerMenuOpen)
       }
-      onInstallPWA={() => {}}
       appVersion={version}
       deviceConfig={{ os, osName, browserName, browsers }}
       preloadSrcList={preloadSrcList}

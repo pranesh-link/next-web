@@ -8,12 +8,14 @@ import LazyLoadedImage from "./LazyLoadedImage";
 interface IRedirectLinkProps {
   route: string;
   label: string;
+  offset: number;
 }
 const RedirectLink = (props: IRedirectLinkProps) => {
   const isHomeRoute = useMemo(() => props.route === "/", [props.route]);
-  const { route, label } = props;
+  const { route, label, offset } = props;
   return (
     <RedirectButton
+      $offset={offset}
       className={classNames({ "home-link": isHomeRoute })}
       href={route}
     >
@@ -33,7 +35,7 @@ const RedirectLink = (props: IRedirectLinkProps) => {
 
 export default RedirectLink;
 
-const RedirectButton = styled(Link)`
+const RedirectButton = styled(Link)<{ $offset: number }>`
   text-decoration: none;
   padding: 10px 20px;
   background: #3f9c35;
@@ -47,7 +49,7 @@ const RedirectButton = styled(Link)`
   }
   &.home-link {
     position: fixed;
-    top: 30px;
+    top: ${(props) => (props.$offset || 0) + 30}px;
     left: 30px;
     display: flex;
     align-items: center;
@@ -68,7 +70,7 @@ const RedirectButton = styled(Link)`
 
   @media only screen and (max-width: 767px) {
     &.home-link {
-      top: 20px;
+      top: ${(props) => (props.$offset || 0) + 20}px;
       left: 20px;
     }
   }
