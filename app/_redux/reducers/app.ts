@@ -10,7 +10,6 @@ export default function app(
   state = initialState,
   action: { type: string; payload: any }
 ) {
-  console.log(action);
   const newState = Object.assign({}, state);
   switch (action.type) {
     case "SET_PWA_OFFSET":

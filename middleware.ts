@@ -34,7 +34,7 @@ export async function middleware(req: NextRequest) {
 
     if (showMaintenancePage) {
       req.nextUrl.pathname = ROUTES.ROUTE_MAINTENANCE;
-      return NextResponse.rewrite(req.nextUrl);
+      return NextResponse.redirect(req.nextUrl);
     }
 
     if (
