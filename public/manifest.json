@@ -17,11 +17,5 @@
   "scope": "/",
   "display": "standalone",
   "theme_color": "#000000",
-  "background_color": "#f0f0f0",
-  "related_applications": [
-    {
-      "platform": "webapp",
-      "url": "https://pranesh.link/manifest.json"
-    }
-  ]
+  "background_color": "#f0f0f0"
 }
