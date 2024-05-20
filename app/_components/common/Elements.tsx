@@ -336,7 +336,8 @@ export const PWAWrapper = styled(FlexBox)<{ $top?: string; $bottom?: string }>`
     font-weight: 600;
     font-size: 1.1em;
   }
-  button {
+  button,
+  a {
     color: #fff;
     border: none;
     background: none;
@@ -354,6 +355,9 @@ export const PWAWrapper = styled(FlexBox)<{ $top?: string; $bottom?: string }>`
       a {
         text-decoration: none;
       }
+    }
+    &.open-pwa {
+      margin-right: 10px;
     }
     &.not-now {
       margin-left: 5px;

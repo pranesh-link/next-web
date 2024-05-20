@@ -77,20 +77,26 @@ const PWABanner = function (props: PWABannerProps) {
       className="install"
       onClick={async () => {
         if (isAppInstalledState) return;
+
         const response = await prompt.prompt();
         const isInstalled = response.outcome === "accepted";
         dispatch(updateIsAppInstalled(isInstalled));
         setLocalStorage("isAppInstalled", isInstalled);
       }}
     >
-      {isAppInstalledState && !isStandAlone ? (
-        <a href="" target="_blank" rel="noreferrer">
-          {messages.open}
-        </a>
-      ) : (
-        messages.yes
-      )}
+      {messages.yes}
     </button>
+  );
+
+  const OpenPWA = (
+    <a
+      href="https://pranesh.link"
+      className="open-pwa"
+      target="_blank"
+      rel="noreferrer"
+    >
+      {messages.open}
+    </a>
   );
 
   const hasPWASupport = useMemo(() => {
@@ -138,13 +144,8 @@ const PWABanner = function (props: PWABannerProps) {
   }, [dispatchPwaOffsetUpdate]);
 
   const showPWABanner = useMemo(() => {
-    return (
-      pathname !== "/maintenance" &&
-      !isAppInstalledState &&
-      !isPwaDismissed &&
-      !isStandAlone
-    );
-  }, [isAppInstalledState, isPwaDismissed, isStandAlone, pathname]);
+    return pathname !== "/maintenance" && !isPwaDismissed && !isStandAlone;
+  }, [isPwaDismissed, isStandAlone, pathname]);
 
   useEffect(() => {
     dispatch(updateShowPwaBanner(showPWABanner));
@@ -167,7 +168,11 @@ const PWABanner = function (props: PWABannerProps) {
     >
       {NotNowButton}
       {PWAInstallMessage}
-      {InstallButton}
+      {isAppInstalledState && !isStandAlone ? (
+        <>{OpenPWA}</>
+      ) : (
+        <>{InstallButton}</>
+      )}
     </PWAWrapper>
   ) : null;
 };
