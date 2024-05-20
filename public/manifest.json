@@ -14,7 +14,7 @@
       "type": "image/png"
     }
   ],
-  "start_url": "/",
+  "start_url": "https://pranesh.link/manifest.json",
   "scope": "/",
   "display": "standalone",
   "theme_color": "#000000",
