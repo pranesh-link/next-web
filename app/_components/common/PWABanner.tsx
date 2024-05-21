@@ -1,4 +1,5 @@
 "use client";
+import useIsBrowser from "@/_hooks/use-is-browser";
 import {
   updateIsAppInstalled,
   updatePwaOffset,
@@ -43,8 +44,8 @@ const PWABanner = function (props: PWABannerProps) {
   const pathname = usePathname();
 
   const [prompt, setPrompt] = useState<any>(null);
-  const [isStandAlone, setIsStandAlone] = useState<boolean>(false);
   const [isPwaDismissed, setIsPwaDismissed] = useState<boolean>(true);
+  const isBrowser = useIsBrowser();
 
   const pwaRef = React.createRef<HTMLDivElement>();
   const dispatch = useAppDispatch<AppDispatch>();
@@ -126,30 +127,34 @@ const PWABanner = function (props: PWABannerProps) {
   }, [dispatch, pwaRef]);
 
   useEffect(() => {
-    window
-      .matchMedia("(display-mode: standalone)")
-      .addEventListener("change", ({ matches }) => {
-        setIsStandAlone(matches);
-      });
     window.addEventListener("resize", dispatchPwaOffsetUpdate);
 
     return () => {
-      window
-        .matchMedia("(display-mode: standalone)")
-        .removeEventListener("change", ({ matches }) => {
-          setIsStandAlone(matches);
-        });
       window.removeEventListener("resize", dispatchPwaOffsetUpdate);
     };
   }, [dispatchPwaOffsetUpdate]);
 
-  const showPWABanner = useMemo(() => {
-    return pathname !== "/maintenance" && !isPwaDismissed && !isStandAlone;
-  }, [isPwaDismissed, isStandAlone, pathname]);
+  const showPWAInstallBanner = useMemo(() => {
+    return (
+      pathname !== "/maintenance" &&
+      !isAppInstalledState &&
+      !isPwaDismissed &&
+      isBrowser
+    );
+  }, [isAppInstalledState, isPwaDismissed, isBrowser, pathname]);
+
+  const showOpenPWABanner = useMemo(() => {
+    return (
+      pathname !== "/maintenance" &&
+      !isPwaDismissed &&
+      isAppInstalledState &&
+      isBrowser
+    );
+  }, [isAppInstalledState, isPwaDismissed, isBrowser, pathname]);
 
   useEffect(() => {
-    dispatch(updateShowPwaBanner(showPWABanner));
-  }, [showPWABanner, dispatch]);
+    dispatch(updateShowPwaBanner(showPWAInstallBanner || showOpenPWABanner));
+  }, [showPWAInstallBanner, showOpenPWABanner, dispatch]);
 
   useLayoutEffect(() => {
     if (showPWABannerState) {
@@ -157,24 +162,33 @@ const PWABanner = function (props: PWABannerProps) {
     }
   }, [pwaRef, showPWABannerState, dispatchPwaOffsetUpdate]);
 
-  return showPWABanner ? (
-    <PWAWrapper
-      ref={pwaRef}
-      $gap={10}
-      $top="0"
-      $alignItems="center"
-      $justifyContent="space-between"
-      className={classNames({ hide: isMobile ? !hasPWASupport : false })}
-    >
-      {NotNowButton}
-      {PWAInstallMessage}
-      {isAppInstalledState && !isStandAlone ? (
-        <>{OpenPWA}</>
-      ) : (
-        <>{InstallButton}</>
-      )}
-    </PWAWrapper>
-  ) : null;
+  return (
+    (showPWAInstallBanner || showOpenPWABanner) && (
+      <PWAWrapper
+        ref={pwaRef}
+        $gap={10}
+        $top="0"
+        $alignItems="center"
+        $justifyContent="space-between"
+        className={classNames({ hide: isMobile ? !hasPWASupport : false })}
+      >
+        {showPWAInstallBanner && (
+          <>
+            {NotNowButton}
+            {PWAInstallMessage}
+            {InstallButton}
+          </>
+        )}
+        {showOpenPWABanner && (
+          <>
+            {NotNowButton}
+            {PWAInstallMessage}
+            {OpenPWA}
+          </>
+        )}
+      </PWAWrapper>
+    )
+  );
 };
 
 export default PWABanner;
