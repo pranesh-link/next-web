@@ -1,16 +1,19 @@
 /** @type {import('next').NextConfig} */
-import withPWA from "next-pwa";
-import runtimeCaching from "next-pwa/cache.js";
+import withPWAInit from "@ducanh2912/next-pwa";
+// import runtimeCaching from "@ducanh2912/next-pwa/cache.js";
 import packageJson from "./package.json" assert { type: "json" };
 
-const withPWAConfig = withPWA({
+const withPWA = withPWAInit({
   dest: "public",
   register: true,
   skipWaiting: true,
   reloadOnOnline: true,
-  runtimeCaching,
+  // runtimeCaching,
   scope: "/",
   disable: process.env.NEXT_PUBLIC_DISABLE_PWA === "true",
+  fallbacks: {
+    document: "/offline",
+  },
 });
 const nextConfig = {
   compiler: {
@@ -33,4 +36,4 @@ const nextConfig = {
   },
 };
 
-export default withPWAConfig(nextConfig);
+export default withPWA(nextConfig);
