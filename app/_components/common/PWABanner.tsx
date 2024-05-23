@@ -1,4 +1,5 @@
 "use client";
+import useAppInstalled from "@/_hooks/use-app-installed";
 import useIsBrowser from "@/_hooks/use-is-browser";
 import {
   updateIsAppInstalled,
@@ -46,6 +47,7 @@ const PWABanner = function (props: PWABannerProps) {
   const [prompt, setPrompt] = useState<any>(null);
   const [isPwaDismissed, setIsPwaDismissed] = useState<boolean>(true);
   const isBrowser = useIsBrowser();
+  const isAppInstalled = useAppInstalled();
 
   const pwaRef = React.createRef<HTMLDivElement>();
   const dispatch = useAppDispatch<AppDispatch>();
@@ -79,10 +81,7 @@ const PWABanner = function (props: PWABannerProps) {
       onClick={async () => {
         if (isAppInstalledState) return;
 
-        const response = await prompt.prompt();
-        const isInstalled = response.outcome === "accepted";
-        dispatch(updateIsAppInstalled(isInstalled));
-        setLocalStorage("isAppInstalled", isInstalled);
+        await prompt.prompt();
       }}
     >
       {messages.yes}
@@ -109,6 +108,11 @@ const PWABanner = function (props: PWABannerProps) {
     e.preventDefault();
     setPrompt(e);
   };
+
+  useEffect(() => {
+    dispatch(updateIsAppInstalled(isAppInstalled));
+    setLocalStorage("isAppInstalled", isAppInstalled);
+  }, [dispatch, isAppInstalled]);
 
   useEffect(() => {
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
