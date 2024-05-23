@@ -1,5 +1,6 @@
 import { FlexBoxSection } from "@/_components/common/Elements";
 import { SECTION_ORDER_DISPLAY } from "@/_constants/profile";
+import { useAppSelector } from "@/_redux/hooks";
 import { ProfileContext } from "@/_store/profile/page/context";
 import { ProfileSectionType, RefTypes } from "@/_store/profile/types";
 import { scrollTo } from "@/_utils/common/ScrollTo";
@@ -16,10 +17,11 @@ interface IMenuBarProps {
 const MenuBar = (props: IMenuBarProps) => {
   const { refs, data, currentSection, isMobile } =
     React.useContext(ProfileContext);
+  const pwaOffsetState = useAppSelector((state) => state.app.pwaOffset);
   const { onMenuChange } = props;
   const initialOffset = useMemo(() => (isMobile ? 80 : 30), [isMobile]);
   const goTo = (section: string) => {
-    scrollTo(`#${section}`, initialOffset);
+    scrollTo(`#${section}`, initialOffset + pwaOffsetState);
   };
   let timeout: any;
   const menuItems = Object.keys(data.sections)
@@ -55,7 +57,9 @@ const MenuBar = (props: IMenuBarProps) => {
         const currentRef = refs[ref as RefTypes];
         if (currentRef.current) {
           const pos = Math.round(
-            currentRef.current.getBoundingClientRect().top - initialOffset
+            currentRef.current.getBoundingClientRect().top -
+              initialOffset -
+              pwaOffsetState
           );
 
           if (index === 0 || (pos <= 0 && pos > result.pos)) {
