@@ -1,12 +1,14 @@
 "use client";
+import { getLocalStorage } from "@/_utils/profile/client";
 import { useEffect, useState } from "react";
 
 const useAppInstalled = () => {
-  const [isAppInstalled, setIsAppInstalled] = useState(false);
+  const [isAppInstalled, setIsAppInstalled] = useState(
+    getLocalStorage("isAppInstalled") ?? false
+  );
 
   useEffect(() => {
     window.addEventListener("appinstalled", (event) => {
-      console.log("appinstalled", event);
       setIsAppInstalled(true);
     });
 

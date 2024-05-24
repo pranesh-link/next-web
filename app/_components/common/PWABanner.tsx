@@ -23,8 +23,10 @@ import React, {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
+import { isDesktop } from "react-device-detect";
 import { CloseIcon } from "../svg";
 import { PWAWrapper } from "./Elements";
 
@@ -43,6 +45,7 @@ const PWABanner = function (props: PWABannerProps) {
     },
   } = useContext(AppContext);
   const pathname = usePathname();
+  const openAppRef = useRef<HTMLAnchorElement>(null);
 
   const [prompt, setPrompt] = useState<any>(null);
   const [isPwaDismissed, setIsPwaDismissed] = useState<boolean>(true);
@@ -64,6 +67,12 @@ const PWABanner = function (props: PWABannerProps) {
   useEffect(() => {
     setIsPwaDismissed(getLocalStorage("pwaDismissed"));
   }, []);
+
+  useEffect(() => {
+    if (!isDesktop && isAppInstalledState) {
+      openAppRef.current?.click();
+    }
+  }, [isAppInstalledState]);
 
   const NotNowButton = (
     <button className="not-now" onClick={closeInstallBanner}>
@@ -90,8 +99,9 @@ const PWABanner = function (props: PWABannerProps) {
 
   const OpenPWA = (
     <a
-      href="https://pranesh.link"
-      className="open-pwa"
+      ref={openAppRef}
+      href={process.env.NEXT_PUBLIC_SITE_URL}
+      className={classNames("open-pwa", { hide: isDesktop })}
       target="_blank"
       rel="noreferrer"
     >
@@ -174,7 +184,9 @@ const PWABanner = function (props: PWABannerProps) {
         $top="0"
         $alignItems="center"
         $justifyContent="space-between"
-        className={classNames({ hide: isMobile ? !hasPWASupport : false })}
+        className={classNames({
+          hide: isMobile ? !hasPWASupport : !showPWAInstallBanner,
+        })}
       >
         {showPWAInstallBanner && (
           <>

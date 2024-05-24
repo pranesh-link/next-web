@@ -31,6 +31,8 @@ export const DEFAULT_PWA: IPWA = {
     no: "",
     open: "",
     relatedApp: "",
+    installApp: "",
+    openApp: "",
   },
   bannerExpiryTime: 0,
 };
