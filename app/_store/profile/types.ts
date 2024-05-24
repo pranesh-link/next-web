@@ -190,6 +190,8 @@ export interface IPWA {
     no: string;
     open: string;
     relatedApp: string;
+    installApp: string;
+    openApp: string;
   };
   bannerExpiryTime: number;
 }

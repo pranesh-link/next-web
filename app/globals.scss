@@ -73,6 +73,10 @@ p {
   overflow: hidden;
 }
 
+.prevent-refresh {
+  overscroll-behavior-y: contain;
+}
+
 .contact-modal-content {
   margin: 0 30%;
 }

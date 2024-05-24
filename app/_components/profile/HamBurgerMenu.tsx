@@ -9,10 +9,12 @@ import VersionModal from "@/_components/modal/common/VersionModal";
 import CloseIcon from "@/_components/svg/CloseIcon";
 import HamburgerIcon from "@/_components/svg/HamburgerIcon";
 import MobileApplicationIcon from "@/_components/svg/MobileApplicationIcon";
+import useAppInstalled from "@/_hooks/use-app-installed";
 import { useIsClient } from "@/_hooks/use-is-client";
 import { updateIsAppInstalled } from "@/_redux/actions/app";
 import { useAppDispatch, useAppSelector } from "@/_redux/hooks";
 import { AppDispatch } from "@/_redux/store";
+import { AppContext } from "@/_store/app/context";
 import { ProfileContext } from "@/_store/profile/page/context";
 import { clearLocalStorage, setLocalStorage } from "@/_utils/profile/client";
 import { isSupportedBrowserAndOS } from "@/_utils/profile/server";
@@ -24,6 +26,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import { browserName, osName } from "react-device-detect";
 import { Transition } from "react-transition-group";
 import { TransitionProps } from "react-transition-group/Transition";
 import styled from "styled-components";
@@ -43,9 +46,16 @@ const HamBurgerMenu = (props: IHamburgerMenuProps) => {
   const contentRef = React.useRef<HTMLDivElement>(null);
   const {
     appVersion: version,
-    deviceConfig: { browserName, browsers, os, osName },
+
+    deviceConfig: { browsers, os },
   } = useContext(ProfileContext);
+  const {
+    data: {
+      pwa: { messages },
+    },
+  } = useContext(AppContext);
   const isClient = useIsClient();
+  const isAppInstalled = useAppInstalled();
   const showPWABannerState = useAppSelector((state) => state.app.showPwaBanner);
 
   const dispatch = useAppDispatch<AppDispatch>();
@@ -56,7 +66,7 @@ const HamBurgerMenu = (props: IHamburgerMenuProps) => {
 
   const hasPWASupport = useMemo(
     () => isSupportedBrowserAndOS(browsers, os, browserName, osName),
-    [browsers, os, browserName, osName]
+    [browsers, os]
   );
 
   const [hamburgerClicked, setHamburgerClicked] = useState<boolean>(false);
@@ -77,6 +87,11 @@ const HamBurgerMenu = (props: IHamburgerMenuProps) => {
   const handleResize = () => {
     setHideMenu(window.innerWidth > 767);
   };
+
+  useEffect(() => {
+    dispatch(updateIsAppInstalled(isAppInstalled));
+    setLocalStorage("isAppInstalled", isAppInstalled);
+  }, [dispatch, isAppInstalled]);
 
   useEffect(() => {
     // On open scroll to top of content div
@@ -113,10 +128,37 @@ const HamBurgerMenu = (props: IHamburgerMenuProps) => {
     if (isAppInstalledState) {
       return;
     }
-    const response = await prompt.prompt();
-    const isInstalled = response.outcome === "accepted";
-    dispatch(updateIsAppInstalled(isInstalled));
-    setLocalStorage("isAppInstalled", isInstalled);
+    await prompt.prompt();
+  };
+
+  const InstallPWAButton = () => {
+    return (
+      <ActionBtn className="install-app-button" onClick={onInstallPWA}>
+        <FlexBox $alignItems="center">
+          <ActionBtn className="mobile-application-icon">
+            <MobileApplicationIcon />
+          </ActionBtn>
+          <span className="install-app-text">{messages.installApp}</span>
+        </FlexBox>
+      </ActionBtn>
+    );
+  };
+
+  const OpenAppLink = () => {
+    return (
+      <a
+        className="open-app-link"
+        href={process.env.NEXT_PUBLIC_SITE_URL}
+        target="_blank"
+      >
+        <FlexBox $alignItems="center">
+          <ActionBtn className="mobile-application-icon">
+            <MobileApplicationIcon />
+          </ActionBtn>
+          <span className="install-app-text">{messages.openApp}</span>
+        </FlexBox>
+      </a>
+    );
   };
 
   return (
@@ -164,17 +206,7 @@ const HamBurgerMenu = (props: IHamburgerMenuProps) => {
               />
               {showPWABannerState && (
                 <FlexBox $justifyContent="center">
-                  <ActionBtn
-                    className="install-app-button"
-                    onClick={onInstallPWA}
-                  >
-                    <FlexBox $alignItems="center">
-                      <ActionBtn className="mobile-application-icon">
-                        <MobileApplicationIcon />
-                      </ActionBtn>
-                      <span className="install-app-text">Install app</span>
-                    </FlexBox>
-                  </ActionBtn>
+                  {isAppInstalledState ? <OpenAppLink /> : <InstallPWAButton />}
                 </FlexBox>
               )}
               <Version
@@ -264,12 +296,20 @@ const ContentSection = styled(FlexBoxSection)`
     height: 30px;
   }
 
-  .install-app-button {
+  .install-app-button,
+  .open-app-link {
     margin-bottom: 25px;
     background-color: #f0f0f0;
     border-radius: 30px;
     padding: 5px 20px;
     max-width: fit-content;
+  }
+
+  .open-app-link {
+    text-decoration: none;
+    &:visited {
+      color: #3e3e3e;
+    }
   }
 
   .mobile-application-icon {
