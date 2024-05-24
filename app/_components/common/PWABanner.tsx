@@ -70,7 +70,8 @@ const PWABanner = function (props: PWABannerProps) {
 
   useEffect(() => {
     if (!isDesktop && isAppInstalledState) {
-      openAppRef.current?.click();
+      // TODO temporary disable
+      // openAppRef.current?.click();
     }
   }, [isAppInstalledState]);
 
