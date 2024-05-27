@@ -11,7 +11,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: "Automated Version Bump"
         uses: "phips28/gh-action-bump-version@master"
         env:
