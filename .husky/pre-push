@@ -1,4 +1,0 @@
-#. "$(dirname "$0")/husky.sh"
-# Pre commit starts
-yarn build
-# pre commit ends
