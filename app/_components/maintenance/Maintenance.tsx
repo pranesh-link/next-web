@@ -1,5 +1,5 @@
 import { AppContext } from "@/_store/app/context";
-import { useContext, useMemo, useRef } from "react";
+import { useContext, useRef } from "react";
 import { styled } from "styled-components";
 import Contact from "../profile/sections/Contact";
 
@@ -12,10 +12,6 @@ function Maintenance() {
     },
   } = useContext(AppContext);
 
-  const maintenanceVideoSrc = useMemo(() => {
-    return `${process.env.NEXT_PUBLIC_SITE_URL}/maintenance.mp4`;
-  }, []);
-
   return (
     <MaintenanceArticle $isMobile={isMobile}>
       <div className="maintenance-info">
@@ -27,7 +23,7 @@ function Maintenance() {
           height={isMobile ? 300 : 400}
           width={"100%"}
         >
-          <source src={maintenanceVideoSrc} type="video/mp4" />
+          <source src={"/maintenance.mp4"} type="video/mp4" />
           Your browser does not support the video tag
         </video>
         <h1 dangerouslySetInnerHTML={{ __html: maintenance.message }} />
