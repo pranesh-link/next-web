@@ -3,12 +3,6 @@ import MaintenanceModel from "@/models/maintenanceModel";
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  // const maintenance = await (
-  //   await fetch(`${process.env.NEXT_PUBLIC_CMS_SERVER}/maintenance.json`, {
-  //     mode: CORS_MODE,
-  //     cache: "no-store",
-  //   })
-  // ).json();
   await connectDB();
   try {
     const data = await MaintenanceModel.findOne();
