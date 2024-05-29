@@ -24,7 +24,9 @@ export async function middleware(req: NextRequest) {
     const requestHeaders = new Headers(req.headers);
     requestHeaders.set("x-pathname", req.nextUrl.pathname);
     requestHeaders.set("x-devicetype", deviceType);
-    const jsonResponse = await (await fetch(getApiUrl("maintenance"))).json();
+    const jsonResponse = await (
+      await fetch(getApiUrl("maintenance"), { cache: "no-store" })
+    ).json();
     const { searchParams, pathname } = req.nextUrl;
 
     const showMaintenancePage =
