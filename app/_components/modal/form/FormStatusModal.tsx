@@ -2,7 +2,6 @@ import { ActionBtn, FlexBox } from "@/_components/common/Elements";
 import CustomModalComponent from "@/_components/common/ModalComponent";
 import {
   ActionsWrap,
-  ProgressMessage,
   Retry,
   StatusMessage,
   StatusWrap,
@@ -10,8 +9,7 @@ import {
 import StatusIconMessage from "@/_components/form/StatusIconMessage";
 import { CONTACT_FORM_STATUS } from "@/_store/profile/types";
 import classNames from "classnames";
-import Image from "next/image";
-import { FormEvent, memo, useMemo } from "react";
+import { FormEvent, useMemo } from "react";
 
 type SubmitButtonType =
   | FormEvent<HTMLFormElement>

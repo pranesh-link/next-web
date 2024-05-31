@@ -31,7 +31,6 @@ function BMICalculator() {
         permissibleHeights,
         permissibleWeights,
       },
-      currentDevice: { isMobile },
     },
   } = useContext(AppContext);
 

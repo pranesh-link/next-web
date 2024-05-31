@@ -5,7 +5,6 @@ import { styled } from "styled-components";
 function Maintenance() {
   const {
     data: {
-      links,
       currentDevice: { isMobile },
       maintenance,
     },

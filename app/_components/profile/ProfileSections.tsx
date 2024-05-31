@@ -10,7 +10,6 @@ import classNames from "classnames";
 import React, { useContext, useMemo, useState } from "react";
 import styled from "styled-components";
 import About from "./sections/About";
-import Contact from "./sections/Contact";
 import Education from "./sections/Education";
 import OpenSourceProjects from "./sections/OpenSourceProjects";
 import ResumeExperiences from "./sections/ResumeExperiences";
@@ -36,14 +35,8 @@ const ProfileSections = (props: IProfileSectionsProps) => {
   const { appVersion: version } = useContext(ProfileContext);
   const [displayVersionModal, setDisplayVersionModal] = useState(false);
   const { shortDesc, name, currentJobRole } = header;
-  const {
-    ABOUTME,
-    EDUCATION,
-    SKILLS,
-    EXPERIENCES,
-    CONTACT,
-    OPENSOURCEPROJECTS,
-  } = SECTION_ORDER_DISPLAY;
+  const { ABOUTME, EDUCATION, SKILLS, EXPERIENCES, OPENSOURCEPROJECTS } =
+    SECTION_ORDER_DISPLAY;
   const AboutComp = useMemo(
     () => (
       <About
@@ -62,11 +55,6 @@ const ProfileSections = (props: IProfileSectionsProps) => {
   const SkillsComp = useMemo(() => <Skills />, []);
 
   const ExperiencesComp = useMemo(() => <ResumeExperiences />, []);
-
-  const ContactComp = useMemo(
-    () => <>{!isExport && <Contact />}</>,
-    [isExport]
-  );
 
   const OpenSourceProjectsComp = useMemo(() => <OpenSourceProjects />, []);
 
