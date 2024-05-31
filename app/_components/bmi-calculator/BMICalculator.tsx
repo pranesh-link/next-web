@@ -137,7 +137,6 @@ function BMICalculator() {
     [fieldError, fields]
   );
   return showForm ? (
-    // <FormWrapper>
     <BMICalculatorForm offset={pwaOffsetState}>
       <FormHeader>{header}</FormHeader>
       <Fields
@@ -158,8 +157,7 @@ function BMICalculator() {
         />
       )}
     </BMICalculatorForm>
-  ) : // </FormWrapper>
-  null;
+  ) : null;
 }
 
 export default BMICalculator;

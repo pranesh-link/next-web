@@ -97,12 +97,6 @@ const ProfileSections = (props: IProfileSectionsProps) => {
         display: EXPERIENCES.display,
       },
       {
-        order: CONTACT.order,
-        name: "contact",
-        component: ContactComp,
-        display: CONTACT.display,
-      },
-      {
         order: OPENSOURCEPROJECTS.order,
         name: "openSource",
         component: OpenSourceProjectsComp,
@@ -112,8 +106,6 @@ const ProfileSections = (props: IProfileSectionsProps) => {
     [
       ABOUTME,
       AboutComp,
-      CONTACT,
-      ContactComp,
       EDUCATION,
       EXPERIENCES,
       EducationComp,

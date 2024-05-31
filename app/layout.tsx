@@ -7,6 +7,7 @@ import { Suspense } from "react";
 import { browserName, isMobileOnly, osName } from "react-device-detect";
 import GoToHome from "./_components/common/GoToHome";
 import PageWrapper from "./_components/common/PageWrapper";
+import Contact from "./_components/profile/sections/Contact";
 import { DEFAULT_APP_CONTEXT, HEADER_INFO } from "./_constants/common";
 import StyledComponentsRegistry from "./_lib/registry";
 import { AppProviderClient } from "./_providers/app";
@@ -77,6 +78,7 @@ export default async function RootLayout({
                 <PWABanner isMobile={false} />
                 <GoToHome />
                 <PageWrapper>{children}</PageWrapper>
+                <Contact />
               </Suspense>
             </StyledComponentsRegistry>
           </AppProviderClient>
