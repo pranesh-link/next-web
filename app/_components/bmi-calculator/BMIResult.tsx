@@ -1,12 +1,12 @@
+import { FlexBox } from "@/_components/common/Elements";
+import { AppContext } from "@/_store/app/context";
+import { IBMIRange, IWeightSuggestConfig } from "@/_store/common/types";
+import { getBMIRangePercentForGauge } from "@/_utils/bmi-calculator";
+import { findAndReplace } from "@/_utils/common";
+import { BMIChart, BMIRangeInfo } from "@/tools/bmi-calculator/Elements";
 import classNames from "classnames";
 import { useContext, useMemo } from "react";
 import GaugeChart from "react-gauge-chart";
-import { FlexBox } from "@/_components/common/Elements";
-import { AppContext } from "@/_store/app/context";
-import { findAndReplace } from "@/_utils/common";
-import { IBMIRange, IWeightSuggestConfig } from "@/_store/common/types";
-import { getBMIRangePercentForGauge } from "@/_utils/bmi-calculator";
-import { BMIChart, BMIRangeInfo } from "@/tools/bmi-calculator/Elements";
 
 interface IBMIResultProps {
   weightSuggestConfig: IWeightSuggestConfig;
@@ -104,7 +104,7 @@ const BMIResult = (props: IBMIResultProps) => {
             return (
               <BMIRangeInfo
                 key={id}
-                colorCode={color}
+                $colorCode={color}
                 $gridTemplateColumns="0.7fr 1fr 2fr"
                 $justifyItems="center"
                 className={classNames({

@@ -7,7 +7,7 @@ const BMICalculatorForm = styled(Form)<{ offset: number }>`
   height: calc(100vh - ${(props) => props.offset ?? 0}px);
   top: 0;
   bottom: 0;
-  padding-bottom: 30px;
+  padding-bottom: 100px;
   background: #faf9f6;
   padding: 100px 15px 30px;
   align-items: center;
@@ -97,7 +97,7 @@ const BMICalculatorForm = styled(Form)<{ offset: number }>`
     input {
       border-width: 1.5px;
     }
-    padding: 100px 25px 30px;
+    padding: 100px 25px;
   }
 
   @media only screen and (max-width: 767px) {
@@ -115,14 +115,14 @@ const FieldsWrap = styled(FlexBox)`
   }
 `;
 
-const BMIRangeInfo = styled(Grid)<{ colorCode: string }>`
+const BMIRangeInfo = styled(Grid)<{ $colorCode: string }>`
   margin-bottom: 5px;
   padding: 10px 0;
   gap: 15px;
   .color {
     width: 30px;
     height: 20px;
-    background: ${(props) => props.colorCode};
+    background: ${(props) => props.$colorCode};
   }
   .range {
     font-weight: 600;
