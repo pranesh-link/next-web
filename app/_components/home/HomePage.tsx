@@ -10,11 +10,7 @@ import PageLink from "./PageLink";
 
 function HomePage({ searchParams }: { searchParams?: { isAdmin?: string } }) {
   const {
-    data: {
-      currentDevice: { isMobile },
-      appConfig = { homepage: { title: "", pages: [] } },
-      hasError,
-    },
+    data: { appConfig = { homepage: { title: "", pages: [] } }, hasError },
   } = useContext(AppContext);
   if (hasError) {
     throw new Error("Failed to fetch data");

@@ -1,12 +1,10 @@
 import { AppContext } from "@/_store/app/context";
-import { useContext, useRef } from "react";
+import { useContext } from "react";
 import { styled } from "styled-components";
-import Contact from "../profile/sections/Contact";
 
 function Maintenance() {
   const {
     data: {
-      links,
       currentDevice: { isMobile },
       maintenance,
     },
@@ -27,9 +25,6 @@ function Maintenance() {
           Your browser does not support the video tag
         </video>
         <h1 dangerouslySetInnerHTML={{ __html: maintenance.message }} />
-      </div>
-      <div className="contact-links">
-        <Contact links={links} refObj={useRef(null)} />
       </div>
     </MaintenanceArticle>
   );

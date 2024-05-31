@@ -17,16 +17,8 @@ import { AppDispatch } from "@/_redux/store";
 import { AppContext } from "@/_store/app/context";
 import { ProfileContext } from "@/_store/profile/page/context";
 import { clearLocalStorage, setLocalStorage } from "@/_utils/profile/client";
-import { isSupportedBrowserAndOS } from "@/_utils/profile/server";
 import classNames from "classnames";
-import React, {
-  ComponentType,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-import { browserName, osName } from "react-device-detect";
+import React, { ComponentType, useContext, useEffect, useState } from "react";
 import { Transition } from "react-transition-group";
 import { TransitionProps } from "react-transition-group/Transition";
 import styled from "styled-components";
@@ -42,13 +34,9 @@ interface IHamburgerMenuProps {
 }
 
 const HamBurgerMenu = (props: IHamburgerMenuProps) => {
-  const { isOpen, hasPWAInstalled, setIsOpen, onMenuChange } = props;
+  const { isOpen, setIsOpen, onMenuChange } = props;
   const contentRef = React.useRef<HTMLDivElement>(null);
-  const {
-    appVersion: version,
-
-    deviceConfig: { browsers, os },
-  } = useContext(ProfileContext);
+  const { appVersion: version } = useContext(ProfileContext);
   const {
     data: {
       pwa: { messages },
@@ -62,11 +50,6 @@ const HamBurgerMenu = (props: IHamburgerMenuProps) => {
 
   const isAppInstalledState = useAppSelector(
     (state) => state.app.isAppInstalled
-  );
-
-  const hasPWASupport = useMemo(
-    () => isSupportedBrowserAndOS(browsers, os, browserName, osName),
-    [browsers, os]
   );
 
   const [hamburgerClicked, setHamburgerClicked] = useState<boolean>(false);
