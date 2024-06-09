@@ -10,6 +10,9 @@ export interface IAppContext {
 }
 
 export interface IAppConfigData {
+  features: {
+    pwa: boolean;
+  };
   currentDevice: {
     osName: string;
     browserName: string;

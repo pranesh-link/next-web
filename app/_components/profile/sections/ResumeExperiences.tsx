@@ -3,9 +3,9 @@ import {
   FlexBox,
   ModalBanner,
   ModalContentWrap,
+  ProjectInfoSectionWrapper,
   ProjectLink,
   SecHeader,
-  SectionWrapper,
 } from "@/_components/common/Elements";
 import CustomModalComponent from "@/_components/common/ModalComponent";
 import ProjectInfo from "@/_components/common/ProjectInfo";
@@ -108,7 +108,7 @@ function ResumeExperiences() {
         >
           {experiences.title}
         </SecHeader>
-        <SectionWrapper
+        <ProjectInfoSectionWrapper
           $direction="column"
           $justifyContent="space-around"
           className={classNames({ export: isExport })}
@@ -166,7 +166,7 @@ function ResumeExperiences() {
               </section>
             );
           })}
-        </SectionWrapper>
+        </ProjectInfoSectionWrapper>
       </section>
     </>
   );

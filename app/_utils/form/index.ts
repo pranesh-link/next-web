@@ -1,20 +1,20 @@
-import { isPossiblePhoneNumber } from "react-phone-number-input";
-import { isEmptyObject, isString } from "@/_utils/profile/server";
-import { YES, NO, FIELD_TYPES } from "@/_constants/profile";
+import { FIELD_TYPES, NO, YES } from "@/_constants/profile";
 import {
-  ContactFormFieldData,
   ContactFormData,
-  ContactFormFields,
+  ContactFormError,
+  ContactFormFieldData,
+  ContactFormFieldsType,
+  ContactFormValid,
+  FormFieldValueType,
+  IFieldErrorMessages,
   IFormField,
   IFormInfo,
-  ContactFormValid,
-  ContactFormError,
-  ILabelValue,
-  IFieldErrorMessages,
   IFormMessages,
-  FormFieldValueType,
+  ILabelValue,
 } from "@/_store/profile/types";
+import { isEmptyObject, isString } from "@/_utils/profile/server";
 import CryptoJS from "crypto-js";
+import { isPossiblePhoneNumber } from "react-phone-number-input";
 
 export const validateLength = (value: string | number) => `${value}`.length > 0;
 
@@ -47,7 +47,7 @@ export const transformMailRequest = (
 ) => {
   const keys = Object.keys(formData);
   keys.forEach((key) => {
-    const fieldData = formData[key as ContactFormFields];
+    const fieldData = formData[key as ContactFormFieldsType];
     let transformedField = fieldData;
     const fieldToTransform =
       fieldsToTransform.find((field) => key === field.id) || {};
@@ -56,7 +56,7 @@ export const transformMailRequest = (
         fieldData,
         (fieldToTransform as { id: string; transform: string }).transform
       );
-      formData[key as ContactFormFields] = transformedField;
+      formData[key as ContactFormFieldsType] = transformedField;
     }
   });
   return formData;
