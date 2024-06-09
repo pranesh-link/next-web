@@ -8,7 +8,14 @@ import { SECTION_ORDER_DISPLAY } from "@/_constants/profile";
 import { ProfileContext } from "@/_store/profile/page/context";
 import classNames from "classnames";
 import React, { useContext, useMemo, useState } from "react";
-import styled from "styled-components";
+import {
+  CurrentJobRole,
+  PageHeader,
+  SectionWrap,
+  Separator,
+  ShortDesc,
+  Wrapper,
+} from "./Elements";
 import About from "./sections/About";
 import Education from "./sections/Education";
 import OpenSourceProjects from "./sections/OpenSourceProjects";
@@ -169,104 +176,3 @@ const ProfileSections = (props: IProfileSectionsProps) => {
 };
 
 export default ProfileSections;
-
-const Wrapper = styled.section<{ $pwaOffset: number }>`
-  &:not(.export) {
-    background-color: #f0f0f0;
-    &.add-margin-top {
-      margin-top: ${(props) => props.$pwaOffset || 0}px;
-      /* animation: ease-in-m-t 2s ease-in 1;
-      @keyframes ease-in-m-t {
-        from {
-          margin-top: 0;
-        }
-        to {
-          margin-top: 90px;
-        }
-      } */
-    }
-    &.add-margin-bottom {
-      margin-bottom: 90px;
-      animation: ease-in-m-b 2s ease-in 1;
-      @keyframes ease-in-m-b {
-        from {
-          margin-bottom: 0;
-        }
-        to {
-          margin-bottom: 90px;
-        }
-      }
-    }
-  }
-
-  .header-sep {
-    min-width: 100px;
-    opacity: 0.6;
-    height: 0;
-    border-top: 5px solid #22a39f;
-    margin: 0 10px;
-    &.export {
-      display: none;
-    }
-    @media screen and (max-width: 767px) {
-      display: none;
-    }
-  }
-`;
-
-const Separator = styled.hr`
-  min-width: 50%;
-  border-color: #727878;
-  opacity: 0.2;
-  height: 0;
-  border-top: 1px solid #eee;
-  &.export {
-    display: none;
-  }
-  @media screen and (max-width: 767px) {
-    display: none;
-  }
-`;
-
-const ShortDesc = styled.h3`
-  text-align: center;
-  color: #727878;
-  font-size: 21px;
-  font-weight: bold;
-  margin-bottom: 20px;
-  margin-top: 0;
-  line-height: 3;
-  font-style: italic;
-
-  @media screen and (max-width: 767px) {
-    padding-top: 75px;
-    margin: 0;
-  }
-`;
-const PageHeader = styled.h2`
-  font-size: 45px;
-  font-weight: 500;
-  color: #22a39f;
-  text-align: center;
-  margin: 0;
-  text-transform: uppercase;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  @media screen and (max-width: 767px) {
-    font-size: 36px;
-  }
-`;
-
-const CurrentJobRole = styled.h3`
-  font-style: italic;
-  margin-block: 0;
-  color: #22a39f;
-  font-size: 20px;
-`;
-
-const SectionWrap = styled.div`
-  &.last-info-section {
-    min-height: 100vh;
-  }
-`;

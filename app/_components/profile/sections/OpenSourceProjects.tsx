@@ -3,9 +3,9 @@ import {
   FlexBox,
   ModalBanner,
   ModalContentWrap,
+  ProjectInfoSectionWrapper,
   ProjectLink,
   SecHeader,
-  SectionWrapper,
 } from "@/_components/common/Elements";
 import CustomModalComponent from "@/_components/common/ModalComponent";
 import { LABEL_TEXT, SECTIONS } from "@/_constants/profile";
@@ -78,7 +78,7 @@ const OpenSourceProjects = () => {
         className={classNames("profile-section", "experience")}
       >
         <SecHeader>{openSourceProjects.title}</SecHeader>
-        <SectionWrapper $flexWrap="wrap">
+        <ProjectInfoSectionWrapper $flexWrap="wrap">
           {openSourceProjects.info.map((item) => {
             return (
               <FlexBox key={item.id} className="os-project">
@@ -93,7 +93,7 @@ const OpenSourceProjects = () => {
               </FlexBox>
             );
           })}
-        </SectionWrapper>
+        </ProjectInfoSectionWrapper>
       </section>
     </>
   );

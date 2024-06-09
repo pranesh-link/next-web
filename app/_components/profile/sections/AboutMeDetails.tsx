@@ -12,7 +12,7 @@ import { getHref, lowercase } from "@/_utils/profile/server";
 import classNames from "classnames";
 import { useContext } from "react";
 import CopyToClipboard from "react-copy-to-clipboard";
-import styled from "styled-components";
+import { CopyButton, DetailSection } from "../Elements";
 
 interface AboutMeDetailsProps {
   copyState: string;
@@ -86,53 +86,3 @@ const AboutMeDetails = (props: AboutMeDetailsProps) => {
 };
 
 export default AboutMeDetails;
-
-const DetailSection = styled(FlexBoxSection)<{
-  $isMobile: boolean;
-}>`
-  cursor: pointer;
-  line-height: 1.5;
-  .detail-icon {
-    margin: ${(props) => (props.$isMobile ? "0" : "10px 0")};
-    &.export {
-      min-width: 0;
-      width: 25px;
-      margin-right: 10px;
-    }
-  }
-  .mobile-detail {
-    margin-bottom: 7px;
-  }
-  .detail-info {
-    padding: 7px 0;
-  }
-  .detail-info-text {
-    cursor: auto;
-    flex-basis: 80%;
-    margin-right: 5px;
-  }
-`;
-
-const CopyButton = styled.button`
-  border: none;
-  color: #f0f0f0;
-  cursor: pointer;
-  outline: none;
-  border-radius: 15px;
-  padding: 2px;
-  font-size: 10px;
-  margin-left: 10px;
-  max-width: 50px;
-  &.mobile {
-    display: inline-block;
-    img {
-      width: 15px;
-      height: 15px;
-    }
-  }
-  &.copied {
-    svg {
-      animation: blinker 1s linear infinite;
-    }
-  }
-`;

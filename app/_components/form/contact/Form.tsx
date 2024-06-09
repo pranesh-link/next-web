@@ -2,12 +2,13 @@ import { ActionBtn } from "@/_components/common/Elements";
 import FormStatusModal from "@/_components/modal/form/FormStatusModal";
 import useIsOnline from "@/_hooks/use-is-online";
 import { AppContext } from "@/_store/app/context";
+import { FormContextProvider } from "@/_store/form/context";
 import { ProfileContext } from "@/_store/profile/page/context";
 import {
   CONTACT_FORM_STATUS,
   ContactFormData,
   ContactFormError,
-  ContactFormFields,
+  ContactFormFieldsType,
   ContactFormValid,
   FormFieldValueType,
 } from "@/_store/profile/types";
@@ -29,7 +30,7 @@ import {
   useState,
 } from "react";
 import { ActionsWrap, Form, FormHeader, FormSubmit } from "../Elements";
-import FormField from "../FormField";
+import ContactFormFields from "./FormFields";
 
 interface IContactFormProps {
   closeModal: () => void;
@@ -190,13 +191,13 @@ const ContactForm = (props: IContactFormProps) => {
     if (valueId) {
       setFormData({
         ...formData,
-        [field as ContactFormFields]: {
-          ...(formData[field as ContactFormFields] as Record<string, any>),
+        [field as ContactFormFieldsType]: {
+          ...(formData[field as ContactFormFieldsType] as Record<string, any>),
           [valueId]: value,
         },
       });
     } else {
-      setFormData({ ...formData, [field as ContactFormFields]: value });
+      setFormData({ ...formData, [field as ContactFormFieldsType]: value });
     }
   };
 
@@ -248,7 +249,16 @@ const ContactForm = (props: IContactFormProps) => {
   }, [online, contactFormStatus]);
 
   return (
-    <>
+    <FormContextProvider
+      value={{
+        formData,
+        formValid,
+        formError,
+        updateInput,
+        handleValidation,
+        isSending,
+      }}
+    >
       <FormStatusModal
         allowRetry={allowRetry}
         displayStatusInfo={displayStatusInfo}
@@ -265,7 +275,9 @@ const ContactForm = (props: IContactFormProps) => {
       />
       <Form onSubmit={handleFormSubmit}>
         <FormHeader>{form.header}</FormHeader>
-        {fields.map((field, index) => {
+        <ContactFormFields />
+
+        {/* {fields.map((field, index) => {
           const fieldName = field.name as ContactFormFields;
           return (
             <FormField
@@ -281,7 +293,7 @@ const ContactForm = (props: IContactFormProps) => {
               isFormSubmit={isSending}
             />
           );
-        })}
+        })} */}
 
         <ActionsWrap $justifyContent="space-between" $alignItems="center">
           <ActionBtn className="close" onClick={closeModal}>
@@ -298,7 +310,7 @@ const ContactForm = (props: IContactFormProps) => {
           </FormSubmit>
         </ActionsWrap>
       </Form>
-    </>
+    </FormContextProvider>
   );
 };
 

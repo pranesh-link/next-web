@@ -18,8 +18,8 @@ import {
   useRef,
   useState,
 } from "react";
+import { InterestedInProfile } from "../Elements";
 import AboutMeDetails from "./AboutMeDetails";
-import { InterestedInProfile } from "./Elements";
 
 interface IAboutProps {
   exportProfile: () => void;

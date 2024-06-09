@@ -38,12 +38,22 @@ export default async function RootLayout({
   // const isMobile = headers().get("x-devicetype") === "mobile";
   let hasError = false,
     basicConfigData = DEFAULT_APP_CONTEXT.data,
-    preloadSrcList: any[] = [];
+    preloadSrcList: any[] = [],
+    features = DEFAULT_APP_CONTEXT.data.features;
 
   await getApiData("app").then(
     (success) => {
       ({ data: basicConfigData = DEFAULT_APP_CONTEXT.data, preloadSrcList } =
         success);
+    },
+    () => {
+      hasError = true;
+    }
+  );
+
+  await getApiData("feature", { cache: "no-store" }).then(
+    (success) => {
+      features = success;
     },
     () => {
       hasError = true;
@@ -59,6 +69,7 @@ export default async function RootLayout({
             value={{
               data: {
                 ...basicConfigData,
+                features,
                 version:
                   process.env?.version || DEFAULT_APP_CONTEXT.data.version,
                 isAdmin: false,
@@ -75,7 +86,7 @@ export default async function RootLayout({
           >
             <StyledComponentsRegistry>
               <Suspense fallback={<Loading />}>
-                <PWABanner isMobile={false} />
+                <PWABanner />
                 <GoToHome />
                 <PageWrapper>{children}</PageWrapper>
                 <Contact />
