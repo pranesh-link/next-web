@@ -1,9 +1,15 @@
 import useIsOnline from "@/_hooks/use-is-online";
 import { FormContext } from "@/_store/form/context";
 import { ProfileContext } from "@/_store/profile/page/context";
-import { ContactFormFieldsType } from "@/_store/profile/types";
-import { useContext } from "react";
+import {
+  ContactFormError,
+  ContactFormFieldsType,
+  ContactFormValid,
+  FormFieldValueType,
+} from "@/_store/profile/types";
+import { useContext, useMemo, useState } from "react";
 import FormField from "../FormField";
+import { validateField } from "@/_utils/form";
 
 export default function ContactFormFields() {
   const {
@@ -11,17 +17,56 @@ export default function ContactFormFields() {
       forms: { contactForm: form },
     },
   } = useContext(ProfileContext);
-  const {
-    formData,
-    formValid,
-    formError,
-    handleValidation,
-    updateInput,
-    isSending,
-  } = useContext(FormContext);
+  const { formData, setFormData, setFormDisabled, isSending } =
+    useContext(FormContext);
   const online = useIsOnline();
 
+  const [formValid, setFormValid] = useState<ContactFormValid | null>(null);
+  const [formError, setFormError] = useState<ContactFormError | null>(null);
+
   const { fields } = form;
+
+  const updateInput = (
+    value: FormFieldValueType,
+    field: string,
+    valueId?: string
+  ) => {
+    if (formData) {
+      if (valueId) {
+        setFormData({
+          ...formData,
+          [field as ContactFormFieldsType]: {
+            ...(formData[field as ContactFormFieldsType] as Record<
+              string,
+              any
+            >),
+            [valueId]: value,
+          },
+        });
+      } else {
+        setFormData({ ...formData, [field as ContactFormFieldsType]: value });
+      }
+    }
+  };
+
+  const requiredFields = useMemo(
+    () => fields.filter((i) => i.required),
+    [fields]
+  );
+
+  const handleValidation = (value: FormFieldValueType, field: string) => {
+    const validation = validateField(
+      form,
+      formError,
+      formValid,
+      requiredFields,
+      value,
+      field
+    );
+    setFormError(validation.formError);
+    setFormValid(validation.formValid);
+    setFormDisabled(validation.formDisabled);
+  };
 
   return (
     <>

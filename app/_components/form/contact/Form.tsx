@@ -3,19 +3,11 @@ import useIsOnline from "@/_hooks/use-is-online";
 import { AppContext } from "@/_store/app/context";
 import { FormContextProvider } from "@/_store/form/context";
 import { ProfileContext } from "@/_store/profile/page/context";
-import {
-  CONTACT_FORM_STATUS,
-  ContactFormData,
-  ContactFormError,
-  ContactFormFieldsType,
-  ContactFormValid,
-  FormFieldValueType,
-} from "@/_store/profile/types";
+import { CONTACT_FORM_STATUS, ContactFormData } from "@/_store/profile/types";
 import {
   getDecryptedConfig,
   getDefaultContactFormData,
   transformMailRequest,
-  validateField,
 } from "@/_utils/form";
 import { getPreloadedAsset } from "@/_utils/profile/server";
 import emailjs from "@emailjs/browser";
@@ -28,8 +20,8 @@ import {
   useState,
 } from "react";
 import { Form, FormHeader } from "../Elements";
-import ContactFormFields from "./FormFields";
 import FormActions from "./FormActions";
+import ContactFormFields from "./FormFields";
 
 interface IContactFormProps {
   closeModal: () => void;
@@ -58,16 +50,9 @@ const ContactForm = (props: IContactFormProps) => {
     [fields]
   );
 
-  const requiredFields = useMemo(
-    () => fields.filter((i) => i.required),
-    [fields]
-  );
-
   const { closeModal } = props;
 
   const [formData, setFormData] = useState<ContactFormData>(defaultFormData);
-  const [formValid, setFormValid] = useState<ContactFormValid | null>(null);
-  const [formError, setFormError] = useState<ContactFormError | null>(null);
   const [formDisabled, setFormDisabled] = useState<boolean>(true);
   const [contactFormStatus, setContactFormStatus] = useState(
     CONTACT_FORM_STATUS.FORM_FILL
@@ -182,38 +167,6 @@ const ContactForm = (props: IContactFormProps) => {
     [contactFormStatus]
   );
 
-  const updateInput = (
-    value: FormFieldValueType,
-    field: string,
-    valueId?: string
-  ) => {
-    if (valueId) {
-      setFormData({
-        ...formData,
-        [field as ContactFormFieldsType]: {
-          ...(formData[field as ContactFormFieldsType] as Record<string, any>),
-          [valueId]: value,
-        },
-      });
-    } else {
-      setFormData({ ...formData, [field as ContactFormFieldsType]: value });
-    }
-  };
-
-  const handleValidation = (value: FormFieldValueType, field: string) => {
-    const validation = validateField(
-      form,
-      formError,
-      formValid,
-      requiredFields,
-      value,
-      field
-    );
-    setFormError(validation.formError);
-    setFormValid(validation.formValid);
-    setFormDisabled(validation.formDisabled);
-  };
-
   const handleReviewAndEdit = useCallback(() => {
     setHasReviewedForm(true);
     setContactFormStatus(CONTACT_FORM_STATUS.FORM_FILL);
@@ -251,12 +204,10 @@ const ContactForm = (props: IContactFormProps) => {
     <FormContextProvider
       value={{
         formData,
-        formValid,
-        formError,
         formDisabled,
         closeModal,
-        updateInput,
-        handleValidation,
+        setFormDisabled,
+        setFormData,
         isSending,
       }}
     >
