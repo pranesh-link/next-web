@@ -1,18 +1,26 @@
 import { FIELD_TYPES, NO, YES } from "@/_constants/profile";
 import {
+  CONTACT_FORM_STATUS,
   ContactFormData,
   ContactFormError,
   ContactFormFieldData,
   ContactFormFieldsType,
   ContactFormValid,
   FormFieldValueType,
+  IEmailJsConfig,
   IFieldErrorMessages,
   IFormField,
   IFormInfo,
   IFormMessages,
   ILabelValue,
+  IPreloadedAsset,
 } from "@/_store/profile/types";
-import { isEmptyObject, isString } from "@/_utils/profile/server";
+import {
+  getPreloadedAsset,
+  isEmptyObject,
+  isString,
+} from "@/_utils/profile/server";
+import emailjs from "@emailjs/browser";
 import CryptoJS from "crypto-js";
 import { isPossiblePhoneNumber } from "react-phone-number-input";
 
@@ -213,3 +221,43 @@ export const isStringBooleanRecord = (
 ): val is Record<string, boolean> =>
   typeof val[Object.keys(val)[0]] === "boolean" ||
   (typeof val === "object" && Object.keys(val).length === 0);
+
+export const sendEmailRequest = (
+  emailJsConfig: IEmailJsConfig,
+  formKey: string,
+  transformFields: { id: string; transform: string }[],
+  formData: ContactFormData
+) => {
+  const [serviceId, templateId, publicKey] = getDecryptedConfig(
+    [
+      emailJsConfig.serviceId,
+      emailJsConfig.templateId,
+      emailJsConfig.publicKey,
+    ],
+    formKey
+  );
+
+  const transformedPayload = transformMailRequest(formData, transformFields);
+
+  return emailjs.send(serviceId, templateId, transformedPayload, publicKey);
+};
+
+export const getFormStatusIconMap = (
+  preloadedAssets: IPreloadedAsset[]
+): Record<CONTACT_FORM_STATUS, string> => ({
+  [CONTACT_FORM_STATUS.FORM_FILL]: "",
+  [CONTACT_FORM_STATUS.SENDING]: getPreloadedAsset(
+    preloadedAssets,
+    "loadingAnimation"
+  ),
+  [CONTACT_FORM_STATUS.SUCCESS]: getPreloadedAsset(
+    preloadedAssets,
+    "successAnimation"
+  ),
+  [CONTACT_FORM_STATUS.ERROR]: getPreloadedAsset(
+    preloadedAssets,
+    "errorAnimation"
+  ),
+  [CONTACT_FORM_STATUS.OFFLINE]: "", // TODO Fix icon display when device is offline OfflineAnimation
+  [CONTACT_FORM_STATUS.REVIEW]: "",
+});
