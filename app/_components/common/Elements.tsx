@@ -306,7 +306,12 @@ export const AutoCloseToastMessage = styled.div`
   color: #3f9c35;
 `;
 
-export const PWAWrapper = styled(FlexBox)<{ $top?: string; $bottom?: string }>`
+export const PWAWrapper = styled(FlexBox)<{
+  $top?: string;
+  $bottom?: string;
+  $right?: string;
+  $left?: string;
+}>`
   position: fixed;
   z-index: 200;
   ${({ $top }) =>
@@ -319,9 +324,18 @@ export const PWAWrapper = styled(FlexBox)<{ $top?: string; $bottom?: string }>`
     `
     bottom: ${$bottom};
   `}
-  background: #8f00ff;
-  width: 100%;
-  padding: 25px 0;
+   ${({ $right }) =>
+    $right &&
+    `
+    right: ${$right};
+  `}
+   ${({ $left }) =>
+    $left &&
+    `
+    left: ${$left};
+  `}
+  
+  background: transparent;
   /* animation: ease-in-h 1s ease 1;
   @keyframes ease-in-h {
     from {
@@ -331,46 +345,15 @@ export const PWAWrapper = styled(FlexBox)<{ $top?: string; $bottom?: string }>`
       height: auto;
     }
   } */
-  p {
-    color: #fff;
-    font-weight: 600;
-    font-size: 1.1em;
-  }
-  button,
-  a {
-    color: #fff;
-    border: none;
-    background: none;
-    flex-basis: 15%;
-    cursor: pointer;
-    font-size: 1.2em;
-    font-weight: bold;
-    &.install {
-      background: #fff;
-      margin-right: 10px;
-      color: #8f00ff;
-      padding: 10px 0;
-      border-radius: 25px;
-      font-size: 1.2em;
-      a {
-        text-decoration: none;
-      }
-    }
-    &.open-pwa {
-      margin-right: 10px;
-    }
-    &.not-now {
-      margin-left: 5px;
-      color: rgb(170, 187, 187, 0.8);
-    }
-  }
-
-  &.hide {
-    display: none;
-  }
 
   @media only screen and (max-width: 767px) {
-    padding: 10px 0;
+    &.position-bottom {
+      bottom: 70px;
+      right: 20px;
+      top: unset;
+    }
+    top: 20px;
+    right: 15px;
     p {
       font-size: 14px;
     }
@@ -620,6 +603,89 @@ export const PageContainer = styled.div<{ $paddingTop?: number }>`
   padding-top: ${(props) => props.$paddingTop || 0}px;
   transition: all 1s ease-out;
 `;
+
+export const ProjectInfoSectionWrapper = styled(FlexBoxSection)`
+  margin-bottom: 20px;
+  padding: 20px 20px 0;
+  .project-info {
+    margin-left: 10px;
+    &.export {
+      margin-left: 0;
+    }
+    @media screen and (max-width: 767px) {
+      margin-left: 0px;
+    }
+  }
+  .info-label {
+    font-weight: bold;
+    flex-basis: 25%;
+    margin-right: 10px;
+    text-transform: uppercase;
+    color: #3e3e3e;
+    &.export {
+      flex-basis: 35%;
+    }
+    .show-hide {
+      background-color: #3f9c35;
+      border: none;
+      color: #f0f0f0;
+      cursor: pointer;
+      outline: none;
+      border-radius: 15px;
+      padding: 1px 10px;
+      margin-left: 10px;
+      &.hide {
+        background-color: #e02020;
+      }
+      &:hover {
+        background-color: #0c77b9;
+      }
+    }
+  }
+  .info-wrapper {
+    line-height: 2;
+    @media screen and (max-width: 767px) {
+      &:not(.export) {
+        flex-direction: column;
+      }
+    }
+  }
+  .description,
+  .responsibilities {
+    margin-left: 20px;
+    &.export {
+      margin-left: 0;
+    }
+    @media screen and (max-width: 767px) {
+      margin-left: 0px;
+    }
+  }
+`;
+export const ProjectName = styled.header`
+  font-weight: bold;
+  font-size: 20px;
+  margin-bottom: 10px;
+  color: #3e3e3e;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  img {
+    margin-right: 5px;
+    width: 15px;
+    height: 15px;
+  }
+  &.expanded {
+    color: #22a39f;
+    img {
+      filter: invert(55%) sepia(64%) saturate(466%) hue-rotate(129deg)
+        brightness(84%) contrast(94%);
+    }
+  }
+  @media screen and (max-width: 767px) {
+    font-size: 18px;
+  }
+`;
+
 const exports = {
   ActionBtn,
   AutoCloseToastMessage,

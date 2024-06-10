@@ -5,7 +5,7 @@ import { useContext, useMemo } from "react";
 import CustomModalComponent from "../../common/ModalComponent";
 import ProgressBar from "../../common/ProgressBar";
 import { Retry } from "../../form/Elements";
-import { DownloadingFileMessage } from "../../profile/sections/Elements";
+import { DownloadingFileMessage } from "../../profile/Elements";
 
 interface IDownloadProgressModalProps {
   showModal: boolean;

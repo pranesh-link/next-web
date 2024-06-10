@@ -1,4 +1,9 @@
-import { FlexBox, FlexBoxSection } from "@/_components/common/Elements";
+import {
+  FlexBox,
+  FlexBoxSection,
+  ProjectInfoSectionWrapper,
+  ProjectName,
+} from "@/_components/common/Elements";
 import {
   EXPANDABLE_INFOS,
   LABEL_TEXT,
@@ -8,7 +13,6 @@ import { ProfileContext } from "@/_store/profile/page/context";
 import { IProjectExperience } from "@/_store/profile/types";
 import classNames from "classnames";
 import React from "react";
-import styled from "styled-components";
 
 interface IProjectInfoProps {
   project: IProjectExperience;
@@ -21,7 +25,7 @@ const ProjectInfo = (props: IProjectInfoProps) => {
   const { isExport, isMobile } = React.useContext(ProfileContext);
 
   return (
-    <SectionWrapper $direction="column" className="keep-together">
+    <ProjectInfoSectionWrapper $direction="column" className="keep-together">
       <ProjectName>
         <span>{title}</span>
       </ProjectName>
@@ -84,90 +88,8 @@ const ProjectInfo = (props: IProjectInfoProps) => {
           );
         })}
       </FlexBoxSection>
-    </SectionWrapper>
+    </ProjectInfoSectionWrapper>
   );
 };
 
 export default ProjectInfo;
-
-const SectionWrapper = styled(FlexBoxSection)`
-  margin-bottom: 20px;
-  padding: 20px 20px 0;
-  .project-info {
-    margin-left: 10px;
-    &.export {
-      margin-left: 0;
-    }
-    @media screen and (max-width: 767px) {
-      margin-left: 0px;
-    }
-  }
-  .info-label {
-    font-weight: bold;
-    flex-basis: 25%;
-    margin-right: 10px;
-    text-transform: uppercase;
-    color: #3e3e3e;
-    &.export {
-      flex-basis: 35%;
-    }
-    .show-hide {
-      background-color: #3f9c35;
-      border: none;
-      color: #f0f0f0;
-      cursor: pointer;
-      outline: none;
-      border-radius: 15px;
-      padding: 1px 10px;
-      margin-left: 10px;
-      &.hide {
-        background-color: #e02020;
-      }
-      &:hover {
-        background-color: #0c77b9;
-      }
-    }
-  }
-  .info-wrapper {
-    line-height: 2;
-    @media screen and (max-width: 767px) {
-      &:not(.export) {
-        flex-direction: column;
-      }
-    }
-  }
-  .description,
-  .responsibilities {
-    margin-left: 20px;
-    &.export {
-      margin-left: 0;
-    }
-    @media screen and (max-width: 767px) {
-      margin-left: 0px;
-    }
-  }
-`;
-const ProjectName = styled.header`
-  font-weight: bold;
-  font-size: 20px;
-  margin-bottom: 10px;
-  color: #3e3e3e;
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  img {
-    margin-right: 5px;
-    width: 15px;
-    height: 15px;
-  }
-  &.expanded {
-    color: #22a39f;
-    img {
-      filter: invert(55%) sepia(64%) saturate(466%) hue-rotate(129deg)
-        brightness(84%) contrast(94%);
-    }
-  }
-  @media screen and (max-width: 767px) {
-    font-size: 18px;
-  }
-`;

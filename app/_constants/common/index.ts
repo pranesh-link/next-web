@@ -23,6 +23,9 @@ export const DEFAULT_MAINTENANCE_DATA: IMaintenance = {
 
 export const DEFAULT_APP_CONTEXT: IAppContext = {
   data: {
+    features: {
+      pwa: false,
+    },
     bmiCalculatorForm: {
       name: "bmi-calculator",
       header: "",
