@@ -317,14 +317,14 @@ export interface IProfileConfigData {
   profileLabels: Record<string, string>;
 }
 
-export type ContactFormFields =
+export type ContactFormFieldsType =
   | "userName"
   | "userMobile"
   | "userEmail"
   | "message"
   | "userSocialMessengers";
 export type ContactFormData = {
-  [key in ContactFormFields]: string | Record<string, boolean>;
+  [key in ContactFormFieldsType]: string | Record<string, boolean>;
 };
 
 export type ContactFormValid = Record<string, boolean>;

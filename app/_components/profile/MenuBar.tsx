@@ -7,7 +7,7 @@ import { scrollTo } from "@/_utils/common/ScrollTo";
 import { uppercase } from "@/_utils/profile/server";
 import classNames from "classnames";
 import React, { useEffect, useMemo } from "react";
-import styled from "styled-components";
+import { MenuBtn, MenuWrapper } from "./Elements";
 
 interface IMenuBarProps {
   isMobileMenu?: boolean;
@@ -120,66 +120,3 @@ const MenuBar = (props: IMenuBarProps) => {
 };
 
 export default MenuBar;
-
-const MenuWrapper = styled.nav`
-  overflow: hidden;
-  position: fixed;
-  top: 15%;
-  right: 25px;
-  width: 100%;
-  z-index: 10;
-  background-color: #222222;
-  max-width: fit-content;
-  border-radius: 5px;
-  &.mobile {
-    padding-top: 0;
-    position: static;
-    max-width: unset;
-    height: 100%;
-  }
-  &.wrapper {
-    .is-active {
-      background-color: #3f9c35;
-    }
-    ul {
-      list-style-type: none;
-      padding: 0;
-      margin: 0;
-    }
-    li {
-      text-align: center;
-      padding: 20px 5px;
-    }
-    a {
-      font-weight: bold;
-      padding: 20px 5px;
-      text-decoration: none;
-      color: #fff;
-      &:hover {
-        color: #434242;
-      }
-    }
-  }
-
-  @media only screen and (max-width: 767px) {
-    border-radius: 0px;
-    &:not(.mobile) {
-      display: none;
-      right: 0;
-    }
-  }
-`;
-
-const MenuBtn = styled.button`
-  background-color: transparent;
-  border: none;
-  cursor: pointer;
-  outline: none;
-  color: #fff;
-  font-weight: bold;
-  padding: 20px;
-  &:hover {
-    background: #3498db;
-    opacity: 0.95;
-  }
-`;

@@ -1,10 +1,10 @@
-import { FlexBoxSection, Grid, SecHeader } from "@/_components/common/Elements";
+import { Grid, SecHeader } from "@/_components/common/Elements";
 import { SECTIONS } from "@/_constants/profile";
 import { ProfileContext } from "@/_store/profile/page/context";
 import { ISkill } from "@/_store/profile/types";
 import classNames from "classnames";
 import { useContext, useMemo } from "react";
-import styled from "styled-components";
+import { SkillsInfoWrapper } from "../Elements";
 import SkillWithStars from "../SkillWithStars";
 
 const Skills = () => {
@@ -65,32 +65,3 @@ const Skills = () => {
 };
 
 export default Skills;
-
-const SkillsInfoWrapper = styled(FlexBoxSection)<{
-  $isMobile: boolean;
-}>`
-  .skill {
-    padding-bottom: 10px;
-    .skill-label {
-      flex-basis: ${(props) => {
-        let flexBasis = "50%";
-        flexBasis = props.$isMobile ? "40%" : flexBasis;
-        return flexBasis;
-      }};
-      padding-right: 10px;
-      ${(props) => props.$isMobile && "font-size: 13px"}
-    }
-    .stars {
-      margin-right: 10px;
-    }
-
-    .star {
-      height: ${(props) => (props.$isMobile ? "15px" : "20px")};
-      width: ${(props) => (props.$isMobile ? "15px" : "20px")};
-    }
-  }
-
-  @media screen and (max-width: 767px) {
-    justify-content: normal;
-  }
-`;
