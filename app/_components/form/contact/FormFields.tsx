@@ -5,10 +5,6 @@ import { ContactFormFieldsType } from "@/_store/profile/types";
 import { useContext } from "react";
 import FormField from "../FormField";
 
-interface IContactFormFieldsProps {
-  formDisabled: boolean;
-}
-
 export default function ContactFormFields() {
   const {
     data: {

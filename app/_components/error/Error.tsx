@@ -46,9 +46,12 @@ function Error({ reset }: { reset: () => void }) {
 export default Error;
 
 const ErrorWrapper = styled(FlexBoxSection)`
+  position: fixed;
   background: #b21807;
   color: #f0f0f0;
   height: 100vh;
+  width: 100%;
+  z-index: 500;
   text-align: center;
   padding: 15px;
   &.retrying {

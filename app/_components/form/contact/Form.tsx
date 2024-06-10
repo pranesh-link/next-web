@@ -1,4 +1,3 @@
-import { ActionBtn } from "@/_components/common/Elements";
 import FormStatusModal from "@/_components/modal/form/FormStatusModal";
 import useIsOnline from "@/_hooks/use-is-online";
 import { AppContext } from "@/_store/app/context";
@@ -20,7 +19,6 @@ import {
 } from "@/_utils/form";
 import { getPreloadedAsset } from "@/_utils/profile/server";
 import emailjs from "@emailjs/browser";
-import classNames from "classnames";
 import {
   FormEvent,
   useCallback,
@@ -29,8 +27,9 @@ import {
   useMemo,
   useState,
 } from "react";
-import { ActionsWrap, Form, FormHeader, FormSubmit } from "../Elements";
+import { Form, FormHeader } from "../Elements";
 import ContactFormFields from "./FormFields";
+import FormActions from "./FormActions";
 
 interface IContactFormProps {
   closeModal: () => void;
@@ -254,6 +253,8 @@ const ContactForm = (props: IContactFormProps) => {
         formData,
         formValid,
         formError,
+        formDisabled,
+        closeModal,
         updateInput,
         handleValidation,
         isSending,
@@ -276,39 +277,7 @@ const ContactForm = (props: IContactFormProps) => {
       <Form onSubmit={handleFormSubmit}>
         <FormHeader>{form.header}</FormHeader>
         <ContactFormFields />
-
-        {/* {fields.map((field, index) => {
-          const fieldName = field.name as ContactFormFields;
-          return (
-            <FormField
-              key={index}
-              defaultMaxLength={form.defaultMaxLength}
-              autoFocus={online && index === 0}
-              field={field}
-              fieldValue={formData[fieldName]}
-              fieldValid={formValid?.[fieldName]}
-              fieldError={formError?.[fieldName]}
-              updateInput={updateInput}
-              validateField={handleValidation}
-              isFormSubmit={isSending}
-            />
-          );
-        })} */}
-
-        <ActionsWrap $justifyContent="space-between" $alignItems="center">
-          <ActionBtn className="close" onClick={closeModal}>
-            {label.close}
-          </ActionBtn>
-          <FormSubmit
-            disabled={formDisabled || isSending}
-            className={classNames({
-              disabled: formDisabled || isSending,
-            })}
-            type="submit"
-          >
-            {isSending ? label.submitting : label.submit}
-          </FormSubmit>
-        </ActionsWrap>
+        <FormActions />
       </Form>
     </FormContextProvider>
   );
