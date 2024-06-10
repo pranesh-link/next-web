@@ -10,6 +10,7 @@ interface IFormContext {
   formData: ContactFormData | null;
   formValid: ContactFormValid | null;
   formError: ContactFormError | null;
+  formDisabled: boolean;
   closeModal: () => void;
   updateInput: (
     value: FormFieldValueType,
@@ -24,6 +25,7 @@ const FormContext = createContext<IFormContext>({
   formData: null,
   formValid: null,
   formError: null,
+  formDisabled: false,
   updateInput: () => {},
   handleValidation: () => {},
   closeModal: () => {},

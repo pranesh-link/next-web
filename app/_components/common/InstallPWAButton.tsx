@@ -60,7 +60,7 @@ const StyledPWALink = styled(PWALink)<{ $hideAnimation: boolean }>`
   ${(props) =>
     props.$hideAnimation
       ? "box-shadow: none"
-      : "box-shadow: rgb(0 0 0 / 20%) 0 -1px 0px 1px, inset #304701 0 -1px 0px, #3f9c35 0 2px 12px"};
+      : "box-shadow: rgb(0 0 0 / 20%) 0 -1px 0px 1px, inset transparent 0 -1px 0px, #3f9c35 0 2px 12px"};
 
   &:hover {
     box-shadow: transparent -1px 0px 1px, inset transparent 0 -1px 0px,
