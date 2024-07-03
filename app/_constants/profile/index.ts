@@ -192,9 +192,9 @@ export const SECTION_ORDER_DISPLAY: Record<
   EDUCATION: { order: 4 },
   ORGANIZATIONS: { order: 3, display: false },
   SKILLS: { order: 2 },
-  EXPERIENCES: { order: 6 },
+  EXPERIENCES: { order: 5 },
   CONTACT: { order: 7 },
-  OPENSOURCEPROJECTS: { order: 5 },
+  OPENSOURCEPROJECTS: { order: 6 },
 };
 
 export const LABELS = {
