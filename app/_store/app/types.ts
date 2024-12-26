@@ -12,6 +12,7 @@ export interface IAppContext {
 export interface IAppConfigData {
   features: {
     pwa: boolean;
+    downloadResume: boolean;
   };
   currentDevice: {
     osName: string;

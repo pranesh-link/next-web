@@ -6,6 +6,7 @@ import LazyLoadedImage from "@/_components/common/LazyLoadedImage";
 import ContactModal from "@/_components/modal/profile/ContactModal";
 import DownloadProgressModal from "@/_components/modal/profile/DownloadProgressModal";
 import useIsOnline from "@/_hooks/use-is-online";
+import { AppContext } from "@/_store/app/context";
 import { FILE_DOWNLOAD_STATES } from "@/_store/common/types";
 import { ProfileContext } from "@/_store/profile/page/context";
 import { getPdfObjectUrl } from "@/_utils/profile/server";
@@ -34,8 +35,15 @@ const About = (_props: IAboutProps) => {
       download,
     },
     refs: { homeRef: refObj },
+
     preloadSrcList,
   } = useContext(ProfileContext);
+
+  const {
+    data: {
+      features: { downloadResume: canDownloadResume },
+    },
+  } = useContext(AppContext);
 
   const pdfFileName = preloadSrcList.find(
     (item) => item.id === "resume"
@@ -177,18 +185,24 @@ const About = (_props: IAboutProps) => {
               >
                 Placeholder
               </a>
-              <LazyLoadedImage
-                className="download"
-                alt="Click here"
-                width={25}
-                height={25}
-                onClick={downloadResume}
-                src={DownloadAnimation}
-                unoptimized
-                priority
-              />
 
-              <span className="download-text">{download.download.message}</span>
+              {canDownloadResume && (
+                <>
+                  <LazyLoadedImage
+                    className="download"
+                    alt="Click here"
+                    width={25}
+                    height={25}
+                    onClick={downloadResume}
+                    src={DownloadAnimation}
+                    unoptimized
+                    priority
+                  />
+                  <span className="download-text">
+                    {download.download.message}
+                  </span>
+                </>
+              )}
               <ContactMe />
             </InterestedInProfile>
           </FlexBoxSection>
