@@ -168,6 +168,12 @@ export const SectionsWrapper = styled.section`
         margin-bottom: 10px;
       }
     }
+    .organization {
+      margin: 0 auto;
+      .org-name {
+        text-align: center;
+      }
+    }
 
     &.links {
       padding: 15px 0 5px;
@@ -294,6 +300,11 @@ export const SectionsWrapper = styled.section`
     .profile-section {
       padding-left: 20px;
       padding-right: 10px;
+      .organization {
+        .org-name {
+          text-align: left;
+        }
+      }
     }
   }
 `;
@@ -505,6 +516,7 @@ export const SectionWrapper = styled(FlexBoxSection)`
   .org-name {
     font-size: 22px;
     margin-block: 5px;
+    text-align: center;
     &.current {
       color: #3f9c35;
     }
@@ -658,6 +670,12 @@ export const ProjectInfoSectionWrapper = styled(FlexBoxSection)`
     }
     @media screen and (max-width: 767px) {
       margin-left: 0px;
+    }
+  }
+
+  @media screen and (max-width: 767px) {
+    &.os-projects {
+      justify-content: normal;
     }
   }
 `;

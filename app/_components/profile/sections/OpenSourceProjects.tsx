@@ -78,7 +78,11 @@ const OpenSourceProjects = () => {
         className={classNames("profile-section", "experience")}
       >
         <SecHeader>{openSourceProjects.title}</SecHeader>
-        <ProjectInfoSectionWrapper $flexWrap="wrap">
+        <ProjectInfoSectionWrapper
+          $flexWrap="wrap"
+          $justifyContent="center"
+          className="os-projects"
+        >
           {openSourceProjects.info.map((item) => {
             return (
               <FlexBox key={item.id} className="os-project">
