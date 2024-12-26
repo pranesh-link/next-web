@@ -154,11 +154,11 @@ function ResumeExperiences() {
                     </ProjectLink>
                   ))}
                 </FlexBox>
-                <h4 className="responsibilities">
+                <h4 className="responsibilities ml-0">
                   <label>{LABELS.RESPONSIBILITIES}</label>
                 </h4>
                 <div
-                  className="responsibilities"
+                  className="responsibilities max-width-60"
                   dangerouslySetInnerHTML={{
                     __html: responsibilities,
                   }}
