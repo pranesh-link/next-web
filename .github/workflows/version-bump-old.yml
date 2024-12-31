@@ -1,0 +1,28 @@
+name: Version Bump
+
+on:
+  push:
+    branches:
+      - master-old
+
+jobs:
+  bump_version:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set Git User
+        run: |
+          git config --global user.name "Pranesh G"
+          git config --global user.email "prans1991@gmail.com"
+
+      - name: "Automated Version Bump"
+        uses: "phips28/gh-action-bump-version@master"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          commit-message: "CI version bump to {{version}}"
+          tag-prefix: "v"
+          version-type: "minor"
