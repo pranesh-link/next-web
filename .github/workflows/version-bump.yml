@@ -6,30 +6,36 @@ on:
       - master
 
 jobs:
-  version-bump:
+  bump-version:
     runs-on: macos-latest
     permissions:
       contents: write
     steps:
-      # Checkout the code
+      # Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Set Git user information (email and name)
+      # Set up Node.js (required if you're using npm/yarn)
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20" # Specify your desired Node.js version
+
+      # Set Git user information (using your GitHub email and username)
       - name: Set Git User
         run: |
           git config --global user.name "Pranesh G"
           git config --global user.email "prans1991@gmail.com"
 
-      # Run version bump (adjust the action as per your choice)
+      # Bump version in package.json
       - name: Bump version
-        uses: mathieudutour/github-tag-action@v5
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          skip_commit: false # This will commit the version bump change
+        run: |
+          npm version minor -m "CI Bump version to %s"
 
-      # Optionally, push changes and create a tag
+      # Commit and push changes
       - name: Push changes
         run: |
-          git push
-          git push --tags
+          git push origin HEAD:master
+          git push --tags  # Push the created tags
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
