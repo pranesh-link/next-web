@@ -30,7 +30,7 @@ jobs:
       # Bump version in package.json
       - name: Bump version
         run: |
-          npm version minor -m "CI Bump version to %s"
+          npm version minor -m "CI version bump to v%s"
 
       # Commit and push changes
       - name: Push changes
