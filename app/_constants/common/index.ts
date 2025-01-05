@@ -26,6 +26,7 @@ export const DEFAULT_APP_CONTEXT: IAppContext = {
     features: {
       pwa: false,
       downloadResume: false,
+      contactMe: false,
     },
     bmiCalculatorForm: {
       name: "bmi-calculator",

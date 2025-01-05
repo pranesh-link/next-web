@@ -13,6 +13,7 @@ export interface IAppConfigData {
   features: {
     pwa: boolean;
     downloadResume: boolean;
+    contactMe: boolean;
   };
   currentDevice: {
     osName: string;

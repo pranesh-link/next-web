@@ -130,7 +130,7 @@ const MenuWrapper = styled.nav`
 `;
 
 const MenuButton = styled(ActionBtn)`
-  margin-right: 20px;
+  margin-right: 50px;
   padding: 0 0 5px;
   &.is-active {
     border-bottom: 2px solid red;
