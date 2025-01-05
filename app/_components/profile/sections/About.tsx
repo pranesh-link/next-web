@@ -41,7 +41,7 @@ const About = (_props: IAboutProps) => {
 
   const {
     data: {
-      features: { downloadResume: canDownloadResume },
+      features: { downloadResume: canDownloadResume, contactMe },
     },
   } = useContext(AppContext);
 
@@ -203,7 +203,7 @@ const About = (_props: IAboutProps) => {
                   </span>
                 </>
               )}
-              <ContactMe />
+              {contactMe && <ContactMe />}
             </InterestedInProfile>
           </FlexBoxSection>
         </FlexBoxSection>

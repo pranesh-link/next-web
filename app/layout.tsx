@@ -2,7 +2,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata, Viewport } from "next";
 import dynamicImport from "next/dynamic";
-import { Work_Sans } from "next/font/google";
+import { IBM_Plex_Sans } from "next/font/google";
 import { Suspense } from "react";
 import { browserName, isMobileOnly, osName } from "react-device-detect";
 import GoToHome from "./_components/common/GoToHome";
@@ -22,8 +22,8 @@ export const metadata: Metadata = HEADER_INFO.METADATA;
 
 export const viewport: Viewport = HEADER_INFO.VIEWPORT;
 
-const font = Work_Sans({
-  weight: "400",
+const font = IBM_Plex_Sans({
+  weight: "500",
   subsets: ["latin"],
   variable: "--font",
 });
