@@ -132,6 +132,7 @@ const ProfileSections = (props: IProfileSectionsProps) => {
         className={classNames({
           export: isExport,
           "add-margin-top": false,
+          isMobile,
         })}
       >
         {!isExport && <ShortDesc>{shortDesc}</ShortDesc>}

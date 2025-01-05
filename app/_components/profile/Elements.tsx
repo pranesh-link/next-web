@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import { FlexBox, FlexBoxSection } from "../common/Elements";
+import { ActionBtn, FlexBox, FlexBoxSection } from "../common/Elements";
 
 const IconWrap = styled.div`
   display: flex;
@@ -74,23 +74,32 @@ const RightSection = styled.div`
 const MenuWrapper = styled.nav`
   overflow: hidden;
   position: fixed;
-  top: 15%;
-  right: 25px;
+  top: 50px;
+  left: 50px;
   width: 100%;
   z-index: 10;
   background-color: #222222;
   max-width: fit-content;
   border-radius: 5px;
+
   &.mobile {
     padding-top: 0;
     position: static;
     max-width: unset;
     height: 100%;
+    > section {
+      flex-direction: column;
+    }
+  }
+  &:not(.mobile) {
+    background-color: #f0f0f0;
+    padding: 20px;
+    border-radius: 0;
+    left: 0px;
+    top: 0px;
+    max-width: 100%;
   }
   &.wrapper {
-    .is-active {
-      background-color: #3f9c35;
-    }
     ul {
       list-style-type: none;
       padding: 0;
@@ -120,7 +129,28 @@ const MenuWrapper = styled.nav`
   }
 `;
 
-const MenuBtn = styled.button`
+const MenuButton = styled(ActionBtn)`
+  margin-right: 20px;
+  padding: 0 0 5px;
+  &.is-active {
+    border-bottom: 2px solid red;
+    font-weight: 600;
+  }
+  &.home {
+    display: flex;
+    align-items: center;
+    span {
+      margin-left: 2px;
+    }
+  }
+  &:hover {
+    border-bottom: 2px solid #3498db;
+    font-weight: 600;
+    transform: scale(1.1);
+  }
+`;
+
+const MobileMenuBtn = styled.button`
   background-color: transparent;
   border: none;
   cursor: pointer;
@@ -128,6 +158,11 @@ const MenuBtn = styled.button`
   color: #fff;
   font-weight: bold;
   padding: 20px;
+  width: 100%;
+  text-align: left;
+  &.is-active {
+    background-color: #3f9c35;
+  }
   &:hover {
     background: #3498db;
     opacity: 0.95;
@@ -135,6 +170,9 @@ const MenuBtn = styled.button`
 `;
 
 const Wrapper = styled.section<{ $pwaOffset: number }>`
+  &:not(.isMobile) {
+    padding-top: 100px;
+  }
   &:not(.export) {
     background-color: #f0f0f0;
     &.add-margin-top {
@@ -521,7 +559,8 @@ export {
   IconWrap,
   InterestedInProfile,
   Menu,
-  MenuBtn,
+  MobileMenuBtn as MenuBtn,
+  MenuButton,
   MenuWrapper,
   PageHeader,
   RightSection,
