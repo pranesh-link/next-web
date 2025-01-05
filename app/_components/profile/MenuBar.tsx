@@ -1,3 +1,4 @@
+import BackArrow from "@/_assets/back-arrow.gif";
 import { FlexBoxSection } from "@/_components/common/Elements";
 import { SECTION_ORDER_DISPLAY } from "@/_constants/profile";
 import { useAppSelector } from "@/_redux/hooks";
@@ -6,8 +7,10 @@ import { ProfileSectionType, RefTypes } from "@/_store/profile/types";
 import { scrollTo } from "@/_utils/common/ScrollTo";
 import { uppercase } from "@/_utils/profile/server";
 import classNames from "classnames";
+import { useRouter } from "next/navigation";
 import React, { useEffect, useMemo } from "react";
-import { MenuBtn, MenuWrapper } from "./Elements";
+import LazyLoadedImage from "../common/LazyLoadedImage";
+import { MenuBtn, MenuButton, MenuWrapper } from "./Elements";
 
 interface IMenuBarProps {
   isMobileMenu?: boolean;
@@ -17,9 +20,10 @@ interface IMenuBarProps {
 const MenuBar = (props: IMenuBarProps) => {
   const { refs, data, currentSection, isMobile } =
     React.useContext(ProfileContext);
+  const router = useRouter();
   const pwaOffsetState = useAppSelector((state) => state.app.pwaOffset);
   const { onMenuChange } = props;
-  const initialOffset = useMemo(() => (isMobile ? 80 : 30), [isMobile]);
+  const initialOffset = useMemo(() => (isMobile ? 80 : 80), [isMobile]);
   const goTo = (section: string) => {
     scrollTo(`#${section}`, initialOffset + pwaOffsetState);
   };
@@ -93,26 +97,59 @@ const MenuBar = (props: IMenuBarProps) => {
     return () => window.removeEventListener("scroll", handleScroll);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialOffset]);
+
+  const goToHome = () => router.push("/");
+
   return (
     <MenuWrapper
       className={classNames("wrapper", { mobile: props.isMobileMenu })}
     >
-      <FlexBoxSection $direction="column">
+      <FlexBoxSection $direction="row">
+        {!props.isMobileMenu && (
+          <MenuButton onClick={goToHome} className="home">
+            <LazyLoadedImage
+              src={BackArrow}
+              className="back-arrow"
+              height={20}
+              width={20}
+              alt="back-arrow"
+              unoptimized
+            />
+            <span>Home</span>
+          </MenuButton>
+        )}
         {menuItems.map((item) => (
-          <MenuBtn
-            key={item.section}
-            onClick={() => {
-              goTo(item.section);
-              if (props.closeHamburgerMenu) {
-                props.closeHamburgerMenu();
-              }
-            }}
-            className={classNames({
-              "is-active": currentSection === item.section,
-            })}
-          >
-            {item.title}
-          </MenuBtn>
+          <div key={item.section}>
+            {props.isMobileMenu ? (
+              <MenuBtn
+                onClick={() => {
+                  goTo(item.section);
+                  if (props.closeHamburgerMenu) {
+                    props.closeHamburgerMenu();
+                  }
+                }}
+                className={classNames({
+                  "is-active": currentSection === item.section,
+                })}
+              >
+                {item.title}
+              </MenuBtn>
+            ) : (
+              <MenuButton
+                className={classNames({
+                  "is-active": currentSection === item.section,
+                })}
+                onClick={() => {
+                  goTo(item.section);
+                  if (props.closeHamburgerMenu) {
+                    props.closeHamburgerMenu();
+                  }
+                }}
+              >
+                {item.title}
+              </MenuButton>
+            )}
+          </div>
         ))}
       </FlexBoxSection>
     </MenuWrapper>
