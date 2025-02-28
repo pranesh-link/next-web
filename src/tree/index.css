@@ -1,6 +1,17 @@
 .tree {
-    background-color: #efefef;
-    height: 100%;
-    padding: 10px;
-    font-family: monospace
+  background-color: #efefef;
+  height: 250px;
+  padding: 10px;
+  font-family: monospace;
+}
+.first-spacing {
+  padding-left: 48px;
+}
+
+.second-spacing {
+  padding-left: 96px;
+}
+
+.third-spacing {
+  padding-left: 144px;
 }
