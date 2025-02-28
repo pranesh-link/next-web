@@ -1,1 +1,35 @@
-{}
+{
+  "type": "mammals",
+  "children": [
+    {
+      "name": "cheetah",
+      "spacingClassName": "spacing-1",
+      "children": []
+    },
+    {
+      "name": "bear",
+      "spacingClassName": "spacing-1",
+      "children": []
+    },
+    {
+      "name": "lion",
+      "spacingClassName": "spacing-2",
+      "children": []
+    },
+    {
+      "name": "dog",
+      "spacingClassName": "spacing-2",
+      "children": []
+    },
+    {
+      "name": "elephant",
+      "spacingClassName": "spacing-3",
+      "children": []
+    },
+    {
+      "name": "ape",
+      "spacingClassName": "spacing-1",
+      "children": []
+    }
+  ]
+}

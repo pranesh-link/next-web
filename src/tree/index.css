@@ -4,14 +4,14 @@
   padding: 10px;
   font-family: monospace;
 }
-.first-spacing {
+.spacing-1 {
   padding-left: 48px;
 }
 
-.second-spacing {
+.spacing-2 {
   padding-left: 96px;
 }
 
-.third-spacing {
+.spacing-3 {
   padding-left: 144px;
 }

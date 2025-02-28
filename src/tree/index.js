@@ -1,7 +1,10 @@
 import React from "react";
+import data from "./data.json";
 import "./index.css";
 
 export default function Tree() {
+  const [animalTree, setAnimalTree] = React.useState(data);
+
   return (
     <>
       <div className="tree">
@@ -16,13 +19,14 @@ export default function Tree() {
         &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ape <br />
       </div>
       <div className="tree">
-        <div>mammals</div>
-        <div className="first-spacing">cheetah</div>
-        <div className="first-spacing">bear</div>
-        <div className="second-spacing">lion</div>
-        <div className="second-spacing">dog</div>
-        <div className="third-spacing">elephant</div>
-        <div className="first-spacing">ape</div>
+        <div>{animalTree.name}</div>
+        {animalTree.children.map((child, index) => {
+          return (
+            <div key={index} className={child.spacingClassName}>
+              {child.name}
+            </div>
+          );
+        })}
       </div>
     </>
   );
