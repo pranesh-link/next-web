@@ -1,9 +1,11 @@
+import { Link } from "react-router-dom";
 import { Col, Container, Row } from "reactstrap";
 import Tree from "../tree";
 
 export default function Home() {
   return (
     <Container>
+      <Link to="/tree"> {">> Go to Animal tree"}</Link>
       <Row>
         <Col>
           <a
