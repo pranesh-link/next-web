@@ -1,6 +1,4 @@
 .tree {
-  background-color: #efefef;
-  height: 250px;
   padding: 10px;
   font-family: monospace;
 }
@@ -14,4 +12,8 @@
 
 .spacing-3 {
   padding-left: 144px;
+}
+
+.margin-5 {
+  margin-top: 5px;
 }

@@ -1,7 +1,7 @@
 .App {
   text-align: left;
   padding: 20px;
-  height: 500px;
+  height: 100%;
 }
 
 .App-logo {
@@ -10,7 +10,7 @@
 }
 
 .App-header {
-  background-color: #282c34;
+  /* background-color: #282c34; */
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -29,11 +29,11 @@
 }
 
 .App-api {
-  color: red
+  color: red;
 }
 
 h1 {
-  font-size: 2.0rem;
+  font-size: 2rem;
 }
 
 span {
@@ -42,4 +42,8 @@ span {
 
 code {
   padding: 0 2px;
+}
+
+.display-none {
+  display: none;
 }
