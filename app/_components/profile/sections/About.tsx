@@ -103,6 +103,23 @@ const About = (_props: IAboutProps) => {
     setDownloadState(FILE_DOWNLOAD_STATES.IDLE);
   }, []);
 
+  function downloadPDF() {
+    const byteCharacters = atob(download.base64);
+    const byteArrays = [];
+
+    for (let offset = 0; offset < byteCharacters.length; offset += 1024) {
+      const slice = byteCharacters.slice(offset, offset + 1024);
+      const byteNumbers = Array.from(slice, (char) => char.charCodeAt(0));
+      byteArrays.push(new Uint8Array(byteNumbers));
+    }
+
+    const blob = new Blob(byteArrays, { type: "application/pdf" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "Pranesh_Resume.pdf";
+    link.click();
+  }
+
   return (
     <>
       <ContactModal isOpen={isContactFormOpen} />
@@ -186,23 +203,21 @@ const About = (_props: IAboutProps) => {
                 Placeholder
               </a>
 
-              {canDownloadResume && (
-                <>
-                  <LazyLoadedImage
-                    className="download"
-                    alt="Click here"
-                    width={25}
-                    height={25}
-                    onClick={downloadResume}
-                    src={DownloadAnimation}
-                    unoptimized
-                    priority
-                  />
-                  <span className="download-text">
-                    {download.download.message}
-                  </span>
-                </>
-              )}
+              <>
+                <LazyLoadedImage
+                  className="download"
+                  alt="Click here"
+                  width={25}
+                  height={25}
+                  onClick={downloadPDF}
+                  src={DownloadAnimation}
+                  unoptimized
+                  priority
+                />
+                <span className="download-text">
+                  {download.download.message}
+                </span>
+              </>
               {contactMe && <ContactMe />}
             </InterestedInProfile>
           </FlexBoxSection>

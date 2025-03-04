@@ -181,7 +181,12 @@ export type DownloadType = {
     message: string;
     icon: string;
   };
-} & { type: string; messages: Record<string, string>; staticFileUrl: string };
+} & {
+  type: string;
+  messages: Record<string, string>;
+  staticFileUrl: string;
+  base64: string;
+};
 
 export interface IPWA {
   messages: {
