@@ -41,7 +41,7 @@ const About = (_props: IAboutProps) => {
 
   const {
     data: {
-      features: { downloadResume: canDownloadResume, contactMe },
+      features: { contactMe },
     },
   } = useContext(AppContext);
 
