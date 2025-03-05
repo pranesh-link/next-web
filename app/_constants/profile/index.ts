@@ -100,6 +100,7 @@ export const DEFAULT_PROFILE_CONTEXT: IProfileContext = {
     },
     download: {
       type: "",
+      base64: "",
       staticFileUrl: "",
       messages: {},
       download: {
