@@ -10,8 +10,8 @@ export const ROUTES: Record<string, string> = {
 };
 
 export const PAGE_TITLES = {
-  home: "Pranesh | UI Enthusiast",
-  profile: "Pranesh | UI Enthusiast",
+  home: "Pranesh | Coffee & Code",
+  profile: "Pranesh | Coffee & Code",
   bmiCalculator: "BMI Calculator",
 };
 
