@@ -14,16 +14,6 @@ const ModernCard = styled.div`
   position: relative;
   overflow: hidden;
   
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, #14b8a6, #06b6d4);
-  }
-  
   &:hover {
     transform: translateY(-4px);
     box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
@@ -240,11 +230,12 @@ const RightSection = styled.div`
 `;
 
 const MenuWrapper = styled.nav`
-  overflow: hidden;
+  overflow: visible;
   position: fixed;
   width: 100%;
-  z-index: 10;
+  z-index: 1000;
   transition: all var(--transition-normal);
+  pointer-events: none;
 
   &.mobile {
     padding-top: 0;
@@ -257,6 +248,7 @@ const MenuWrapper = styled.nav`
     opacity: 1;
     transform: none;
     animation: none;
+    pointer-events: auto;
     
     > section {
       flex-direction: column;
@@ -268,9 +260,9 @@ const MenuWrapper = styled.nav`
     backdrop-filter: blur(30px) saturate(130%);
     padding: 10px 24px;
     border-radius: 100px;
-    position: fixed;
+    position: fixed !important;
     left: 50%;
-    top: 16px;
+    top: 24px !important;
     transform: translateX(-50%);
     max-width: max-content;
     border: 1px solid rgba(255, 255, 255, 0.12);
@@ -278,20 +270,19 @@ const MenuWrapper = styled.nav`
                 0 2px 8px rgba(0, 0, 0, 0.08),
                 inset 0 1px 0 rgba(255, 255, 255, 0.15);
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    will-change: transform;
+    will-change: opacity, box-shadow, background-color;
+    pointer-events: auto;
     
     /* Initial load animation */
     opacity: 0;
-    animation: navSlideDown 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.2s forwards;
+    animation: navFadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.2s forwards;
     
-    @keyframes navSlideDown {
+    @keyframes navFadeIn {
       from {
         opacity: 0;
-        top: -50px;
       }
       to {
         opacity: 1;
-        top: 16px;
       }
     }
     
@@ -313,6 +304,7 @@ const MenuWrapper = styled.nav`
                   inset 0 1px 0 rgba(255, 255, 255, 0.25);
       border-color: rgba(255, 255, 255, 0.28);
       backdrop-filter: blur(35px) saturate(150%);
+      transform: translateX(-50%) translateY(-2px);
     }
   }
   
