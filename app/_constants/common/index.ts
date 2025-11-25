@@ -156,7 +156,7 @@ export const HEADER_INFO = {
   METADATA: {
     title: PAGE_TITLES.profile,
     description:
-      "Exemplary Lead UI Engineer, an aspiring Architect to be specializing in React, HTML, CSS, and JavaScript. Dedicated to creating exceptional user interfaces that seamlessly blend form and function. Proven leadership in guiding teams to deliver cutting-edge web experiences.",
+      "Exemplary UI Engineering Leader, an aspiring Architect to be specializing in React, HTML, CSS, and JavaScript. Dedicated to creating exceptional user interfaces that seamlessly blend form and function. Proven leadership in guiding teams to deliver cutting-edge web experiences.",
     keywords:
       "ui, web, lead engineer, ui architect, react, next, html, css, javascript, typescript",
   },

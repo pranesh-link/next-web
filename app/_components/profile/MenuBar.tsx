@@ -1,5 +1,4 @@
 import BackArrow from "@/_assets/back-arrow.gif";
-import { FlexBoxSection } from "@/_components/common/Elements";
 import { SECTION_ORDER_DISPLAY } from "@/_constants/profile";
 import { useAppSelector } from "@/_redux/hooks";
 import { ProfileContext } from "@/_store/profile/page/context";
@@ -8,7 +7,7 @@ import { scrollTo } from "@/_utils/common/ScrollTo";
 import { uppercase } from "@/_utils/profile/server";
 import classNames from "classnames";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import LazyLoadedImage from "../common/LazyLoadedImage";
 import { MenuBtn, MenuButton, MenuWrapper } from "./Elements";
 
@@ -24,6 +23,8 @@ const MenuBar = (props: IMenuBarProps) => {
   const pwaOffsetState = useAppSelector((state) => state.app.pwaOffset);
   const { onMenuChange } = props;
   const initialOffset = useMemo(() => (isMobile ? 80 : 80), [isMobile]);
+  const [isScrolled, setIsScrolled] = useState(false);
+  
   const goTo = (section: string) => {
     scrollTo(`#${section}`, initialOffset + pwaOffsetState);
   };
@@ -55,6 +56,10 @@ const MenuBar = (props: IMenuBarProps) => {
     .sort((a, b) => a.order - b.order);
 
   const handleScroll = () => {
+    // Update scroll state for transparency effect
+    const scrollPosition = window.scrollY;
+    setIsScrolled(scrollPosition > 50);
+    
     const resultPosition = menuItems.reduce(
       (result, curr, index) => {
         const { ref, section } = curr;
@@ -102,9 +107,12 @@ const MenuBar = (props: IMenuBarProps) => {
 
   return (
     <MenuWrapper
-      className={classNames("wrapper", { mobile: props.isMobileMenu })}
+      className={classNames("wrapper", { 
+        mobile: props.isMobileMenu,
+        scrolled: isScrolled && !props.isMobileMenu
+      })}
     >
-      <FlexBoxSection $direction="row">
+      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}>
         {!props.isMobileMenu && (
           <MenuButton onClick={goToHome} className="home">
             <LazyLoadedImage
@@ -151,7 +159,7 @@ const MenuBar = (props: IMenuBarProps) => {
             )}
           </div>
         ))}
-      </FlexBoxSection>
+      </div>
     </MenuWrapper>
   );
 };

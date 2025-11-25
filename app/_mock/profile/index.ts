@@ -9,13 +9,13 @@ const mockProfileData: IProfileData = {
   header: {
     shortDesc: "Hi, I'm",
     name: "John",
-    currentJobRole: "Lead UI Engineer",
+    currentJobRole: "UI Engineering Leader",
   },
   sections: {
     aboutMe: {
       title: "About Me",
       ref: "homeRef",
-      info: "I'm an enthusiastic <b>Lead UI Engineer</b> aspiring to be <b>UI Architect</b> with 11+ years of technology experience who wants to be an integral part of a competitive work environment, which would help me to update my knowledge and skills, both on the intellectual and personal front while contributing to the growth and success of the organisation.",
+      info: "I'm an enthusiastic <b>UI Engineering Leader</b> aspiring to be <b>UI Architect</b> with 13+ years of technology experience who wants to be an integral part of a competitive work environment, which would help me to update my knowledge and skills, both on the intellectual and personal front while contributing to the growth and success of the organisation.",
       icon: "images/demo-display-pic.avif",
     },
     details: {

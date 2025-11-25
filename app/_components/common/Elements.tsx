@@ -86,7 +86,7 @@ export const SecHeader = styled.header`
   font-size: 40px;
   font-weight: 600;
   margin-bottom: 20px;
-  color: #22a39f;
+  color: #0f766e;
   text-align: center;
   &.export {
     text-align: unset;
@@ -108,6 +108,8 @@ export const SecHeader = styled.header`
 export const Desc = styled.p`
   margin: 0;
   padding-right: 15%;
+  color: #374151;
+  line-height: 1.6;
 
   &.about {
     padding-left: 0;
@@ -125,7 +127,8 @@ export const Desc = styled.p`
     text-align: left;
   }
   strong {
-    color: #3e3e3e;
+    color: #1f2937;
+    font-weight: 600;
   }
 
   @media screen and (max-width: 767px) {
@@ -141,17 +144,22 @@ export const SectionsWrapper = styled.section`
   flex-direction: column;
   justify-content: space-evenly;
   height: 100%;
-  margin-top: 40px;
-  padding-bottom: 40px;
+  padding: 0 20px 60px;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  
   &.export {
     padding-left: 10%;
     margin-top: 0;
   }
+  
   &.hamburger-menu {
     padding-left: 0;
     padding-bottom: 0;
     height: unset;
     padding: 0 10px;
+    
     .profile-section {
       &.links {
         @media screen and (max-width: 767px) {
@@ -160,24 +168,58 @@ export const SectionsWrapper = styled.section`
       }
     }
   }
+  
   .profile-section {
-    margin-bottom: 20px;
-    padding-bottom: 20px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 24px;
+    margin-bottom: 32px;
+    padding: 40px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all var(--transition-normal);
+    opacity: 0;
+    transform: translateY(30px);
+    animation: fadeInUp 0.8s ease-out forwards;
+    
+    &:nth-child(1) { animation-delay: 0.1s; }
+    &:nth-child(2) { animation-delay: 0.2s; }
+    &:nth-child(3) { animation-delay: 0.3s; }
+    &:nth-child(4) { animation-delay: 0.4s; }
+    &:nth-child(5) { animation-delay: 0.5s; }
+    
+    &:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
+    }
+    
+    @media screen and (max-width: 768px) {
+      margin-bottom: 24px;
+      padding: 24px;
+      border-radius: 20px;
+    }
+    
     > header {
+      margin-bottom: 24px;
+      
       @media screen and (max-width: 767px) {
-        margin-bottom: 10px;
+        margin-bottom: 16px;
       }
     }
+    
     .organization {
       margin: 0 auto;
+      
       .org-name {
         text-align: center;
       }
     }
 
     &.links {
-      padding: 15px 0 5px;
-      background-color: #222222;
+      padding: 24px;
+      background: linear-gradient(135deg, rgba(34, 34, 34, 0.95) 0%, rgba(68, 68, 68, 0.95) 100%);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
       position: fixed;
       bottom: 0;
       width: 100%;

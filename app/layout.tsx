@@ -26,6 +26,8 @@ const font = IBM_Plex_Sans({
   weight: "500",
   subsets: ["latin"],
   variable: "--font",
+  display: "swap",
+  preload: true,
 });
 
 export const dynamic = "force-dynamic";
@@ -34,35 +36,46 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // TODO fix below in prod
-  // const isMobile = headers().get("x-devicetype") === "mobile";
+  // Fetch data from local JSON files - fast and reliable
   let hasError = false,
     basicConfigData = DEFAULT_APP_CONTEXT.data,
     preloadSrcList: any[] = [],
     features = DEFAULT_APP_CONTEXT.data.features;
 
-  await getApiData("app").then(
-    (success) => {
-      ({ data: basicConfigData = DEFAULT_APP_CONTEXT.data, preloadSrcList } =
-        success);
-    },
-    () => {
-      hasError = true;
-    }
-  );
+  try {
+    const [appData, featureData] = await Promise.allSettled([
+      getApiData("app", { next: { revalidate: 3600 } }),
+      getApiData("feature", { next: { revalidate: 3600 } }),
+    ]);
 
-  await getApiData("feature", { cache: "no-store" }).then(
-    (success) => {
-      features = success;
-    },
-    () => {
+    if (appData.status === "fulfilled") {
+      ({ data: basicConfigData = DEFAULT_APP_CONTEXT.data, preloadSrcList } =
+        appData.value);
+    } else {
       hasError = true;
     }
-  );
+
+    if (featureData.status === "fulfilled") {
+      features = featureData.value;
+    } else {
+      hasError = true;
+    }
+  } catch (error) {
+    hasError = true;
+    console.error("Error loading layout data:", error);
+  }
 
   return (
     <html lang="en" className={font.className}>
-      <link rel="manifest" href="/manifest.json" />
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        {/* Preconnect to external domains */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* DNS Prefetch */}
+        <link rel="dns-prefetch" href="https://vitals.vercel-insights.com" />
+        <link rel="dns-prefetch" href="https://va.vercel-scripts.com" />
+      </head>
       <body>
         <StoreProvider>
           <AppProviderClient

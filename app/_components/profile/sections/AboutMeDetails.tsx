@@ -10,7 +10,7 @@ import { ProfileContext } from "@/_store/profile/page/context";
 import { AboutMeDetailType } from "@/_store/profile/types";
 import { getHref, lowercase } from "@/_utils/profile/server";
 import classNames from "classnames";
-import { useContext } from "react";
+import { JSX, useContext } from "react";
 import CopyToClipboard from "react-copy-to-clipboard";
 import { CopyButton, DetailSection } from "../Elements";
 
