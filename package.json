@@ -6,9 +6,10 @@
     "dev": "tsc --noEmit && next dev -p 3737",
     "build": "rm -rf .next && next build",
     "build:analyze": "ANALYZE=true npm run build",
-    "start": "next start",
+    "start": "next start -p 3737",
     "lint": "next lint",
-    "serve": "next build && next start",
+    "serve": "next build && next start -p 3737",
+    "prod": "lsof -ti:3737 | xargs kill -9 2>/dev/null || true && NODE_TLS_REJECT_UNAUTHORIZED=0 npm run build && NODE_TLS_REJECT_UNAUTHORIZED=0 npm start",
     "prepare": "husky"
   },
   "husky": {

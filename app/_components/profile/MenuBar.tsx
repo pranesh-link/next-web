@@ -22,7 +22,7 @@ const MenuBar = (props: IMenuBarProps) => {
   const router = useRouter();
   const pwaOffsetState = useAppSelector((state) => state.app.pwaOffset);
   const { onMenuChange } = props;
-  const initialOffset = useMemo(() => (isMobile ? 80 : 80), [isMobile]);
+  const initialOffset = useMemo(() => (isMobile ? 80 : 20), [isMobile]);
   const [isScrolled, setIsScrolled] = useState(false);
   
   const goTo = (section: string) => {
