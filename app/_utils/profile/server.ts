@@ -1,4 +1,4 @@
-import { CORS_MODE, SERVER_FILES_LOC } from "@/_constants/profile";
+import { CORS_MODE } from "@/_constants/profile";
 import { ILink, IPreloadedAsset } from "@/_store/profile/types";
 
 export const lowercase = (str: string) => str.toLowerCase().replace(/ /g, "");
@@ -88,10 +88,10 @@ export const toDataURL = async (url: string, imageId: string) => {
 };
 
 export const getIconUrl = (url: string) =>
-  `${process.env.NEXT_PUBLIC_CMS_SERVER}/${url}`;
+  `${process.env.NEXT_PUBLIC_SITE_URL}/api/images/${url}`;
 
 export const getPdfUrl = (fileName: string) => {
-  return `${process.env.NEXT_PUBLIC_CMS_SERVER}${SERVER_FILES_LOC}/${fileName}`;
+  return `${process.env.NEXT_PUBLIC_SITE_URL}/api/files/${fileName}`;
 };
 
 export const getPreloadedAsset = (assets: IPreloadedAsset[], assetId: string) =>

@@ -7,7 +7,7 @@ import VersionModal from "@/_components/modal/common/VersionModal";
 import { SECTION_ORDER_DISPLAY } from "@/_constants/profile";
 import { ProfileContext } from "@/_store/profile/page/context";
 import classNames from "classnames";
-import React, { useContext, useMemo, useState } from "react";
+import React, { JSX, useContext, useMemo, useState } from "react";
 import {
   CurrentJobRole,
   PageHeader,
@@ -135,16 +135,21 @@ const ProfileSections = (props: IProfileSectionsProps) => {
           isMobile,
         })}
       >
-        {!isExport && <ShortDesc>{shortDesc}</ShortDesc>}
-        <PageHeader>
-          {HorizontalSep}
-          <span>{name}</span>
-          {HorizontalSep}
-        </PageHeader>
-        <FlexBox $direction="column" $alignItems="center">
-          <CurrentJobRole>{currentJobRole}</CurrentJobRole>
-          <Separator className={classNames({ export: isExport })} />
-        </FlexBox>
+        {!isExport && (
+          <div style={{ textAlign: 'center', paddingBottom: '20px', marginBottom: '20px' }}>
+            <ShortDesc>{shortDesc}</ShortDesc>
+            <PageHeader>
+              {HorizontalSep}
+              <span>{name}</span>
+              {HorizontalSep}
+            </PageHeader>
+            <FlexBox $direction="column" $alignItems="center">
+              <CurrentJobRole>{currentJobRole}</CurrentJobRole>
+              <Separator className={classNames({ export: isExport })} />
+            </FlexBox>
+          </div>
+        )}
+        
         <SectionsWrapper className={classNames({ export: isExport })}>
           {reOrderedSectionComponents.map((section, index) => {
             return section.display !== false ? (
@@ -154,6 +159,9 @@ const ProfileSections = (props: IProfileSectionsProps) => {
                   "last-info-section":
                     index === reOrderedSectionComponents.length - 2,
                 })}
+                style={{
+                  animationDelay: `${(index + 1) * 0.1}s`
+                }}
               >
                 {section.component}
               </SectionWrap>
@@ -165,6 +173,23 @@ const ProfileSections = (props: IProfileSectionsProps) => {
               onClick={(e) => {
                 e.preventDefault();
                 setDisplayVersionModal(true);
+              }}
+              style={{
+                background: 'rgba(255, 255, 255, 0.9)',
+                color: '#667eea',
+                borderRadius: '20px',
+                padding: '8px 16px',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                transition: 'all 0.3s ease',
+                border: '1px solid rgba(102, 126, 234, 0.2)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.15)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
               }}
             >
               v{version}

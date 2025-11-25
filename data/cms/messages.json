@@ -1,0 +1,6 @@
+{
+  "common": {
+    "offline": "You seem to be offline. <br/>Please check your network connection and try again.",
+    "retry": "Try again"
+  }
+}

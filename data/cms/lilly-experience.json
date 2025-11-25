@@ -1,0 +1,19 @@
+{
+  "designation": "Consultant II",
+  "name": "Eli Lilly and Co",
+  "from": "Jul 2024",
+  "type": "Current",
+  "responsibilities": "<ul><li>Led a team of 8 developers </li><li>Integrate multiple MFE applications to the primary Marketplace application</li><li>Design and development of web UI</li><li>Unit test and integration tests</li><li>Code review with fellow colleagues</li><li>Mentor team towards better coding standards and practices</li><li>Independent development contribution of features</li><li>Development of reusable UI components</li></ul>",
+  "projects": [
+    {
+      "title": "Marketplace",
+      "shortTitle": "Marketplace",
+      "client": "Eli Lilly and Co",
+      "duration": "Jul 2024 - till date",
+      "role": "Lead developer",
+      "softwareTech": "React,Typescript, CSS, HTML5, Jest, React Testing library, MFE",
+      "description": "Marketplace is the front end for Enterprise Data, where users can take advantage of services Enterprise Data provides. This includes ingesting data into the Enterprise Data Backbone, initiating Data Projects, Connecting those Projects to the Analytics Work Bench (AWB), and searching for Marketplace Entries representing data that is available for users, enabling users to ask for access to that data.",
+      "links": []
+    }
+  ]
+}

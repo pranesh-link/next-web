@@ -1,0 +1,27 @@
+{
+  "title": "Links",
+  "info": [
+    {
+      "label": "github",
+      "link": "https://github.com/pranesh-link/"
+    },
+    {
+      "label": "linkedIn",
+      "link": "https://www.linkedin.com/in/pranesh-g/"
+    },
+    {
+      "label": "whatsApp",
+      "link": "https://wa.me/919443329991?text=Hi Pranesh"
+    },
+    {
+      "label": "facebook",
+      "link": "https://www.facebook.com/anonymousOffl/",
+      "display": false
+    },
+    {
+      "label": "twitter",
+      "link": "https://twitter.com/anonymous_offl",
+      "display": false
+    }
+  ]
+}

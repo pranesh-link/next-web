@@ -1,0 +1,60 @@
+{
+  "designation": "Manager",
+  "name": "Standard Chartered GBS",
+  "from": "Jun 2012",
+  "to": "Jan 2021",
+  "type": "Previous",
+  "responsibilities": "<ul> <li>Design and development of web UI</li><li>Showcasing the application developed to stakeholders in Sprint demo sessions by following an Agile Development Methodology</li><li>Facilitate junior developers towards better coding practices through more code reviews</li><li>Independent development contribution of features</li><li>Development of reusable UI components</li><li>Device testing of application on iPad</li><li>Build and upload of iOS application of the product developed to TestFlight (App store) for testing by the stakeholders</li><li>Production release activities</li><li>Deployment and maintenance of Web Server</li><li>DevOps with build and release automation</li></ul>",
+  "projects": [
+    {
+      "title": "aXess Developer Platform",
+      "shortTitle": "aXess Developer Platform",
+      "client": "Standard Chartered Bank",
+      "duration": "Apr 2020 - Jan 2021",
+      "role": "Lead developer/ Individual contributor",
+      "softwareTech": "React, Redux, Typescript, CSS, HTML5, GraphQL",
+      "description": "aXess is a Developer platform built in-house to facilitate the developer community toward better communication. Every existing employee can manage their role profile associated with the Bank and can <br><ul><li>extend to offer help based on their skillset</li><li>add teams to coordinate and work together</li><li>create/manage survey</li><li>share APIs, APPs, Libraries which can be useful for other teams within the Bank</li><li>manage the Application(s) developed by their respective teams <br><b>(feature developer)</b></br></li><li>create/manage share ideas with the Developer community using Idea Boards <br><b>(feature developer)</b></br></li><li>create/manage Squads, Tribes to improvise Agile coordination within teams <br><b>(feature developer)</b></br></li><li>create/manage POCs</li></ul>",
+      "links": []
+    },
+    {
+      "title": "Real Time On-boarding",
+      "shortTitle": "Real Time On-boarding",
+      "client": "Standard Chartered Bank",
+      "duration": "Jan 2017 - Mar 2020",
+      "role": "Lead developer",
+      "softwareTech": "Ember CLI, AngularJS, CSS, HTML5, Cordova, Xcode",
+      "description": "Real Time On-boarding is a future driven initiative, with creation of bank accounts in real time to the customers using the pre-populated customer details from their Identity proofs",
+      "links": []
+    },
+    {
+      "title": "Retail Workbench",
+      "shortTitle": "Retail Workbench",
+      "client": "Standard Chartered Bank",
+      "duration": "May 2015 - Dec 2016",
+      "role": "Senior developer",
+      "softwareTech": "Ember CLI, AngularJS, CSS, HTML5, Cordova, Xcode",
+      "description": "Retail Workbench is a digital channel to get customers onboarded to bank and used by Relationship managers. It bankrolls on the offline cache feature",
+      "links": []
+    },
+    {
+      "title": "Breeze Mobile Web(BMW) - Indonesia [SKN/DFS]",
+      "shortTitle": "BMW Indonesia",
+      "client": "Standard Chartered Bank",
+      "duration": "Feb 2015 - Apr 2015",
+      "role": "Senior developer",
+      "softwareTech": "Ember CLI, CSS, HTML5, Cordova",
+      "description": "Breeze Mobile Web was developed with focus on giving a ease of use Banking experience anytime and at any place in their mobile devices. The application use simple yet comprehensive provided it’s users all the basic banking features at their hands.",
+      "links": []
+    },
+    {
+      "title": "Breeze Mobile Web(BMW) - India",
+      "shortTitle": "BMW India",
+      "client": "Standard Chartered Bank",
+      "duration": "Jan 2013 - Feb 2015",
+      "role": "Developer",
+      "softwareTech": "Ember CLI, CSS, HTML5, Cordova",
+      "description": "Breeze Mobile Web India had an initial launch in August 2013 (Phase1) which met user’s basic banking needs.In July 2014 Phase 2 was released with added features of Mobile Top up, EMI breakup and Locate a branch or ATM.Breeze India had subsequent CR release for reducing the timeouts of some functionalities and fixes in February 2015.",
+      "links": []
+    }
+  ]
+}

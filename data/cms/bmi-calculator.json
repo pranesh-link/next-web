@@ -1,0 +1,94 @@
+{
+  "name": "bmi-calculator",
+  "header": "BMI Calculator",
+  "defaultMaxLength": 6,
+  "permissibleHeights": {
+    "min": 50,
+    "max": 350
+  },
+  "permissibleWeights": {
+    "min": 2,
+    "max": 700
+  },
+  "showErrorOnMobileBrowsers": true,
+  "hideRemainingCharacters": true,
+  "label": {
+    "reset": "Reset",
+    "reduce": "reduce",
+    "ideal": "ideal",
+    "increase": "gain",
+    "weightSuggest": "To keep your BMI within a healthy range, <span class='weight-direction'>{0}</span> at least <span class='weight-to-adjust'>{1} kg</span>.",
+    "healthyBMI": "You're in a <span class='healthy-bmi'>healthy</span> BMI range",
+    "idealWeightRange": "The ideal weight range for you is between <span class='min'>{0}</span> and <span class='max'>{1} kg</span>",
+    "invalidHeightWeightError": "Please enter valid height and weight of an adult. <span>Height range: {0} cm</span><span> Weight range: {1} kg</span>"
+  },
+  "bmiRanges": [
+    {
+      "id": "underWeight",
+      "max": 18.5,
+      "label": "Underweight",
+      "prefixedPercentile": 0,
+      "color": "#3498db"
+    },
+    {
+      "id": "healthyWeight",
+      "min": 18.5,
+      "max": 24.9,
+      "label": "Healthy weight",
+      "isHealthyRange": true,
+      "prefixedPercentile": 20,
+      "color": "#3f9c35"
+    },
+    {
+      "id": "overWeight",
+      "min": 25,
+      "max": 29.9,
+      "label": "Overweight",
+      "prefixedPercentile": 40,
+      "color": "#ffba00"
+    },
+    {
+      "id": "obese",
+      "min": 30,
+      "max": 39.9,
+      "label": "Obese",
+      "prefixedPercentile": 60,
+      "color": "#ee4b2b"
+    },
+    {
+      "id": "severeObese",
+      "min": 40,
+      "label": "Severely obese",
+      "prefixedPercentile": 80,
+      "color": "#ff0000"
+    }
+  ],
+  "fields": [
+    {
+      "id": "heightInCm",
+      "name": "heightInCm",
+      "label": "Height (cm)",
+      "placeholder": "Enter your height in cm",
+      "type": "text",
+      "required": true,
+      "regex": "^\\d+(\\.\\d{1,2})?$",
+      "maxLength": 6,
+      "messages": {
+        "regexError": "Please enter whole or decimal numbers like 157.5 or 183.56."
+      }
+    },
+    {
+      "id": "weightInKg",
+      "name": "weightInKg",
+      "label": "Weight (kg)",
+      "placeholder": "Enter your weight in kg",
+      "type": "text",
+      "required": true,
+      "regex": "^\\d+(\\.\\d{1,2})?$",
+      "maxLength": 6,
+      "messages": {
+        "regexError": "Please enter whole or decimal numbers like 79.6 or 90.75."
+      }
+    }
+  ]
+}

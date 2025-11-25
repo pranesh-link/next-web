@@ -1,0 +1,80 @@
+{
+  "header": {
+    "shortDesc": "Hello, I'm",
+    "name": "Pranesh",
+    "currentJobRole": "UI Engineering Leader"
+  },
+  "aboutMe": {
+    "title": "About Me",
+    "ref": "homeRef",
+    "info": "I am a passionate <b>UI Engineering Leader</b> with over 13 years of experience, aspiring to become a <b>UI Architect</b>. I thrive in dynamic and competitive environments that foster continuous learning and professional growth. My goal is to enhance my technical and personal skills while making meaningful contributions to the success of the organization.",
+    "icon": "images/display-pic.avif",
+    "pdfExportIcon": "https://profile-jsons.pranesh.link/images/display-pic.avif"
+  },
+  "details": {
+    "title": "Details",
+    "info": [
+      {
+        "id": "location",
+        "label": "Lives in",
+        "info": "Bengaluru, India"
+      },
+      {
+        "id": "mobile",
+        "label": "Mobile",
+        "info": "+91-9443329991",
+        "canCopy": true
+      },
+      {
+        "id": "email",
+        "label": "E-mail",
+        "info": "prans1991@gmail.com",
+        "canCopy": true
+      }
+    ]
+  },
+  "education": {
+    "title": "Education",
+    "ref": "educationRef",
+    "info": "<strong>B.E (Electronics and Communication)</strong>, Sri Krishna College of Engineering and Technology, Coimbatore"
+  },
+  "experiences": {
+    "title": "Experiences",
+    "ref": "experienceRef",
+    "info": [
+      {
+        "ref": "lilly-experience.json",
+        "name": "Eli Lilly and Co"
+      },
+      {
+        "ref": "brillio-experience.json",
+        "name": "Brillio Technologies"
+      },
+      {
+        "ref": "scgbs-experience.json",
+        "name": "Standard Chartered GBS"
+      }
+    ]
+  },
+  "openSourceProjects": {
+    "title": "Open source projects",
+    "ref": "openSourceRef",
+    "info": [
+      {
+        "id": "react-profile-component",
+        "title": "React Profile Component",
+        "npm": "https://www.npmjs.com/package/react-profile-component",
+        "github": "https://github.com/pranesh-link/react-profile-component",
+        "skillsUsed": "React 18, HTML, CSS, TypeScript",
+        "description": "React profile component is a lightweight component which can be used to display different sections of your Profile/ Portfolio page using a configurable data approach."
+      },
+      {
+        "id": "angular-files",
+        "title": "Angular files",
+        "github": "https://github.com/pranesh-link/angular-files",
+        "skillsUsed": "Angular 10, HTML, CSS, TypeScript, NodeJS",
+        "description": "Angular files is an Intranet file sharing application and is useful to share files from a common host server by any machine connected to the Intranet."
+      }
+    ]
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "name": "contact-form",
+  "header": "Contact Me",
+  "actionButtonLabel": "Contact Me",
+  "label": {
+    "submit": "Send",
+    "submitting": "Sending...",
+    "reviewEdit": "Review & edit",
+    "close": "Close"
+  },
+  "key": "asecretkey",
+  "defaultMaxLength": 20,
+  "statusMessages": {
+    "sending": "Almost there! your request is in progress...",
+    "success": "Request sent successfully! You will be contacted soon.",
+    "error": "<span>Something went wrong. </span> <span> Please try sending again.</span>",
+    "review": "<span> Your request is about to be sent. </span> <span> You can <i style='color: #b21807'><b>review and edit</b></i> or <i style='color: #3fc935'><b>send</b></i> the request now.</span>",
+    "offline": "<span>You seem to be offline.</span> <span> Please check your network connection and try again.</span>"
+  },
+  "messages": {
+    "mandatoryError": "* This field is required"
+  },
+  "transformFields": [
+    { "id": "userSocialMessengers", "transform": "boolToYesNo" }
+  ],
+  "fields": [
+    {
+      "id": "userName",
+      "name": "userName",
+      "label": "Name",
+      "placeholder": "Enter your name",
+      "required": true,
+      "type": "text",
+      "maxLength": 25,
+      "regex": ""
+    },
+    {
+      "id": "userMobile",
+      "name": "userMobile",
+      "label": "Mobile",
+      "placeholder": "Enter your mobile number",
+      "required": true,
+      "type": "mobile",
+      "maxLength": 15,
+      "childFields": ["userSocialMessengers"],
+      "regex": "",
+      "messages": {
+        "regexError": "Oops, that doesn't seem right. Please enter numbers.",
+        "fieldError": "Oops, that doesn't seem right. The phone number doesn't match the selected country"
+      }
+    },
+    {
+      "id": "userSocialMessengers",
+      "name": "userSocialMessengers",
+      "label": "",
+      "placeholder": "",
+      "type": "checkbox",
+      "parentField": "userMobile",
+      "values": [{ "label": "WhatsApp", "value": "whatsapp" }]
+    },
+    {
+      "id": "userEmail",
+      "name": "userEmail",
+      "label": "E-mail",
+      "placeholder": "Enter your E-mail",
+      "required": true,
+      "subType": "email",
+      "type": "text",
+      "maxLength": 50,
+      "regex": "[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,4}",
+      "messages": {
+        "regexError": "Oops, that doesn't seem right. Please try with valid email"
+      }
+    },
+    {
+      "id": "message",
+      "name": "message",
+      "label": "Message",
+      "placeholder": "Enter your message",
+      "required": true,
+      "type": "textarea",
+      "maxLength": 200,
+      "regex": ""
+    }
+  ]
+}

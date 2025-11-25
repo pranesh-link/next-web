@@ -1,0 +1,110 @@
+{
+  "title": "Skills",
+  "ref": "skillsRef",
+  "info": [
+    {
+      "label": "HTML 5",
+      "star": 3
+    },
+    {
+      "label": "CSS 3",
+      "star": 3
+    },
+    {
+      "label": "SASS",
+      "star": 3
+    },
+    {
+      "label": "JavaScript",
+      "star": 4
+    },
+    {
+      "label": "Cordova",
+      "star": 3
+    },
+    {
+      "label": "React",
+      "star": 4
+    },
+    {
+      "label": "TypeScript",
+      "star": 4
+    },
+    {
+      "label": "Jest",
+      "star": 3
+    },
+    {
+      "label": "React Testing Library",
+      "star": 3
+    },
+    {
+      "label": "Micro Frontends",
+      "star": 4
+    },
+    {
+      "label": "Next.JS",
+      "star": 3
+    },
+    {
+      "label": "AWS - S3",
+      "star": 4
+    },
+    {
+      "label": "Amazon CloudFront",
+      "star": 3
+    },
+    {
+      "label": "Amazon Route53",
+      "star": 3
+    },
+    {
+      "label": "AWS - CodePipeline",
+      "star": 4
+    },
+    {
+      "label": "AWS - CodeBuild",
+      "star": 4
+    },
+    {
+      "label": "Git",
+      "star": 4
+    },
+    {
+      "label": "Angular 5",
+      "star": 3
+    },
+    {
+      "label": "AngularJS",
+      "star": 3
+    },
+    {
+      "label": "EmberJS",
+      "star": 3
+    },
+    {
+      "label": "Jquery",
+      "star": 3
+    },
+    {
+      "label": "SVN",
+      "star": 3
+    },
+    {
+      "label": "Jenkins",
+      "star": 4
+    },
+    {
+      "label": "Xcode",
+      "star": 3
+    },
+    {
+      "label": "Jasmine",
+      "star": 3
+    },
+    {
+      "label": "Karma",
+      "star": 3
+    }
+  ]
+}

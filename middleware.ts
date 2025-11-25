@@ -24,8 +24,22 @@ export async function middleware(req: NextRequest) {
     const requestHeaders = new Headers(req.headers);
     requestHeaders.set("x-pathname", req.nextUrl.pathname);
     requestHeaders.set("x-devicetype", deviceType);
+    
+    // Add performance and security headers
+    const responseHeaders = new Headers();
+    
+    // Performance headers
+    responseHeaders.set('X-DNS-Prefetch-Control', 'on');
+    responseHeaders.set('X-Frame-Options', 'SAMEORIGIN');
+    responseHeaders.set('X-Content-Type-Options', 'nosniff');
+    responseHeaders.set('Referrer-Policy', 'origin-when-cross-origin');
+    responseHeaders.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    
     const jsonResponse = await (
-      await fetch(getApiUrl("maintenance"), { cache: "no-store" })
+      await fetch(getApiUrl("maintenance"), { 
+        cache: "no-store",
+        next: { revalidate: 300 } // Cache for 5 minutes
+      })
     ).json();
     const { searchParams, pathname } = req.nextUrl;
 
@@ -36,7 +50,7 @@ export async function middleware(req: NextRequest) {
 
     if (showMaintenancePage) {
       req.nextUrl.pathname = ROUTES.ROUTE_MAINTENANCE;
-      return NextResponse.redirect(req.nextUrl);
+      return NextResponse.redirect(req.nextUrl, { headers: responseHeaders });
     }
 
     if (
@@ -56,16 +70,19 @@ export async function middleware(req: NextRequest) {
     }
 
     if (pathname.includes("aishr")) {
-      return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_CMS_SERVER}/files/Aishwarya_G_S_Resume.pdf`
-      );
+      req.nextUrl.pathname = "/api/files/Aishwarya_G_S_Resume.pdf";
+      return NextResponse.rewrite(req.nextUrl, { headers: responseHeaders });
     }
+    
     return NextResponse.next({
       request: {
         headers: requestHeaders,
       },
+      headers: responseHeaders,
     });
   } catch (e) {
     console.error("error", e);
+    // Return without maintenance check if API fails
+    return NextResponse.next();
   }
 }

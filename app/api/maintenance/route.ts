@@ -1,15 +1,32 @@
-import connectDB from "@/config/database";
-import MaintenanceModel from "@/models/maintenanceModel";
 import { NextResponse } from "next/server";
+import { promises as fs } from 'fs';
+import path from 'path';
 
-export const dynamic = "force-dynamic";
+// Cache for 5 minutes
+export const revalidate = 300;
 
 export async function GET() {
-  await connectDB();
   try {
-    const data = await MaintenanceModel.findOne();
-    return NextResponse.json(JSON.parse(JSON.stringify(data)));
+    const maintenanceFilePath = path.join(process.cwd(), 'data', 'cms', 'maintenance.json');
+    const fileContent = await fs.readFile(maintenanceFilePath, 'utf-8');
+    const maintenanceData = JSON.parse(fileContent);
+    
+    return NextResponse.json(maintenanceData, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+      },
+    });
   } catch (error) {
-    return NextResponse.json({ msg: "GET", error });
+    console.error('Maintenance API error:', error);
+    // Return default (not in maintenance mode)
+    return NextResponse.json(
+      { isInMaintenance: false },
+      { 
+        status: 200,
+        headers: {
+          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
+        },
+      }
+    );
   }
 }

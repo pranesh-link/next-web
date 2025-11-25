@@ -3,7 +3,7 @@ import {
   isInstanceOfPageLink,
   isInstanceOfPageLinkCollection,
 } from "@/_utils/common";
-import React, { useContext } from "react";
+import React, { JSX, useContext } from "react";
 import { styled } from "styled-components";
 import { FlexBox, FlexBoxSection } from "../common/Elements";
 import PageLink from "./PageLink";

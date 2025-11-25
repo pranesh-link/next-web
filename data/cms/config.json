@@ -1,0 +1,127 @@
+{
+  "jsonConfig": {
+    "defaultConfig": [
+      {
+        "name": "pwa",
+        "type": "defaultConfig",
+        "ref": "pwa.json"
+      },
+      { "name": "links", "type": "profileConfig", "ref": "links.json" },
+      {
+        "name": "maintenance",
+        "type": "defaultConfig",
+        "ref": "maintenance.json"
+      },
+      {
+        "name": "messages",
+        "type": "defaultConfig",
+        "ref": "messages.json"
+      },
+      {
+        "name": "bmiCalculatorForm",
+        "type": "defaultConfig",
+        "ref": "bmi-calculator.json"
+      }
+    ],
+    "profileConfig": [
+      {
+        "name": "profileSections",
+        "type": "profileConfig",
+        "ref": "profile-sections.json"
+      },
+      { "name": "links", "type": "profileConfig", "ref": "links.json" },
+      { "name": "download", "type": "profileConfig", "ref": "download.json" },
+      { "name": "skills", "type": "profileConfig", "ref": "skills.json" },
+      {
+        "name": "contactForm",
+        "type": "profileConfig",
+        "ref": "contact-form.json"
+      },
+      {
+        "name": "profileLabels",
+        "type": "profileConfig",
+        "ref": "profile-labels.json"
+      }
+    ]
+  },
+  "appConfig": {
+    "homepage": {
+      "profileRedirectDelay": 3,
+      "title": "Welcome",
+      "pages": [
+        {
+          "id": "my-profile",
+          "label": "My profile",
+          "route": "PROFILE"
+        },
+        {
+          "id": "tools",
+          "label": "Tools",
+          "links": [
+            {
+              "id": "bmi-calculator",
+              "label": "BMI Calculator",
+              "route": "BMICALCULATOR"
+            }
+          ]
+        }
+      ]
+    },
+    "notFoundPage": {
+      "title": "<h1>Whoops!</h1> <h3> The page you're looking for is not found on this site </h3>"
+    },
+    "labels": {
+      "goToHomePage": "Redirecting you to homepage in {0} seconds..."
+    },
+    "pwa": {
+      "browsers": ["Chrome"],
+      "os": ["Android"]
+    },
+    "preloadSrcList": [
+      {
+        "id": "offlineAnimation",
+        "type": "image",
+        "fileName": "offline-animation.gif",
+        "fileLocation": "web"
+      },
+      {
+        "id": "contactMeIcon",
+        "type": "image",
+        "fileName": "contact-me.png",
+        "fileLocation": "web"
+      },
+      {
+        "id": "loadingAnimation",
+        "type": "image",
+        "fileName": "loading-animation.gif",
+        "fileLocation": "web"
+      },
+      {
+        "id": "successAnimation",
+        "type": "image",
+        "fileName": "success-animation.gif",
+        "fileLocation": "web"
+      },
+      {
+        "id": "errorAnimation",
+        "type": "image",
+        "fileName": "error-animation.gif",
+        "fileLocation": "web"
+      },
+      {
+        "id": "resume",
+        "type": "pdf",
+        "fileName": "Pranesh_Resume.pdf",
+        "fileLocation": "server"
+      }
+    ],
+    "requiredRefs": [
+      "homeRef",
+      "skillsRef",
+      "experienceRef",
+      "educationRef",
+      "contactRef",
+      "openSourceRef"
+    ]
+  }
+}

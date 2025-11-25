@@ -1,0 +1,70 @@
+{
+  "designation": "Senior Lead Engineer, XT",
+  "name": "Brillio Technologies",
+  "from": "Jan 2021",
+  "to": "Jun 2024",
+  "type": "Previous",
+  "responsibilities": "<ul><li>Design and development of web UI</li><li>Unit test and integration tests</li><li>Code review with fellow colleagues</li><li>Mentor team towards better coding standards and practices</li><li>Independent development contribution of features</li><li>Development of reusable UI components</li></ul>",
+  "projects": [
+    {
+      "title": "Health Care Provider (HCP) Portal",
+      "shortTitle": "HCP",
+      "client": "CareMetx",
+      "duration": "Mar 2024 - June 2024",
+      "role": "Lead developer/ Individual contributor",
+      "softwareTech": "React, Next.JS, Typescript, CSS, HTML5, Jest, React Testing library",
+      "description": " HCP Portals (Health Care Provider Portals) lets healthcare professionals use it's online resources and get informed on clinical trials, studies and once registered they will be able to: <ul><li>View and track patients enrolled in CAP</li>  <li>Receive reimbursement and refill alerts</li><li>Electronically enroll patients in CAP<li>View specialty pharmacy dispense information</li><li>View specialty pharmacy contact information</li><li>Manage your user account</li></ul>",
+      "links": []
+    },
+    {
+      "title": "My Account",
+      "shortTitle": "My Account",
+      "client": "McAfee",
+      "duration": "Jun 2023 - Jan 2024",
+      "role": "Lead developer/ Individual contributor",
+      "softwareTech": "React, Typescript, CSS, HTML5, Jest, React Testing library",
+      "description": "My Account lets users view and manage their account details, subscription information, access product downloads, and more. User's McAfee account is created with the email address that they provide when they purchase a product subscription from McAfee, making them the owner of the account. The account email address and password are also used to log into their apps. <br/> Below can be viewed and managed with MyAccount. <br/> <ul><li><b>My Profile:</b> View or update your personal information.</li>  <li><b>Auto-Renewal Settings:</b> Enable or disable Auto-Renewal.</li><li><b>Subscriptions: </b>View a list of active and expired subscriptions and details.</li><li><strong>Additional Rewards</strong>: View other services offered.</li><li><strong>Redeem Your Retail Card</strong>: Redeem subscriptions purchased through the retail store.</li><li><b>Update Profile:</b> Update your personal information and address.</li><li><b>Edit Billing:</b> Change or update your billing information.</li><li><strong>Common FAQs</strong>: Get answers to commonly asked questions.</li></ul>",
+      "links": ["https://myaccount.mcafee.com"]
+    },
+    {
+      "title": "Orchestrated Customer Engagement (OCE)",
+      "shortTitle": "OCE",
+      "client": "IQVIA",
+      "duration": "Apr 2023 - Jun 2023",
+      "role": "Lead developer/ Individual contributor",
+      "softwareTech": "React, Typescript, CSS, HTML5, Jest, React Testing library",
+      "description": "OCE adds IQVIA's Next Best Recommendation Engine to our industry-leading Orchestrated Customer Engagement (OCE) platform. Embedded intelligence provides insights in daily workflows to make action easy.",
+      "links": []
+    },
+    {
+      "title": "Small Business Security",
+      "shortTitle": "Small Business Security",
+      "client": "McAfee",
+      "duration": "Jan 2023 - Mar 2023",
+      "role": "Lead developer/ Individual contributor",
+      "softwareTech": "React, Typescript, CSS, HTML5, Docker, Jest, React Testing library",
+      "description": "Small Business solution is a new plan intended towards small businesses of up to ~10 employees. In most small businesses, IT & security management activities are generally performed by a single person - we will call them Admin - who is also generally responsible for purchasing security software and having it installed on all devices used by the SB.<br> For better management, it is often required to relate individual devices to their users / owners and a different set of security policies may be applied to different groups of users. SB solution provides a convenient web-based application that can be used by SB Admin to monitor security state of his business, manage employees, their devices, apply security policies and generate insights.",
+      "links": ["https://business.mcafee.com/"]
+    },
+    {
+      "title": "Planner Plus",
+      "shortTitle": "Planner Plus",
+      "client": "Ciena",
+      "duration": "Aug 2022 - Dec 2022",
+      "role": "Lead developer/ Individual contributor",
+      "softwareTech": "React, Typescript, CSS, HTML5, Docker",
+      "description": "With PlannerPlus, you can easily design photonic DWDM networks and validate them using sophisticated link engineering, resulting in designs that are guaranteed over the life of the system. Choose from a wide range of configurations for planning photonic lines over fiber routes, and supporting wavelengths from 10G to 800G—as well as planning client services over those wavelengths. <br>PlannerPlus automates the workflow, creates the quote, and generates commissioning scripts. Once the physical equipment is in place, deployment is a mere click away.",
+      "links": []
+    },
+    {
+      "title": "Manage, Control and Plan (MCP)",
+      "shortTitle": "MCP",
+      "client": "Ciena",
+      "duration": "Feb 2021 - Oct 2022",
+      "role": "Lead developer/ Individual contributor",
+      "softwareTech": "EmberJS, Docker",
+      "description": "Manage, Control and Plan (MCP) software converges the complete network operations lifecycle through network planning,infrastructure commissioning, service fulfillment, and service assurance. MCP converges network and service managementthroughout the complete lifecycle. It enables carriers and enterprises to take advantage of the following:<br><ul><li>Lower operating expenditures</li><li>Lower capital expenditure</li><li>Increased revenues and ROI</li></ul>",
+      "links": []
+    }
+  ]
+}

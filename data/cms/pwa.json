@@ -1,0 +1,12 @@
+{
+  "messages": {
+    "install": "Installing almost uses no storage and provides a quick way to return to this app.",
+    "yes": "Install",
+    "relatedApp": "You have a related app to access the data seamlessly.",
+    "open": "Open",
+    "no": "Not now",
+    "installApp": "Install",
+    "openApp": "Open app"
+  },
+  "bannerExpiryTime": 86400
+}

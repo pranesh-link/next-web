@@ -13,7 +13,7 @@ import { AppContext } from "@/_store/app/context";
 import { ProfileContext } from "@/_store/profile/page/context";
 import { ILink, ILinkInfo, LinkType } from "@/_store/profile/types";
 import { getFilteredLinks } from "@/_utils/profile/server";
-import React, { useContext, useMemo, useRef } from "react";
+import React, { JSX, useContext, useMemo, useRef } from "react";
 import { ContactsSection } from "../Elements";
 
 interface IContactProps {

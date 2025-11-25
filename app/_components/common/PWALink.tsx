@@ -25,9 +25,9 @@ export default function PWALink(props: IPWALinkProps) {
 
   const LinkContent = () => (
     <FlexBox $alignItems="center">
-      <ActionBtn className="mobile-application-icon">
+      <div className="mobile-application-icon">
         <MobileApplicationIcon />
-      </ActionBtn>
+      </div>
       <span className="install-app-text">
         {isAppInstalledState ? messages.open : messages.installApp}
       </span>
