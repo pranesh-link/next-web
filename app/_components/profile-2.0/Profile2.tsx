@@ -5,7 +5,6 @@ import { ProfileProvider } from "@/_store/profile/page/context";
 import { IProfileContext } from "@/_store/profile/types";
 import Navigation from "./navigation/Navigation";
 import MobileMenu from "./navigation/MobileMenu";
-import ContactSection from "./sections/ContactSection";
 import HeroSection from "./sections/HeroSection";
 import AboutSection from "./sections/AboutSection";
 import SkillsSection from "./sections/SkillsSection";
@@ -265,9 +264,6 @@ export const Profile2: React.FC<Profile2Props> = ({ profileContext }) => {
             {/* Open source projects */}
             <OpenSourceSection />
           </ContentWrapper>
-
-          {/* Sticky contact section at bottom */}
-          <ContactSection />
 
           {/* Scroll to top button */}
           <ScrollToTop
