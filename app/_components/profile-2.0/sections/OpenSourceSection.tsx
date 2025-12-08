@@ -46,7 +46,7 @@ const SectionTitle = styled.h2`
   font-weight: 800;
   text-align: center;
   margin: 0 0 48px 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -101,10 +101,10 @@ const ProjectIcon = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
   border-radius: 12px;
   font-size: 24px;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 12px rgba(55, 65, 81, 0.3);
 `;
 
 const ProjectTitle = styled.h3`

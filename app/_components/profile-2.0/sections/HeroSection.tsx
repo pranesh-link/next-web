@@ -17,7 +17,7 @@ const HeroContainer = styled.section`
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #60a5fa 100%);
+  background: linear-gradient(135deg, #1f2937 0%, #374151 50%, #4b5563 100%);
   background-size: 200% 200%;
   animation: gradientShift 15s ease infinite;
   padding: 100px 20px 60px;

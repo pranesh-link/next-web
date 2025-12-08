@@ -64,10 +64,7 @@ const MenuBar = styled.div<{ $isScrolled: boolean }>`
 const Logo = styled.div`
   font-size: 20px;
   font-weight: 800;
-  background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #1f2937;
   user-select: none;
 
   @media screen and (max-width: 480px) {
@@ -94,7 +91,7 @@ const HamburgerButton = styled.button<{ $isOpen: boolean }>`
     display: block;
     width: 24px;
     height: 3px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
     border-radius: 2px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     transform-origin: center;
@@ -161,8 +158,8 @@ const MenuPanel = styled.div<{ $isOpen: boolean }>`
 
 const MenuHeader = styled.div`
   padding: 24px 20px;
-  border-bottom: 2px solid rgba(102, 126, 234, 0.1);
-  background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
+  border-bottom: 2px solid rgba(107, 114, 128, 0.2);
+  background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -230,11 +227,11 @@ const MenuItem = styled.button<{ $isActive: boolean }>`
   gap: 16px;
   padding: 16px 20px;
   background: ${(props) =>
-    props.$isActive ? "rgba(37, 99, 235, 0.1)" : "transparent"};
+    props.$isActive ? "rgba(31, 41, 55, 0.1)" : "transparent"};
   border: none;
   border-left: 4px solid
-    ${(props) => (props.$isActive ? "#2563eb" : "transparent")};
-  color: ${(props) => (props.$isActive ? "#2563eb" : "#4b5563")};
+    ${(props) => (props.$isActive ? "#374151" : "transparent")};
+  color: ${(props) => (props.$isActive ? "#1f2937" : "#6b7280")};
   font-size: 16px;
   font-weight: ${(props) => (props.$isActive ? "700" : "600")};
   cursor: pointer;
@@ -243,14 +240,14 @@ const MenuItem = styled.button<{ $isActive: boolean }>`
   font-family: inherit;
 
   &:hover {
-    background: rgba(37, 99, 235, 0.08);
-    border-left-color: #2563eb;
-    color: #2563eb;
+    background: rgba(31, 41, 55, 0.08);
+    border-left-color: #374151;
+    color: #1f2937;
     padding-left: 24px;
   }
 
   &:active {
-    background: rgba(37, 99, 235, 0.15);
+    background: rgba(31, 41, 55, 0.15);
   }
 
   span.icon {
@@ -325,12 +322,11 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({ className }) => {
     };
 
     window.addEventListener("scroll", handleScroll);
-    // Run initial check after a brief delay to ensure DOM is ready
-    const timer = setTimeout(handleScroll, 100);
+    // Don't run initial check - let scroll position determine active section
+    // Initial state is already set to "hero" above
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
-      clearTimeout(timer);
     };
   }, []);
 

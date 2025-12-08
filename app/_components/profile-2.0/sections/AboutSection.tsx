@@ -46,7 +46,7 @@ const SectionTitle = styled.h2`
   font-weight: 800;
   text-align: center;
   margin: 0 0 48px 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -88,7 +88,7 @@ const AboutText = styled.div`
   overflow-wrap: break-word;
   
   b, strong {
-    color: #667eea;
+    color: #374151;
     font-weight: 700;
   }
 

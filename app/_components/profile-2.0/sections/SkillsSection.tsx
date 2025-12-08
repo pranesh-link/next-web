@@ -16,7 +16,7 @@ const SectionContainer = styled.section`
   width: 100%;
   margin: 0 auto;
   padding: 20px 20px 80px;
-  background: linear-gradient(180deg, transparent 0%, rgba(102, 126, 234, 0.03) 100%);
+  background: linear-gradient(180deg, transparent 0%, rgba(55, 65, 81, 0.03) 100%);
   box-sizing: border-box;
   position: relative;
 
@@ -47,7 +47,7 @@ const SectionTitle = styled.h2`
   font-weight: 800;
   text-align: center;
   margin: 0 0 48px 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -101,7 +101,7 @@ const CategoryTitle = styled.h3`
     content: "";
     width: 4px;
     height: 24px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
     border-radius: 2px;
   }
 

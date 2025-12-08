@@ -32,11 +32,11 @@ const StyledCard = styled.div<{ $variant: string; $hoverable: boolean }>`
   margin: 16px 0;
   box-shadow: ${(props) =>
     props.$variant === "outlined"
-      ? "0 0 0 2px rgba(102, 126, 234, 0.2)"
+      ? "0 0 0 2px rgba(55, 65, 81, 0.2)"
       : "0 10px 40px rgba(0, 0, 0, 0.08)"};
   backdrop-filter: blur(20px);
   border: ${(props) =>
-    props.$variant === "outlined" ? "2px solid rgba(102, 126, 234, 0.2)" : "1px solid rgba(255, 255, 255, 0.3)"};
+    props.$variant === "outlined" ? "2px solid rgba(55, 65, 81, 0.2)" : "1px solid rgba(255, 255, 255, 0.3)"};
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
@@ -60,7 +60,7 @@ const StyledCard = styled.div<{ $variant: string; $hoverable: boolean }>`
     &:hover {
       transform: translateY(-6px);
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
-      border-color: rgba(102, 126, 234, 0.4);
+      border-color: rgba(55, 65, 81, 0.4);
     }
     
     &:active {
@@ -118,7 +118,7 @@ const StyledCardHeader = styled.div`
     font-size: 28px;
     font-weight: 700;
     margin: 0;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -146,10 +146,10 @@ const IconWrapper = styled.div`
   align-items: center;
   justify-content: center;
   border-radius: 10px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
   color: white;
   font-size: 18px;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 12px rgba(55, 65, 81, 0.3);
 
   @media screen and (max-width: 768px) {
     width: 28px;

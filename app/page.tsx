@@ -22,7 +22,7 @@ const DynamicProfile2 = dynamic(
           justifyContent: "center",
           alignItems: "center",
           minHeight: "100vh",
-          background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #60a5fa 100%)",
+          background: "linear-gradient(135deg, #1f2937 0%, #374151 50%, #4b5563 100%)",
         }}
       >
         <div
@@ -74,7 +74,7 @@ export default function HomePage() {
         justifyContent: "center",
         alignItems: "center",
         minHeight: "100vh",
-        background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #60a5fa 100%)",
+        background: "linear-gradient(135deg, #1f2937 0%, #374151 50%, #4b5563 100%)",
         color: "white",
         fontSize: "1.2rem",
         padding: "20px",
