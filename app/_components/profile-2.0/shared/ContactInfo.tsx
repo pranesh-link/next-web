@@ -25,7 +25,7 @@ const InfoContainer = styled.div<{ $clickable: boolean }>`
   background: rgba(255, 255, 255, 0.6);
   border-radius: 16px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 1px solid rgba(102, 126, 234, 0.1);
+  border: 1px solid rgba(55, 65, 81, 0.1);
   cursor: ${(props) => (props.$clickable ? "pointer" : "default")};
   position: relative;
   overflow: hidden;
@@ -37,7 +37,7 @@ const InfoContainer = styled.div<{ $clickable: boolean }>`
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.1), transparent);
+    background: linear-gradient(90deg, transparent, rgba(55, 65, 81, 0.1), transparent);
     transition: left 0.5s;
   }
 
@@ -46,7 +46,7 @@ const InfoContainer = styled.div<{ $clickable: boolean }>`
     `
     &:hover {
       background: rgba(255, 255, 255, 0.9);
-      border-color: rgba(102, 126, 234, 0.3);
+      border-color: rgba(55, 65, 81, 0.3);
       transform: translateX(4px);
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     }
@@ -69,11 +69,11 @@ const IconContainer = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
   border-radius: 12px;
   color: white;
   font-size: 20px;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25);
+  box-shadow: 0 4px 12px rgba(55, 65, 81, 0.25);
   transition: transform 0.3s ease;
 
   ${InfoContainer}:hover & {

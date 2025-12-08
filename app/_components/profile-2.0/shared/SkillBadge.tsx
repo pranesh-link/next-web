@@ -18,19 +18,19 @@ const BadgeContainer = styled.div`
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  background: linear-gradient(135deg, rgba(55, 65, 81, 0.1) 0%, rgba(31, 41, 55, 0.1) 100%);
   padding: 12px 20px;
   border-radius: 16px;
-  border: 1px solid rgba(102, 126, 234, 0.2);
+  border: 1px solid rgba(55, 65, 81, 0.2);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   margin: 6px;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+  box-shadow: 0 2px 8px rgba(55, 65, 81, 0.1);
 
   &:hover {
     transform: translateY(-3px);
-    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.2);
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
-    border-color: rgba(102, 126, 234, 0.4);
+    box-shadow: 0 6px 20px rgba(55, 65, 81, 0.2);
+    background: linear-gradient(135deg, rgba(55, 65, 81, 0.15) 0%, rgba(31, 41, 55, 0.15) 100%);
+    border-color: rgba(55, 65, 81, 0.4);
   }
 
   @media screen and (max-width: 768px) {
@@ -134,7 +134,7 @@ interface SimpleSkillTagProps {
 
 const SimpleTag = styled.span`
   display: inline-block;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
   color: white;
   padding: 8px 16px;
   border-radius: 20px;
@@ -142,12 +142,12 @@ const SimpleTag = styled.span`
   font-weight: 500;
   margin: 4px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 2px 8px rgba(55, 65, 81, 0.3);
   cursor: default;
 
   &:hover {
     transform: translateY(-2px) scale(1.05);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 4px 12px rgba(55, 65, 81, 0.4);
   }
 
   @media screen and (max-width: 768px) {

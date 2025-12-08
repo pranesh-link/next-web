@@ -5,6 +5,7 @@ import { ProfileProvider } from "@/_store/profile/page/context";
 import { IProfileContext } from "@/_store/profile/types";
 import Navigation from "./navigation/Navigation";
 import MobileMenu from "./navigation/MobileMenu";
+import ContactSection from "./sections/ContactSection";
 import HeroSection from "./sections/HeroSection";
 import AboutSection from "./sections/AboutSection";
 import SkillsSection from "./sections/SkillsSection";
@@ -160,13 +161,13 @@ const ScrollToTop = styled.button`
   right: 40px;
   width: 56px;
   height: 56px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
   color: white;
   border: none;
   border-radius: 50%;
   font-size: 24px;
   cursor: pointer;
-  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 4px 20px rgba(31, 41, 55, 0.4);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 1000;
   opacity: 0;
@@ -181,7 +182,7 @@ const ScrollToTop = styled.button`
 
   &:hover {
     transform: translateY(-4px);
-    box-shadow: 0 6px 30px rgba(102, 126, 234, 0.5);
+    box-shadow: 0 6px 30px rgba(55, 65, 81, 0.5);
   }
 
   &:active {
@@ -264,6 +265,9 @@ export const Profile2: React.FC<Profile2Props> = ({ profileContext }) => {
             {/* Open source projects */}
             <OpenSourceSection />
           </ContentWrapper>
+
+          {/* Sticky contact section at bottom */}
+          <ContactSection />
 
           {/* Scroll to top button */}
           <ScrollToTop

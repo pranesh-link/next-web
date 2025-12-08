@@ -66,16 +66,14 @@ const NavContent = styled.div`
 const Logo = styled.div`
   font-size: 24px;
   font-weight: 800;
-  background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #1f2937;
   cursor: pointer;
   user-select: none;
   transition: transform 0.3s ease;
 
   &:hover {
     transform: scale(1.05);
+    color: #374151;
   }
 `;
 
@@ -92,13 +90,13 @@ const NavLink = styled.li<{ $isActive: boolean }>`
   a {
     display: block;
     padding: 10px 20px;
-    color: ${(props) => (props.$isActive ? "#2563eb" : "#4b5563")};
+    color: ${(props) => (props.$isActive ? "#1f2937" : "#6b7280")};
     text-decoration: none;
     font-weight: ${(props) => (props.$isActive ? "700" : "600")};
     font-size: 15px;
     border-radius: 12px;
     background: ${(props) =>
-      props.$isActive ? "rgba(37, 99, 235, 0.1)" : "transparent"};
+      props.$isActive ? "rgba(31, 41, 55, 0.1)" : "transparent"};
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     position: relative;
@@ -111,7 +109,7 @@ const NavLink = styled.li<{ $isActive: boolean }>`
       left: 0;
       right: 0;
       bottom: 0;
-      background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
+      background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
       opacity: 0;
       transition: opacity 0.3s ease;
       z-index: -1;
@@ -120,7 +118,7 @@ const NavLink = styled.li<{ $isActive: boolean }>`
     &:hover {
       color: white;
       transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+      box-shadow: 0 4px 12px rgba(55, 65, 81, 0.3);
 
       &::before {
         opacity: 1;
@@ -179,12 +177,11 @@ export const Navigation: React.FC<NavigationProps> = ({ onMenuClick }) => {
     };
 
     window.addEventListener("scroll", handleScroll);
-    // Run initial check after a brief delay to ensure DOM is ready
-    const timer = setTimeout(handleScroll, 100);
+    // Don't run initial check - let scroll position determine active section
+    // Initial state is already set to "hero" above
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
-      clearTimeout(timer);
     };
   }, []);
 
@@ -208,8 +205,6 @@ export const Navigation: React.FC<NavigationProps> = ({ onMenuClick }) => {
       behavior: "smooth",
     });
   };
-
-  console.log("activeSection:", activeSection);
 
   return (
     <NavContainer $isScrolled={isScrolled}>

@@ -74,7 +74,7 @@ const ModalContent = styled.div`
 `;
 
 const ModalHeader = styled.div`
-  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
   padding: 24px;
   border-radius: 20px 20px 0 0;
   position: sticky;
@@ -141,7 +141,7 @@ const ModalBody = styled.div`
 const SectionLabel = styled.h4`
   font-size: 14px;
   font-weight: 700;
-  color: #2563eb;
+  color: #374151;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin: 0 0 12px 0;
@@ -184,13 +184,13 @@ const TechStack = styled.div`
 `;
 
 const TechTag = styled.span`
-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  color: #1e40af;
+  background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+  color: #1f2937;
   padding: 6px 12px;
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
-  border: 1px solid #bfdbfe;
+  border: 1px solid #9ca3af;
 
   @media screen and (max-width: 768px) {
     font-size: 12px;
