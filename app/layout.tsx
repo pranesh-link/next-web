@@ -12,6 +12,9 @@ import { DEFAULT_APP_CONTEXT, HEADER_INFO } from "./_constants/common";
 import StyledComponentsRegistry from "./_lib/registry";
 import { AppProviderClient } from "./_providers/app";
 import StoreProvider from "./_providers/store";
+import { ProfileLayoutProviderClient } from "./_providers/profile/ProfileLayoutProvider";
+import { IPreloadedAsset } from "./_store/profile/types";
+import mockProfileData from "./_mock/profile";
 import { getApiData } from "./api/utils";
 import "./globals.scss";
 import Loading from "./loading";
@@ -40,12 +43,16 @@ export default async function RootLayout({
   let hasError = false,
     basicConfigData = DEFAULT_APP_CONTEXT.data,
     preloadSrcList: any[] = [],
-    features = DEFAULT_APP_CONTEXT.data.features;
+    features = DEFAULT_APP_CONTEXT.data.features,
+    profileData = mockProfileData,
+    profileHasError = false,
+    preloadedAssets: IPreloadedAsset[] = [];
 
   try {
-    const [appData, featureData] = await Promise.allSettled([
+    const [appData, featureData, profileDataResult] = await Promise.allSettled([
       getApiData("app", { next: { revalidate: 3600 } }),
       getApiData("feature", { next: { revalidate: 3600 } }),
+      getApiData("profile", { next: { revalidate: 3600 } }),
     ]);
 
     if (appData.status === "fulfilled") {
@@ -59,6 +66,12 @@ export default async function RootLayout({
       features = featureData.value;
     } else {
       hasError = true;
+    }
+
+    if (profileDataResult.status === "fulfilled") {
+      ({ profileData, preloadedAssets } = profileDataResult.value);
+    } else {
+      profileHasError = true;
     }
   } catch (error) {
     hasError = true;
@@ -97,14 +110,18 @@ export default async function RootLayout({
               },
             }}
           >
-            <StyledComponentsRegistry>
-              <Suspense fallback={<Loading />}>
-                <PWABanner />
-                <GoToHome />
-                <PageWrapper>{children}</PageWrapper>
-                <Contact />
-              </Suspense>
-            </StyledComponentsRegistry>
+            <ProfileLayoutProviderClient
+              value={{ data: { profileData, preloadedAssets, hasError: profileHasError } }}
+            >
+              <StyledComponentsRegistry>
+                <Suspense fallback={<Loading />}>
+                  <PWABanner />
+                  <GoToHome />
+                  <PageWrapper>{children}</PageWrapper>
+                  <Contact />
+                </Suspense>
+              </StyledComponentsRegistry>
+            </ProfileLayoutProviderClient>
           </AppProviderClient>
         </StoreProvider>
         <SpeedInsights />
