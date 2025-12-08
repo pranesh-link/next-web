@@ -23,10 +23,10 @@ const navigationItems = [
 
 const NavContainer = styled.nav<{ $isScrolled: boolean }>`
   position: fixed !important;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 999;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 9999 !important;
   background: ${(props) =>
     props.$isScrolled
       ? "rgba(255, 255, 255, 0.95)"
@@ -214,7 +214,7 @@ export const Navigation: React.FC<NavigationProps> = ({ onMenuClick }) => {
   return (
     <NavContainer $isScrolled={isScrolled}>
       <NavContent>
-        <Logo onClick={handleLogoClick}></Logo>
+        <Logo onClick={handleLogoClick}>Pranesh</Logo>
         <NavLinks>
           {navigationItems.map((item) => (
             <NavLink key={item.id} $isActive={activeSection === item.id}>

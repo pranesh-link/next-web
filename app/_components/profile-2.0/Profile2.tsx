@@ -51,7 +51,10 @@ const GlobalStyle = createGlobalStyle`
   
   /* Ensure fixed positioning works correctly */
   body {
-    position: relative;
+    position: static !important;
+    transform: none !important;
+    perspective: none !important;
+    backface-visibility: visible !important;
   }
 `;
 
@@ -230,48 +233,53 @@ export const Profile2: React.FC<Profile2Props> = ({ profileContext }) => {
   };
 
   return (
-    <ProfileProvider value={fullContext}>
-      <GlobalStyle />
-      <PageContainer>
-        {/* Navigation components */}
+    <>
+      <ProfileProvider value={fullContext}>
+        <GlobalStyle />
+        
+        {/* Navigation components - rendered at root level outside any containers */}
         <Navigation />
         <MobileMenu />
-        
-        <FloatingShapes />
-        
-        <ContentWrapper>
-          {/* Hero section with introduction */}
-          <HeroSection />
+      </ProfileProvider>
 
-          {/* About section with personal info */}
-          <AboutSection />
+      <ProfileProvider value={fullContext}>
+        <PageContainer>
+          <FloatingShapes />
+          
+          <ContentWrapper>
+            {/* Hero section with introduction */}
+            <HeroSection />
 
-          {/* Skills section with ratings */}
-          <SkillsSection />
+            {/* About section with personal info */}
+            <AboutSection />
 
-          {/* Experience timeline */}
-          <ExperienceSection />
+            {/* Skills section with ratings */}
+            <SkillsSection />
 
-          {/* Education information */}
-          <EducationSection />
+            {/* Experience timeline */}
+            <ExperienceSection />
 
-          {/* Open source projects */}
-          <OpenSourceSection />
-        </ContentWrapper>
+            {/* Education information */}
+            <EducationSection />
 
-        {/* Sticky contact section at bottom */}
-        <ContactSection />
+            {/* Open source projects */}
+            <OpenSourceSection />
+          </ContentWrapper>
 
-        {/* Scroll to top button */}
-        <ScrollToTop
-          className={showScrollTop ? "visible" : ""}
-          onClick={scrollToTop}
-          aria-label="Scroll to top"
-        >
-          ↑
-        </ScrollToTop>
-      </PageContainer>
-    </ProfileProvider>
+          {/* Sticky contact section at bottom */}
+          <ContactSection />
+
+          {/* Scroll to top button */}
+          <ScrollToTop
+            className={showScrollTop ? "visible" : ""}
+            onClick={scrollToTop}
+            aria-label="Scroll to top"
+          >
+            ↑
+          </ScrollToTop>
+        </PageContainer>
+      </ProfileProvider>
+    </>
   );
 };
 

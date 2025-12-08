@@ -23,10 +23,10 @@ const navigationItems = [
 
 const MobileMenuContainer = styled.div`
   position: fixed !important;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 999;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 9999 !important;
   display: none;
 
   @media screen and (max-width: 968px) {
@@ -88,7 +88,7 @@ const HamburgerButton = styled.button<{ $isOpen: boolean }>`
   justify-content: center;
   align-items: center;
   position: relative;
-  z-index: 1001;
+  z-index: 10001 !important;
 
   span {
     display: block;
@@ -126,7 +126,7 @@ const Overlay = styled.div<{ $isOpen: boolean }>`
   opacity: ${(props) => (props.$isOpen ? "1" : "0")};
   visibility: ${(props) => (props.$isOpen ? "visible" : "hidden")};
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 998;
+  z-index: 9998 !important;
   backdrop-filter: blur(4px);
 `;
 
@@ -147,7 +147,7 @@ const MenuPanel = styled.div<{ $isOpen: boolean }>`
   transform: ${(props) =>
     props.$isOpen ? "translateX(0)" : "translateX(100%)"};
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 1000;
+  z-index: 10000 !important;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -162,7 +162,10 @@ const MenuPanel = styled.div<{ $isOpen: boolean }>`
 const MenuHeader = styled.div`
   padding: 24px 20px;
   border-bottom: 2px solid rgba(102, 126, 234, 0.1);
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 
   @media screen and (max-width: 480px) {
     padding: 20px 16px;
@@ -177,6 +180,40 @@ const MenuTitle = styled.h3`
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 
   @media screen and (max-width: 480px) {
+    font-size: 20px;
+  }
+`;
+
+const CloseButton = styled.button`
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: white;
+  font-size: 24px;
+  font-weight: 300;
+  line-height: 1;
+  padding: 0;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: rotate(90deg);
+  }
+
+  &:active {
+    background: rgba(255, 255, 255, 0.4);
+    transform: rotate(90deg) scale(0.95);
+  }
+
+  @media screen and (max-width: 480px) {
+    width: 36px;
+    height: 36px;
     font-size: 20px;
   }
 `;
@@ -339,7 +376,7 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({ className }) => {
   return (
     <MobileMenuContainer className={className}>
       <MenuBar $isScrolled={isScrolled}>
-        <Logo onClick={handleLogoClick}></Logo>
+        <Logo onClick={handleLogoClick}>Pranesh</Logo>
         <HamburgerButton
           $isOpen={isOpen}
           onClick={() => setIsOpen(!isOpen)}
@@ -355,7 +392,10 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({ className }) => {
 
       <MenuPanel $isOpen={isOpen}>
         <MenuHeader>
-          <MenuTitle>Navigation</MenuTitle>
+          <MenuTitle>Menu</MenuTitle>
+          <CloseButton onClick={() => setIsOpen(false)} aria-label="Close menu">
+            ×
+          </CloseButton>
         </MenuHeader>
 
         <MenuItems>
