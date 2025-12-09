@@ -38,39 +38,42 @@ const HeroContainer = styled.section`
     }
   }
 
-  /* Animated background shapes */
-  &::before,
+  /* Professional geometric background elements */
+  &::before {
+    content: "";
+    position: absolute;
+    width: 500px;
+    height: 500px;
+    top: -100px;
+    right: -100px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    animation: rotateGeometry 30s linear infinite;
+    opacity: 0.6;
+  }
+
   &::after {
     content: "";
     position: absolute;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.1);
-    animation: float 20s ease-in-out infinite;
-  }
-
-  &::before {
-    width: 300px;
-    height: 300px;
-    top: 10%;
-    left: 10%;
-    animation-delay: 0s;
-  }
-
-  &::after {
     width: 400px;
     height: 400px;
-    bottom: 10%;
-    right: 10%;
-    animation-delay: 5s;
+    bottom: -80px;
+    left: -80px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
+    clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
+    animation: rotateGeometry 25s linear infinite reverse;
+    opacity: 0.5;
   }
 
-  @keyframes float {
-    0%,
-    100% {
-      transform: translateY(0) rotate(0deg);
+  @keyframes rotateGeometry {
+    0% {
+      transform: rotate(0deg) scale(1);
     }
     50% {
-      transform: translateY(-30px) rotate(180deg);
+      transform: rotate(180deg) scale(1.1);
+    }
+    100% {
+      transform: rotate(360deg) scale(1);
     }
   }
 
@@ -79,13 +82,17 @@ const HeroContainer = styled.section`
     padding: 60px 20px 40px;
 
     &::before {
-      width: 200px;
-      height: 200px;
+      width: 350px;
+      height: 350px;
+      top: -70px;
+      right: -70px;
     }
 
     &::after {
-      width: 250px;
-      height: 250px;
+      width: 280px;
+      height: 280px;
+      bottom: -60px;
+      left: -60px;
     }
   }
 
@@ -93,13 +100,17 @@ const HeroContainer = styled.section`
     padding: 50px 16px 30px;
 
     &::before {
-      width: 150px;
-      height: 150px;
+      width: 250px;
+      height: 250px;
+      top: -50px;
+      right: -50px;
     }
 
     &::after {
-      width: 180px;
-      height: 180px;
+      width: 200px;
+      height: 200px;
+      bottom: -40px;
+      left: -40px;
     }
   }
 `;
