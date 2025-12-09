@@ -209,7 +209,6 @@ export const Navigation: React.FC<NavigationProps> = ({ onMenuClick }) => {
   return (
     <NavContainer $isScrolled={isScrolled}>
       <NavContent>
-        <Logo onClick={handleLogoClick}>Pranesh</Logo>
         <NavLinks>
           {navigationItems.map((item) => (
             <NavLink key={item.id} $isActive={activeSection === item.id}>
