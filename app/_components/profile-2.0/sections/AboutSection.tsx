@@ -41,32 +41,6 @@ const ScrollAnchor = styled.div`
   }
 `;
 
-const SectionTitle = styled.h2`
-  font-size: 48px;
-  font-weight: 800;
-  text-align: center;
-  margin: 0 0 48px 0;
-  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-
-  @media screen and (max-width: 768px) {
-    font-size: 36px;
-    margin-bottom: 36px;
-  }
-
-  @media screen and (max-width: 480px) {
-    font-size: 28px;
-    margin-bottom: 28px;
-  }
-
-  @media screen and (max-width: 360px) {
-    font-size: 24px;
-    margin-bottom: 24px;
-  }
-`;
-
 const Grid = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -108,7 +82,6 @@ export const AboutSection: React.FC = () => {
   return (
     <SectionContainer>
       <ScrollAnchor id="about" />
-      <SectionTitle>{aboutMe.title}</SectionTitle>
 
       <Card>
         <CardHeader>About Me</CardHeader>
