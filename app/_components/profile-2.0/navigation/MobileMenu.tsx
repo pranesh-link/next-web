@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
+import packageJson from "../../../../package.json";
 
 /**
  * MobileMenu Component
@@ -284,39 +285,25 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({ className }) => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
 
-      // Only update active section if we're not at the very top
-      if (window.scrollY < 10) {
-        setActiveSection("hero");
-        return;
-      }
-
       // Determine active section
       const sections = navigationItems.map((item) =>
         document.getElementById(item.id)
       );
 
-      // Use center of viewport as reference point for better section detection
-      const viewportCenter = window.innerHeight / 2;
-
-      // Find which section is closest to the center of the viewport
+      // Find the current section - the one that has scrolled past the top
       let newActiveSection = "hero";
-      let minDistance = Infinity;
+      const scrollPosition = window.scrollY + 100; // Small offset for better UX
 
-      for (let i = 0; i < sections.length; i++) {
+      for (let i = sections.length - 1; i >= 0; i--) {
         const section = sections[i];
         if (section) {
           const rect = section.getBoundingClientRect();
-          // Calculate distance from section top to viewport center
-          const distance = Math.abs(rect.top - viewportCenter);
-
-          // If section is in viewport and closer to center than previous sections
-          if (
-            rect.top < viewportCenter &&
-            rect.bottom > 0 &&
-            distance < minDistance
-          ) {
-            minDistance = distance;
+          const sectionTop = rect.top + window.scrollY;
+          
+          // If we've scrolled past this section's top, it's the active one
+          if (scrollPosition >= sectionTop) {
             newActiveSection = navigationItems[i].id;
+            break;
           }
         }
       }
@@ -325,8 +312,8 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({ className }) => {
     };
 
     window.addEventListener("scroll", handleScroll);
-    // Don't run initial check - let scroll position determine active section
-    // Initial state is already set to "hero" above
+    // Run initial check to set correct active section on mount
+    handleScroll();
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
@@ -409,6 +396,8 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({ className }) => {
             </MenuItem>
           ))}
         </MenuItems>
+
+        <MenuFooter>v{packageJson.version}</MenuFooter>
       </MenuPanel>
     </MobileMenuContainer>
   );
