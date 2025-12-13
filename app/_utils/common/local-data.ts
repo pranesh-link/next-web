@@ -1,5 +1,3 @@
-import { promises as fs } from 'fs';
-import path from 'path';
 import {
   CONFIG_TYPES,
   DEFAULT_PROFILE_CONFIG_DATA,
@@ -18,17 +16,46 @@ import {
 } from '@/_store/profile/types';
 import { getImage } from '.';
 
-const DATA_DIR = path.join(process.cwd(), 'data', 'cms');
+// Import all JSON files directly as modules from the project root
+import configData from '../../../data/cms/config.json';
+import bmiCalculatorData from '../../../data/cms/bmi-calculator.json';
+import contactFormData from '../../../data/cms/contact-form.json';
+import downloadData from '../../../data/cms/download.json';
+import linksData from '../../../data/cms/links.json';
+import maintenanceData from '../../../data/cms/maintenance.json';
+import messagesData from '../../../data/cms/messages.json';
+import profileLabelsData from '../../../data/cms/profile-labels.json';
+import profileSectionsData from '../../../data/cms/profile-sections.json';
+import pwaData from '../../../data/cms/pwa.json';
+import skillsData from '../../../data/cms/skills.json';
+import brillioExperienceData from '../../../data/cms/brillio-experience.json';
+import lillyExperienceData from '../../../data/cms/lilly-experience.json';
+import scgbsExperienceData from '../../../data/cms/scgbs-experience.json';
+
+// Map of filenames to imported data
+const JSON_DATA_MAP: Record<string, any> = {
+  'config.json': configData,
+  'bmi-calculator.json': bmiCalculatorData,
+  'contact-form.json': contactFormData,
+  'download.json': downloadData,
+  'links.json': linksData,
+  'maintenance.json': maintenanceData,
+  'messages.json': messagesData,
+  'profile-labels.json': profileLabelsData,
+  'profile-sections.json': profileSectionsData,
+  'pwa.json': pwaData,
+  'skills.json': skillsData,
+  'brillio-experience.json': brillioExperienceData,
+  'lilly-experience.json': lillyExperienceData,
+  'scgbs-experience.json': scgbsExperienceData,
+};
 
 async function getLocalJson(filename: string) {
-  try {
-    const filePath = path.join(DATA_DIR, filename);
-    const fileContent = await fs.readFile(filePath, 'utf-8');
-    return JSON.parse(fileContent);
-  } catch (error) {
-    console.error(`Error reading ${filename}:`, error);
-    throw error;
+  const data = JSON_DATA_MAP[filename];
+  if (!data) {
+    throw new Error(`JSON file not found: ${filename}`);
   }
+  return data;
 }
 
 async function fetchSection(
