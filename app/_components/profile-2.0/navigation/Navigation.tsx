@@ -63,20 +63,6 @@ const NavContent = styled.div`
   }
 `;
 
-const Logo = styled.div`
-  font-size: 24px;
-  font-weight: 800;
-  color: #1f2937;
-  cursor: pointer;
-  user-select: none;
-  transition: transform 0.3s ease;
-
-  &:hover {
-    transform: scale(1.05);
-    color: #374151;
-  }
-`;
-
 const NavLinks = styled.ul`
   display: flex;
   list-style: none;
@@ -197,13 +183,6 @@ export const Navigation: React.FC<NavigationProps> = ({ onMenuClick }) => {
         behavior: "smooth",
       });
     }
-  };
-
-  const handleLogoClick = () => {
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
   };
 
   return (

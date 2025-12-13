@@ -1,5 +1,4 @@
 import { ROUTES } from "@/_constants/common";
-import { getApiUrl } from "@/_utils/common";
 import { NextRequest, NextResponse, userAgent } from "next/server";
 
 export const config = {
@@ -35,8 +34,11 @@ export async function middleware(req: NextRequest) {
     responseHeaders.set('Referrer-Policy', 'origin-when-cross-origin');
     responseHeaders.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
     
+    // Construct absolute URL for fetch in middleware
+    const maintenanceUrl = new URL('/api/maintenance', req.url);
+    
     const jsonResponse = await (
-      await fetch(getApiUrl("maintenance"), { 
+      await fetch(maintenanceUrl, { 
         cache: "no-store",
         next: { revalidate: 300 } // Cache for 5 minutes
       })

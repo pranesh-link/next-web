@@ -1,14 +1,14 @@
 import mockProfileData from "@/_mock/profile";
-import { fetchImagesLocal, fetchProfileDataLocal } from "@/_utils/common/local-data";
+import { fetchBaseConfigLocal, fetchImagesLocal, fetchProfileDataLocal } from "@/_utils/common/local-data";
 import { NextResponse } from "next/server";
-import { getApiData } from "../utils";
+import { DEFAULT_APP_CONTEXT } from "@/_constants/common";
 
 // Cache for 1 hour
 export const revalidate = 3600;
 
 export async function GET() {
   try {
-    const config = await getApiData("app");
+    const config = await fetchBaseConfigLocal(DEFAULT_APP_CONTEXT.data);
     const { preloadSrcList, jsonConfig } = config;
     
     const [preloadedAssets, profileDataResult] = await Promise.all([
