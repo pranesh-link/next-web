@@ -15,7 +15,7 @@ import StoreProvider from "./_providers/store";
 import { ProfileLayoutProviderClient } from "./_providers/profile/ProfileLayoutProvider";
 import { IPreloadedAsset } from "./_store/profile/types";
 import mockProfileData from "./_mock/profile";
-import { getApiData } from "./api/utils";
+import { fetchBaseConfigLocal, fetchImagesLocal, fetchProfileDataLocal } from "./_utils/common/local-data";
 import "./globals.scss";
 import Loading from "./loading";
 
@@ -49,29 +49,29 @@ export default async function RootLayout({
     preloadedAssets: IPreloadedAsset[] = [];
 
   try {
-    const [appData, featureData, profileDataResult] = await Promise.allSettled([
-      getApiData("app", { next: { revalidate: 3600 } }),
-      getApiData("feature", { next: { revalidate: 3600 } }),
-      getApiData("profile", { next: { revalidate: 3600 } }),
-    ]);
-
-    if (appData.status === "fulfilled") {
-      ({ data: basicConfigData = DEFAULT_APP_CONTEXT.data, preloadSrcList } =
-        appData.value);
-    } else {
-      hasError = true;
-    }
-
-    if (featureData.status === "fulfilled") {
-      features = featureData.value;
-    } else {
-      hasError = true;
-    }
-
-    if (profileDataResult.status === "fulfilled") {
-      ({ profileData, preloadedAssets } = profileDataResult.value);
-    } else {
+    // Fetch data directly from local sources instead of making internal API calls
+    const appConfig = await fetchBaseConfigLocal(DEFAULT_APP_CONTEXT.data);
+    basicConfigData = appConfig.data || DEFAULT_APP_CONTEXT.data;
+    preloadSrcList = appConfig.preloadSrcList || [];
+    const jsonConfig = appConfig.jsonConfig;
+    
+    // Features are already in the app config
+    features = basicConfigData.features || DEFAULT_APP_CONTEXT.data.features;
+    
+    // Fetch profile data directly
+    try {
+      const profileResult = await fetchProfileDataLocal(jsonConfig, mockProfileData);
+      profileData = profileResult.data || mockProfileData;
+    } catch (error) {
+      console.error("Error loading profile data:", error);
       profileHasError = true;
+    }
+    
+    // Fetch preloaded assets
+    try {
+      preloadedAssets = await fetchImagesLocal(preloadSrcList);
+    } catch (error) {
+      console.error("Error loading images:", error);
     }
   } catch (error) {
     hasError = true;

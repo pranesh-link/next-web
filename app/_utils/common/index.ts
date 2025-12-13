@@ -29,5 +29,5 @@ export const isInstanceOfPageLinkCollection = (
 ): item is IPageLinkCollection => "links" in item;
 
 export const getApiUrl = (path: string) => {
-  return `${process.env.NEXT_PUBLIC_SITE_URL!}/api/${path}`;
+  return `/api/${path}`;
 };
