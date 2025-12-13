@@ -294,26 +294,29 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({ className }) => {
       const sections = navigationItems.map((item) =>
         document.getElementById(item.id)
       );
-      const navHeight = 60;
-      const gap = 20;
-      const offset = navHeight + gap;
 
-      // Current scroll position (top of viewport + nav height + gap)
-      const scrollPosition = window.scrollY + offset;
+      // Use center of viewport as reference point for better section detection
+      const viewportCenter = window.innerHeight / 2;
 
-      // Find the active section - the one whose top is closest to and below the scroll position
-      let newActiveSection = "hero"; // Default to hero
+      // Find which section is closest to the center of the viewport
+      let newActiveSection = "hero";
+      let minDistance = Infinity;
 
       for (let i = 0; i < sections.length; i++) {
         const section = sections[i];
         if (section) {
-          const sectionTop = section.offsetTop;
-          // Check if we've scrolled past this section's start
-          if (scrollPosition >= sectionTop) {
+          const rect = section.getBoundingClientRect();
+          // Calculate distance from section top to viewport center
+          const distance = Math.abs(rect.top - viewportCenter);
+
+          // If section is in viewport and closer to center than previous sections
+          if (
+            rect.top < viewportCenter &&
+            rect.bottom > 0 &&
+            distance < minDistance
+          ) {
+            minDistance = distance;
             newActiveSection = navigationItems[i].id;
-          } else {
-            // Once we find a section we haven't reached yet, stop
-            break;
           }
         }
       }
@@ -372,7 +375,7 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({ className }) => {
   return (
     <MobileMenuContainer className={className}>
       <MenuBar $isScrolled={isScrolled}>
-        <Logo onClick={handleLogoClick}>Pranesh</Logo>
+        <Logo onClick={handleLogoClick}></Logo>
         <HamburgerButton
           $isOpen={isOpen}
           onClick={() => setIsOpen(!isOpen)}
