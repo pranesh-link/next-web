@@ -409,8 +409,6 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({ className }) => {
             </MenuItem>
           ))}
         </MenuItems>
-
-        <MenuFooter>Profile 2.0 • Modern Portfolio</MenuFooter>
       </MenuPanel>
     </MobileMenuContainer>
   );
