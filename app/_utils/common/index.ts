@@ -22,11 +22,11 @@ export const findAndReplace = (
 };
 
 export const isInstanceOfPageLink = (item: any): item is IPageLink =>
-  "route" in item;
+  !!(item && typeof item === 'object' && "route" in item);
 
 export const isInstanceOfPageLinkCollection = (
   item: any
-): item is IPageLinkCollection => "links" in item;
+): item is IPageLinkCollection => !!(item && typeof item === 'object' && "links" in item);
 
 export const getApiUrl = (path: string) => {
   return `/api/${path}`;
