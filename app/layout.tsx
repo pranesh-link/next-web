@@ -7,15 +7,18 @@ import { Suspense } from "react";
 import { browserName, isMobileOnly, osName } from "react-device-detect";
 import GoToHome from "./_components/common/GoToHome";
 import PageWrapper from "./_components/common/PageWrapper";
-import Contact from "./_components/profile/sections/Contact";
 import { DEFAULT_APP_CONTEXT, HEADER_INFO } from "./_constants/common";
 import StyledComponentsRegistry from "./_lib/registry";
-import { AppProviderClient } from "./_providers/app";
-import StoreProvider from "./_providers/store";
-import { ProfileLayoutProviderClient } from "./_providers/profile/ProfileLayoutProvider";
-import { IPreloadedAsset } from "./_store/profile/types";
 import mockProfileData from "./_mock/profile";
-import { fetchBaseConfigLocal, fetchImagesLocal, fetchProfileDataLocal } from "./_utils/common/local-data";
+import { AppProviderClient } from "./_providers/app";
+import { ProfileLayoutProviderClient } from "./_providers/profile/ProfileLayoutProvider";
+import StoreProvider from "./_providers/store";
+import { IPreloadedAsset } from "./_store/profile/types";
+import {
+  fetchBaseConfigLocal,
+  fetchImagesLocal,
+  fetchProfileDataLocal,
+} from "./_utils/common/local-data";
 import "./globals.scss";
 import Loading from "./loading";
 
@@ -54,19 +57,22 @@ export default async function RootLayout({
     basicConfigData = appConfig.data || DEFAULT_APP_CONTEXT.data;
     preloadSrcList = appConfig.preloadSrcList || [];
     const jsonConfig = appConfig.jsonConfig;
-    
+
     // Features are already in the app config
     features = basicConfigData.features || DEFAULT_APP_CONTEXT.data.features;
-    
+
     // Fetch profile data directly
     try {
-      const profileResult = await fetchProfileDataLocal(jsonConfig, mockProfileData);
+      const profileResult = await fetchProfileDataLocal(
+        jsonConfig,
+        mockProfileData
+      );
       profileData = profileResult.data || mockProfileData;
     } catch (error) {
       console.error("Error loading profile data:", error);
       profileHasError = true;
     }
-    
+
     // Fetch preloaded assets
     try {
       preloadedAssets = await fetchImagesLocal(preloadSrcList);
@@ -84,7 +90,11 @@ export default async function RootLayout({
         <link rel="manifest" href="/manifest.json" />
         {/* Preconnect to external domains */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
         {/* DNS Prefetch */}
         <link rel="dns-prefetch" href="https://vitals.vercel-insights.com" />
         <link rel="dns-prefetch" href="https://va.vercel-scripts.com" />
@@ -111,14 +121,19 @@ export default async function RootLayout({
             }}
           >
             <ProfileLayoutProviderClient
-              value={{ data: { profileData, preloadedAssets, hasError: profileHasError } }}
+              value={{
+                data: {
+                  profileData,
+                  preloadedAssets,
+                  hasError: profileHasError,
+                },
+              }}
             >
               <StyledComponentsRegistry>
                 <Suspense fallback={<Loading />}>
                   <PWABanner />
                   <GoToHome />
                   <PageWrapper>{children}</PageWrapper>
-                  <Contact />
                 </Suspense>
               </StyledComponentsRegistry>
             </ProfileLayoutProviderClient>
