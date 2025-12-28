@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <!-- Background with subtle gradient -->
+  <defs>
+    <linearGradient id="bgGrad512" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1f1f1f;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0a0a0a;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="letterGrad512" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00ff88;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00d9ff;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Rounded square background with safe zone for maskable -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad512)"/>
+  
+  <!-- Modern geometric P with refined proportions -->
+  <path d="M 144 112 L 144 400 L 188 400 L 188 276 L 296 276 C 348 276 384 244 384 192 C 384 140 348 112 296 112 Z M 188 152 L 296 152 C 324 152 344 169.6 344 192 C 344 214.4 324 236 296 236 L 188 236 Z" 
+        fill="url(#letterGrad512)" 
+        stroke="none"/>
+  
+  <!-- Accent elements -->
+  <circle cx="384" cy="128" r="20" fill="#00ff88" opacity="0.8"/>
+  <circle cx="384" cy="128" r="32" fill="none" stroke="#00ff88" stroke-width="4" opacity="0.3"/>
+</svg>

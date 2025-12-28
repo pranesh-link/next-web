@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" fill="none">
+  <!-- Background with subtle gradient -->
+  <defs>
+    <linearGradient id="bgGradApple" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1f1f1f;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0a0a0a;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="letterGradApple" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00ff88;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00d9ff;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Rounded square background -->
+  <rect width="180" height="180" rx="40" fill="url(#bgGradApple)"/>
+  
+  <!-- Modern geometric P with refined proportions -->
+  <path d="M 50.625 39.375 L 50.625 140.625 L 66.09375 140.625 L 66.09375 97.03125 L 104.0625 97.03125 C 122.34375 97.03125 135 85.546875 135 67.5 C 135 49.453125 122.34375 39.375 104.0625 39.375 Z M 66.09375 53.4375 L 104.0625 53.4375 C 113.90625 53.4375 120.9375 59.625 120.9375 67.5 C 120.9375 75.375 113.90625 82.96875 104.0625 82.96875 L 66.09375 82.96875 Z" 
+        fill="url(#letterGradApple)" 
+        stroke="none"/>
+  
+  <!-- Accent elements -->
+  <circle cx="135" cy="45" r="7" fill="#00ff88" opacity="0.8"/>
+  <circle cx="135" cy="45" r="11.25" fill="none" stroke="#00ff88" stroke-width="1.4" opacity="0.3"/>
+</svg>
