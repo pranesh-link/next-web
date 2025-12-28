@@ -58,6 +58,9 @@ const nextConfig = {
     optimizePackageImports: ['react-icons', 'lodash', '@reduxjs/toolkit'],
   },
   
+  // Turbopack configuration (stable in Next.js 15+)
+  turbopack: {},
+  
   // Headers for caching
   async headers() {
     return [
