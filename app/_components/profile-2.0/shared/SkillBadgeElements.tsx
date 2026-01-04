@@ -1,15 +1,15 @@
 import styled from "styled-components";
 
 export const BadgeContainer = styled.div`
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 12px;
+  width: fit-content;
   background: linear-gradient(135deg, rgba(55, 65, 81, 0.1) 0%, rgba(31, 41, 55, 0.1) 100%);
   padding: 12px 20px;
   border-radius: 16px;
   border: 1px solid rgba(55, 65, 81, 0.2);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  margin: 6px;
   box-shadow: 0 2px 8px rgba(55, 65, 81, 0.1);
 
   &:hover {
@@ -22,7 +22,6 @@ export const BadgeContainer = styled.div`
   @media screen and (max-width: 768px) {
     padding: 10px 16px;
     gap: 10px;
-    margin: 4px;
   }
 
   @media screen and (max-width: 480px) {

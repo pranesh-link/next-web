@@ -69,14 +69,27 @@ const SectionTitle = styled.h2`
 `;
 
 const SkillsGrid = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
   margin-top: 24px;
 
+  @media screen and (max-width: 968px) {
+    gap: 14px;
+  }
+
   @media screen and (max-width: 768px) {
-    gap: 6px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  @media screen and (max-width: 480px) {
+    gap: 10px;
+  }
+
+  @media screen and (max-width: 360px) {
+    grid-template-columns: 1fr;
+    gap: 8px;
   }
 `;
 
