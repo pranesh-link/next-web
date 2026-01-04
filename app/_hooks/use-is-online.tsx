@@ -5,12 +5,15 @@ export default function useIsOnline() {
   const initialVal = typeof window !== "undefined" ? navigator.onLine : false;
   const [online, setOnline] = useState(initialVal);
   useEffect(() => {
-    window.addEventListener("online", () => setOnline(true));
-    window.addEventListener("offline", () => setOnline(false));
+    const handleOnline = () => setOnline(true);
+    const handleOffline = () => setOnline(false);
+    
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
 
     return () => {
-      window.addEventListener("online", () => setOnline(true));
-      window.addEventListener("offline", () => setOnline(false));
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
     };
   }, []);
 

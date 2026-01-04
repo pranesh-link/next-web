@@ -14,8 +14,7 @@ import EducationSection from "./sections/EducationSection";
 import OpenSourceSection from "./sections/OpenSourceSection";
 
 /**
- * Profile 2.0 Component
- * Modern, responsive profile page with rich UI
+ * Profile 2.0 Component* Modern, responsive profile page with rich UI
  * 
  * Design Philosophy:
  * - Glassmorphism and gradient aesthetics for modern feel
@@ -228,7 +227,9 @@ export const Profile2: React.FC<Profile2Props> = ({ profileContext }) => {
   // Create full context with mock handlers for modal states
   const fullContext: IProfileContext = {
     ...profileContext,
+    /* istanbul ignore next */
     setIsContactFormOpen: () => {},
+    /* istanbul ignore next */
     setIsModalOpen: () => {},
   };
 
