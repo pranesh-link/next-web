@@ -10,7 +10,6 @@ import {
   SectionLabel,
   ProjectDescription,
   TechStack,
-  TechList,
   TechTag,
 } from "./ProjectModalElements";
 
