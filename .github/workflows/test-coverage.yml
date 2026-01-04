@@ -6,6 +6,7 @@ on:
       - 'v*.*.*'  # Trigger on version tags (e.g., v2.33.0)
   pull_request:
     branches: [master, main]
+  workflow_dispatch:  # Allow manual trigger from GitHub Actions UI
 
 jobs:
   test:
