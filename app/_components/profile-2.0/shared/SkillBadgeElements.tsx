@@ -3,8 +3,9 @@ import styled from "styled-components";
 export const BadgeContainer = styled.div`
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
-  width: fit-content;
+  width: 100%;
   background: linear-gradient(135deg, rgba(55, 65, 81, 0.1) 0%, rgba(31, 41, 55, 0.1) 100%);
   padding: 12px 20px;
   border-radius: 16px;
