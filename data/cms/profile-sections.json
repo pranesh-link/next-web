@@ -2,12 +2,12 @@
   "header": {
     "shortDesc": "Hello, I'm",
     "name": "Pranesh",
-    "currentJobRole": "UI Engineering Leader"
+    "currentJobRole": "Principal Engineer"
   },
   "aboutMe": {
     "title": "About Me",
     "ref": "homeRef",
-    "info": "Seasoned <strong>UI Engineering Leader</strong> with <strong>13+ years of experience</strong>, on a path toward a <strong>UI Architect</strong> role in product companies. I focus on building resilient UI architectures, enabling rapid feature delivery, and balancing user experience with long-term maintainability and product growth.",
+    "info": "I am a results-driven <strong>Principal Engineer</strong> with over <strong>13 years of experience</strong> in building and scaling high-impact engineering systems. I specialise in frontend architecture, engineering excellence, and cross-functional technical leadership. I thrive in environments that value innovation and craft, and I am passionate about mentoring teams, shaping architectural direction, and delivering solutions that drive measurable business outcomes.",
     "icon": "images/display-pic.avif",
     "pdfExportIcon": "https://profile-jsons.pranesh.link/images/display-pic.avif"
   },

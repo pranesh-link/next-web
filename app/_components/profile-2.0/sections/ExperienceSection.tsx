@@ -46,7 +46,7 @@ const SectionTitle = styled.h2`
   font-weight: 800;
   text-align: center;
   margin: 0 0 48px 0;
-  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+  background: linear-gradient(135deg, #1e3a8a 0%, #312e81 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -79,7 +79,7 @@ const Timeline = styled.div`
     top: 0;
     bottom: 0;
     width: 4px;
-    background: linear-gradient(180deg, #374151 0%, #1f2937 100%);
+    background: linear-gradient(180deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%);
     border-radius: 2px;
   }
 
@@ -126,9 +126,9 @@ const TimelineItem = styled.div`
     width: 16px;
     height: 16px;
     background: white;
-    border: 4px solid #4b5563;
+    border: 4px solid #6366f1;
     border-radius: 50%;
-    box-shadow: 0 0 0 4px rgba(75, 85, 99, 0.1);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
   }
 
   @media screen and (max-width: 768px) {
@@ -281,7 +281,7 @@ const ProjectBadges = styled.div`
 `;
 
 const ProjectBadge = styled.button`
-  background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
   color: white;
   border: none;
   border-radius: 20px;
@@ -290,7 +290,7 @@ const ProjectBadge = styled.button`
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(75, 85, 99, 0.2);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -301,8 +301,8 @@ const ProjectBadge = styled.button`
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(75, 85, 99, 0.4);
-    background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.35);
+    background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
   }
 
   &:active {

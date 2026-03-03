@@ -49,14 +49,14 @@ export const StyledButton = styled.button<{
     switch (props.$variant) {
       case "primary":
         return `
-          background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+          background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
           color: white;
-          box-shadow: 0 4px 15px rgba(55, 65, 81, 0.3);
+          box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
           
           &:hover:not(:disabled) {
             transform: translateY(-2px);
-            box-shadow: 0 6px 25px rgba(55, 65, 81, 0.4);
-            background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+            box-shadow: 0 6px 25px rgba(99, 102, 241, 0.4);
+            background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
           }
         `;
       case "secondary":
@@ -73,22 +73,22 @@ export const StyledButton = styled.button<{
       case "outline":
         return `
           background: transparent;
-          color: #374151;
-          border: 2px solid #374151;
+          color: #4f46e5;
+          border: 2px solid #6366f1;
           
           &:hover:not(:disabled) {
-            background: rgba(55, 65, 81, 0.1);
-            border-color: #4b5563;
-            color: #4b5563;
+            background: rgba(99, 102, 241, 0.1);
+            border-color: #4f46e5;
+            color: #4338ca;
           }
         `;
       case "ghost":
         return `
           background: transparent;
-          color: #374151;
+          color: #4f46e5;
           
           &:hover:not(:disabled) {
-            background: rgba(55, 65, 81, 0.1);
+            background: rgba(99, 102, 241, 0.1);
           }
         `;
       default:

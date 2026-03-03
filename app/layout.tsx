@@ -36,7 +36,6 @@ const font = IBM_Plex_Sans({
   preload: true,
 });
 
-export const dynamic = "force-dynamic";
 export default async function RootLayout({
   children,
 }: Readonly<{

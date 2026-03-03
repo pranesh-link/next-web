@@ -34,7 +34,7 @@ const ContactContainer = styled.div`
   left: 0;
   right: 0;
   z-index: 100;
-  background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
   backdrop-filter: blur(20px);
   box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.15);
   padding: 16px 20px;

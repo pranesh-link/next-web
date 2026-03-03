@@ -47,7 +47,7 @@ const SectionTitle = styled.h2`
   font-weight: 800;
   text-align: center;
   margin: 0 0 48px 0;
-  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+  background: linear-gradient(135deg, #1e3a8a 0%, #312e81 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -69,27 +69,14 @@ const SectionTitle = styled.h2`
 `;
 
 const SkillsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
   margin-top: 24px;
 
-  @media screen and (max-width: 968px) {
-    gap: 14px;
-  }
-
   @media screen and (max-width: 768px) {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-  }
-
-  @media screen and (max-width: 480px) {
-    gap: 10px;
-  }
-
-  @media screen and (max-width: 360px) {
-    grid-template-columns: 1fr;
-    gap: 8px;
+    gap: 6px;
   }
 `;
 
@@ -101,20 +88,20 @@ const SkillCategory = styled.div`
   }
 `;
 
-const CategoryTitle = styled.h3`
+const CategoryTitle = styled.h3<{ $accent?: string }>`
   font-size: 20px;
   font-weight: 700;
-  color: #1f2937;
+  color: #1e293b;
   margin: 0 0 16px 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 
   &::before {
     content: "";
     width: 4px;
     height: 24px;
-    background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+    background: ${(props) => props.$accent || 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)'};
     border-radius: 2px;
   }
 
@@ -153,13 +140,14 @@ export const SkillsSection: React.FC = () => {
         {/* Expert Level Skills */}
         {expertSkills.length > 0 && (
           <SkillCategory>
-            <CategoryTitle>Expert & Advanced Skills</CategoryTitle>
+            <CategoryTitle $accent="linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)">Expert & Advanced Skills</CategoryTitle>
             <SkillsGrid>
               {expertSkills.map((skill, index) => (
                 <SkillBadge
                   key={index}
                   label={skill.label}
                   rating={skill.star}
+                  accentColor="indigo"
                 />
               ))}
             </SkillsGrid>
@@ -169,13 +157,14 @@ export const SkillsSection: React.FC = () => {
         {/* Proficient Skills */}
         {proficientSkills.length > 0 && (
           <SkillCategory>
-            <CategoryTitle>Proficient Skills</CategoryTitle>
+            <CategoryTitle $accent="linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)">Proficient Skills</CategoryTitle>
             <SkillsGrid>
               {proficientSkills.map((skill, index) => (
                 <SkillBadge
                   key={index}
                   label={skill.label}
                   rating={skill.star}
+                  accentColor="teal"
                 />
               ))}
             </SkillsGrid>
@@ -185,13 +174,14 @@ export const SkillsSection: React.FC = () => {
         {/* Learning Skills */}
         {learningSkills.length > 0 && (
           <SkillCategory>
-            <CategoryTitle>Currently Learning</CategoryTitle>
+            <CategoryTitle $accent="linear-gradient(135deg, #f59e0b 0%, #d97706 100%)">Currently Learning</CategoryTitle>
             <SkillsGrid>
               {learningSkills.map((skill, index) => (
                 <SkillBadge
                   key={index}
                   label={skill.label}
                   rating={skill.star}
+                  accentColor="amber"
                 />
               ))}
             </SkillsGrid>

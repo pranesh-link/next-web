@@ -46,7 +46,7 @@ const SectionTitle = styled.h2`
   font-weight: 800;
   text-align: center;
   margin: 0 0 48px 0;
-  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+  background: linear-gradient(135deg, #1e3a8a 0%, #312e81 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -101,10 +101,13 @@ const ProjectIcon = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
   border-radius: 12px;
-  font-size: 24px;
-  box-shadow: 0 4px 12px rgba(55, 65, 81, 0.3);
+  font-size: 18px;
+  font-weight: 700;
+  color: white;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  letter-spacing: -0.5px;
 `;
 
 const ProjectTitle = styled.h3`
@@ -149,23 +152,39 @@ const ProjectDescription = styled.div`
 const ProjectMeta = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   margin-bottom: 16px;
   padding-top: 16px;
-  border-top: 1px solid rgba(102, 126, 234, 0.1);
+  border-top: 1px solid rgba(99, 102, 241, 0.1);
 `;
 
-const MetaItem = styled.div`
+const TechTagsWrap = styled.div`
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
-  font-size: 13px;
-  color: #6b7280;
 `;
 
-const MetaLabel = styled.span`
+const TechPill = styled.span`
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+  color: #3730a3;
+  padding: 5px 12px;
+  border-radius: 16px;
+  font-size: 12px;
   font-weight: 600;
-  color: #1f2937;
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(99, 102, 241, 0.12);
+  }
+
+  @media screen and (max-width: 768px) {
+    font-size: 11px;
+    padding: 4px 10px;
+  }
 `;
 
 const ButtonGroup = styled.div`
@@ -198,7 +217,14 @@ export const OpenSourceSection: React.FC = () => {
         {openSourceProjects.info.map((project, index) => (
           <ProjectCard key={index} hoverable>
             <ProjectHeader>
-              <ProjectIcon>📦</ProjectIcon>
+              <ProjectIcon>
+                {project.title
+                  .split(' ')
+                  .map((w: string) => w[0])
+                  .join('')
+                  .slice(0, 2)
+                  .toUpperCase()}
+              </ProjectIcon>
               <ProjectTitle>{project.title}</ProjectTitle>
             </ProjectHeader>
 
@@ -206,10 +232,11 @@ export const OpenSourceSection: React.FC = () => {
 
             <ProjectMeta>
               {project.skillsUsed && (
-                <MetaItem>
-                  <MetaLabel>Tech Stack:</MetaLabel>
-                  <span>{project.skillsUsed}</span>
-                </MetaItem>
+                <TechTagsWrap>
+                  {project.skillsUsed.split(',').map((tech: string, tIndex: number) => (
+                    <TechPill key={tIndex}>{tech.trim()}</TechPill>
+                  ))}
+                </TechTagsWrap>
               )}
             </ProjectMeta>
 
