@@ -46,7 +46,7 @@ const SectionTitle = styled.h2`
   font-weight: 800;
   text-align: center;
   margin: 0 0 48px 0;
-  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+  background: linear-gradient(135deg, #1e3a8a 0%, #312e81 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -70,7 +70,7 @@ const SectionTitle = styled.h2`
 const EducationText = styled.div`
   font-size: 18px;
   line-height: 1.8;
-  color: #4b5563;
+  color: #475569;
   margin: 0;
   white-space: pre-line;
   word-wrap: break-word;
@@ -90,7 +90,7 @@ const EducationText = styled.div`
   }
 
   strong {
-    color: #1f2937;
+    color: #1e3a8a;
     font-weight: 700;
   }
 

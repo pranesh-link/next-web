@@ -101,6 +101,7 @@ export const AboutSection: React.FC = () => {
                 label={detail.label}
                 value={detail.info}
                 canCopy={detail.canCopy}
+                index={index}
               />
             ))}
           </Grid>

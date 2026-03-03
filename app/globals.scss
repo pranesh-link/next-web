@@ -16,12 +16,8 @@ body {
   font-size: 16px;
   color: #1f2937;
   overflow-y: auto;
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #bae6fd 100%);
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%);
   min-height: 100vh;
-  /* Hardware acceleration */
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  perspective: 1000px;
 }
 button {
   font-family: var(--font), arial, helvetica, sans-serif;
@@ -122,23 +118,33 @@ p {
   --gradient-primary: linear-gradient(
     135deg,
     #1e3a8a 0%,
-    #0f766e 50%,
-    #134e4a 100%
+    #312e81 50%,
+    #1e1b4b 100%
   );
-  --gradient-secondary: linear-gradient(135deg, #0ea5e9 0%, #14b8a6 100%);
-  --gradient-accent: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
-  --gradient-dark: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  --gradient-secondary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  --gradient-accent: linear-gradient(135deg, #6366f1 0%, #14b8a6 100%);
+  --gradient-dark: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+  --gradient-hero: linear-gradient(135deg, #0f172a 0%, #1e3a8a 40%, #312e81 100%);
 
-  --color-primary: #0f766e;
+  /* Accent palette */
+  --accent-indigo: #6366f1;
+  --accent-indigo-light: #eef2ff;
+  --accent-teal: #14b8a6;
+  --accent-teal-light: #f0fdfa;
+  --accent-amber: #f59e0b;
+  --accent-amber-light: #fffbeb;
+  --accent-rose: #f43f5e;
+
+  --color-primary: #6366f1;
   --color-secondary: #1e3a8a;
-  --color-accent: #06b6d4;
+  --color-accent: #14b8a6;
   --color-success: #10b981;
   --color-warning: #f59e0b;
   --color-error: #ef4444;
 
-  --color-text-primary: #1f2937;
-  --color-text-secondary: #6b7280;
-  --color-text-light: #9ca3af;
+  --color-text-primary: #1e293b;
+  --color-text-secondary: #64748b;
+  --color-text-light: #94a3b8;
   --color-white: #ffffff;
 
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);

@@ -14,7 +14,8 @@ import EducationSection from "./sections/EducationSection";
 import OpenSourceSection from "./sections/OpenSourceSection";
 
 /**
- * Profile 2.0 Component* Modern, responsive profile page with rich UI
+ * Profile 2.0 Component
+ * Modern, responsive profile page with rich UI
  * 
  * Design Philosophy:
  * - Glassmorphism and gradient aesthetics for modern feel
@@ -92,9 +93,10 @@ const FloatingShapes = styled.div`
     content: "";
     position: absolute;
     border-radius: 50%;
+    will-change: transform;
     background: radial-gradient(
       circle,
-      rgba(102, 126, 234, 0.1) 0%,
+      rgba(99, 102, 241, 0.08) 0%,
       transparent 70%
     );
     animation: float 20s ease-in-out infinite;
@@ -152,6 +154,13 @@ const FloatingShapes = styled.div`
       transform: translate(-20px, 20px) rotate(240deg);
     }
   }
+
+  @media (prefers-reduced-motion: reduce) {
+    &::before,
+    &::after {
+      animation: none;
+    }
+  }
 `;
 
 const ScrollToTop = styled.button`
@@ -160,15 +169,15 @@ const ScrollToTop = styled.button`
   right: 40px;
   width: 56px;
   height: 56px;
-  background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
   color: white;
   border: none;
   border-radius: 50%;
   font-size: 24px;
   cursor: pointer;
-  box-shadow: 0 4px 20px rgba(31, 41, 55, 0.4);
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 1000;
+  z-index: 900;
   opacity: 0;
   visibility: hidden;
   transform: translateY(20px);
@@ -181,7 +190,7 @@ const ScrollToTop = styled.button`
 
   &:hover {
     transform: translateY(-4px);
-    box-shadow: 0 6px 30px rgba(55, 65, 81, 0.5);
+    box-shadow: 0 6px 30px rgba(99, 102, 241, 0.5);
   }
 
   &:active {
@@ -227,60 +236,54 @@ export const Profile2: React.FC<Profile2Props> = ({ profileContext }) => {
   // Create full context with mock handlers for modal states
   const fullContext: IProfileContext = {
     ...profileContext,
-    /* istanbul ignore next */
     setIsContactFormOpen: () => {},
-    /* istanbul ignore next */
     setIsModalOpen: () => {},
   };
 
   return (
-    <>
-      <ProfileProvider value={fullContext}>
-        <GlobalStyle />
+    <ProfileProvider value={fullContext}>
+      <GlobalStyle />
+      
+      {/* Navigation components - rendered at root level outside any containers */}
+      <Navigation />
+      <MobileMenu />
+
+      <PageContainer>
+        <FloatingShapes />
         
-        {/* Navigation components - rendered at root level outside any containers */}
-        <Navigation />
-        <MobileMenu />
-      </ProfileProvider>
+        <ContentWrapper>
+          {/* Hero section with introduction */}
+          <HeroSection />
 
-      <ProfileProvider value={fullContext}>
-        <PageContainer>
-          <FloatingShapes />
-          
-          <ContentWrapper>
-            {/* Hero section with introduction */}
-            <HeroSection />
+          {/* About section with personal info */}
+          <AboutSection />
 
-            {/* About section with personal info */}
-            <AboutSection />
+          {/* Skills section with ratings */}
+          <SkillsSection />
 
-            {/* Skills section with ratings */}
-            <SkillsSection />
+          {/* Experience timeline */}
+          <ExperienceSection />
 
-            {/* Experience timeline */}
-            <ExperienceSection />
+          {/* Education information */}
+          <EducationSection />
 
-            {/* Education information */}
-            <EducationSection />
+          {/* Open source projects */}
+          <OpenSourceSection />
+        </ContentWrapper>
 
-            {/* Open source projects */}
-            <OpenSourceSection />
-          </ContentWrapper>
+        {/* Sticky contact section at bottom */}
+        <ContactSection />
 
-          {/* Sticky contact section at bottom */}
-          <ContactSection />
-
-          {/* Scroll to top button */}
-          <ScrollToTop
-            className={showScrollTop ? "visible" : ""}
-            onClick={scrollToTop}
-            aria-label="Scroll to top"
-          >
-            ↑
-          </ScrollToTop>
-        </PageContainer>
-      </ProfileProvider>
-    </>
+        {/* Scroll to top button */}
+        <ScrollToTop
+          className={showScrollTop ? "visible" : ""}
+          onClick={scrollToTop}
+          aria-label="Scroll to top"
+        >
+          ↑
+        </ScrollToTop>
+      </PageContainer>
+    </ProfileProvider>
   );
 };
 

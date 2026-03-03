@@ -13,13 +13,13 @@ import DisplayPic from "@/_assets/display-pic.png";
 
 const HeroContainer = styled.section`
   position: relative;
-  min-height: 70vh;
+  min-height: 60vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #1f2937 0%, #374151 50%, #4b5563 100%);
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 40%, #312e81 100%);
   background-size: 200% 200%;
-  animation: gradientShift 15s ease infinite;
+  animation: gradientShift 8s ease infinite;
   padding: 100px 20px 60px;
   overflow: hidden;
   width: 100%;
@@ -78,7 +78,7 @@ const HeroContainer = styled.section`
   }
 
   @media screen and (max-width: 768px) {
-    min-height: 60vh;
+    min-height: 50vh;
     padding: 60px 20px 40px;
 
     &::before {

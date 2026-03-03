@@ -63,7 +63,7 @@ export const AvatarContainer = styled.div`
     inset: -3px;
     border-radius: 50%;
     padding: 3px;
-    background: linear-gradient(135deg, #374151 0%, #1f2937 50%, #4b5563 100%);
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #818cf8 100%);
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
@@ -79,7 +79,7 @@ export const AvatarContainer = styled.div`
   
   &:hover {
     transform: scale(1.08) rotate(2deg);
-    box-shadow: 0 20px 60px rgba(55, 65, 81, 0.35);
+    box-shadow: 0 20px 60px rgba(99, 102, 241, 0.35);
   }
   
   @keyframes rotate {
@@ -98,7 +98,7 @@ export const StyledImage = styled.div`
   height: 100%;
   border-radius: 50%;
   overflow: hidden;
-  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
   
   img {
     width: 100%;
