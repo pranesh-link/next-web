@@ -75,12 +75,16 @@ const Timeline = styled.div`
   }
 `;
 
-const TimelineItem = styled.div<{ $visible: boolean }>`
+const TimelineItem = styled.div<{ $visible: boolean; $index?: number }>`
   position: relative;
   margin-bottom: 24px;
   opacity: ${(props) => (props.$visible ? 1 : 0)};
-  transform: translateX(${(props) => (props.$visible ? 0 : "-20px")});
-  transition: all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transform: translateY(${(props) => (props.$visible ? "0" : "40px")}) scale(${(props) => (props.$visible ? 1 : 0.97)});
+  filter: blur(${(props) => (props.$visible ? "0px" : "6px")});
+  transition: opacity 1s cubic-bezier(0.16, 1, 0.3, 1) ${(props) => (props.$index || 0) * 0.15}s,
+    transform 1.2s cubic-bezier(0.16, 1, 0.3, 1) ${(props) => (props.$index || 0) * 0.15}s,
+    filter 0.8s cubic-bezier(0.16, 1, 0.3, 1) ${(props) => (props.$index || 0) * 0.15}s;
+  will-change: opacity, transform, filter;
 
   &::before {
     content: "";
@@ -259,7 +263,7 @@ export const DarkExperienceSection: React.FC = () => {
 
       <Timeline ref={ref}>
         {experiences.info.map((exp, index) => (
-          <TimelineItem key={index} $visible={isVisible}>
+          <TimelineItem key={index} $visible={isVisible} $index={index}>
             <ExperienceCard>
               <CompanyHeader>
                 <CompanyInfo>

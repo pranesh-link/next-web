@@ -4,8 +4,26 @@ import styled, { keyframes } from "styled-components";
 import { ProfileContext } from "@/_store/profile/page/context";
 
 const fadeIn = keyframes`
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.97);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0px);
+  }
+`;
+
+const ambientFade = keyframes`
+  from { opacity: 0; }
+  to { opacity: 0.5; }
+`;
+
+const orbScale = keyframes`
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 `;
 
 const HeroContainer = styled.section`
@@ -32,7 +50,8 @@ const ParticleGrid = styled.div`
     transparent 1px
   );
   background-size: 40px 40px;
-  opacity: 0.5;
+  opacity: 0;
+  animation: ${ambientFade} 2s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
 `;
 
 const GradientOrb = styled.div`
@@ -48,8 +67,10 @@ const GradientOrb = styled.div`
   );
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%) scale(0.6);
   pointer-events: none;
+  opacity: 0;
+  animation: ${orbScale} 2.5s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards;
 
   @media screen and (max-width: 768px) {
     width: 400px;
@@ -73,7 +94,7 @@ const Name = styled.h1`
   margin: 0 0 12px 0;
   letter-spacing: -2px;
   line-height: 1.1;
-  animation: ${fadeIn} 0.8s ease-out 0.4s both;
+  animation: ${fadeIn} 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
 
   @media screen and (max-width: 768px) {
     font-size: 48px;
@@ -94,7 +115,7 @@ const JobRole = styled.h2`
   font-weight: 400;
   color: #93c5fd;
   margin: 0 0 32px 0;
-  animation: ${fadeIn} 0.8s ease-out 0.6s both;
+  animation: ${fadeIn} 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.6s both;
 
   @media screen and (max-width: 768px) {
     font-size: 20px;
@@ -113,7 +134,7 @@ const Tagline = styled.p`
   margin: 0;
   max-width: 640px;
   margin: 0 auto;
-  animation: ${fadeIn} 0.8s ease-out 0.8s both;
+  animation: ${fadeIn} 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.9s both;
 
   @media screen and (max-width: 768px) {
     font-size: 15px;
@@ -122,31 +143,6 @@ const Tagline = styled.p`
   @media screen and (max-width: 480px) {
     font-size: 14px;
   }
-`;
-
-const ScrollIndicator = styled.div`
-  position: absolute;
-  bottom: 40px;
-  left: 50%;
-  transform: translateX(-50%);
-  animation: bounce 2.5s infinite;
-  z-index: 3;
-
-  @keyframes bounce {
-    0%, 100% { transform: translate(-50%, 0); }
-    50% { transform: translate(-50%, -12px); }
-  }
-`;
-
-const ScrollLine = styled.div`
-  width: 1px;
-  height: 40px;
-  background: linear-gradient(
-    180deg,
-    rgba(59, 130, 246, 0.5) 0%,
-    transparent 100%
-  );
-  margin: 0 auto;
 `;
 
 export const DarkHeroSection: React.FC = () => {
@@ -163,9 +159,6 @@ export const DarkHeroSection: React.FC = () => {
         <JobRole>{header.currentJobRole}</JobRole>
         {header.tagline && <Tagline>{header.tagline}</Tagline>}
       </HeroContent>
-      <ScrollIndicator>
-        <ScrollLine />
-      </ScrollIndicator>
     </HeroContainer>
   );
 };
