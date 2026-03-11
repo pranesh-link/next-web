@@ -107,7 +107,7 @@ const Profile3Inner: React.FC<Profile3Props> = ({ profileContext }) => {
   return (
     <ProfileProvider value={fullContext}>
       <DarkGlobalStyle $isDark={isDark} />
-      <ThemeToggle isDark={isDark} onToggle={toggleTheme} />
+      {/* <ThemeToggle isDark={isDark} onToggle={toggleTheme} /> */}
       <DarkNavigation />
       <DarkMobileMenu />
       <PageContainer>
