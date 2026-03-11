@@ -4,6 +4,7 @@ import styled from "styled-components";
 import { ProfileContext } from "@/_store/profile/page/context";
 import { Card, CardHeader, CardContent } from "../shared/Card";
 import ContactInfo from "../shared/ContactInfo";
+import { DownloadIcon } from "@/_components/svg";
 
 /**
  * AboutSection Component
@@ -72,6 +73,38 @@ const AboutText = styled.div`
   }
 `;
 
+const ButtonWrapper = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
+`;
+
+const DownloadButton = styled.a`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  background-color: #16a34a;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: #15803d;
+    box-shadow: 0 4px 12px rgba(22, 163, 74, 0.4);
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+`;
+
 export const AboutSection: React.FC = () => {
   const {
     data: {
@@ -87,6 +120,15 @@ export const AboutSection: React.FC = () => {
         <CardHeader>About Me</CardHeader>
         <CardContent>
           <AboutText dangerouslySetInnerHTML={{ __html: aboutMe.info }} />
+          <ButtonWrapper>
+            <DownloadButton
+              href="/Pranesh-Resume.pdf"
+              download="Pranesh_Resume.pdf"
+            >
+              <DownloadIcon height={18} width={18} />
+              Download Profile
+            </DownloadButton>
+          </ButtonWrapper>
         </CardContent>
       </Card>
 
