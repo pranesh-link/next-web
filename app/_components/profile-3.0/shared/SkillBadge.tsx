@@ -13,9 +13,9 @@ const Badge = styled.span`
   transition: all 0.2s ease;
 
   &:hover {
-    border-color: rgba(99, 102, 241, 0.4);
+    border-color: rgba(59, 130, 246, 0.4);
     color: #e5e5e5;
-    background: rgba(99, 102, 241, 0.08);
+    background: rgba(59, 130, 246, 0.08);
   }
 
   @media screen and (max-width: 768px) {

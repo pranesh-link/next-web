@@ -28,7 +28,7 @@ const ParticleGrid = styled.div`
   right: 0;
   bottom: 0;
   background-image: radial-gradient(
-    rgba(99, 102, 241, 0.15) 1px,
+    rgba(59, 130, 246, 0.15) 1px,
     transparent 1px
   );
   background-size: 40px 40px;
@@ -42,7 +42,7 @@ const GradientOrb = styled.div`
   border-radius: 50%;
   background: radial-gradient(
     circle,
-    rgba(99, 102, 241, 0.08) 0%,
+    rgba(59, 130, 246, 0.08) 0%,
     rgba(34, 211, 238, 0.04) 40%,
     transparent 70%
   );
@@ -92,7 +92,7 @@ const Name = styled.h1`
 const JobRole = styled.h2`
   font-size: 24px;
   font-weight: 400;
-  color: #a78bfa;
+  color: #93c5fd;
   margin: 0 0 32px 0;
   animation: ${fadeIn} 0.8s ease-out 0.6s both;
 
@@ -143,7 +143,7 @@ const ScrollLine = styled.div`
   height: 40px;
   background: linear-gradient(
     180deg,
-    rgba(99, 102, 241, 0.5) 0%,
+    rgba(59, 130, 246, 0.5) 0%,
     transparent 100%
   );
   margin: 0 auto;

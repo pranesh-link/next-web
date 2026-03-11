@@ -82,8 +82,8 @@ const DownloadButton = styled.a`
 
   &:hover {
     color: #e5e5e5;
-    border-color: rgba(99, 102, 241, 0.4);
-    background: rgba(99, 102, 241, 0.06);
+    border-color: rgba(59, 130, 246, 0.4);
+    background: rgba(59, 130, 246, 0.06);
 
     svg {
       fill: #e5e5e5;

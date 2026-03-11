@@ -119,10 +119,10 @@ const TechTags = styled.div`
 
 const TechTag = styled.span`
   padding: 5px 12px;
-  background: rgba(99, 102, 241, 0.1);
-  border: 1px solid rgba(99, 102, 241, 0.2);
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
   border-radius: 16px;
-  color: #818cf8;
+  color: #60a5fa;
   font-size: 12px;
   font-weight: 500;
 `;

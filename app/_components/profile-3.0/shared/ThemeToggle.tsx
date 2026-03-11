@@ -30,8 +30,8 @@ const ToggleButton = styled.button<{ $isDark: boolean }>`
   &:hover {
     transform: scale(1.1);
     border-color: ${(props) =>
-      props.$isDark ? "rgba(99, 102, 241, 0.5)" : "rgba(99, 102, 241, 0.3)"};
-    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.2);
+      props.$isDark ? "rgba(59, 130, 246, 0.5)" : "rgba(59, 130, 246, 0.3)"};
+    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.2);
   }
 
   &:active {

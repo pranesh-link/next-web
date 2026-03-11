@@ -35,7 +35,7 @@ const ScrollAnchor = styled.div`
 const SectionTitle = styled.h2`
   font-size: 14px;
   font-weight: 600;
-  color: #6366f1;
+  color: #3b82f6;
   text-transform: uppercase;
   letter-spacing: 3px;
   margin: 0 0 48px 0;
@@ -59,7 +59,7 @@ const Timeline = styled.div`
     width: 2px;
     background: linear-gradient(
       180deg,
-      #6366f1 0%,
+      #3b82f6 0%,
       #22d3ee 50%,
       rgba(34, 211, 238, 0.2) 100%
     );
@@ -90,9 +90,9 @@ const TimelineItem = styled.div<{ $visible: boolean }>`
     width: 12px;
     height: 12px;
     background: #0a0a0a;
-    border: 2px solid #6366f1;
+    border: 2px solid #3b82f6;
     border-radius: 50%;
-    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
   }
 
   @media screen and (max-width: 768px) {
@@ -199,9 +199,9 @@ const ProjectBadges = styled.div`
 `;
 
 const ProjectBadge = styled.button`
-  background: rgba(99, 102, 241, 0.08);
-  color: #818cf8;
-  border: 1px solid rgba(99, 102, 241, 0.2);
+  background: rgba(59, 130, 246, 0.08);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.2);
   border-radius: 20px;
   padding: 8px 16px;
   font-size: 13px;
@@ -211,8 +211,8 @@ const ProjectBadge = styled.button`
   font-family: inherit;
 
   &:hover {
-    background: rgba(99, 102, 241, 0.15);
-    border-color: rgba(99, 102, 241, 0.4);
+    background: rgba(59, 130, 246, 0.15);
+    border-color: rgba(59, 130, 246, 0.4);
     color: #a5b4fc;
     transform: translateY(-1px);
   }
