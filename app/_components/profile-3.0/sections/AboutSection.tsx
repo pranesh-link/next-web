@@ -45,10 +45,10 @@ const RevealWrapper = styled.div<{ $visible: boolean }>`
 const AboutText = styled.div`
   font-size: 16px;
   line-height: 1.8;
-  color: #a1a1aa;
+  color: var(--text-dim);
 
   b, strong {
-    color: #e5e5e5;
+    color: var(--text);
     font-weight: 600;
   }
 
@@ -69,10 +69,10 @@ const DownloadButton = styled.a`
   gap: 8px;
   padding: 10px 22px;
   background: transparent;
-  color: #a1a1aa;
+  color: var(--text-dim);
   font-size: 14px;
   font-weight: 500;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
   cursor: pointer;
   text-decoration: none;
@@ -80,17 +80,17 @@ const DownloadButton = styled.a`
   letter-spacing: 0.3px;
 
   svg {
-    fill: #a1a1aa;
+    fill: var(--text-dim);
     transition: fill 0.25s ease;
   }
 
   &:hover {
-    color: #e5e5e5;
+    color: var(--text);
     border-color: rgba(59, 130, 246, 0.4);
     background: rgba(59, 130, 246, 0.06);
 
     svg {
-      fill: #e5e5e5;
+      fill: var(--text);
     }
   }
 `;

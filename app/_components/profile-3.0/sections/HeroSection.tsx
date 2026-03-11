@@ -1,5 +1,5 @@
 "use client";
-import React, { useContext } from "react";
+import React, { useContext, useEffect, useState, useRef, useCallback } from "react";
 import styled, { keyframes } from "styled-components";
 import { ProfileContext } from "@/_store/profile/page/context";
 
@@ -21,9 +21,9 @@ const ambientFade = keyframes`
   to { opacity: 0.5; }
 `;
 
-const orbScale = keyframes`
-  from { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
-  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+const blink = keyframes`
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 `;
 
 const HeroContainer = styled.section`
@@ -32,65 +32,69 @@ const HeroContainer = styled.section`
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #0a0a0a;
+  background: var(--bg);
   overflow: hidden;
   width: 100%;
   max-width: 100vw;
   box-sizing: border-box;
 `;
 
-const ParticleGrid = styled.div`
+const ParticleGrid = styled.div<{ $scrollY: number }>`
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
   background-image: radial-gradient(
-    rgba(59, 130, 246, 0.15) 1px,
+    var(--particle-dot) 1px,
     transparent 1px
   );
   background-size: 40px 40px;
   opacity: 0;
   animation: ${ambientFade} 2s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
+  transform: translateY(${(props) => props.$scrollY * 0.4}px);
+  will-change: transform;
 `;
 
-const GradientOrb = styled.div`
+const MouseGradient = styled.div<{ $x: number; $y: number }>`
   position: absolute;
-  width: 600px;
-  height: 600px;
+  width: 800px;
+  height: 800px;
   border-radius: 50%;
   background: radial-gradient(
     circle,
-    rgba(59, 130, 246, 0.08) 0%,
-    rgba(34, 211, 238, 0.04) 40%,
-    transparent 70%
+    var(--gradient-mouse) 0%,
+    rgba(34, 211, 238, 0.03) 30%,
+    transparent 60%
   );
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) scale(0.6);
+  top: ${(props) => props.$y}px;
+  left: ${(props) => props.$x}px;
+  transform: translate(-50%, -50%);
   pointer-events: none;
-  opacity: 0;
-  animation: ${orbScale} 2.5s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards;
+  transition: top 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    left 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 
   @media screen and (max-width: 768px) {
-    width: 400px;
-    height: 400px;
+    width: 500px;
+    height: 500px;
   }
 `;
 
-const HeroContent = styled.div`
+const HeroContent = styled.div<{ $scrollY: number }>`
   position: relative;
   z-index: 2;
   text-align: center;
   max-width: 800px;
   width: 100%;
   padding: 0 24px;
+  transform: translateY(${(props) => props.$scrollY * -0.15}px);
+  will-change: transform;
 `;
 
 const Name = styled.h1`
   font-size: 72px;
   font-weight: 800;
-  color: #e5e5e5;
+  color: var(--text);
   margin: 0 0 12px 0;
   letter-spacing: -2px;
   line-height: 1.1;
@@ -113,7 +117,7 @@ const Name = styled.h1`
 const JobRole = styled.h2`
   font-size: 24px;
   font-weight: 400;
-  color: #93c5fd;
+  color: var(--accent-lighter);
   margin: 0 0 32px 0;
   animation: ${fadeIn} 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.6s both;
 
@@ -127,13 +131,13 @@ const JobRole = styled.h2`
   }
 `;
 
-const Tagline = styled.p`
+const TaglineWrapper = styled.div`
   font-size: 17px;
   line-height: 1.7;
-  color: #a1a1aa;
-  margin: 0;
+  color: var(--text-dim);
   max-width: 640px;
   margin: 0 auto;
+  min-height: 1.7em;
   animation: ${fadeIn} 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.9s both;
 
   @media screen and (max-width: 768px) {
@@ -145,19 +149,97 @@ const Tagline = styled.p`
   }
 `;
 
+const Cursor = styled.span`
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: var(--accent-light);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: ${blink} 0.8s step-end infinite;
+`;
+
+const Typewriter: React.FC<{ text: string; delay?: number }> = ({
+  text,
+  delay = 1800,
+}) => {
+  const [displayed, setDisplayed] = useState("");
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      let i = 0;
+      const interval = setInterval(() => {
+        setDisplayed(text.slice(0, i + 1));
+        i++;
+        if (i >= text.length) {
+          clearInterval(interval);
+          setDone(true);
+        }
+      }, 45);
+      return () => clearInterval(interval);
+    }, delay);
+    return () => clearTimeout(timeout);
+  }, [text, delay]);
+
+  return (
+    <TaglineWrapper>
+      {displayed}
+      {!done && <Cursor />}
+    </TaglineWrapper>
+  );
+};
+
 export const DarkHeroSection: React.FC = () => {
   const {
     data: { header },
   } = useContext(ProfileContext);
 
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const [scrollY, setScrollY] = useState(0);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    setMousePos({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    });
+    setHasInteracted(true);
+  }, []);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    el.addEventListener("mousemove", handleMouseMove);
+    return () => el.removeEventListener("mousemove", handleMouseMove);
+  }, [handleMouseMove]);
+
+  useEffect(() => {
+    let ticking = false;
+    const handleScroll = () => {
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          setScrollY(window.scrollY);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
-    <HeroContainer id="hero">
-      <ParticleGrid />
-      <GradientOrb />
-      <HeroContent>
+    <HeroContainer id="hero" ref={containerRef}>
+      <ParticleGrid $scrollY={scrollY} />
+      {hasInteracted && <MouseGradient $x={mousePos.x} $y={mousePos.y} />}
+      <HeroContent $scrollY={scrollY}>
         <Name>{header.greeting || header.name}</Name>
         <JobRole>{header.currentJobRole}</JobRole>
-        {header.tagline && <Tagline>{header.tagline}</Tagline>}
+        {header.tagline && <Typewriter text={header.tagline} />}
       </HeroContent>
     </HeroContainer>
   );

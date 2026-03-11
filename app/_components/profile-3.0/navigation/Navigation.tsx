@@ -4,7 +4,7 @@ import styled from "styled-components";
 
 const navigationItems = [
   { id: "hero", label: "Home" },
-  { id: "about", label: "About" },
+  // { id: "about", label: "About" },
   { id: "skills", label: "Skills" },
   { id: "experience", label: "Experience" },
   { id: "education", label: "Education" },
@@ -19,13 +19,13 @@ const NavContainer = styled.nav<{ $isScrolled: boolean }>`
   z-index: 1000;
   background: ${(props) =>
     props.$isScrolled
-      ? "rgba(10, 10, 10, 0.95)"
-      : "rgba(10, 10, 10, 0.6)"};
+      ? "var(--nav-bg)"
+      : "var(--nav-bg-clear)"};
   backdrop-filter: blur(20px);
   border-bottom: 1px solid
     ${(props) =>
       props.$isScrolled
-        ? "rgba(255, 255, 255, 0.08)"
+        ? "var(--border)"
         : "transparent"};
   transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   width: 100%;
@@ -64,7 +64,7 @@ const NavLink = styled.li<{ $isActive: boolean }>`
   a {
     display: block;
     padding: 8px 18px;
-    color: ${(props) => (props.$isActive ? "#e5e5e5" : "#71717a")};
+    color: ${(props) => (props.$isActive ? "var(--text)" : "var(--text-muted)")};
     text-decoration: none;
     font-weight: ${(props) => (props.$isActive ? "600" : "500")};
     font-size: 14px;
@@ -76,8 +76,8 @@ const NavLink = styled.li<{ $isActive: boolean }>`
     letter-spacing: 0.3px;
 
     &:hover {
-      color: #e5e5e5;
-      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      background: var(--surface-hover);
     }
   }
 `;

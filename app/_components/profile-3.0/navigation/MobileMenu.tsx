@@ -4,7 +4,7 @@ import styled from "styled-components";
 
 const navigationItems = [
   { id: "hero", label: "Home" },
-  { id: "about", label: "About" },
+  // { id: "about", label: "About" },
   { id: "skills", label: "Skills" },
   { id: "experience", label: "Experience" },
   { id: "education", label: "Education" },
@@ -27,13 +27,13 @@ const MobileMenuContainer = styled.div`
 const MenuBar = styled.div<{ $isScrolled: boolean }>`
   background: ${(props) =>
     props.$isScrolled
-      ? "rgba(10, 10, 10, 0.95)"
-      : "rgba(10, 10, 10, 0.6)"};
+      ? "var(--nav-bg)"
+      : "var(--nav-bg-clear)"};
   backdrop-filter: blur(20px);
   border-bottom: 1px solid
     ${(props) =>
       props.$isScrolled
-        ? "rgba(255, 255, 255, 0.08)"
+        ? "var(--border)"
         : "transparent"};
   transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   padding: 16px 20px;
@@ -52,7 +52,7 @@ const MenuBar = styled.div<{ $isScrolled: boolean }>`
 const Logo = styled.button`
   font-size: 20px;
   font-weight: 700;
-  color: #e5e5e5;
+  color: var(--text);
   letter-spacing: -0.5px;
   background: none;
   border: none;
@@ -83,7 +83,7 @@ const HamburgerButton = styled.button<{ $isOpen: boolean }>`
     display: block;
     width: 22px;
     height: 2px;
-    background: #e5e5e5;
+    background: var(--text);
     border-radius: 2px;
     transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 
@@ -122,8 +122,8 @@ const MenuPanel = styled.div<{ $isOpen: boolean }>`
   bottom: 0;
   width: 280px;
   max-width: 85vw;
-  background: #111111;
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--bg-elevated);
+  border-left: 1px solid var(--border);
   transform: ${(props) =>
     props.$isOpen ? "translateX(0)" : "translateX(100%)"};
   transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
@@ -141,7 +141,7 @@ const MenuPanel = styled.div<{ $isOpen: boolean }>`
 
 const MenuHeader = styled.div`
   padding: 24px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--border);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -151,12 +151,12 @@ const MenuTitle = styled.h3`
   margin: 0;
   font-size: 20px;
   font-weight: 700;
-  color: #e5e5e5;
+  color: var(--text);
 `;
 
 const CloseButton = styled.button`
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -164,13 +164,13 @@ const CloseButton = styled.button`
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #a1a1aa;
+  color: var(--text-dim);
   font-size: 18px;
   transition: all 0.2s ease;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: #e5e5e5;
+    background: var(--border);
+    color: var(--text);
   }
 `;
 
@@ -189,8 +189,8 @@ const MenuItem = styled.button<{ $isActive: boolean; $index?: number }>`
     props.$isActive ? "rgba(59, 130, 246, 0.08)" : "transparent"};
   border: none;
   border-left: 3px solid
-    ${(props) => (props.$isActive ? "#3b82f6" : "transparent")};
-  color: ${(props) => (props.$isActive ? "#e5e5e5" : "#71717a")};
+    ${(props) => (props.$isActive ? "var(--accent)" : "transparent")};
+  color: ${(props) => (props.$isActive ? "var(--text)" : "var(--text-muted)")};
   font-size: 15px;
   font-weight: ${(props) => (props.$isActive ? "600" : "500")};
   cursor: pointer;
@@ -199,8 +199,8 @@ const MenuItem = styled.button<{ $isActive: boolean; $index?: number }>`
   font-family: inherit;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.04);
-    color: #e5e5e5;
+    background: var(--surface);
+    color: var(--text);
     border-left-color: rgba(59, 130, 246, 0.3);
   }
 `;

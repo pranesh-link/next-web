@@ -30,9 +30,9 @@ const ContactContainer = styled.div`
   left: 0;
   right: 0;
   z-index: 100;
-  background: rgba(10, 10, 10, 0.95);
+  background: var(--nav-bg);
   backdrop-filter: blur(20px);
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--surface-hover);
   padding: 12px 20px;
   box-sizing: border-box;
   max-width: 100vw;
@@ -78,7 +78,7 @@ const IconsRow = styled.div`
 `;
 
 const LinkWrapper = styled.a`
-  color: #a1a1aa;
+  color: var(--text-dim);
   transition: all 0.25s ease;
   display: flex;
   align-items: center;
@@ -86,16 +86,16 @@ const LinkWrapper = styled.a`
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--surface);
+  border: 1px solid var(--border);
 
   svg {
     width: 20px;
     height: 20px;
-    fill: #a1a1aa;
+    fill: var(--text-dim);
 
     path {
-      fill: #a1a1aa;
+      fill: var(--text-dim);
     }
   }
 
@@ -104,7 +104,7 @@ const LinkWrapper = styled.a`
     border-color: rgba(59, 130, 246, 0.3);
 
     svg, svg path {
-      fill: #60a5fa;
+      fill: var(--accent-light);
     }
   }
 
@@ -125,12 +125,12 @@ const DevelopedUsing = styled.div`
   text-align: center;
 
   a {
-    color: #71717a;
+    color: var(--text-muted);
     text-decoration: underline;
     font-weight: 500;
 
     &:hover {
-      color: #a1a1aa;
+      color: var(--text-dim);
     }
   }
 `;

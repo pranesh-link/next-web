@@ -36,7 +36,7 @@ const ModalOverlay = styled.div<{ $isOpen: boolean }>`
 
 const ModalContent = styled.div`
   background: #1a1a1a;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border);
   border-radius: 20px;
   max-width: 700px;
   width: 100%;
@@ -56,13 +56,13 @@ const ModalHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 24px 28px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--border);
 `;
 
 const ModalTitle = styled.h3`
   font-size: 22px;
   font-weight: 700;
-  color: #e5e5e5;
+  color: var(--text);
   margin: 0;
 `;
 
@@ -70,9 +70,9 @@ const CloseButton = styled.button`
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.05);
-  color: #a1a1aa;
+  border: 1px solid var(--border);
+  background: var(--surface-hover);
+  color: var(--text-dim);
   font-size: 18px;
   cursor: pointer;
   display: flex;
@@ -81,21 +81,21 @@ const CloseButton = styled.button`
   transition: all 0.2s ease;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: #e5e5e5;
+    background: var(--border);
+    color: var(--text);
   }
 `;
 
 const ModalBody = styled.div`
   padding: 28px;
-  color: #a1a1aa;
+  color: var(--text-dim);
   font-size: 15px;
   line-height: 1.7;
 
   p { margin: 0 0 12px 0; }
   ul, ol { margin: 8px 0; padding-left: 24px; }
   li { margin: 4px 0; }
-  strong { color: #e5e5e5; font-weight: 600; }
+  strong { color: var(--text); font-weight: 600; }
 `;
 
 const TechSection = styled.div`
@@ -105,7 +105,7 @@ const TechSection = styled.div`
 const TechLabel = styled.div`
   font-size: 12px;
   font-weight: 600;
-  color: #71717a;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 1px;
   margin-bottom: 10px;
@@ -122,7 +122,7 @@ const TechTag = styled.span`
   background: rgba(59, 130, 246, 0.1);
   border: 1px solid rgba(59, 130, 246, 0.2);
   border-radius: 16px;
-  color: #60a5fa;
+  color: var(--accent-light);
   font-size: 12px;
   font-weight: 500;
 `;
