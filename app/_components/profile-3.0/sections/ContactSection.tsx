@@ -9,6 +9,8 @@ import {
   FacebookIcon,
   GithubIcon,
   LinkedInIcon,
+  MailIcon,
+  PhoneIcon,
   TwitterIcon,
   WhatsAppIcon,
 } from "@/_components/svg";
@@ -31,16 +33,16 @@ const ContactContainer = styled.div`
   background: rgba(10, 10, 10, 0.95);
   backdrop-filter: blur(20px);
   border-top: 1px solid rgba(255, 255, 255, 0.06);
-  padding: 16px 20px;
+  padding: 12px 20px;
   box-sizing: border-box;
   max-width: 100vw;
 
   @media screen and (max-width: 768px) {
-    padding: 12px 16px;
+    padding: 10px 16px;
   }
 
   @media screen and (max-width: 480px) {
-    padding: 10px 12px;
+    padding: 8px 12px;
   }
 `;
 
@@ -48,20 +50,30 @@ const ContactContent = styled.div`
   max-width: 1200px;
   margin: 0 auto;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  gap: 12px;
 `;
 
-const LinksContainer = styled.div`
+const LocationText = styled.span`
+  font-size: 14px;
+  color: #d4d4d8;
+  font-weight: 500;
+  white-space: nowrap;
+  margin-right: 8px;
+
+  @media screen and (max-width: 600px) {
+    display: none;
+  }
+`;
+
+const IconsRow = styled.div`
   display: flex;
-  justify-content: center;
   align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
+  gap: 12px;
 
   @media screen and (max-width: 480px) {
-    gap: 12px;
+    gap: 10px;
   }
 `;
 
@@ -124,7 +136,12 @@ const DevelopedUsing = styled.div`
 `;
 
 export const DarkContactSection: React.FC = () => {
-  const { showComponentLibUrl } = useContext(ProfileContext);
+  const {
+    showComponentLibUrl,
+    data: {
+      sections: { details },
+    },
+  } = useContext(ProfileContext);
   const {
     data: { links },
   } = useContext(AppContext);
@@ -134,10 +151,25 @@ export const DarkContactSection: React.FC = () => {
     [links.info]
   );
 
+  const location = details.info.find((d) => d.id === "location");
+  const mobile = details.info.find((d) => d.id === "mobile");
+  const email = details.info.find((d) => d.id === "email");
+
   return (
     <ContactContainer>
       <ContactContent>
-        <LinksContainer>
+        {location && <LocationText>{location.info}</LocationText>}
+        <IconsRow>
+          {mobile && (
+            <LinkWrapper href={`tel:${mobile.info}`} title="Call">
+              <PhoneIcon />
+            </LinkWrapper>
+          )}
+          {email && (
+            <LinkWrapper href={`mailto:${email.info}`} title="Email">
+              <MailIcon />
+            </LinkWrapper>
+          )}
           {filteredLinks.map((link, index) => (
             <LinkWrapper
               key={index}
@@ -149,18 +181,18 @@ export const DarkContactSection: React.FC = () => {
               {LinkComponents[link.label]}
             </LinkWrapper>
           ))}
-        </LinksContainer>
-        {showComponentLibUrl && (
-          <DevelopedUsing
-            dangerouslySetInnerHTML={{
-              __html: LABEL_TEXT.developedUsing.replace(
-                "{0}",
-                LINKS.NEXT_JS_LIBRARY
-              ),
-            }}
-          />
-        )}
+        </IconsRow>
       </ContactContent>
+      {showComponentLibUrl && (
+        <DevelopedUsing
+          dangerouslySetInnerHTML={{
+            __html: LABEL_TEXT.developedUsing.replace(
+              "{0}",
+              LINKS.NEXT_JS_LIBRARY
+            ),
+          }}
+        />
+      )}
     </ContactContainer>
   );
 };
