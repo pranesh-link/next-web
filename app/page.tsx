@@ -6,13 +6,11 @@ import { AppContext } from "@/_store/app/context";
 import { ProfileLayoutContext } from "@/_store/profile/layout/context";
 import dynamic from "next/dynamic";
 import { useContext, useRef } from "react";
-import "./globals.scss";
 
 export const dynamicParams = false;
 
-// Profile 2.0 is now the default home page
-const DynamicProfile2 = dynamic(
-  () => import("@/_components/profile-2.0/Profile2"),
+const DynamicProfile3 = dynamic(
+  () => import("@/_components/profile-3.0/Profile3"),
   {
     ssr: false,
     loading: () => (
@@ -22,14 +20,14 @@ const DynamicProfile2 = dynamic(
           justifyContent: "center",
           alignItems: "center",
           minHeight: "100vh",
-          background: "linear-gradient(135deg, #1f2937 0%, #374151 50%, #4b5563 100%)",
+          background: "#0a0a0a",
         }}
       >
         <div
           style={{
-            color: "white",
-            fontSize: "1.5rem",
-            fontWeight: "600",
+            color: "#a1a1aa",
+            fontSize: "1.2rem",
+            fontWeight: "500",
           }}
         >
           Loading...
@@ -40,7 +38,6 @@ const DynamicProfile2 = dynamic(
 );
 
 export default function HomePage() {
-  // Refs for section scrolling
   const homeRef = useRef(null);
   const skillsRef = useRef(null);
   const experienceRef = useRef(null);
@@ -48,7 +45,6 @@ export default function HomePage() {
   const contactRef = useRef(null);
   const openSourceRef = useRef(null);
 
-  // App context
   const {
     data: {
       appConfig = { pwa: { os: [], browsers: [] } },
@@ -58,28 +54,27 @@ export default function HomePage() {
     },
   } = useContext(AppContext);
 
-  // Profile data from layout context
   const {
     data: { profileData, preloadedAssets = [], hasError = false },
   } = useContext(ProfileLayoutContext);
 
-  // Mobile detection
   const isMobile = Boolean(useMobileDetect());
 
-  // Error handling
   if (hasError) {
     return (
-      <div style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        minHeight: "100vh",
-        background: "linear-gradient(135deg, #1f2937 0%, #374151 50%, #4b5563 100%)",
-        color: "white",
-        fontSize: "1.2rem",
-        padding: "20px",
-        textAlign: "center"
-      }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "100vh",
+          background: "#0a0a0a",
+          color: "#a1a1aa",
+          fontSize: "1.2rem",
+          padding: "20px",
+          textAlign: "center",
+        }}
+      >
         Failed to load profile data. Please try again later.
       </div>
     );
@@ -89,7 +84,6 @@ export default function HomePage() {
     return null;
   }
 
-  // Device configuration
   const deviceConfig = {
     os: appConfig.pwa.os,
     browsers: appConfig.pwa.browsers,
@@ -97,7 +91,6 @@ export default function HomePage() {
     browserName: currentDevice.browserName || "",
   };
 
-  // Build profile context for Profile2 component
   const profileContext = {
     data: profileData,
     refs: {
@@ -113,7 +106,7 @@ export default function HomePage() {
     preloadedAssets,
     currentSection: "aboutMe",
     appVersion: version,
-    isDarkMode: false,
+    isDarkMode: true,
     isMobile,
     showComponentLibUrl: false,
     isInstallBannerOpen: false,
@@ -127,9 +120,5 @@ export default function HomePage() {
     pwaOffset: 0,
   };
 
-  return (
-    <div style={{ position: 'relative', width: '100%', minHeight: '100vh' }}>
-      <DynamicProfile2 profileContext={profileContext} />
-    </div>
-  );
+  return <DynamicProfile3 profileContext={profileContext} />;
 }
