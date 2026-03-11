@@ -2,7 +2,9 @@
   "header": {
     "shortDesc": "Hello, I'm",
     "name": "Pranesh",
-    "currentJobRole": "Principal Engineer"
+    "currentJobRole": "Principal Engineer",
+    "greeting": "Hello, I'm Pranesh",
+    "tagline": "Architecting scalable platforms and leading high-performing teams at the intersection of frontend excellence, cloud-native delivery, and AI-driven innovation."
   },
   "aboutMe": {
     "title": "About Me",

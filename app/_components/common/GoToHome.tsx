@@ -13,7 +13,8 @@ export default function GoToHome() {
   return (pathname !== "/" &&
     pathname !== "/maintenance" &&
     pathname !== "/profile" &&
-    pathname !== "/profile-2.0") ||
+    pathname !== "/profile-2.0" &&
+    pathname !== "/admin") ||
     (pathname === "/profile" && isMobile) ? (
     <RedirectLink offset={pwaOffsetState} route="/" label="Home" />
   ) : null;

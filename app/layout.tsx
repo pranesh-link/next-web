@@ -5,7 +5,6 @@ import dynamicImport from "next/dynamic";
 import localFont from "next/font/local";
 import { Suspense } from "react";
 import { browserName, isMobileOnly, osName } from "react-device-detect";
-import GoToHome from "./_components/common/GoToHome";
 import PageWrapper from "./_components/common/PageWrapper";
 import { DEFAULT_APP_CONTEXT, HEADER_INFO } from "./_constants/common";
 import StyledComponentsRegistry from "./_lib/registry";
@@ -130,7 +129,6 @@ export default async function RootLayout({
               <StyledComponentsRegistry>
                 <Suspense fallback={<Loading />}>
                   <PWABanner />
-                  <GoToHome />
                   <PageWrapper>{children}</PageWrapper>
                 </Suspense>
               </StyledComponentsRegistry>

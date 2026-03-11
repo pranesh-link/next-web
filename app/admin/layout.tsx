@@ -10,13 +10,13 @@ import {
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Profile 2.0 - Next Generation Portfolio",
-  description: "Modern, responsive profile page with rich UI and animations",
+  title: "Profile 3.0 - Dark Theme Portfolio",
+  description: "Modern dark-themed profile page with scroll-reveal animations",
 };
 
 export const dynamic = "force-dynamic";
 
-export default async function Profile2Layout({
+export default async function AdminLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;

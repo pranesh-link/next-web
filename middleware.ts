@@ -35,8 +35,8 @@ export async function middleware(req: NextRequest) {
     
     const { pathname } = req.nextUrl;
 
-    // Redirect all routes to homepage except root
-    if (pathname !== "/" && !pathname.startsWith("/api")) {
+    // Redirect all routes to homepage except root and admin
+    if (pathname !== "/" && !pathname.startsWith("/api") && !pathname.startsWith("/admin")) {
       req.nextUrl.pathname = "/";
       return NextResponse.redirect(req.nextUrl, { headers: responseHeaders });
     }
