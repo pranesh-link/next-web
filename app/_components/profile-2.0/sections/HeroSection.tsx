@@ -255,9 +255,6 @@ export const HeroSection: React.FC = () => {
   return (
     <HeroContainer id="hero">
       <HeroContent>
-        <AvatarWrapper>
-          <Avatar src={DisplayPic.src} alt={name} size="large" />
-        </AvatarWrapper>
         <Name>{name}</Name>
         <JobRole>{currentJobRole}</JobRole>
       </HeroContent>
