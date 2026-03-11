@@ -116,7 +116,7 @@ const Name = styled.h1`
 
 const JobRole = styled.h2`
   font-size: 24px;
-  font-weight: 400;
+  font-weight: 600;
   color: var(--accent-lighter);
   margin: 0 0 32px 0;
   animation: ${fadeIn} 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.6s both;

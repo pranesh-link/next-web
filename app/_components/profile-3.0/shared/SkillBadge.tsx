@@ -55,7 +55,7 @@ const ProgressFill = styled.div<{
   --fill-width: ${(props) => props.$width}%;
   height: 100%;
   border-radius: 2px;
-  background: linear-gradient(90deg, var(--accent), var(--accent-light));
+  background: linear-gradient(90deg, #22c55e, #4ade80);
   width: ${(props) => (props.$visible ? "var(--fill-width)" : "0%")};
   animation: ${(props) => (props.$visible ? fillBar : "none")} 1s
     cubic-bezier(0.16, 1, 0.3, 1) ${(props) => props.$delay || "0s"} both;
