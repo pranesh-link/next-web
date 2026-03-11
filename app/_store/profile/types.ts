@@ -154,6 +154,8 @@ export interface IHeader {
   shortDesc: string;
   name: string;
   currentJobRole: string;
+  greeting?: string;
+  tagline?: string;
 }
 
 export interface IResumeExperience {

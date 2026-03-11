@@ -11,7 +11,7 @@
       "client": "Eli Lilly and Co",
       "duration": "Jul 2024 - till date",
       "role": "Lead developer",
-      "softwareTech": "React,Typescript, CSS, HTML5, Jest, React Testing library, MFE",
+      "softwareTech": "React,Typescript, CSS, HTML5, Jest, React Testing library, MFE, Node.js, Python, Docker",
       "description": "Marketplace is the front end for Enterprise Data, where users can take advantage of services Enterprise Data provides. This includes ingesting data into the Enterprise Data Backbone, initiating Data Projects, Connecting those Projects to the Analytics Work Bench (AWB), and searching for Marketplace Entries representing data that is available for users, enabling users to ask for access to that data.",
       "links": []
     }
