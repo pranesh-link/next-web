@@ -13,7 +13,7 @@ const ContactInfoContainer = styled.div<{ $index: number }>`
   transition: all 0.3s ease;
 
   &:hover {
-    border-color: rgba(99, 102, 241, 0.2);
+    border-color: rgba(59, 130, 246, 0.2);
     background: rgba(255, 255, 255, 0.04);
   }
 
@@ -29,7 +29,7 @@ const IconWrapper = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(99, 102, 241, 0.1);
+  background: rgba(59, 130, 246, 0.1);
   border-radius: 10px;
   flex-shrink: 0;
   font-size: 18px;
@@ -83,8 +83,8 @@ const CopyButton = styled.button<{ $copied: boolean }>`
   flex-shrink: 0;
 
   &:hover {
-    background: rgba(99, 102, 241, 0.1);
-    border-color: rgba(99, 102, 241, 0.3);
+    background: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.3);
     color: #e5e5e5;
   }
 `;

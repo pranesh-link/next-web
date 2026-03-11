@@ -34,7 +34,7 @@ const ScrollAnchor = styled.div`
 const SectionTitle = styled.h2`
   font-size: 14px;
   font-weight: 600;
-  color: #6366f1;
+  color: #3b82f6;
   text-transform: uppercase;
   letter-spacing: 3px;
   margin: 0 0 48px 0;
@@ -81,12 +81,12 @@ const ProjectIcon = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(99, 102, 241, 0.1);
-  border: 1px solid rgba(99, 102, 241, 0.2);
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
   border-radius: 10px;
   font-size: 14px;
   font-weight: 700;
-  color: #818cf8;
+  color: #60a5fa;
   letter-spacing: -0.5px;
   flex-shrink: 0;
 `;
@@ -129,18 +129,18 @@ const TechTagsWrap = styled.div`
 `;
 
 const TechPill = styled.span`
-  background: rgba(99, 102, 241, 0.08);
-  color: #818cf8;
+  background: rgba(59, 130, 246, 0.08);
+  color: #60a5fa;
   padding: 4px 10px;
   border-radius: 12px;
   font-size: 11px;
   font-weight: 500;
-  border: 1px solid rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.15);
   transition: all 0.2s ease;
 
   &:hover {
-    background: rgba(99, 102, 241, 0.15);
-    border-color: rgba(99, 102, 241, 0.3);
+    background: rgba(59, 130, 246, 0.15);
+    border-color: rgba(59, 130, 246, 0.3);
   }
 `;
 
@@ -182,13 +182,13 @@ const LinkButton = styled.a<{ $variant?: "primary" | "outline" }>`
     }
   `
       : `
-    background: rgba(99, 102, 241, 0.12);
-    border: 1px solid rgba(99, 102, 241, 0.25);
+    background: rgba(59, 130, 246, 0.12);
+    border: 1px solid rgba(59, 130, 246, 0.25);
     color: #a5b4fc;
 
     &:hover {
-      background: rgba(99, 102, 241, 0.2);
-      border-color: rgba(99, 102, 241, 0.4);
+      background: rgba(59, 130, 246, 0.2);
+      border-color: rgba(59, 130, 246, 0.4);
       color: #c7d2fe;
     }
   `}

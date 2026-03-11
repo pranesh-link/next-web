@@ -70,7 +70,7 @@ const NavLink = styled.li<{ $isActive: boolean }>`
     font-size: 14px;
     border-radius: 8px;
     background: ${(props) =>
-      props.$isActive ? "rgba(99, 102, 241, 0.12)" : "transparent"};
+      props.$isActive ? "rgba(59, 130, 246, 0.12)" : "transparent"};
     transition: all 0.25s ease;
     cursor: pointer;
     letter-spacing: 0.3px;

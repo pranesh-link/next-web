@@ -100,11 +100,11 @@ const LinkWrapper = styled.a`
   }
 
   &:hover {
-    background: rgba(99, 102, 241, 0.1);
-    border-color: rgba(99, 102, 241, 0.3);
+    background: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.3);
 
     svg, svg path {
-      fill: #818cf8;
+      fill: #60a5fa;
     }
   }
 

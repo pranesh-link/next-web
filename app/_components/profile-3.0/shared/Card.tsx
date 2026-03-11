@@ -13,10 +13,10 @@ const StyledCard = styled.div<{ $hoverable?: boolean }>`
     props.$hoverable &&
     `
     &:hover {
-      border-color: rgba(99, 102, 241, 0.3);
+      border-color: rgba(59, 130, 246, 0.3);
       background: rgba(255, 255, 255, 0.05);
       transform: translateY(-2px);
-      box-shadow: 0 8px 32px rgba(99, 102, 241, 0.1);
+      box-shadow: 0 8px 32px rgba(59, 130, 246, 0.1);
     }
   `}
 
@@ -45,7 +45,7 @@ const StyledCardHeader = styled.h3`
     content: "";
     width: 3px;
     height: 20px;
-    background: linear-gradient(135deg, #6366f1 0%, #22d3ee 100%);
+    background: linear-gradient(135deg, #3b82f6 0%, #22d3ee 100%);
     border-radius: 2px;
   }
 

@@ -49,11 +49,15 @@ const MenuBar = styled.div<{ $isScrolled: boolean }>`
   }
 `;
 
-const Logo = styled.div`
+const Logo = styled.button`
   font-size: 20px;
   font-weight: 700;
   color: #e5e5e5;
   letter-spacing: -0.5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
 
   @media screen and (max-width: 480px) {
     font-size: 18px;
@@ -182,10 +186,10 @@ const MenuItem = styled.button<{ $isActive: boolean; $index?: number }>`
   gap: 14px;
   padding: 14px 20px;
   background: ${(props) =>
-    props.$isActive ? "rgba(99, 102, 241, 0.08)" : "transparent"};
+    props.$isActive ? "rgba(59, 130, 246, 0.08)" : "transparent"};
   border: none;
   border-left: 3px solid
-    ${(props) => (props.$isActive ? "#6366f1" : "transparent")};
+    ${(props) => (props.$isActive ? "#3b82f6" : "transparent")};
   color: ${(props) => (props.$isActive ? "#e5e5e5" : "#71717a")};
   font-size: 15px;
   font-weight: ${(props) => (props.$isActive ? "600" : "500")};
@@ -197,7 +201,7 @@ const MenuItem = styled.button<{ $isActive: boolean; $index?: number }>`
   &:hover {
     background: rgba(255, 255, 255, 0.04);
     color: #e5e5e5;
-    border-left-color: rgba(99, 102, 241, 0.3);
+    border-left-color: rgba(59, 130, 246, 0.3);
   }
 `;
 
@@ -257,7 +261,7 @@ export const DarkMobileMenu: React.FC = () => {
   return (
     <MobileMenuContainer>
       <MenuBar $isScrolled={isScrolled}>
-        <Logo>PG</Logo>
+        <Logo onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>PG</Logo>
         <HamburgerButton
           $isOpen={isOpen}
           onClick={() => setIsOpen(!isOpen)}

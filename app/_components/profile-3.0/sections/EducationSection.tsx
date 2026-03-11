@@ -34,7 +34,7 @@ const ScrollAnchor = styled.div`
 const SectionTitle = styled.h2`
   font-size: 14px;
   font-weight: 600;
-  color: #6366f1;
+  color: #3b82f6;
   text-transform: uppercase;
   letter-spacing: 3px;
   margin: 0 0 48px 0;
@@ -57,7 +57,7 @@ const EducationText = styled.div`
   color: #a1a1aa;
 
   strong {
-    color: #6366f1;
+    color: #3b82f6;
     font-weight: 600;
   }
 
