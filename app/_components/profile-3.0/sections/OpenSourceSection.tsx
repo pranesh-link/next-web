@@ -34,7 +34,7 @@ const ScrollAnchor = styled.div`
 const SectionTitle = styled.h2`
   font-size: 14px;
   font-weight: 600;
-  color: #3b82f6;
+  color: var(--accent);
   text-transform: uppercase;
   letter-spacing: 3px;
   margin: 0 0 48px 0;
@@ -90,7 +90,7 @@ const ProjectIcon = styled.div`
   border-radius: 10px;
   font-size: 14px;
   font-weight: 700;
-  color: #60a5fa;
+  color: var(--accent-light);
   letter-spacing: -0.5px;
   flex-shrink: 0;
 `;
@@ -98,7 +98,7 @@ const ProjectIcon = styled.div`
 const ProjectTitle = styled.h3`
   font-size: 18px;
   font-weight: 700;
-  color: #e5e5e5;
+  color: var(--text);
   margin: 0;
   flex: 1;
 
@@ -110,7 +110,7 @@ const ProjectTitle = styled.h3`
 const ProjectDescription = styled.div`
   font-size: 14px;
   line-height: 1.7;
-  color: #a1a1aa;
+  color: var(--text-dim);
   margin: 0 0 16px 0;
   flex: 1;
 
@@ -129,12 +129,12 @@ const TechTagsWrap = styled.div`
   gap: 6px;
   margin-bottom: 16px;
   padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--surface-hover);
 `;
 
 const TechPill = styled.span`
   background: rgba(59, 130, 246, 0.08);
-  color: #60a5fa;
+  color: var(--accent-light);
   padding: 4px 10px;
   border-radius: 12px;
   font-size: 11px;
@@ -176,8 +176,8 @@ const LinkButton = styled.a<{ $variant?: "primary" | "outline" }>`
     props.$variant === "outline"
       ? `
     background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    color: #a1a1aa;
+    border: 1px solid var(--border-strong);
+    color: var(--text-dim);
 
     &:hover {
       border-color: rgba(34, 211, 238, 0.4);

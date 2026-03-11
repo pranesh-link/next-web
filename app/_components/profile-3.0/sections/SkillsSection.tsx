@@ -34,7 +34,7 @@ const ScrollAnchor = styled.div`
 const SectionTitle = styled.h2`
   font-size: 14px;
   font-weight: 600;
-  color: #3b82f6;
+  color: var(--accent);
   text-transform: uppercase;
   letter-spacing: 3px;
   margin: 0 0 48px 0;
@@ -87,7 +87,13 @@ export const DarkSkillsSection: React.FC = () => {
       <RevealWrapper ref={ref} $visible={isVisible}>
         <SkillsGrid>
           {sortedSkills.map((skill, index) => (
-            <DarkSkillBadge key={index} label={skill.label} delay={getDelay(index)} />
+            <DarkSkillBadge
+              key={index}
+              label={skill.label}
+              star={skill.star}
+              delay={getDelay(index)}
+              visible={isVisible}
+            />
           ))}
         </SkillsGrid>
       </RevealWrapper>

@@ -3,8 +3,8 @@ import React from "react";
 import styled from "styled-components";
 
 const StyledCard = styled.div<{ $hoverable?: boolean }>`
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 16px;
   padding: 32px;
   transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
@@ -14,7 +14,7 @@ const StyledCard = styled.div<{ $hoverable?: boolean }>`
     `
     &:hover {
       border-color: rgba(59, 130, 246, 0.3);
-      background: rgba(255, 255, 255, 0.05);
+      background: var(--surface-hover);
       transform: translateY(-2px);
       box-shadow: 0 8px 32px rgba(59, 130, 246, 0.1);
     }
@@ -33,7 +33,7 @@ const StyledCard = styled.div<{ $hoverable?: boolean }>`
 const StyledCardHeader = styled.h3`
   font-size: 18px;
   font-weight: 700;
-  color: #e5e5e5;
+  color: var(--text);
   margin: 0 0 20px 0;
   display: flex;
   align-items: center;
@@ -45,7 +45,7 @@ const StyledCardHeader = styled.h3`
     content: "";
     width: 3px;
     height: 20px;
-    background: linear-gradient(135deg, #3b82f6 0%, #22d3ee 100%);
+    background: linear-gradient(135deg, var(--accent) 0%, #22d3ee 100%);
     border-radius: 2px;
   }
 
@@ -55,7 +55,7 @@ const StyledCardHeader = styled.h3`
 `;
 
 const StyledCardContent = styled.div`
-  color: #a1a1aa;
+  color: var(--text-dim);
 `;
 
 interface CardProps {

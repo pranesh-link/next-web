@@ -8,13 +8,13 @@ const ContactInfoContainer = styled.div<{ $index: number }>`
   gap: 16px;
   padding: 16px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--surface);
+  border: 1px solid var(--surface-hover);
   transition: all 0.3s ease;
 
   &:hover {
     border-color: rgba(59, 130, 246, 0.2);
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--surface);
   }
 
   @media screen and (max-width: 768px) {
@@ -48,7 +48,7 @@ const InfoContent = styled.div`
 const Label = styled.div`
   font-size: 12px;
   font-weight: 600;
-  color: #71717a;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 1px;
   margin-bottom: 4px;
@@ -56,7 +56,7 @@ const Label = styled.div`
 
 const Value = styled.div`
   font-size: 15px;
-  color: #e5e5e5;
+  color: var(--text);
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -69,11 +69,11 @@ const Value = styled.div`
 
 const CopyButton = styled.button<{ $copied: boolean }>`
   background: ${(props) =>
-    props.$copied ? "rgba(34, 211, 238, 0.15)" : "rgba(255, 255, 255, 0.05)"};
+    props.$copied ? "rgba(34, 211, 238, 0.15)" : "var(--surface-hover)"};
   border: 1px solid
     ${(props) =>
-      props.$copied ? "rgba(34, 211, 238, 0.3)" : "rgba(255, 255, 255, 0.1)"};
-  color: ${(props) => (props.$copied ? "#22d3ee" : "#a1a1aa")};
+      props.$copied ? "rgba(34, 211, 238, 0.3)" : "var(--border)"};
+  color: ${(props) => (props.$copied ? "#22d3ee" : "var(--text-dim)")};
   padding: 6px 12px;
   border-radius: 6px;
   font-size: 12px;
@@ -85,7 +85,7 @@ const CopyButton = styled.button<{ $copied: boolean }>`
   &:hover {
     background: rgba(59, 130, 246, 0.1);
     border-color: rgba(59, 130, 246, 0.3);
-    color: #e5e5e5;
+    color: var(--text);
   }
 `;
 

@@ -34,7 +34,7 @@ const ScrollAnchor = styled.div`
 const SectionTitle = styled.h2`
   font-size: 14px;
   font-weight: 600;
-  color: #3b82f6;
+  color: var(--accent);
   text-transform: uppercase;
   letter-spacing: 3px;
   margin: 0 0 48px 0;
@@ -58,10 +58,10 @@ const RevealWrapper = styled.div<{ $visible: boolean }>`
 const EducationText = styled.div`
   font-size: 16px;
   line-height: 1.8;
-  color: #a1a1aa;
+  color: var(--text-dim);
 
   strong {
-    color: #3b82f6;
+    color: var(--accent);
     font-weight: 600;
   }
 

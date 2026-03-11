@@ -12,9 +12,9 @@ const ToggleButton = styled.button<{ $isDark: boolean }>`
   border-radius: 50%;
   border: 1px solid
     ${(props) =>
-      props.$isDark ? "rgba(255, 255, 255, 0.15)" : "rgba(0, 0, 0, 0.1)"};
+      props.$isDark ? "var(--border-strong)" : "rgba(0, 0, 0, 0.1)"};
   background: ${(props) =>
-    props.$isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.05)"};
+    props.$isDark ? "var(--border)" : "rgba(0, 0, 0, 0.05)"};
   backdrop-filter: blur(12px);
   cursor: pointer;
   display: flex;
