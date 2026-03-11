@@ -1,5 +1,6 @@
 import CloseIcon from "./CloseIcon";
 import CopyIcon from "./CopyIcon";
+import DownloadIcon from "./DownloadIcon";
 import FacebookIcon from "./FacebookIcon";
 import GithubIcon from "./GithubIcon";
 import HamburgerIcon from "./HamburgerIcon";
@@ -19,6 +20,7 @@ export {
   GithubIcon,
   CloseIcon,
   CopyIcon,
+  DownloadIcon,
   FacebookIcon,
   HamburgerIcon,
   LinkedInIcon,

@@ -15,10 +15,6 @@
       "star": 3
     },
     {
-      "label": "JavaScript",
-      "star": 4
-    },
-    {
       "label": "Cordova",
       "star": 3
     },
@@ -67,10 +63,6 @@
       "star": 4
     },
     {
-      "label": "Git",
-      "star": 4
-    },
-    {
       "label": "Angular 5",
       "star": 3
     },
@@ -109,6 +101,34 @@
     {
       "label": "Agentic AI Development",
       "star": 4
+    },
+    {
+      "label": "Node.js",
+      "star": 3
+    },
+    {
+      "label": "Server-Driven UI",
+      "star": 4
+    },
+    {
+      "label": "Performance Engineering",
+      "star": 4
+    },
+    {
+      "label": "Core Web Vitals",
+      "star": 4
+    },
+    {
+      "label": "Python",
+      "star": 3
+    },
+    {
+      "label": "FastAPI",
+      "star": 3
+    },
+    {
+      "label": "AWS CloudFormation",
+      "star": 3
     }
   ]
 }

@@ -7,7 +7,7 @@
   "aboutMe": {
     "title": "About Me",
     "ref": "homeRef",
-    "info": "I am a results-driven <strong>Principal Engineer</strong> with over <strong>13 years of experience</strong> in building and scaling high-impact engineering systems. I specialise in frontend architecture, engineering excellence, and cross-functional technical leadership. I thrive in environments that value innovation and craft, and I am passionate about mentoring teams, shaping architectural direction, and delivering solutions that drive measurable business outcomes.",
+    "info": "<strong>Principal Engineer</strong> with <strong>13+ years of experience</strong> designing and scaling enterprise digital platforms and intelligent systems. Expertise in <strong>React and Next.js architectures</strong>, micro frontend platforms, server-driven UI, and performance engineering focused on <strong>Core Web Vitals</strong>. Strong foundation in TypeScript, Node.js, HTML5, CSS3, and modern testing practices. Expanding into <strong>AI-native and data-driven platform development</strong> using Python and FastAPI, with a focus on context engineering, agentic workflows, and intelligent automation. Experienced in <strong>cloud-native delivery on AWS</strong> including S3, CloudFront, Route53, and CloudFormation, supported by CI/CD pipelines to build scalable and reliable platforms.",
     "icon": "images/display-pic.avif",
     "pdfExportIcon": "https://profile-jsons.pranesh.link/images/display-pic.avif"
   },
