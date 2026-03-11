@@ -2,8 +2,6 @@
 import React, { useContext } from "react";
 import styled from "styled-components";
 import { ProfileContext } from "@/_store/profile/page/context";
-import Avatar from "../shared/Avatar";
-import DisplayPic from "@/_assets/display-pic.png";
 
 /**
  * HeroSection Component
@@ -137,22 +135,6 @@ const HeroContent = styled.div`
 
   @media screen and (max-width: 480px) {
     padding: 0 8px;
-  }
-`;
-
-const AvatarWrapper = styled.div`
-  margin-bottom: 32px;
-  animation: fadeInScale 1s ease-out 0.2s both;
-
-  @keyframes fadeInScale {
-    from {
-      opacity: 0;
-      transform: scale(0.8);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
   }
 `;
 
