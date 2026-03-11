@@ -273,7 +273,7 @@ export const DarkMobileMenu: React.FC = () => {
 
       <MenuPanel $isOpen={isOpen}>
         <MenuHeader>
-          <MenuTitle>Menu</MenuTitle>
+          <MenuTitle>Explore</MenuTitle>
           <CloseButton onClick={() => setIsOpen(false)} aria-label="Close menu">
             ✕
           </CloseButton>

@@ -3,7 +3,6 @@ import React, { useContext } from "react";
 import styled from "styled-components";
 import { ProfileContext } from "@/_store/profile/page/context";
 import { DarkCard, DarkCardHeader, DarkCardContent } from "../shared/Card";
-import DarkContactInfo from "../shared/ContactInfo";
 import { DownloadIcon } from "@/_components/svg";
 import { useScrollReveal } from "@/_hooks/use-scroll-reveal";
 
@@ -39,13 +38,6 @@ const RevealWrapper = styled.div<{ $visible: boolean }>`
   transition: all 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 `;
 
-const Grid = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  margin-top: 32px;
-`;
-
 const AboutText = styled.div`
   font-size: 16px;
   line-height: 1.8;
@@ -58,16 +50,6 @@ const AboutText = styled.div`
 
   @media screen and (max-width: 768px) {
     font-size: 15px;
-  }
-`;
-
-const ContactGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-
-  @media screen and (max-width: 600px) {
-    grid-template-columns: 1fr;
   }
 `;
 
@@ -112,7 +94,7 @@ const DownloadButton = styled.a`
 export const DarkAboutSection: React.FC = () => {
   const {
     data: {
-      sections: { aboutMe, details },
+      sections: { aboutMe },
     },
   } = useContext(ProfileContext);
   const { ref, isVisible } = useScrollReveal();
@@ -136,26 +118,6 @@ export const DarkAboutSection: React.FC = () => {
             </ButtonWrapper>
           </DarkCardContent>
         </DarkCard>
-
-        <Grid>
-          <DarkCard>
-            <DarkCardHeader>Contact</DarkCardHeader>
-            <DarkCardContent>
-              <ContactGrid>
-                {details.info.map((detail, index) => (
-                  <DarkContactInfo
-                    key={index}
-                    icon={<span>&#9993;</span>}
-                    label={detail.label}
-                    value={detail.info}
-                    canCopy={detail.canCopy}
-                    index={index}
-                  />
-                ))}
-              </ContactGrid>
-            </DarkCardContent>
-          </DarkCard>
-        </Grid>
       </RevealWrapper>
     </SectionContainer>
   );

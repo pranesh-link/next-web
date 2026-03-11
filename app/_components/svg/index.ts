@@ -14,6 +14,7 @@ import WhatsAppIcon from "./WhatsAppIcon";
 import LocationIcon from "./LocationIcon";
 import MailIcon from "./MailIcon";
 import MobileIcon from "./MobileIcon";
+import PhoneIcon from "./PhoneIcon";
 import ResetIcon from "./ResetIcon";
 
 export {
@@ -32,6 +33,7 @@ export {
   WhatsAppIcon,
   LocationIcon,
   MobileIcon,
+  PhoneIcon,
   MailIcon,
   ResetIcon,
 };
