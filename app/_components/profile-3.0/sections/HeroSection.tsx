@@ -28,7 +28,7 @@ const blink = keyframes`
 
 const HeroContainer = styled.section`
   position: relative;
-  min-height: 100vh;
+  min-height: 90vh;
   display: flex;
   align-items: center;
   justify-content: center;
