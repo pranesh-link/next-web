@@ -14,6 +14,10 @@ import DarkOpenSourceSection from "./sections/OpenSourceSection";
 import DarkContactSection from "./sections/ContactSection";
 
 const DarkGlobalStyle = createGlobalStyle`
+  html {
+    scroll-behavior: smooth;
+  }
+
   html, body {
     overflow-x: hidden;
     max-width: 100vw;

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
 interface UseScrollRevealOptions {
   threshold?: number;
@@ -38,4 +38,16 @@ export const useScrollReveal = ({
   }, [threshold, rootMargin, triggerOnce]);
 
   return { ref, isVisible };
+};
+
+export const useStaggerReveal = (
+  itemCount: number,
+  options: UseScrollRevealOptions = {}
+) => {
+  const { ref, isVisible } = useScrollReveal(options);
+  const getDelay = useCallback(
+    (index: number) => `${index * 0.08}s`,
+    []
+  );
+  return { ref, isVisible, getDelay };
 };

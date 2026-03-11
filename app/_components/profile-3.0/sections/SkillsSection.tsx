@@ -3,7 +3,7 @@ import React, { useContext } from "react";
 import styled from "styled-components";
 import { ProfileContext } from "@/_store/profile/page/context";
 import DarkSkillBadge from "../shared/SkillBadge";
-import { useScrollReveal } from "@/_hooks/use-scroll-reveal";
+import { useStaggerReveal } from "@/_hooks/use-scroll-reveal";
 
 const SectionContainer = styled.section`
   max-width: 1000px;
@@ -47,8 +47,12 @@ const SectionTitle = styled.h2`
 
 const RevealWrapper = styled.div<{ $visible: boolean }>`
   opacity: ${(props) => (props.$visible ? 1 : 0)};
-  transform: translateY(${(props) => (props.$visible ? 0 : "30px")});
-  transition: all 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transform: translateY(${(props) => (props.$visible ? "0" : "40px")}) scale(${(props) => (props.$visible ? 1 : 0.97)});
+  filter: blur(${(props) => (props.$visible ? "0px" : "6px")});
+  transition: opacity 1s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 1.2s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform, filter;
 `;
 
 const SkillsGrid = styled.div`
@@ -72,9 +76,9 @@ export const DarkSkillsSection: React.FC = () => {
       sections: { skills },
     },
   } = useContext(ProfileContext);
-  const { ref, isVisible } = useScrollReveal();
 
   const sortedSkills = [...skills.info].sort((a, b) => b.star - a.star);
+  const { ref, isVisible, getDelay } = useStaggerReveal(sortedSkills.length);
 
   return (
     <SectionContainer>
@@ -83,7 +87,7 @@ export const DarkSkillsSection: React.FC = () => {
       <RevealWrapper ref={ref} $visible={isVisible}>
         <SkillsGrid>
           {sortedSkills.map((skill, index) => (
-            <DarkSkillBadge key={index} label={skill.label} />
+            <DarkSkillBadge key={index} label={skill.label} delay={getDelay(index)} />
           ))}
         </SkillsGrid>
       </RevealWrapper>
