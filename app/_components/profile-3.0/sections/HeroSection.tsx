@@ -159,6 +159,144 @@ const Cursor = styled.span`
   animation: ${blink} 0.8s step-end infinite;
 `;
 
+const spotlightIn = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+`;
+
+const spotlightOut = keyframes`
+  from {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+    filter: blur(4px);
+  }
+`;
+
+const SpotlightContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  margin-top: 40px;
+  animation: ${fadeIn} 1.2s cubic-bezier(0.16, 1, 0.3, 1) 3s both;
+
+  @media screen and (max-width: 480px) {
+    margin-top: 28px;
+  }
+`;
+
+const SpotlightCard = styled.button<{ $leaving: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.3s ease, background 0.3s ease;
+  animation: ${(props) => (props.$leaving ? spotlightOut : spotlightIn)} 0.4s
+    cubic-bezier(0.16, 1, 0.3, 1) both;
+
+  &:hover {
+    border-color: rgba(59, 130, 246, 0.4);
+    background: rgba(59, 130, 246, 0.06);
+    color: var(--text);
+  }
+
+  @media screen and (max-width: 480px) {
+    font-size: 12px;
+    padding: 8px 16px;
+    gap: 8px;
+  }
+`;
+
+const SpotlightIcon = styled.span`
+  font-size: 16px;
+  line-height: 1;
+`;
+
+const SpotlightLabel = styled.span`
+  color: var(--text-muted);
+`;
+
+const SpotlightValue = styled.span`
+  color: var(--accent-light);
+  font-weight: 600;
+`;
+
+interface SpotlightItem {
+  icon: string;
+  label: string;
+  value: string;
+  section: string;
+}
+
+const spotlightItems: SpotlightItem[] = [
+  { icon: "⚡", label: "Top Skill", value: "React", section: "skills" },
+  { icon: "🏢", label: "Current", value: "Eli Lilly", section: "experience" },
+  { icon: "📦", label: "Open Source", value: "2 Projects", section: "open-source" },
+  { icon: "🎓", label: "Education", value: "B.E. Engineering", section: "education" },
+  { icon: "🧠", label: "Exploring", value: "Agentic AI", section: "skills" },
+  { icon: "📅", label: "Experience", value: "13+ Years", section: "experience" },
+];
+
+const Spotlight: React.FC = () => {
+  const [index, setIndex] = useState(0);
+  const [leaving, setLeaving] = useState(false);
+  const [paused, setPaused] = useState(false);
+
+  useEffect(() => {
+    if (paused) return;
+    const interval = setInterval(() => {
+      setLeaving(true);
+      setTimeout(() => {
+        setIndex((prev) => (prev + 1) % spotlightItems.length);
+        setLeaving(false);
+      }, 400);
+    }, 3500);
+    return () => clearInterval(interval);
+  }, [paused]);
+
+  const item = spotlightItems[index];
+
+  const handleClick = () => {
+    const el = document.getElementById(item.section);
+    if (el) el.scrollIntoView({ behavior: "smooth" });
+  };
+
+  return (
+    <SpotlightContainer>
+      <SpotlightCard
+        $leaving={leaving}
+        onClick={handleClick}
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+      >
+        <SpotlightIcon>{item.icon}</SpotlightIcon>
+        <SpotlightLabel>{item.label}:</SpotlightLabel>
+        <SpotlightValue>{item.value}</SpotlightValue>
+        <SpotlightLabel>→</SpotlightLabel>
+      </SpotlightCard>
+    </SpotlightContainer>
+  );
+};
+
 const Typewriter: React.FC<{ text: string; delay?: number }> = ({
   text,
   delay = 1800,
@@ -240,6 +378,7 @@ export const DarkHeroSection: React.FC = () => {
         <Name>{header.greeting || header.name}</Name>
         <JobRole>{header.currentJobRole}</JobRole>
         {header.tagline && <Typewriter text={header.tagline} />}
+        <Spotlight />
       </HeroContent>
     </HeroContainer>
   );
