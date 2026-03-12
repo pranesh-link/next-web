@@ -159,48 +159,32 @@ const Cursor = styled.span`
   animation: ${blink} 0.8s step-end infinite;
 `;
 
-const spotlightIn = keyframes`
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-    filter: blur(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-    filter: blur(0);
-  }
-`;
-
-const spotlightOut = keyframes`
-  from {
-    opacity: 1;
-    transform: translateY(0);
-    filter: blur(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-8px);
-    filter: blur(4px);
-  }
-`;
-
-const SpotlightContainer = styled.div`
+const PillsContainer = styled.div`
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
+  gap: 10px;
   margin-top: 40px;
   animation: ${fadeIn} 1.2s cubic-bezier(0.16, 1, 0.3, 1) 3s both;
 
   @media screen and (max-width: 480px) {
     margin-top: 28px;
+    gap: 8px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    padding: 0 4px 8px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    &::-webkit-scrollbar { display: none; }
   }
 `;
 
-const SpotlightCard = styled.button<{ $leaving: boolean }>`
+const Pill = styled.button`
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 20px;
+  gap: 8px;
+  padding: 10px 18px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 24px;
@@ -209,91 +193,55 @@ const SpotlightCard = styled.button<{ $leaving: boolean }>`
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
-  transition: border-color 0.3s ease, background 0.3s ease;
-  animation: ${(props) => (props.$leaving ? spotlightOut : spotlightIn)} 0.4s
-    cubic-bezier(0.16, 1, 0.3, 1) both;
+  white-space: nowrap;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 
   &:hover {
-    border-color: rgba(59, 130, 246, 0.4);
-    background: rgba(59, 130, 246, 0.06);
+    border-color: rgba(59, 130, 246, 0.5);
+    background: rgba(59, 130, 246, 0.08);
     color: var(--text);
+    transform: translateY(-2px);
+  }
+
+  &:active {
+    transform: translateY(0);
   }
 
   @media screen and (max-width: 480px) {
     font-size: 12px;
-    padding: 8px 16px;
-    gap: 8px;
+    padding: 8px 14px;
+    gap: 6px;
+    flex-shrink: 0;
   }
 `;
 
-const SpotlightIcon = styled.span`
-  font-size: 16px;
+const PillIcon = styled.span`
+  font-size: 15px;
   line-height: 1;
 `;
 
-const SpotlightLabel = styled.span`
-  color: var(--text-muted);
-`;
-
-const SpotlightValue = styled.span`
-  color: var(--accent-light);
-  font-weight: 600;
-`;
-
-interface SpotlightItem {
-  icon: string;
-  label: string;
-  value: string;
-  section: string;
-}
-
-const spotlightItems: SpotlightItem[] = [
-  { icon: "⚡", label: "Top Skill", value: "React", section: "skills" },
-  { icon: "🏢", label: "Current", value: "Eli Lilly", section: "experience" },
-  { icon: "📦", label: "Open Source", value: "2 Projects", section: "open-source" },
-  { icon: "🎓", label: "Education", value: "B.E. Engineering", section: "education" },
-  { icon: "🧠", label: "Exploring", value: "Agentic AI", section: "skills" },
-  { icon: "📅", label: "Experience", value: "13+ Years", section: "experience" },
+const interestPills = [
+  { icon: "🛠", label: "What I Know", section: "skills" },
+  { icon: "🏢", label: "My Journey", section: "experience" },
+  { icon: "🎓", label: "Education", section: "education" },
+  { icon: "📦", label: "Projects", section: "open-source" },
 ];
 
-const Spotlight: React.FC = () => {
-  const [index, setIndex] = useState(0);
-  const [leaving, setLeaving] = useState(false);
-  const [paused, setPaused] = useState(false);
-
-  useEffect(() => {
-    if (paused) return;
-    const interval = setInterval(() => {
-      setLeaving(true);
-      setTimeout(() => {
-        setIndex((prev) => (prev + 1) % spotlightItems.length);
-        setLeaving(false);
-      }, 400);
-    }, 3500);
-    return () => clearInterval(interval);
-  }, [paused]);
-
-  const item = spotlightItems[index];
-
-  const handleClick = () => {
-    const el = document.getElementById(item.section);
+const InterestPills: React.FC = () => {
+  const handleClick = (section: string) => {
+    const el = document.getElementById(section);
     if (el) el.scrollIntoView({ behavior: "smooth" });
   };
 
   return (
-    <SpotlightContainer>
-      <SpotlightCard
-        $leaving={leaving}
-        onClick={handleClick}
-        onMouseEnter={() => setPaused(true)}
-        onMouseLeave={() => setPaused(false)}
-      >
-        <SpotlightIcon>{item.icon}</SpotlightIcon>
-        <SpotlightLabel>{item.label}:</SpotlightLabel>
-        <SpotlightValue>{item.value}</SpotlightValue>
-        <SpotlightLabel>→</SpotlightLabel>
-      </SpotlightCard>
-    </SpotlightContainer>
+    <PillsContainer>
+      {interestPills.map((pill) => (
+        <Pill key={pill.section} onClick={() => handleClick(pill.section)}>
+          <PillIcon>{pill.icon}</PillIcon>
+          {pill.label}
+        </Pill>
+      ))}
+    </PillsContainer>
   );
 };
 
@@ -378,7 +326,7 @@ export const DarkHeroSection: React.FC = () => {
         <Name>{header.greeting || header.name}</Name>
         <JobRole>{header.currentJobRole}</JobRole>
         {header.tagline && <Typewriter text={header.tagline} />}
-        <Spotlight />
+        <InterestPills />
       </HeroContent>
     </HeroContainer>
   );

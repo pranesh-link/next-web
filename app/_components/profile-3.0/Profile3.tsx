@@ -5,8 +5,10 @@ import { ProfileProvider } from "@/_store/profile/page/context";
 import { IProfileContext } from "@/_store/profile/types";
 import { ThemeProvider, useTheme } from "./shared/ThemeContext";
 // import ThemeToggle from "./shared/ThemeToggle";
-import DarkNavigation from "./navigation/Navigation";
-import DarkMobileMenu from "./navigation/MobileMenu";
+// import DarkNavigation from "./navigation/Navigation";
+// import DarkMobileMenu from "./navigation/MobileMenu";
+import InterestNav from "./navigation/InterestNav";
+import SectionPrompt from "./shared/SectionPrompt";
 import DarkHeroSection from "./sections/HeroSection";
 // import DarkStatsSection from "./sections/StatsSection";
 // import DarkAboutSection from "./sections/AboutSection";
@@ -108,8 +110,9 @@ const Profile3Inner: React.FC<Profile3Props> = ({ profileContext }) => {
     <ProfileProvider value={fullContext}>
       <DarkGlobalStyle $isDark={isDark} />
       {/* <ThemeToggle isDark={isDark} onToggle={toggleTheme} /> */}
-      <DarkNavigation />
-      <DarkMobileMenu />
+      {/* <DarkNavigation /> */}
+      {/* <DarkMobileMenu /> */}
+      <InterestNav />
       <PageContainer>
         <ContentWrapper>
           <DarkHeroSection />
@@ -117,10 +120,13 @@ const Profile3Inner: React.FC<Profile3Props> = ({ profileContext }) => {
           <SectionDivider />
           {/* <DarkAboutSection /> */}
           <DarkSkillsSection />
+          <SectionPrompt text="Curious where I've applied these?" targetSection="experience" />
           <SectionDivider />
           <DarkExperienceSection />
+          <SectionPrompt text="See my academic foundation" targetSection="education" />
           <SectionDivider />
           <DarkEducationSection />
+          <SectionPrompt text="Check out what I've built" targetSection="open-source" />
           <SectionDivider />
           <DarkOpenSourceSection />
         </ContentWrapper>
