@@ -314,7 +314,7 @@ const Typewriter: React.FC<{ text: string; delay?: number }> = ({
           clearInterval(interval);
           setDone(true);
         }
-      }, 45);
+      }, 28);
       return () => clearInterval(interval);
     }, delay);
     return () => clearTimeout(timeout);
