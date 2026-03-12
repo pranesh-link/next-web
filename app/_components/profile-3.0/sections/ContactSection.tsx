@@ -55,6 +55,14 @@ const ContactContent = styled.div`
   gap: 12px;
 `;
 
+const ConnectLabel = styled.span`
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+`;
+
 const LocationText = styled.span`
   font-size: 14px;
   color: #d4d4d8;
@@ -156,8 +164,9 @@ export const DarkContactSection: React.FC = () => {
   const email = details.info.find((d) => d.id === "email");
 
   return (
-    <ContactContainer>
+    <ContactContainer id="contact">
       <ContactContent>
+        <ConnectLabel>Let&apos;s connect</ConnectLabel>
         {location && <LocationText>{location.info}</LocationText>}
         <IconsRow>
           {mobile && (
