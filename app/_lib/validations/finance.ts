@@ -38,8 +38,18 @@ export const goalSchema = z.object({
   deadline: z.coerce.date().optional(),
 });
 
+export const coupleSchema = z.object({
+  name: z.string().max(100).optional(),
+});
+
+export const inviteSchema = z.object({
+  email: z.string().email('Valid email is required'),
+});
+
 export type AccountInput = z.infer<typeof accountSchema>;
 export type TransactionInput = z.infer<typeof transactionSchema>;
 export type BudgetInput = z.infer<typeof budgetSchema>;
 export type LoanInput = z.infer<typeof loanSchema>;
 export type GoalInput = z.infer<typeof goalSchema>;
+export type CoupleInput = z.infer<typeof coupleSchema>;
+export type InviteInput = z.infer<typeof inviteSchema>;

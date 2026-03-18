@@ -16,7 +16,7 @@ const withPWA = withPWAInit({
   },
 });
 const nextConfig = {
-  allowedDevOrigins: ["dev.data.lilly.com"],
+  allowedDevOrigins: ["dev.data.lilly.com", "192.168.1.9"],
   compiler: {
     styledComponents: true,
     removeConsole: process.env.NODE_ENV === "production",

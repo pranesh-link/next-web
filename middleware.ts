@@ -35,6 +35,14 @@ export async function middleware(req: NextRequest) {
     
     const { pathname } = req.nextUrl;
 
+    // Allow API v1 routes through without any middleware processing
+    if (pathname.startsWith("/api/v1/")) {
+      return NextResponse.next({
+        request: { headers: requestHeaders },
+        headers: responseHeaders,
+      });
+    }
+
     // Allow static assets, service worker, and Server Actions through
     if (
       pathname === "/sw.js" ||

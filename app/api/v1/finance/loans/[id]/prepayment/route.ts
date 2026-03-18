@@ -1,0 +1,87 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getAuthUserId } from "@/api/v1/_lib/auth";
+import prisma from "@/_lib/prisma";
+import { simulatePrepayment } from "@/_services/finance";
+import type { LoanData } from "@/_services/finance";
+import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
+
+type RouteContext = { params: Promise<{ id: string }> };
+
+function toLoanData(loan: {
+  id: string;
+  name: string;
+  principal: number;
+  interestRate: number;
+  tenureMonths: number;
+  emiAmount: number;
+  startDate: Date;
+  remainingBalance: number;
+}): LoanData {
+  return {
+    id: loan.id,
+    name: loan.name,
+    principal: loan.principal,
+    interestRate: loan.interestRate,
+    tenureMonths: loan.tenureMonths,
+    emiAmount: loan.emiAmount,
+    startDate: loan.startDate,
+    remainingBalance: loan.remainingBalance,
+  };
+}
+
+export async function OPTIONS() {
+  return handleOptions();
+}
+
+export async function POST(request: NextRequest, context: RouteContext) {
+  try {
+    const userId = await getAuthUserId();
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "Not authenticated" },
+        { status: 401, headers: corsHeaders() },
+      );
+    }
+
+    const { id } = await context.params;
+
+    const loan = await prisma.loan.findFirst({
+      where: { id, userId: userId },
+    });
+
+    if (!loan) {
+      return NextResponse.json(
+        { success: false, error: "Loan not found" },
+        { status: 404, headers: corsHeaders() },
+      );
+    }
+
+    const body = await request.json();
+    const amount = body.amount;
+
+    if (typeof amount !== "number" || amount <= 0) {
+      return NextResponse.json(
+        { success: false, error: "Prepayment amount must be a positive number" },
+        { status: 400, headers: corsHeaders() },
+      );
+    }
+
+    const result = simulatePrepayment(toLoanData(loan), amount);
+
+    return NextResponse.json(
+      { success: true, data: result },
+      { headers: corsHeaders() },
+    );
+  } catch (error) {
+    return NextResponse.json(
+      {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to simulate prepayment",
+      },
+      { status: 500, headers: corsHeaders() },
+    );
+  }
+}
