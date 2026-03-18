@@ -1,0 +1,1259 @@
+"use client";
+
+import { useEffect, useState, useCallback, useRef } from "react";
+import styled, { keyframes } from "styled-components";
+import {
+  getLoans,
+  createLoan,
+  updateLoan,
+  deleteLoan,
+  simulateLoanPrepayment,
+  getLoanInsightsAction,
+} from "@/finance/_actions/loans";
+import FinanceHeader from "@/finance/_components/layout/FinanceHeader";
+import LoanForm from "@/finance/_components/forms/LoanForm";
+import Modal from "@/finance/_components/shared/Modal";
+import EmptyState from "@/finance/_components/shared/EmptyState";
+import LoadingSkeleton from "@/finance/_components/shared/LoadingSkeleton";
+
+/* ── Types ──────────────────────────────────────────── */
+
+type Loan = {
+  id: string;
+  name: string;
+  principal: number;
+  interestRate: number;
+  tenureMonths: number;
+  emiAmount: number;
+  startDate: string | Date;
+  remainingBalance: number;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+};
+
+type PrepaymentResult = {
+  originalInterest: number;
+  newInterest: number;
+  interestSaved: number;
+  newTenure: number;
+  originalTenure: number;
+};
+
+type InsightResult = {
+  totalInterestPayable: number;
+  monthsRemaining: number;
+  earlyPayoffSavings?: number;
+  prepaymentAmount?: number;
+};
+
+type Notification = {
+  message: string;
+  type: "success" | "error";
+};
+
+const EASING = "cubic-bezier(0.16, 1, 0.3, 1)";
+
+/* ── Helpers ────────────────────────────────────────── */
+
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function formatDate(date: string | Date): string {
+  return new Date(date).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+/* ── Keyframes ──────────────────────────────────────── */
+
+const slideDown = keyframes`
+  from { opacity: 0; transform: translateY(-16px); }
+  to   { opacity: 1; transform: translateY(0); }
+`;
+
+const fadeOut = keyframes`
+  from { opacity: 1; }
+  to   { opacity: 0; }
+`;
+
+const fillExpand = keyframes`
+  from { width: 0%; }
+`;
+
+const fadeIn = keyframes`
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+`;
+
+/* ── Styled Components ──────────────────────────────── */
+
+const PageWrapper = styled.div`
+  padding: 32px;
+
+  @media (max-width: 768px) {
+    padding: 20px;
+  }
+`;
+
+/* ── Summary Cards ── */
+
+const SummaryRow = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const SummaryCardStyled = styled.div`
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  transition: all 0.3s ${EASING};
+
+  &:hover {
+    border-color: rgba(59, 130, 246, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(59, 130, 246, 0.08);
+  }
+`;
+
+const SummaryLabel = styled.p`
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+  margin: 0 0 8px 0;
+`;
+
+const SummaryValue = styled.p<{ $color?: string }>`
+  font-size: 24px;
+  font-weight: 800;
+  color: ${(p) => p.$color ?? "var(--text)"};
+  margin: 0;
+  letter-spacing: -1px;
+`;
+
+/* ── Loan Cards Grid ── */
+
+const LoanGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const LoanCard = styled.div`
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  position: relative;
+  transition: all 0.3s ${EASING};
+
+  &:hover {
+    border-color: rgba(59, 130, 246, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(59, 130, 246, 0.08);
+  }
+`;
+
+const LoanCardHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+`;
+
+const LoanName = styled.h3`
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  &::before {
+    content: "";
+    display: block;
+    width: 4px;
+    height: 20px;
+    border-radius: 2px;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+`;
+
+const CardActions = styled.div`
+  display: flex;
+  gap: 2px;
+`;
+
+const IconButton = styled.button<{ $variant?: "edit" | "delete" }>`
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ${EASING};
+
+  &:hover {
+    background: var(--surface-hover);
+    color: ${(p) =>
+      p.$variant === "delete" ? "var(--danger)" : "var(--accent)"};
+  }
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+`;
+
+/* ── Details Grid ── */
+
+const DetailsGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+`;
+
+const DetailItem = styled.div``;
+
+const DetailLabel = styled.p`
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  margin: 0 0 4px 0;
+`;
+
+const DetailValue = styled.p<{ $color?: string }>`
+  font-size: 16px;
+  font-weight: 700;
+  color: ${(p) => p.$color ?? "var(--text)"};
+  margin: 0;
+`;
+
+/* ── Progress Bar ── */
+
+const ProgressSection = styled.div`
+  margin-bottom: 16px;
+`;
+
+const ProgressMeta = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+`;
+
+const ProgressLabel = styled.span`
+  font-size: 12px;
+  color: var(--text-dim);
+`;
+
+const ProgressPct = styled.span`
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+`;
+
+const ProgressTrack = styled.div`
+  width: 100%;
+  height: 6px;
+  border-radius: 6px;
+  background: var(--surface-hover);
+  overflow: hidden;
+`;
+
+const ProgressFill = styled.div<{ $width: number }>`
+  height: 100%;
+  border-radius: 6px;
+  width: ${(p) => Math.min(p.$width, 100)}%;
+  background: linear-gradient(90deg, var(--accent), #22d3ee);
+  transition: width 1s ${EASING};
+  animation: ${fillExpand} 0.8s ${EASING};
+`;
+
+/* ── Remaining & Date ── */
+
+const RemainingRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 16px;
+`;
+
+const RemainingLabel = styled.span`
+  font-size: 12px;
+  color: var(--text-muted);
+`;
+
+const RemainingValue = styled.span`
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--warning);
+`;
+
+const StartDate = styled.p`
+  font-size: 12px;
+  color: var(--text-dim);
+  margin: 0 0 16px 0;
+`;
+
+/* ── Action Buttons Row ── */
+
+const ButtonRow = styled.div`
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+`;
+
+const SmallButton = styled.button<{
+  $variant?: "primary" | "outline" | "accent";
+}>`
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ${EASING};
+  border: 1px solid;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  background: ${(p) =>
+    p.$variant === "primary"
+      ? "var(--accent)"
+      : p.$variant === "accent"
+        ? "rgba(59, 130, 246, 0.1)"
+        : "transparent"};
+  color: ${(p) =>
+    p.$variant === "primary"
+      ? "#fff"
+      : p.$variant === "accent"
+        ? "var(--accent-light)"
+        : "var(--text-dim)"};
+  border-color: ${(p) =>
+    p.$variant === "primary"
+      ? "var(--accent)"
+      : p.$variant === "accent"
+        ? "rgba(59, 130, 246, 0.3)"
+        : "var(--border)"};
+
+  &:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.1);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+`;
+
+/* ── Prepayment Simulator ── */
+
+const SimulatorWrapper = styled.div`
+  margin-top: 16px;
+  padding: 20px;
+  background: rgba(59, 130, 246, 0.04);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  border-radius: 12px;
+  animation: ${fadeIn} 0.3s ${EASING};
+`;
+
+const SimulatorTitle = styled.h4`
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-light);
+  margin: 0 0 16px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+const SimInputRow = styled.div`
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+`;
+
+const DarkInput = styled.input`
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.2s ${EASING};
+
+  &:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  &::placeholder {
+    color: var(--text-muted);
+  }
+`;
+
+const ComparisonGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 0;
+  align-items: stretch;
+`;
+
+const ComparisonColumn = styled.div<{ $side: "before" | "after" }>`
+  padding: 16px;
+  border-radius: ${(p) =>
+    p.$side === "before" ? "10px 0 0 10px" : "0 10px 10px 0"};
+  background: ${(p) =>
+    p.$side === "before"
+      ? "rgba(255, 255, 255, 0.03)"
+      : "rgba(34, 197, 94, 0.05)"};
+  border: 1px solid
+    ${(p) =>
+      p.$side === "before"
+        ? "var(--border)"
+        : "rgba(34, 197, 94, 0.2)"};
+`;
+
+const ComparisonDivider = styled.div`
+  width: 1px;
+  background: var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+
+  &::after {
+    content: "→";
+    position: absolute;
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: 12px;
+    padding: 4px;
+    border-radius: 4px;
+  }
+`;
+
+const CompColTitle = styled.p`
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+  margin: 0 0 12px 0;
+`;
+
+const CompItem = styled.div`
+  margin-bottom: 12px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+`;
+
+const CompItemLabel = styled.p`
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 0 0 2px 0;
+`;
+
+const CompItemValue = styled.p<{ $color?: string }>`
+  font-size: 15px;
+  font-weight: 700;
+  color: ${(p) => p.$color ?? "var(--text)"};
+  margin: 0;
+`;
+
+const SavedBanner = styled.div`
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+const SavedLabel = styled.span`
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--success);
+`;
+
+const SavedValue = styled.span`
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--success);
+`;
+
+/* ── Insights Panel ── */
+
+const InsightsPanel = styled.div`
+  margin-top: 16px;
+  padding: 16px;
+  background: rgba(245, 158, 11, 0.04);
+  border: 1px solid rgba(245, 158, 11, 0.15);
+  border-radius: 12px;
+  animation: ${fadeIn} 0.3s ${EASING};
+`;
+
+const InsightsTitle = styled.h4`
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--warning);
+  margin: 0 0 12px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+const InsightRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+
+  & + & {
+    border-top: 1px solid rgba(245, 158, 11, 0.1);
+  }
+`;
+
+const InsightLabel = styled.span`
+  font-size: 13px;
+  color: var(--text-dim);
+`;
+
+const InsightValue = styled.span<{ $color?: string }>`
+  font-size: 14px;
+  font-weight: 600;
+  color: ${(p) => p.$color ?? "var(--text)"};
+`;
+
+/* ── Delete Confirm ── */
+
+const ConfirmBody = styled.div`
+  text-align: center;
+`;
+
+const ConfirmText = styled.p`
+  font-size: 14px;
+  color: var(--text-dim);
+  margin: 0 0 24px 0;
+  line-height: 1.6;
+`;
+
+const ConfirmActions = styled.div`
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+`;
+
+const ConfirmButton = styled.button<{ $variant: "danger" | "cancel" }>`
+  padding: 10px 24px;
+  border-radius: 8px;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ${EASING};
+
+  background: ${(p) =>
+    p.$variant === "danger" ? "var(--danger)" : "var(--surface)"};
+  color: ${(p) => (p.$variant === "danger" ? "#fff" : "var(--text)")};
+  border: 1px solid
+    ${(p) => (p.$variant === "danger" ? "var(--danger)" : "var(--border)")};
+
+  &:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+`;
+
+/* ── Notification ── */
+
+const NotificationBanner = styled.div<{
+  $type: "success" | "error";
+  $leaving: boolean;
+}>`
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2000;
+  background: ${(p) =>
+    p.$type === "success"
+      ? "rgba(34, 197, 94, 0.15)"
+      : "rgba(239, 68, 68, 0.15)"};
+  border: 1px solid
+    ${(p) =>
+      p.$type === "success"
+        ? "rgba(34, 197, 94, 0.4)"
+        : "rgba(239, 68, 68, 0.4)"};
+  color: ${(p) =>
+    p.$type === "success" ? "var(--success)" : "var(--danger)"};
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  backdrop-filter: blur(12px);
+  animation: ${(p) => (p.$leaving ? fadeOut : slideDown)} 0.3s ${EASING}
+    forwards;
+  pointer-events: none;
+`;
+
+const ErrorBanner = styled.div`
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 12px;
+  padding: 20px 24px;
+  color: var(--danger);
+  font-size: 14px;
+  text-align: center;
+  margin-bottom: 24px;
+`;
+
+/* ── Component ──────────────────────────────────────── */
+
+export default function LoansPage() {
+  const [loans, setLoans] = useState<Loan[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [showModal, setShowModal] = useState(false);
+  const [editTarget, setEditTarget] = useState<Loan | null>(null);
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+
+  /* Prepayment Simulator State */
+  const [simulatorLoanId, setSimulatorLoanId] = useState<string | null>(null);
+  const [prepaymentAmount, setPrepaymentAmount] = useState("");
+  const [simulating, setSimulating] = useState(false);
+  const [simResult, setSimResult] = useState<PrepaymentResult | null>(null);
+
+  /* Insights State */
+  const [insightsLoanId, setInsightsLoanId] = useState<string | null>(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [insightsData, setInsightsData] = useState<InsightResult | null>(null);
+
+  const [notification, setNotification] = useState<Notification | null>(null);
+  const [notifLeaving, setNotifLeaving] = useState(false);
+  const notifTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  /* ── Notification helper ── */
+
+  const notify = useCallback((message: string, type: "success" | "error") => {
+    if (notifTimer.current) clearTimeout(notifTimer.current);
+    setNotifLeaving(false);
+    setNotification({ message, type });
+    notifTimer.current = setTimeout(() => {
+      setNotifLeaving(true);
+      setTimeout(() => setNotification(null), 300);
+    }, 3000);
+  }, []);
+
+  /* ── Data fetching ── */
+
+  const fetchLoans = useCallback(async () => {
+    const result = await getLoans();
+    if (result.success) {
+      setLoans(result.data as unknown as Loan[]);
+      setError(null);
+    } else {
+      setError(result.error);
+    }
+  }, []);
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      await fetchLoans();
+      setLoading(false);
+    }
+    load();
+  }, [fetchLoans]);
+
+  /* ── Summary computation ── */
+
+  const totalLoans = loans.length;
+  const totalOutstanding = loans.reduce((s, l) => s + l.remainingBalance, 0);
+  const monthlyEmiLoad = loans.reduce((s, l) => s + l.emiAmount, 0);
+
+  /* ── Handlers ── */
+
+  function handleOpenAdd() {
+    setEditTarget(null);
+    setShowModal(true);
+  }
+
+  function handleEdit(loan: Loan) {
+    setEditTarget(loan);
+    setShowModal(true);
+  }
+
+  function handleDeletePrompt(id: string) {
+    setDeleteTargetId(id);
+    setShowDeleteConfirm(true);
+  }
+
+  async function handleDeleteConfirm() {
+    if (!deleteTargetId) return;
+    setSubmitting(true);
+    const result = await deleteLoan(deleteTargetId);
+    setSubmitting(false);
+    setShowDeleteConfirm(false);
+    setDeleteTargetId(null);
+
+    if (result.success) {
+      notify("Loan deleted", "success");
+      await fetchLoans();
+    } else {
+      notify(result.error, "error");
+    }
+  }
+
+  async function handleFormSubmit(data: {
+    name: string;
+    principalAmount: number;
+    interestRate: number;
+    tenureMonths: number;
+    emiAmount: number;
+    startDate: string;
+    remainingBalance: number;
+  }) {
+    setSubmitting(true);
+
+    const payload = {
+      name: data.name,
+      principal: data.principalAmount,
+      interestRate: data.interestRate,
+      tenureMonths: data.tenureMonths,
+      emiAmount: data.emiAmount,
+      startDate: data.startDate,
+      remainingBalance: data.remainingBalance,
+    };
+
+    const result = editTarget
+      ? await updateLoan(editTarget.id, payload)
+      : await createLoan(payload);
+
+    setSubmitting(false);
+
+    if (result.success) {
+      notify(editTarget ? "Loan updated" : "Loan added", "success");
+      setShowModal(false);
+      setEditTarget(null);
+      await fetchLoans();
+    } else {
+      notify(result.error, "error");
+    }
+  }
+
+  /* ── Prepayment Simulator ── */
+
+  function toggleSimulator(loanId: string) {
+    if (simulatorLoanId === loanId) {
+      setSimulatorLoanId(null);
+      setSimResult(null);
+      setPrepaymentAmount("");
+    } else {
+      setSimulatorLoanId(loanId);
+      setSimResult(null);
+      setPrepaymentAmount("");
+    }
+  }
+
+  async function handleSimulate() {
+    if (!simulatorLoanId || !prepaymentAmount) return;
+    const amount = parseFloat(prepaymentAmount);
+    if (isNaN(amount) || amount <= 0) return;
+
+    setSimulating(true);
+    const result = await simulateLoanPrepayment(simulatorLoanId, amount);
+    setSimulating(false);
+
+    if (result.success) {
+      setSimResult(result.data);
+    } else {
+      notify(result.error, "error");
+    }
+  }
+
+  /* ── Insights ── */
+
+  async function toggleInsights(loanId: string) {
+    if (insightsLoanId === loanId) {
+      setInsightsLoanId(null);
+      setInsightsData(null);
+      return;
+    }
+    setInsightsLoanId(loanId);
+    setInsightsLoading(true);
+    const result = await getLoanInsightsAction(loanId);
+    setInsightsLoading(false);
+
+    if (result.success) {
+      setInsightsData(result.data);
+    } else {
+      notify(result.error, "error");
+      setInsightsLoanId(null);
+    }
+  }
+
+  /* ── Render ── */
+
+  return (
+    <>
+      {notification && (
+        <NotificationBanner $type={notification.type} $leaving={notifLeaving}>
+          {notification.message}
+        </NotificationBanner>
+      )}
+
+      <FinanceHeader
+        title="Loans & EMIs"
+        action={{ label: "Add Loan", onClick: handleOpenAdd }}
+      />
+
+      <PageWrapper>
+        {loading ? (
+          <LoadingSkeleton type="card" count={3} />
+        ) : error ? (
+          <ErrorBanner>{error}</ErrorBanner>
+        ) : loans.length === 0 ? (
+          <EmptyState
+            title="No loans yet"
+            description="Add your first loan to track EMIs, simulate prepayments, and plan for early payoff."
+            action={{ label: "Add Loan", onClick: handleOpenAdd }}
+          />
+        ) : (
+          <>
+            {/* Summary Row */}
+            <SummaryRow>
+              <SummaryCardStyled>
+                <SummaryLabel>Total Loans</SummaryLabel>
+                <SummaryValue>{totalLoans}</SummaryValue>
+              </SummaryCardStyled>
+              <SummaryCardStyled>
+                <SummaryLabel>Total Outstanding</SummaryLabel>
+                <SummaryValue $color="var(--warning)">
+                  {formatCurrency(totalOutstanding)}
+                </SummaryValue>
+              </SummaryCardStyled>
+              <SummaryCardStyled>
+                <SummaryLabel>Monthly EMI Load</SummaryLabel>
+                <SummaryValue $color="var(--danger)">
+                  {formatCurrency(monthlyEmiLoad)}
+                </SummaryValue>
+              </SummaryCardStyled>
+            </SummaryRow>
+
+            {/* Loan Cards */}
+            <LoanGrid>
+              {loans.map((loan) => {
+                const repaidPct =
+                  loan.principal > 0
+                    ? Math.round(
+                        ((loan.principal - loan.remainingBalance) /
+                          loan.principal) *
+                          100,
+                      )
+                    : 0;
+
+                return (
+                  <LoanCard key={loan.id}>
+                    {/* Header */}
+                    <LoanCardHeader>
+                      <LoanName>{loan.name}</LoanName>
+                      <CardActions>
+                        <IconButton
+                          $variant="edit"
+                          onClick={() => handleEdit(loan)}
+                          aria-label="Edit loan"
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                          </svg>
+                        </IconButton>
+                        <IconButton
+                          $variant="delete"
+                          onClick={() => handleDeletePrompt(loan.id)}
+                          aria-label="Delete loan"
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+                            <path d="M10 11v6" />
+                            <path d="M14 11v6" />
+                          </svg>
+                        </IconButton>
+                      </CardActions>
+                    </LoanCardHeader>
+
+                    {/* Details Grid */}
+                    <DetailsGrid>
+                      <DetailItem>
+                        <DetailLabel>Principal</DetailLabel>
+                        <DetailValue>
+                          {formatCurrency(loan.principal)}
+                        </DetailValue>
+                      </DetailItem>
+                      <DetailItem>
+                        <DetailLabel>Interest Rate</DetailLabel>
+                        <DetailValue>{loan.interestRate}%</DetailValue>
+                      </DetailItem>
+                      <DetailItem>
+                        <DetailLabel>Tenure</DetailLabel>
+                        <DetailValue>
+                          {loan.tenureMonths} months
+                        </DetailValue>
+                      </DetailItem>
+                      <DetailItem>
+                        <DetailLabel>EMI</DetailLabel>
+                        <DetailValue $color="var(--accent-light)">
+                          {formatCurrency(loan.emiAmount)}
+                        </DetailValue>
+                      </DetailItem>
+                    </DetailsGrid>
+
+                    {/* Progress Bar */}
+                    <ProgressSection>
+                      <ProgressMeta>
+                        <ProgressLabel>Repaid</ProgressLabel>
+                        <ProgressPct>{repaidPct}%</ProgressPct>
+                      </ProgressMeta>
+                      <ProgressTrack>
+                        <ProgressFill $width={repaidPct} />
+                      </ProgressTrack>
+                    </ProgressSection>
+
+                    {/* Remaining Balance */}
+                    <RemainingRow>
+                      <RemainingLabel>Remaining</RemainingLabel>
+                      <RemainingValue>
+                        {formatCurrency(loan.remainingBalance)}
+                      </RemainingValue>
+                    </RemainingRow>
+
+                    {/* Start Date */}
+                    <StartDate>
+                      Started {formatDate(loan.startDate)}
+                    </StartDate>
+
+                    {/* Action Buttons */}
+                    <ButtonRow>
+                      <SmallButton
+                        $variant="accent"
+                        onClick={() => toggleSimulator(loan.id)}
+                      >
+                        {simulatorLoanId === loan.id
+                          ? "Close Simulator"
+                          : "Prepayment Simulator"}
+                      </SmallButton>
+                      <SmallButton
+                        $variant="outline"
+                        onClick={() => toggleInsights(loan.id)}
+                      >
+                        {insightsLoanId === loan.id
+                          ? "Hide Insights"
+                          : "Insights"}
+                      </SmallButton>
+                    </ButtonRow>
+
+                    {/* Prepayment Simulator (inline) */}
+                    {simulatorLoanId === loan.id && (
+                      <SimulatorWrapper>
+                        <SimulatorTitle>
+                          Prepayment Simulator
+                        </SimulatorTitle>
+                        <SimInputRow>
+                          <DarkInput
+                            type="number"
+                            min="1"
+                            placeholder="Enter prepayment amount"
+                            value={prepaymentAmount}
+                            onChange={(e) =>
+                              setPrepaymentAmount(e.target.value)
+                            }
+                          />
+                          <SmallButton
+                            $variant="primary"
+                            onClick={handleSimulate}
+                            disabled={
+                              simulating || !prepaymentAmount
+                            }
+                          >
+                            {simulating ? "…" : "Simulate"}
+                          </SmallButton>
+                        </SimInputRow>
+
+                        {simResult && (
+                          <>
+                            <ComparisonGrid>
+                              <ComparisonColumn $side="before">
+                                <CompColTitle>Before</CompColTitle>
+                                <CompItem>
+                                  <CompItemLabel>
+                                    Total Interest
+                                  </CompItemLabel>
+                                  <CompItemValue>
+                                    {formatCurrency(
+                                      simResult.originalInterest,
+                                    )}
+                                  </CompItemValue>
+                                </CompItem>
+                                <CompItem>
+                                  <CompItemLabel>Tenure</CompItemLabel>
+                                  <CompItemValue>
+                                    {simResult.originalTenure} mo
+                                  </CompItemValue>
+                                </CompItem>
+                              </ComparisonColumn>
+
+                              <ComparisonDivider />
+
+                              <ComparisonColumn $side="after">
+                                <CompColTitle>After</CompColTitle>
+                                <CompItem>
+                                  <CompItemLabel>
+                                    Total Interest
+                                  </CompItemLabel>
+                                  <CompItemValue $color="var(--success)">
+                                    {formatCurrency(
+                                      simResult.newInterest,
+                                    )}
+                                  </CompItemValue>
+                                </CompItem>
+                                <CompItem>
+                                  <CompItemLabel>Tenure</CompItemLabel>
+                                  <CompItemValue $color="var(--success)">
+                                    {simResult.newTenure} mo
+                                  </CompItemValue>
+                                </CompItem>
+                              </ComparisonColumn>
+                            </ComparisonGrid>
+
+                            <SavedBanner>
+                              <SavedLabel>Interest Saved</SavedLabel>
+                              <SavedValue>
+                                {formatCurrency(
+                                  simResult.interestSaved,
+                                )}
+                              </SavedValue>
+                            </SavedBanner>
+
+                            {simResult.originalTenure -
+                              simResult.newTenure >
+                              0 && (
+                              <SavedBanner
+                                style={{ marginTop: 8 }}
+                              >
+                                <SavedLabel>
+                                  Months Saved
+                                </SavedLabel>
+                                <SavedValue>
+                                  {simResult.originalTenure -
+                                    simResult.newTenure}{" "}
+                                  months
+                                </SavedValue>
+                              </SavedBanner>
+                            )}
+                          </>
+                        )}
+                      </SimulatorWrapper>
+                    )}
+
+                    {/* Insights Panel */}
+                    {insightsLoanId === loan.id && (
+                      <InsightsPanel>
+                        <InsightsTitle>Loan Insights</InsightsTitle>
+                        {insightsLoading ? (
+                          <InsightRow>
+                            <InsightLabel>Loading…</InsightLabel>
+                          </InsightRow>
+                        ) : insightsData ? (
+                          <>
+                            <InsightRow>
+                              <InsightLabel>
+                                Total Interest Payable
+                              </InsightLabel>
+                              <InsightValue $color="var(--danger)">
+                                {formatCurrency(
+                                  insightsData.totalInterestPayable,
+                                )}
+                              </InsightValue>
+                            </InsightRow>
+                            <InsightRow>
+                              <InsightLabel>
+                                Months Remaining
+                              </InsightLabel>
+                              <InsightValue>
+                                {insightsData.monthsRemaining === Infinity
+                                  ? "∞"
+                                  : insightsData.monthsRemaining}
+                              </InsightValue>
+                            </InsightRow>
+                            {insightsData.prepaymentAmount != null &&
+                              insightsData.earlyPayoffSavings != null && (
+                                <InsightRow>
+                                  <InsightLabel>
+                                    Pay 1 extra EMI (
+                                    {formatCurrency(
+                                      insightsData.prepaymentAmount,
+                                    )}
+                                    )
+                                  </InsightLabel>
+                                  <InsightValue $color="var(--success)">
+                                    Save{" "}
+                                    {formatCurrency(
+                                      insightsData.earlyPayoffSavings,
+                                    )}
+                                  </InsightValue>
+                                </InsightRow>
+                              )}
+                          </>
+                        ) : null}
+                      </InsightsPanel>
+                    )}
+                  </LoanCard>
+                );
+              })}
+            </LoanGrid>
+          </>
+        )}
+      </PageWrapper>
+
+      {/* Add / Edit Modal */}
+      <Modal
+        isOpen={showModal}
+        onClose={() => {
+          setShowModal(false);
+          setEditTarget(null);
+        }}
+        title={editTarget ? "Edit Loan" : "Add Loan"}
+        size="md"
+      >
+        <LoanForm
+          initialData={
+            editTarget
+              ? {
+                  name: editTarget.name,
+                  principalAmount: editTarget.principal,
+                  interestRate: editTarget.interestRate,
+                  tenureMonths: editTarget.tenureMonths,
+                  emiAmount: editTarget.emiAmount,
+                  startDate:
+                    typeof editTarget.startDate === "string"
+                      ? editTarget.startDate.split("T")[0]
+                      : new Date(editTarget.startDate)
+                          .toISOString()
+                          .split("T")[0],
+                  remainingBalance: editTarget.remainingBalance,
+                }
+              : undefined
+          }
+          onSubmit={handleFormSubmit}
+          onCancel={() => {
+            setShowModal(false);
+            setEditTarget(null);
+          }}
+          isLoading={submitting}
+        />
+      </Modal>
+
+      {/* Delete Confirm Modal */}
+      <Modal
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setDeleteTargetId(null);
+        }}
+        title="Delete Loan"
+        size="sm"
+      >
+        <ConfirmBody>
+          <ConfirmText>
+            Are you sure you want to delete this loan? This action cannot be
+            undone.
+          </ConfirmText>
+          <ConfirmActions>
+            <ConfirmButton
+              $variant="cancel"
+              onClick={() => {
+                setShowDeleteConfirm(false);
+                setDeleteTargetId(null);
+              }}
+              disabled={submitting}
+            >
+              Cancel
+            </ConfirmButton>
+            <ConfirmButton
+              $variant="danger"
+              onClick={handleDeleteConfirm}
+              disabled={submitting}
+            >
+              {submitting ? "Deleting…" : "Delete"}
+            </ConfirmButton>
+          </ConfirmActions>
+        </ConfirmBody>
+      </Modal>
+    </>
+  );
+}
