@@ -35,8 +35,23 @@ export async function middleware(req: NextRequest) {
     
     const { pathname } = req.nextUrl;
 
-    // Redirect all routes to homepage except root and admin
-    if (pathname !== "/" && !pathname.startsWith("/api") && !pathname.startsWith("/admin")) {
+    // Allow static assets, service worker, and Server Actions through
+    if (
+      pathname === "/sw.js" ||
+      pathname === "/workbox-44c90a21.js" ||
+      pathname.startsWith("/fonts") ||
+      pathname.endsWith(".js") ||
+      pathname.endsWith(".json") ||
+      req.headers.get("next-action") // Server Actions
+    ) {
+      return NextResponse.next({
+        request: { headers: requestHeaders },
+        headers: responseHeaders,
+      });
+    }
+
+    // Redirect all routes to homepage except root, admin, and finance
+    if (pathname !== "/" && !pathname.startsWith("/api") && !pathname.startsWith("/admin") && !pathname.startsWith("/finance")) {
       req.nextUrl.pathname = "/";
       return NextResponse.redirect(req.nextUrl, { headers: responseHeaders });
     }
