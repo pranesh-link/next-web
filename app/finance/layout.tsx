@@ -5,8 +5,8 @@ import StyledComponentsRegistry from "@/_lib/registry";
 import FinanceLayout from "@/finance/_components/layout/FinanceLayout";
 
 export const metadata = {
-  title: "Personal CFO",
-  description: "Your intelligent financial assistant",
+  title: "Coupletastic",
+  description: "Manage your finances together",
 };
 
 export default async function FinanceRootLayout({

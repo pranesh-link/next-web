@@ -180,10 +180,10 @@ export default function LoginCard({ callbackUrl = "/finance" }: LoginCardProps) 
       <BackgroundPattern />
       <Card>
         <LogoRow>
-          <LogoCircle>₹</LogoCircle>
-          <AppName>Personal CFO</AppName>
+          <LogoCircle>💑</LogoCircle>
+          <AppName>Coupletastic</AppName>
         </LogoRow>
-        <Tagline>Your intelligent financial assistant</Tagline>
+        <Tagline>Sign in to manage your finances together</Tagline>
         <GoogleButton
           type="button"
           onClick={() => signIn("google", { callbackUrl })}

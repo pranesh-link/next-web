@@ -76,6 +76,9 @@ model User {
   loans          Loan[]
   savingsGoals   SavingsGoal[]
 
+  // Couple relations
+  coupleMembers  CoupleMember[]
+
   @@map("users")
 }
 
@@ -85,6 +88,7 @@ model FinancialAccount {
   name      String
   type      AccountType
   balance   Float    @default(0)
+  coupleId  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -110,6 +114,7 @@ model Transaction {
   category    String
   description String?
   date        DateTime
+  coupleId    String?
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 
@@ -133,6 +138,7 @@ model Budget {
   category String
   limit    Float
   month    String // "2026-03" format
+  coupleId String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -155,6 +161,7 @@ model Loan {
   emiAmount        Float
   startDate        DateTime
   remainingBalance Float
+  coupleId         String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -171,6 +178,7 @@ model SavingsGoal {
   targetAmount  Float
   currentAmount Float     @default(0)
   deadline      DateTime?
+  coupleId      String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -178,4 +186,40 @@ model SavingsGoal {
 
   @@index([userId])
   @@map("savings_goals")
+}
+
+// ─── Couple Models ──────────────────────────────────────────
+
+model Couple {
+  id        String         @id @default(uuid())
+  name      String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  members   CoupleMember[]
+  invites   CoupleInvite[]
+}
+
+model CoupleMember {
+  id        String   @id @default(uuid())
+  coupleId  String
+  userId    String
+  role      String   @default("OWNER")
+  joinedAt  DateTime @default(now())
+  couple    Couple   @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([coupleId, userId])
+  @@map("couple_members")
+}
+
+model CoupleInvite {
+  id        String   @id @default(uuid())
+  coupleId  String
+  email     String
+  invitedBy String
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+  couple    Couple   @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+
+  @@map("couple_invites")
 }
