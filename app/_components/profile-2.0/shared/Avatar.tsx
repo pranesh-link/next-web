@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import Image from "next/image";
 import styled from "styled-components";
 
 /**
@@ -114,7 +115,7 @@ const StyledImage = styled.div`
   border-radius: 50%;
   overflow: hidden;
   background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
-  
+
   img {
     width: 100%;
     height: 100%;
@@ -133,7 +134,7 @@ export const Avatar: React.FC<AvatarProps> = ({
     <AvatarWrapper $size={size} className={className}>
       <AvatarContainer>
         <StyledImage>
-          <img src={src} alt={alt} />
+          <Image src={src} alt={alt} fill sizes="120px" style={{ objectFit: "cover" }} />
         </StyledImage>
       </AvatarContainer>
     </AvatarWrapper>
