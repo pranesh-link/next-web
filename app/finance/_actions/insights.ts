@@ -29,6 +29,8 @@ export async function getDashboardInsights() {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
 
+    console.log("[dashboard] session user:", { id: user.id, email: user.email });
+
     const month = currentMonth();
     const [year, m] = month.split("-").map(Number);
     const monthStart = new Date(year, m - 1, 1);

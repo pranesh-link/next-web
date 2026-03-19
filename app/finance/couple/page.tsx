@@ -6,6 +6,7 @@ import {
   getCouple,
   createNewCouple,
   sendInvite,
+  revokeInvite,
   leaveExistingCouple,
 } from "@/finance/_actions/couples";
 import FinanceHeader from "@/finance/_components/layout/FinanceHeader";
@@ -389,6 +390,28 @@ const InviteStatus = styled.span`
   letter-spacing: 0.5px;
 `;
 
+const CancelButton = styled.button`
+  background: none;
+  border: 1px solid #fca5a5;
+  color: #dc2626;
+  border-radius: 8px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.08);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
 /* ── Leave section ── */
 
 const LeaveSection = styled.div`
@@ -421,6 +444,8 @@ export default function CouplePage() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [error, setError] = useState("");
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   const [notification, setNotification] = useState<Notification | null>(null);
   const [notifLeaving, setNotifLeaving] = useState(false);
@@ -472,7 +497,12 @@ export default function CouplePage() {
     setError("");
     const res = await sendInvite({ email: inviteEmail.trim() });
     if (res.success) {
-      notify("Invite sent!", "success");
+      if (res.inviteLink) {
+        await navigator.clipboard.writeText(res.inviteLink);
+        notify("Invite created! Link copied to clipboard.", "success");
+      } else {
+        notify("Invite created!", "success");
+      }
       setInviteEmail("");
       await fetchCouple();
     } else {
@@ -480,6 +510,18 @@ export default function CouplePage() {
       notify(res.error, "error");
     }
     setSaving(false);
+  };
+
+  const handleCancelInvite = async (inviteId: string) => {
+    setCancellingId(inviteId);
+    const res = await revokeInvite(inviteId);
+    if (res.success) {
+      notify("Invite cancelled", "success");
+      await fetchCouple();
+    } else {
+      notify(res.error, "error");
+    }
+    setCancellingId(null);
   };
 
   const handleLeave = async () => {
@@ -581,7 +623,7 @@ export default function CouplePage() {
                 onClick={handleSendInvite}
                 style={{ whiteSpace: "nowrap" }}
               >
-                {saving ? "Sending…" : "Send Invite"}
+                {saving ? "Creating…" : "Create Invite"}
               </PrimaryButton>
             </InviteForm>
             {error && <ErrorText>{error}</ErrorText>}
@@ -593,7 +635,27 @@ export default function CouplePage() {
                 {couple.invites.map((invite: CoupleInvite) => (
                   <InviteRow key={invite.id}>
                     <InviteEmail>{invite.email}</InviteEmail>
-                    <InviteStatus>Pending</InviteStatus>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <InviteStatus>Pending</InviteStatus>
+                      <CancelButton
+                        type="button"
+                        style={{ borderColor: '#93c5fd', color: '#2563eb' }}
+                        onClick={() => {
+                          const link = `${window.location.origin}/finance/invite/${(invite as CoupleInvite & { token: string }).token}`;
+                          navigator.clipboard.writeText(link);
+                          notify("Invite link copied!", "success");
+                        }}
+                      >
+                        Copy Link
+                      </CancelButton>
+                      <CancelButton
+                        type="button"
+                        disabled={cancellingId === invite.id}
+                        onClick={() => handleCancelInvite(invite.id)}
+                      >
+                        {cancellingId === invite.id ? "Cancelling…" : "Cancel"}
+                      </CancelButton>
+                    </div>
                   </InviteRow>
                 ))}
               </>

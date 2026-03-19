@@ -7,6 +7,9 @@ import {
   getCoupleForUser,
   invitePartner,
   acceptInvite as acceptInviteService,
+  acceptInviteByToken as acceptInviteByTokenService,
+  getInviteByToken as getInviteByTokenService,
+  cancelInvite as cancelInviteService,
   leaveCouple as leaveCoupleService,
 } from '@/_services/finance/couple-service';
 
@@ -49,7 +52,13 @@ export async function sendInvite(raw: unknown) {
     if (!couple) return { success: false as const, error: 'Create a couple first' };
 
     const invite = await invitePartner(couple.id, validated.email, user.id);
-    return { success: true as const, data: invite };
+    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3737';
+    const inviteLink = `${baseUrl}/finance/invite/${invite.token}`;
+    return {
+      success: true as const,
+      data: invite,
+      inviteLink,
+    };
   } catch (e: unknown) {
     if (e !== null && typeof e === 'object' && 'issues' in e)
       return { success: false as const, error: JSON.stringify((e as { issues: unknown }).issues) };
@@ -71,6 +80,19 @@ export async function acceptInvite(inviteId: string) {
   }
 }
 
+export async function revokeInvite(inviteId: string) {
+  const user = await requireAuthForAction();
+  if (!user) return { success: false as const, error: 'Not authenticated' };
+
+  try {
+    await cancelInviteService(inviteId, user.id);
+    return { success: true as const, data: null };
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Failed to cancel invite';
+    return { success: false as const, error: message };
+  }
+}
+
 export async function leaveExistingCouple() {
   const user = await requireAuthForAction();
   if (!user) return { success: false as const, error: 'Not authenticated' };
@@ -80,6 +102,30 @@ export async function leaveExistingCouple() {
     return { success: true as const, data: null };
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Failed to leave couple';
+    return { success: false as const, error: message };
+  }
+}
+
+export async function acceptInviteByToken(token: string) {
+  const user = await requireAuthForAction();
+  if (!user) return { success: false as const, error: 'Not authenticated' };
+
+  try {
+    const member = await acceptInviteByTokenService(token, user.id);
+    return { success: true as const, data: member };
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Failed to accept invite';
+    return { success: false as const, error: message };
+  }
+}
+
+export async function getInviteByToken(token: string) {
+  try {
+    const invite = await getInviteByTokenService(token);
+    if (!invite) return { success: false as const, error: 'Invite not found' };
+    return { success: true as const, data: invite };
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Failed to get invite';
     return { success: false as const, error: message };
   }
 }
