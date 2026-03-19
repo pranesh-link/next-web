@@ -32,6 +32,12 @@ export async function middleware(req: NextRequest) {
     responseHeaders.set('X-Content-Type-Options', 'nosniff');
     responseHeaders.set('Referrer-Policy', 'origin-when-cross-origin');
     responseHeaders.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    responseHeaders.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+    responseHeaders.set('X-Permitted-Cross-Domain-Policies', 'none');
+    responseHeaders.set(
+      'Content-Security-Policy',
+      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://generativelanguage.googleapis.com; frame-ancestors 'none';"
+    );
     
     const { pathname } = req.nextUrl;
 

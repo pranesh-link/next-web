@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/_lib/auth";
+import { z } from "zod";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+const FETCH_TIMEOUT = 30_000; // 30s
 const ALLOWED_TYPES = [
   "application/pdf",
   "image/jpeg",
@@ -10,6 +12,44 @@ const ALLOWED_TYPES = [
   "image/webp",
   "image/heic",
 ];
+
+// Magic bytes for file type validation
+const MAGIC_BYTES: Record<string, number[][]> = {
+  "application/pdf": [[0x25, 0x50, 0x44, 0x46]], // %PDF
+  "image/jpeg": [[0xff, 0xd8, 0xff]],
+  "image/png": [[0x89, 0x50, 0x4e, 0x47]],
+  "image/webp": [[0x52, 0x49, 0x46, 0x46]], // RIFF
+};
+
+function validateMagicBytes(buffer: Buffer, mimeType: string): boolean {
+  const signatures = MAGIC_BYTES[mimeType];
+  if (!signatures) return true;
+  return signatures.some((sig) =>
+    sig.every((byte, i) => buffer[i] === byte)
+  );
+}
+
+// Zod schema for validating AI schedule response
+const scheduleEntrySchema = z.object({
+  month: z.number().int().min(0).max(1200),
+  date: z.string().max(20).optional().default(""),
+  emi: z.number().min(0).max(100_000_000),
+  principal: z.number().min(0).max(100_000_000),
+  interest: z.number().min(0).max(100_000_000),
+  balance: z.number().min(0).max(500_000_000),
+});
+
+const scheduleResponseSchema = z.object({
+  loanName: z.string().max(200).optional().default("Imported Loan"),
+  principal: z.number().min(0).max(500_000_000),
+  interestRate: z.number().min(0).max(50),
+  tenureMonths: z.number().int().min(0).max(600),
+  emiAmount: z.number().min(0).max(100_000_000),
+  startDate: z.string().max(20).optional().default(""),
+  remainingBalance: z.number().min(0).max(500_000_000),
+  schedule: z.array(scheduleEntrySchema).optional().default([]),
+  confidence: z.number().min(0).max(100).optional().default(50),
+});
 
 const SCHEDULE_PROMPT = `You are a loan repayment schedule parser. Extract structured loan data from this document.
 Return ONLY valid JSON (no markdown, no code fences) with these fields:
@@ -63,6 +103,7 @@ async function callGemini(base64: string, mimeType: string): Promise<string> {
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT),
       body: JSON.stringify({
         contents: [{ parts: [
           { text: SCHEDULE_PROMPT },
@@ -73,8 +114,7 @@ async function callGemini(base64: string, mimeType: string): Promise<string> {
     }
   );
   if (!res.ok) {
-    const errText = await res.text();
-    console.error("[scan-schedule] Gemini error:", res.status, errText);
+    console.error("[scan-schedule] Gemini error status:", res.status);
     throw Object.assign(new Error("Gemini API error"), { status: res.status });
   }
   const data = await res.json();
@@ -87,6 +127,7 @@ async function callGeminiText(text: string): Promise<string> {
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT),
       body: JSON.stringify({
         contents: [{ parts: [
           { text: SCHEDULE_PROMPT + "\n\nExtracted PDF text:\n" + text.substring(0, 30_000) },
@@ -234,6 +275,11 @@ export async function POST(req: NextRequest) {
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+
+    if (!validateMagicBytes(buffer, file.type)) {
+      return NextResponse.json({ error: "File content does not match declared type" }, { status: 400 });
+    }
+
     const base64 = buffer.toString("base64");
     const isPdf = file.type === "application/pdf";
 
@@ -243,12 +289,16 @@ export async function POST(req: NextRequest) {
         const text = await callGemini(base64, file.type);
         const parsed = extractJson(text);
         if (parsed && !parsed.error) {
-          return NextResponse.json({ success: true, data: parsed, method: "gemini-vision" });
+          const validated = scheduleResponseSchema.safeParse(parsed);
+          if (validated.success) {
+            return NextResponse.json({ success: true, data: validated.data, method: "gemini-vision" });
+          }
+          console.warn("[scan-schedule] Zod validation failed for gemini-vision");
         }
       } catch (err: unknown) {
         const status = (err as { status?: number }).status;
         if (status !== 429 && status !== 403) {
-          console.error("[scan-schedule] Gemini non-retryable error:", err);
+          console.error("[scan-schedule] Gemini non-retryable error, status:", status);
         }
         console.warn("[scan-schedule] Gemini Vision failed, trying fallback…");
       }
@@ -264,7 +314,11 @@ export async function POST(req: NextRequest) {
             const aiText = await callGeminiText(pdfText);
             const parsed = extractJson(aiText);
             if (parsed && !parsed.error) {
-              return NextResponse.json({ success: true, data: parsed, method: "pdf-parse+gemini-text" });
+              const validated = scheduleResponseSchema.safeParse(parsed);
+              if (validated.success) {
+                return NextResponse.json({ success: true, data: validated.data, method: "pdf-parse+gemini-text" });
+              }
+              console.warn("[scan-schedule] Zod validation failed for pdf-parse+gemini-text");
             }
           } catch {
             console.warn("[scan-schedule] Gemini text fallback also failed");
@@ -284,7 +338,7 @@ export async function POST(req: NextRequest) {
       { status: 422 }
     );
   } catch (error) {
-    console.error("[scan-schedule] Unhandled error:", error);
+    console.error("[scan-schedule] Unhandled error:", error instanceof Error ? error.message : "Unknown");
     return NextResponse.json({ error: "Failed to process document" }, { status: 500 });
   }
 }
