@@ -1,4 +1,4 @@
-import type { LoanData, LoanInsight, PrepaymentSimulation } from './types';
+import type { LoanData, LoanInsight, PrepaymentSimulation, AmortizationEntry } from './types';
 
 export function calculateEMI(
   principal: number,
@@ -131,4 +131,43 @@ export function getLoanInsights(loan: LoanData): LoanInsight {
     prepaymentAmount,
     earlyPayoffSavings: simulation.interestSaved,
   };
+}
+
+export function generateAmortizationSchedule(
+  loan: LoanData,
+): AmortizationEntry[] {
+  const { principal, interestRate, tenureMonths, emiAmount, startDate } = loan;
+  const monthlyRate = interestRate / 12 / 100;
+  const schedule: AmortizationEntry[] = [];
+
+  let balance = principal;
+  let totalPrincipalPaid = 0;
+  let totalInterestPaid = 0;
+  const start = new Date(startDate);
+
+  for (let m = 1; m <= tenureMonths; m++) {
+    const interestPortion = balance * monthlyRate;
+    const principalPortion = Math.min(emiAmount - interestPortion, balance);
+    balance = Math.max(0, balance - principalPortion);
+    totalPrincipalPaid += principalPortion;
+    totalInterestPaid += interestPortion;
+
+    const date = new Date(start);
+    date.setMonth(date.getMonth() + m);
+
+    schedule.push({
+      month: m,
+      date: date.toISOString().split('T')[0],
+      emi: m === tenureMonths ? principalPortion + interestPortion : emiAmount,
+      principal: principalPortion,
+      interest: interestPortion,
+      balance,
+      totalPrincipalPaid,
+      totalInterestPaid,
+    });
+
+    if (balance <= 0) break;
+  }
+
+  return schedule;
 }

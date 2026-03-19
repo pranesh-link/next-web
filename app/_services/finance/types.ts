@@ -87,3 +87,14 @@ export interface MonthlyTrend {
   expenses: number;
   savings: number;
 }
+
+export interface AmortizationEntry {
+  month: number;
+  date: string;
+  emi: number;
+  principal: number;
+  interest: number;
+  balance: number;
+  totalPrincipalPaid: number;
+  totalInterestPaid: number;
+}

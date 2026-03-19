@@ -13,6 +13,8 @@ import FinanceHeader from "@/finance/_components/layout/FinanceHeader";
 import TransactionTable from "@/finance/_components/tables/TransactionTable";
 import TransactionForm from "@/finance/_components/forms/TransactionForm";
 import AccountForm from "@/finance/_components/forms/AccountForm";
+import ReceiptScanner from "@/finance/_components/receipt/ReceiptScanner";
+import type { ScannedReceipt } from "@/finance/_components/receipt/ReceiptScanner";
 import Modal from "@/finance/_components/shared/Modal";
 import EmptyState from "@/finance/_components/shared/EmptyState";
 import LoadingSkeleton from "@/finance/_components/shared/LoadingSkeleton";
@@ -298,6 +300,33 @@ const NoAccountsAction = styled.button`
   }
 `;
 
+const ScanReceiptBar = styled.div`
+  margin-bottom: 16px;
+`;
+
+const ScanReceiptButton = styled.button`
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1));
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  color: var(--accent-light);
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ${EASING};
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  &:hover {
+    border-color: var(--accent);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.15));
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+  }
+`;
+
 /* ── Component ──────────────────────────────────────── */
 
 export default function TransactionsPage() {
@@ -314,6 +343,8 @@ export default function TransactionsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [showAccountModal, setShowAccountModal] = useState(false);
+  const [showScanModal, setShowScanModal] = useState(false);
+  const [scannedData, setScannedData] = useState<Partial<Transaction> | null>(null);
 
   const [filters, setFilters] = useState<Filters>({
     month: "",
@@ -385,6 +416,20 @@ export default function TransactionsPage() {
   /* ── Handlers ── */
 
   function handleOpenAdd() {
+    setSelectedTransaction(null);
+    setScannedData(null);
+    setShowModal(true);
+  }
+
+  function handleScanComplete(data: ScannedReceipt) {
+    setShowScanModal(false);
+    setScannedData({
+      amount: data.totalAmount ?? 0,
+      type: "EXPENSE",
+      category: data.category ?? "Other",
+      description: data.description ?? data.storeName ?? "",
+      date: data.date ?? new Date().toISOString().split("T")[0],
+    } as Partial<Transaction>);
     setSelectedTransaction(null);
     setShowModal(true);
   }
@@ -488,6 +533,12 @@ export default function TransactionsPage() {
       />
 
       <PageWrapper>
+        {/* Scan Receipt Button */}
+        <ScanReceiptBar>
+          <ScanReceiptButton type="button" onClick={() => setShowScanModal(true)}>
+            📸 Scan Receipt
+          </ScanReceiptButton>
+        </ScanReceiptBar>
         {/* No Accounts Banner */}
         {!loading && accounts.length === 0 && (
           <NoAccountsBanner>
@@ -604,7 +655,16 @@ export default function TransactionsPage() {
                   description: selectedTransaction.description,
                   date: selectedTransaction.date.split("T")[0],
                 }
-              : undefined
+              : scannedData
+                ? {
+                    accountId: scannedData.accountId ?? "",
+                    amount: scannedData.amount ?? 0,
+                    type: (scannedData.type as "INCOME" | "EXPENSE") ?? "EXPENSE",
+                    category: scannedData.category ?? "Other",
+                    description: scannedData.description ?? "",
+                    date: scannedData.date?.split("T")[0] ?? new Date().toISOString().split("T")[0],
+                  }
+                : undefined
           }
           onSubmit={handleFormSubmit}
           onCancel={() => {
@@ -665,6 +725,19 @@ export default function TransactionsPage() {
           onSubmit={handleAccountSubmit}
           onCancel={() => setShowAccountModal(false)}
           isLoading={submitting}
+        />
+      </Modal>
+
+      {/* Scan Receipt Modal */}
+      <Modal
+        isOpen={showScanModal}
+        onClose={() => setShowScanModal(false)}
+        title="Scan Receipt"
+        size="md"
+      >
+        <ReceiptScanner
+          onScanComplete={handleScanComplete}
+          onClose={() => setShowScanModal(false)}
         />
       </Modal>
     </>

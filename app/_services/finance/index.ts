@@ -11,6 +11,7 @@ export type {
   LoanInsight,
   PrepaymentSimulation,
   MonthlyTrend,
+  AmortizationEntry,
 } from './types';
 
 export { calculateMonthlyCashFlow, calculateMonthlyTrends } from './cash-flow';
@@ -23,4 +24,5 @@ export {
   calculateRemainingInterest,
   simulatePrepayment,
   getLoanInsights,
+  generateAmortizationSchedule,
 } from './loan-calculator';
