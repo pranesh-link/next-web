@@ -13,4 +13,9 @@ export default defineConfig({
   migrations: {
     path: "prisma/migrations",
   },
+  datasource: {
+    url: process.env["DATABASE_URL"],
+    // @ts-ignore — directUrl is valid for Prisma CLI v7 but missing from type definitions
+    directUrl: process.env["DIRECT_DATABASE_URL"],
+  },
 });
