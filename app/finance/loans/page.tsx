@@ -9,9 +9,12 @@ import {
   deleteLoan,
   simulateLoanPrepayment,
   getLoanInsightsAction,
+  getLoanSchedule,
 } from "@/finance/_actions/loans";
 import FinanceHeader from "@/finance/_components/layout/FinanceHeader";
 import LoanForm from "@/finance/_components/forms/LoanForm";
+import LoanScheduleScanner from "@/finance/_components/loan/LoanScheduleScanner";
+import type { ScannedLoanData } from "@/finance/_components/loan/LoanScheduleScanner";
 import Modal from "@/finance/_components/shared/Modal";
 import EmptyState from "@/finance/_components/shared/EmptyState";
 import LoadingSkeleton from "@/finance/_components/shared/LoadingSkeleton";
@@ -44,6 +47,17 @@ type InsightResult = {
   monthsRemaining: number;
   earlyPayoffSavings?: number;
   prepaymentAmount?: number;
+};
+
+type ScheduleEntry = {
+  month: number;
+  date: string;
+  emi: number;
+  principal: number;
+  interest: number;
+  balance: number;
+  totalPrincipalPaid: number;
+  totalInterestPaid: number;
 };
 
 type Notification = {
@@ -326,6 +340,33 @@ const StartDate = styled.p`
   margin: 0 0 16px 0;
 `;
 
+const CardMetaRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 12px;
+  gap: 12px;
+`;
+
+const MetaItem = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+`;
+
+const MetaLabel = styled.span`
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+`;
+
+const MetaValue = styled.span<{ $urgent?: boolean }>`
+  font-size: 14px;
+  font-weight: 600;
+  color: ${(p) => (p.$urgent ? "#ef4444" : "var(--text)")};
+`;
+
 /* ── Action Buttons Row ── */
 
 const ButtonRow = styled.div`
@@ -563,6 +604,89 @@ const InsightValue = styled.span<{ $color?: string }>`
   color: ${(p) => p.$color ?? "var(--text)"};
 `;
 
+/* ── Repayment Schedule ── */
+
+const SchedulePanel = styled.div`
+  margin-top: 16px;
+  padding: 20px;
+  background: rgba(59, 130, 246, 0.04);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  border-radius: 12px;
+  animation: ${fadeIn} 0.3s ${EASING};
+`;
+
+const ScheduleTitle = styled.h4`
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-light);
+  margin: 0 0 16px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+const ScheduleTableWrapper = styled.div`
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 0 -4px;
+  padding: 0 4px;
+`;
+
+const ScheduleTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  min-width: 480px;
+`;
+
+const ScheduleTh = styled.th<{ $align?: string }>`
+  text-align: ${(p) => p.$align ?? "left"};
+  padding: 8px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+`;
+
+const ScheduleTd = styled.td<{ $align?: string; $color?: string }>`
+  text-align: ${(p) => p.$align ?? "left"};
+  padding: 7px 10px;
+  color: ${(p) => p.$color ?? "var(--text-dim)"};
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+`;
+
+/* ── Import Bar ── */
+
+const ImportBar = styled.div`
+  margin-bottom: 16px;
+`;
+
+const ImportButton = styled.button`
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1));
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  color: var(--accent-light);
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ${EASING};
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  &:hover {
+    border-color: var(--accent);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.15));
+    transform: translateY(-1px);
+  }
+`;
+
 /* ── Delete Confirm ── */
 
 const ConfirmBody = styled.div`
@@ -678,6 +802,15 @@ export default function LoansPage() {
   const [insightsLoading, setInsightsLoading] = useState(false);
   const [insightsData, setInsightsData] = useState<InsightResult | null>(null);
 
+  /* Schedule State */
+  const [scheduleLoanId, setScheduleLoanId] = useState<string | null>(null);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [scheduleData, setScheduleData] = useState<ScheduleEntry[] | null>(null);
+
+  /* PDF Scanner State */
+  const [showScanModal, setShowScanModal] = useState(false);
+  const [scannedLoan, setScannedLoan] = useState<Partial<Loan> | null>(null);
+
   const [notification, setNotification] = useState<Notification | null>(null);
   const [notifLeaving, setNotifLeaving] = useState(false);
   const notifTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -724,6 +857,22 @@ export default function LoansPage() {
   /* ── Handlers ── */
 
   function handleOpenAdd() {
+    setEditTarget(null);
+    setScannedLoan(null);
+    setShowModal(true);
+  }
+
+  function handleScanComplete(data: ScannedLoanData) {
+    setShowScanModal(false);
+    setScannedLoan({
+      name: data.loanName ?? "",
+      principal: data.principal ?? 0,
+      interestRate: data.interestRate ?? 0,
+      tenureMonths: data.tenureMonths ?? 0,
+      emiAmount: data.emiAmount ?? 0,
+      startDate: data.startDate ?? new Date().toISOString().split("T")[0],
+      remainingBalance: data.remainingBalance ?? data.principal ?? 0,
+    });
     setEditTarget(null);
     setShowModal(true);
   }
@@ -842,6 +991,27 @@ export default function LoansPage() {
     }
   }
 
+  /* ── Repayment Schedule ── */
+
+  async function toggleSchedule(loanId: string) {
+    if (scheduleLoanId === loanId) {
+      setScheduleLoanId(null);
+      setScheduleData(null);
+      return;
+    }
+    setScheduleLoanId(loanId);
+    setScheduleLoading(true);
+    const result = await getLoanSchedule(loanId);
+    setScheduleLoading(false);
+
+    if (result.success) {
+      setScheduleData(result.data as ScheduleEntry[]);
+    } else {
+      notify(result.error, "error");
+      setScheduleLoanId(null);
+    }
+  }
+
   /* ── Render ── */
 
   return (
@@ -858,6 +1028,12 @@ export default function LoansPage() {
       />
 
       <PageWrapper>
+        {/* Import from PDF */}
+        <ImportBar>
+          <ImportButton type="button" onClick={() => setShowScanModal(true)}>
+            📄 Import from PDF
+          </ImportButton>
+        </ImportBar>
         {loading ? (
           <LoadingSkeleton type="card" count={3} />
         ) : error ? (
@@ -901,6 +1077,25 @@ export default function LoansPage() {
                           100,
                       )
                     : 0;
+
+                // Calculate months elapsed and next EMI date
+                const start = new Date(loan.startDate);
+                const now = new Date();
+                const monthsElapsed = Math.max(
+                  0,
+                  (now.getFullYear() - start.getFullYear()) * 12 +
+                    (now.getMonth() - start.getMonth()),
+                );
+                const emisPaid = Math.min(monthsElapsed, loan.tenureMonths);
+
+                // Next EMI date = startDate + (monthsElapsed + 1) months, same day
+                const nextEmi = new Date(start);
+                nextEmi.setMonth(nextEmi.getMonth() + monthsElapsed + 1);
+                const daysUntilNextEmi = Math.ceil(
+                  (nextEmi.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+                );
+                const isUrgent = daysUntilNextEmi <= 7 && daysUntilNextEmi >= 0;
+                const loanCompleted = emisPaid >= loan.tenureMonths;
 
                 return (
                   <LoanCard key={loan.id}>
@@ -992,6 +1187,24 @@ export default function LoansPage() {
                       </RemainingValue>
                     </RemainingRow>
 
+                    {/* EMI Meta: Next EMI Date + EMIs Paid */}
+                    <CardMetaRow>
+                      <MetaItem>
+                        <MetaLabel>Next EMI</MetaLabel>
+                        <MetaValue $urgent={isUrgent && !loanCompleted}>
+                          {loanCompleted
+                            ? "✅ Completed"
+                            : `${formatDate(nextEmi)}${isUrgent ? " ⚠️" : ""}`}
+                        </MetaValue>
+                      </MetaItem>
+                      <MetaItem>
+                        <MetaLabel>EMIs Paid</MetaLabel>
+                        <MetaValue>
+                          {emisPaid}/{loan.tenureMonths}
+                        </MetaValue>
+                      </MetaItem>
+                    </CardMetaRow>
+
                     {/* Start Date */}
                     <StartDate>
                       Started {formatDate(loan.startDate)}
@@ -1014,6 +1227,14 @@ export default function LoansPage() {
                         {insightsLoanId === loan.id
                           ? "Hide Insights"
                           : "Insights"}
+                      </SmallButton>
+                      <SmallButton
+                        $variant="outline"
+                        onClick={() => toggleSchedule(loan.id)}
+                      >
+                        {scheduleLoanId === loan.id
+                          ? "Hide Schedule"
+                          : "EMI Schedule"}
                       </SmallButton>
                     </ButtonRow>
 
@@ -1172,6 +1393,87 @@ export default function LoansPage() {
                         ) : null}
                       </InsightsPanel>
                     )}
+
+                    {/* Repayment Schedule */}
+                    {scheduleLoanId === loan.id && (
+                      <SchedulePanel>
+                        <ScheduleTitle>EMI Repayment Schedule</ScheduleTitle>
+                        {scheduleLoading ? (
+                          <InsightRow>
+                            <InsightLabel>Loading schedule…</InsightLabel>
+                          </InsightRow>
+                        ) : scheduleData && scheduleData.length > 0 ? (
+                          <ScheduleTableWrapper>
+                            <ScheduleTable>
+                              <thead>
+                                <tr>
+                                  <ScheduleTh>#</ScheduleTh>
+                                  <ScheduleTh>Date</ScheduleTh>
+                                  <ScheduleTh $align="right">EMI</ScheduleTh>
+                                  <ScheduleTh $align="right">Principal</ScheduleTh>
+                                  <ScheduleTh $align="right">Interest</ScheduleTh>
+                                  <ScheduleTh $align="right">Balance</ScheduleTh>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {scheduleData.map((entry) => (
+                                  <tr key={entry.month}>
+                                    <ScheduleTd>{entry.month}</ScheduleTd>
+                                    <ScheduleTd>
+                                      {new Date(entry.date).toLocaleDateString("en-IN", {
+                                        month: "short",
+                                        year: "numeric",
+                                      })}
+                                    </ScheduleTd>
+                                    <ScheduleTd $align="right">
+                                      {formatCurrency(entry.emi)}
+                                    </ScheduleTd>
+                                    <ScheduleTd $align="right" $color="var(--success)">
+                                      {formatCurrency(entry.principal)}
+                                    </ScheduleTd>
+                                    <ScheduleTd $align="right" $color="var(--danger)">
+                                      {formatCurrency(entry.interest)}
+                                    </ScheduleTd>
+                                    <ScheduleTd $align="right">
+                                      {formatCurrency(entry.balance)}
+                                    </ScheduleTd>
+                                  </tr>
+                                ))}
+                              </tbody>
+                              <tfoot>
+                                <tr>
+                                  <ScheduleTd colSpan={2}><strong>Total</strong></ScheduleTd>
+                                  <ScheduleTd $align="right">
+                                    <strong>
+                                      {formatCurrency(
+                                        scheduleData.reduce((s, e) => s + e.emi, 0)
+                                      )}
+                                    </strong>
+                                  </ScheduleTd>
+                                  <ScheduleTd $align="right" $color="var(--success)">
+                                    <strong>
+                                      {formatCurrency(
+                                        scheduleData[scheduleData.length - 1]?.totalPrincipalPaid ?? 0
+                                      )}
+                                    </strong>
+                                  </ScheduleTd>
+                                  <ScheduleTd $align="right" $color="var(--danger)">
+                                    <strong>
+                                      {formatCurrency(
+                                        scheduleData[scheduleData.length - 1]?.totalInterestPaid ?? 0
+                                      )}
+                                    </strong>
+                                  </ScheduleTd>
+                                  <ScheduleTd $align="right">
+                                    <strong>{formatCurrency(0)}</strong>
+                                  </ScheduleTd>
+                                </tr>
+                              </tfoot>
+                            </ScheduleTable>
+                          </ScheduleTableWrapper>
+                        ) : null}
+                      </SchedulePanel>
+                    )}
                   </LoanCard>
                 );
               })}
@@ -1207,7 +1509,22 @@ export default function LoansPage() {
                           .split("T")[0],
                   remainingBalance: editTarget.remainingBalance,
                 }
-              : undefined
+              : scannedLoan
+                ? {
+                    name: scannedLoan.name ?? "",
+                    principalAmount: scannedLoan.principal ?? 0,
+                    interestRate: scannedLoan.interestRate ?? 0,
+                    tenureMonths: scannedLoan.tenureMonths ?? 0,
+                    emiAmount: scannedLoan.emiAmount ?? 0,
+                    startDate:
+                      typeof scannedLoan.startDate === "string"
+                        ? scannedLoan.startDate.split("T")[0]
+                        : new Date(scannedLoan.startDate ?? Date.now())
+                            .toISOString()
+                            .split("T")[0],
+                    remainingBalance: scannedLoan.remainingBalance ?? scannedLoan.principal ?? 0,
+                  }
+                : undefined
           }
           onSubmit={handleFormSubmit}
           onCancel={() => {
@@ -1253,6 +1570,19 @@ export default function LoansPage() {
             </ConfirmButton>
           </ConfirmActions>
         </ConfirmBody>
+      </Modal>
+
+      {/* Scan Schedule Modal */}
+      <Modal
+        isOpen={showScanModal}
+        onClose={() => setShowScanModal(false)}
+        title="Import from PDF"
+        size="md"
+      >
+        <LoanScheduleScanner
+          onScanComplete={handleScanComplete}
+          onClose={() => setShowScanModal(false)}
+        />
       </Modal>
     </>
   );

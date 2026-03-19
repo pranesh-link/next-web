@@ -10,6 +10,8 @@ import {
   FinanceLabel,
   FinanceErrorText,
 } from "@/finance/_components/theme/styled-primitives";
+import LoanScheduleScanner from "@/finance/_components/loan/LoanScheduleScanner";
+import type { ScannedLoanData } from "@/finance/_components/loan/LoanScheduleScanner";
 
 const loanSchema = z.object({
   name: z.string().min(1, "Loan name is required").max(100),
@@ -131,6 +133,36 @@ const ActionRow = styled.div`
   padding-top: 4px;
 `;
 
+const ImportPdfButton = styled.button`
+  width: 100%;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(139, 92, 246, 0.08));
+  border: 1px dashed rgba(59, 130, 246, 0.3);
+  color: var(--accent-light, #60a5fa);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  &:hover {
+    border-color: rgba(59, 130, 246, 0.5);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(139, 92, 246, 0.12));
+  }
+`;
+
+const ScannerWrapper = styled.div`
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 12px;
+  padding: 16px;
+  background: rgba(59, 130, 246, 0.03);
+`;
+
 const spin = keyframes`
   to { transform: rotate(360deg); }
 `;
@@ -164,6 +196,22 @@ export default function LoanForm({
   const [errors, setErrors] = useState<
     Partial<Record<keyof LoanData, string>>
   >({});
+  const [showScanner, setShowScanner] = useState(false);
+
+  const handleScanComplete = useCallback((data: ScannedLoanData) => {
+    setForm({
+      name: data.loanName || form.name || "",
+      principalAmount: data.principal || form.principalAmount || 0,
+      interestRate: data.interestRate || form.interestRate || 0,
+      tenureMonths: data.tenureMonths || form.tenureMonths || 0,
+      emiAmount: data.emiAmount || form.emiAmount || 0,
+      startDate: data.startDate || form.startDate || new Date().toISOString().split("T")[0],
+      remainingBalance: data.remainingBalance || data.principal || form.remainingBalance || 0,
+    });
+    setShowScanner(false);
+    setErrors({});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function updateField<K extends keyof LoanData>(
     key: K,
@@ -202,6 +250,20 @@ export default function LoanForm({
 
   return (
     <FormWrapper onSubmit={handleSubmit}>
+      {/* Import from PDF */}
+      {showScanner ? (
+        <ScannerWrapper>
+          <LoanScheduleScanner
+            onScanComplete={handleScanComplete}
+            onClose={() => setShowScanner(false)}
+          />
+        </ScannerWrapper>
+      ) : (
+        <ImportPdfButton type="button" onClick={() => setShowScanner(true)}>
+          📄 {initialData ? "Update from Repayment Schedule PDF" : "Import from Repayment Schedule PDF"}
+        </ImportPdfButton>
+      )}
+
       {/* Loan Name */}
       <FieldGroup>
         <FinanceLabel htmlFor="loan-name">Loan Name</FinanceLabel>

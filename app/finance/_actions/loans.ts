@@ -7,6 +7,7 @@ import {
   calculateEMI,
   simulatePrepayment,
   getLoanInsights,
+  generateAmortizationSchedule,
 } from "@/_services/finance";
 import type { LoanData } from "@/_services/finance";
 
@@ -63,6 +64,23 @@ export async function createLoan(data: {
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
+
+    // Check for duplicate loan (same name + principal + rate + tenure)
+    const duplicate = await prisma.loan.findFirst({
+      where: {
+        userId: user.id,
+        name: data.name,
+        principal: data.principal,
+        interestRate: data.interestRate,
+        tenureMonths: data.tenureMonths,
+      },
+    });
+    if (duplicate) {
+      return {
+        success: false as const,
+        error: `A loan "${data.name}" with the same principal, rate, and tenure already exists`,
+      };
+    }
 
     // Auto-calculate EMI if not provided
     let emiAmount = data.emiAmount;
@@ -249,6 +267,30 @@ export async function getLoanInsightsAction(id: string) {
     return {
       success: false as const,
       error: error instanceof Error ? error.message : "Failed to get loan insights",
+    };
+  }
+}
+
+export async function getLoanSchedule(id: string) {
+  try {
+    const user = await requireAuthForAction();
+    if (!user) return { success: false as const, error: "Not authenticated" };
+
+    const loan = await prisma.loan.findFirst({
+      where: { id, userId: user.id },
+    });
+
+    if (!loan) {
+      return { success: false as const, error: "Loan not found" };
+    }
+
+    const schedule = generateAmortizationSchedule(toLoanData(loan));
+
+    return { success: true as const, data: schedule };
+  } catch (error) {
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : "Failed to generate schedule",
     };
   }
 }
