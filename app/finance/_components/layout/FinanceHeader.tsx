@@ -19,6 +19,7 @@ const HeaderWrapper = styled.header`
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   background: var(--bg-elevated);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border);
@@ -26,7 +27,9 @@ const HeaderWrapper = styled.header`
   transition: all 0.3s ${EASING};
 
   @media (max-width: 768px) {
-    padding: 16px 20px;
+    /* left: 16px gap + 48px hamburger + 12px gap = 76px */
+    padding: 0 16px 0 76px;
+    height: 64px;
   }
 `;
 
@@ -36,6 +39,12 @@ const Title = styled.h1`
   color: var(--text);
   letter-spacing: -0.5px;
   margin: 0;
+  /* truncate long titles in header */
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 `;
 
 const ActionButton = styled.button`
@@ -51,6 +60,7 @@ const ActionButton = styled.button`
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
+  flex-shrink: 0;
   transition: all 0.25s ${EASING};
 
   &:hover {
@@ -66,6 +76,15 @@ const ActionButton = styled.button`
   svg {
     width: 16px;
     height: 16px;
+  }
+
+  @media (max-width: 480px) {
+    padding: 10px;
+    border-radius: 50%;
+
+    span {
+      display: none;
+    }
   }
 `;
 
@@ -87,7 +106,7 @@ export default function FinanceHeader({ title, action }: FinanceHeaderProps) {
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
-          {action.label}
+          <span>{action.label}</span>
         </ActionButton>
       )}
     </HeaderWrapper>
