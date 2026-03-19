@@ -356,7 +356,7 @@ export default function ReceiptScanner({
               <UploadText>
                 Tap to take a photo or upload a receipt
               </UploadText>
-              <UploadHint>Supports JPG, PNG, HEIC up to 10MB</UploadHint>
+              <UploadHint>Supports JPG, PNG, HEIC/HEIF up to 10MB</UploadHint>
             </>
           )}
         </DropZone>
