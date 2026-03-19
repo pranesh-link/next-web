@@ -1,9 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/_lib/auth";
+import { z } from "zod";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic"];
+const FETCH_TIMEOUT = 30_000; // 30s
+
+// Magic bytes for file type validation
+const MAGIC_BYTES: Record<string, number[][]> = {
+  "image/jpeg": [[0xff, 0xd8, 0xff]],
+  "image/png": [[0x89, 0x50, 0x4e, 0x47]],
+  "image/webp": [[0x52, 0x49, 0x46, 0x46]], // RIFF
+};
+
+function validateMagicBytes(buffer: Buffer, mimeType: string): boolean {
+  const signatures = MAGIC_BYTES[mimeType];
+  if (!signatures) return true; // no signature to check (e.g. heic)
+  return signatures.some((sig) =>
+    sig.every((byte, i) => buffer[i] === byte)
+  );
+}
+
+// Zod schema for validating AI response
+const receiptResponseSchema = z.object({
+  storeName: z.string().max(200).nullable().optional(),
+  totalAmount: z.number().min(0).max(100_000_000),
+  date: z.string().nullable().optional(),
+  category: z.string().max(50).optional(),
+  description: z.string().max(200).optional(),
+  items: z.array(z.object({
+    name: z.string().max(200),
+    amount: z.number(),
+  })).optional().default([]),
+  confidence: z.number().min(0).max(100).optional().default(50),
+});
 
 const RECEIPT_PROMPT = `You are a receipt/bill parser. Extract structured data from this receipt text.
 Return ONLY valid JSON (no markdown, no code fences) with these fields:
@@ -55,6 +86,7 @@ async function callGeminiVision(base64: string, mimeType: string): Promise<strin
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT),
       body: JSON.stringify({
         contents: [{ parts: [
           { text: VISION_PROMPT },
@@ -66,8 +98,7 @@ async function callGeminiVision(base64: string, mimeType: string): Promise<strin
   );
   if (!res.ok) {
     const status = res.status;
-    const errText = await res.text();
-    console.error("[scan-receipt] Gemini error:", status, errText);
+    console.error("[scan-receipt] Gemini error status:", status);
     throw Object.assign(new Error("Gemini API error"), { status });
   }
   const data = await res.json();
@@ -80,9 +111,10 @@ async function callGeminiText(text: string): Promise<string> {
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT),
       body: JSON.stringify({
         contents: [{ parts: [
-          { text: RECEIPT_PROMPT + "\n\nReceipt text:\n" + text },
+          { text: RECEIPT_PROMPT + "\n\nReceipt text:\n" + text.substring(0, 15_000) },
         ]}],
         generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
       }),
@@ -204,21 +236,29 @@ export async function POST(req: NextRequest) {
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+
+    // Validate file magic bytes
+    if (!validateMagicBytes(buffer, file.type)) {
+      return NextResponse.json({ error: "File content doesn't match its type" }, { status: 400 });
+    }
+
     const base64 = buffer.toString("base64");
 
     // Strategy 1: Gemini Vision (primary)
     if (GEMINI_API_KEY) {
       try {
         const text = await callGeminiVision(base64, file.type);
-        const parsed = extractJson(text);
-        if (parsed && !parsed.error) {
-          return NextResponse.json({ success: true, data: parsed, method: "gemini-vision" });
+        const raw = extractJson(text);
+        if (raw && !raw.error) {
+          const validated = receiptResponseSchema.safeParse(raw);
+          if (validated.success) {
+            return NextResponse.json({ success: true, data: validated.data, method: "gemini-vision" });
+          }
         }
       } catch (err: unknown) {
         const status = (err as { status?: number }).status;
-        // 429 = rate limited, 403 = quota exceeded — fall through to fallback
         if (status !== 429 && status !== 403) {
-          console.error("[scan-receipt] Gemini non-retryable error:", err);
+          console.error("[scan-receipt] Gemini non-retryable error, status:", status);
         }
         console.warn("[scan-receipt] Gemini Vision failed, trying fallback…");
       }
@@ -227,13 +267,15 @@ export async function POST(req: NextRequest) {
     // Strategy 2: OCR (tesseract.js) + Gemini Text (hybrid fallback)
     const ocrText = await ocrFallback(buffer);
     if (ocrText && ocrText.trim().length > 20) {
-      // Try Gemini text parsing on OCR output (cheaper, text-only)
       if (GEMINI_API_KEY) {
         try {
           const aiText = await callGeminiText(ocrText);
-          const parsed = extractJson(aiText);
-          if (parsed && !parsed.error) {
-            return NextResponse.json({ success: true, data: parsed, method: "ocr+gemini-text" });
+          const raw = extractJson(aiText);
+          if (raw && !raw.error) {
+            const validated = receiptResponseSchema.safeParse(raw);
+            if (validated.success) {
+              return NextResponse.json({ success: true, data: validated.data, method: "ocr+gemini-text" });
+            }
           }
         } catch {
           console.warn("[scan-receipt] Gemini text fallback also failed");
@@ -252,7 +294,7 @@ export async function POST(req: NextRequest) {
       { status: 422 }
     );
   } catch (error) {
-    console.error("[scan-receipt] Unhandled error:", error);
+    console.error("[scan-receipt] Unhandled error:", error instanceof Error ? error.message : "Unknown");
     return NextResponse.json({ error: "Failed to process receipt" }, { status: 500 });
   }
 }
