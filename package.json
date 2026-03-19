@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "tsc --noEmit && next dev -p 3737 --hostname 0.0.0.0",
-    "build": "prisma migrate deploy && rm -rf .next && next build",
+    "build": "prisma migrate resolve --applied 20260317174619_init || true && prisma migrate deploy && rm -rf .next && next build",
     "build:analyze": "ANALYZE=true npm run build",
     "start": "next start -p 3737",
     "lint": "next lint",
