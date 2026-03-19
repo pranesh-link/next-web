@@ -53,9 +53,11 @@ const PageWrapper = styled.div`
   padding: 32px;
   background: #f8fafc;
   min-height: calc(100vh - 80px);
+  max-width: 100%;
+  overflow-x: hidden;
 
   @media (max-width: 768px) {
-    padding: 20px;
+    padding: 16px;
   }
 `;
 
@@ -83,6 +85,8 @@ const NotificationBanner = styled.div<{
   font-size: 14px;
   font-weight: 500;
   backdrop-filter: blur(12px);
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
   animation: ${(p) => (p.$leaving ? fadeOut : slideDown)} 0.3s ${EASING}
     forwards;
 `;
@@ -120,6 +124,11 @@ const SoloCard = styled.div`
   border-radius: 16px;
   padding: 48px 32px;
   text-align: center;
+  box-sizing: border-box;
+
+  @media (max-width: 480px) {
+    padding: 32px 16px;
+  }
 `;
 
 const CardIcon = styled.div`
@@ -267,6 +276,11 @@ const CoupleCard = styled.div`
   border: 1px solid #e5e7eb;
   border-radius: 16px;
   padding: 32px;
+  box-sizing: border-box;
+
+  @media (max-width: 480px) {
+    padding: 20px 16px;
+  }
 `;
 
 const Divider = styled.div`
@@ -289,7 +303,7 @@ const SectionTitle = styled.h3`
 const MemberCard = styled.div`
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   padding: 12px 16px;
   background: #f8fafc;
   border: 1px solid #e5e7eb;
@@ -297,6 +311,10 @@ const MemberCard = styled.div`
 
   & + & {
     margin-top: 10px;
+  }
+
+  @media (max-width: 480px) {
+    padding: 10px 12px;
   }
 `;
 
@@ -330,6 +348,8 @@ const MemberEmail = styled.p`
   font-size: 12px;
   color: #94a3b8;
   margin: 2px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
 const RoleBadge = styled.span<{ $role: string }>`
@@ -365,7 +385,8 @@ const InviteInputGroup = styled.div`
 const InviteRow = styled.div`
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
   padding: 10px 14px;
   background: #fefce8;
   border: 1px solid #fde68a;
@@ -380,6 +401,10 @@ const InviteRow = styled.div`
 const InviteEmail = styled.span`
   color: #1e293b;
   font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-all;
 `;
 
 const InviteStatus = styled.span`

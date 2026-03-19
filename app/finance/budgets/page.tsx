@@ -84,9 +84,11 @@ const fillExpand = keyframes`
 
 const PageWrapper = styled.div`
   padding: 32px;
+  max-width: 100%;
+  overflow-x: hidden;
 
   @media (max-width: 768px) {
-    padding: 20px;
+    padding: 16px;
   }
 `;
 
@@ -95,8 +97,9 @@ const PageWrapper = styled.div`
 const MonthSelector = styled.div`
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   margin-bottom: 28px;
+  flex-wrap: wrap;
 `;
 
 const MonthArrowButton = styled.button`
@@ -128,8 +131,11 @@ const MonthLabel = styled.span`
   font-weight: 700;
   color: var(--text);
   letter-spacing: -0.3px;
-  min-width: 180px;
   text-align: center;
+
+  @media (max-width: 480px) {
+    font-size: 16px;
+  }
 `;
 
 const MonthInput = styled.input`
@@ -410,6 +416,8 @@ const NotificationBanner = styled.div<{
   font-size: 14px;
   font-weight: 500;
   backdrop-filter: blur(12px);
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
   animation: ${(p) => (p.$leaving ? fadeOut : slideDown)} 0.3s ${EASING}
     forwards;
   pointer-events: none;
