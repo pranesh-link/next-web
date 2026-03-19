@@ -110,7 +110,8 @@ const HamburgerButton = styled.button`
     justify-content: center;
     position: fixed;
     left: 16px;
-    top: 16px;
+    /* center vertically inside the 64px header band */
+    top: 8px;
     z-index: 50;
     width: 48px;
     height: 48px;
@@ -163,6 +164,11 @@ const LogoArea = styled.div`
   padding: 0 16px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+
+  @media (max-width: 768px) {
+    /* 16px left gap + 48px hamburger + 12px gap = 76px — logo text aligns with header title */
+    padding: 0 16px 0 76px;
+  }
 `;
 
 const LogoIcon = styled.div`
