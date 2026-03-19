@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/_lib/auth";
 import { z } from "zod";
 
+export const maxDuration = 60; // Vercel Pro: up to 60s (hobby: still capped at 10s)
+
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic"];
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
 const FETCH_TIMEOUT = 30_000; // 30s
 
 // Magic bytes for file type validation
@@ -228,7 +230,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No receipt image provided" }, { status: 400 });
     }
     if (!ALLOWED_TYPES.includes(file.type)) {
-      return NextResponse.json({ error: "File must be an image (JPG, PNG, WebP, HEIC)" }, { status: 400 });
+      return NextResponse.json({ error: "File must be an image (JPG, PNG, WebP, HEIC/HEIF)" }, { status: 400 });
     }
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json({ error: "Image must be under 10MB" }, { status: 400 });
