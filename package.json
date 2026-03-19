@@ -27,6 +27,7 @@
     "@emailjs/browser": "4.3.3",
     "@prisma/adapter-pg": "^7.5.0",
     "@prisma/client": "^7.5.0",
+    "@prisma/extension-accelerate": "^2.0.2",
     "@reduxjs/toolkit": "2.2.4",
     "@vercel/analytics": "1.2.2",
     "@vercel/speed-insights": "1.0.10",
