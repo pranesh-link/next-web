@@ -25,11 +25,13 @@ export async function GET(request: NextRequest) {
 
   // Decode return_url from state
   let returnUrl: string;
+  let callbackUrl: string;
   try {
     const state = JSON.parse(
       Buffer.from(stateParam, "base64url").toString(),
     );
     returnUrl = state.returnUrl;
+    callbackUrl = state.callbackUrl;
     if (!returnUrl || !returnUrl.startsWith("exp://")) {
       return htmlResponse("<h2>Invalid return URL</h2>");
     }
@@ -37,8 +39,6 @@ export async function GET(request: NextRequest) {
     return htmlResponse("<h2>Invalid state parameter</h2>");
   }
 
-  // Use the callback URL stored in state (must match exactly what was sent to Google)
-  const callbackUrl = state.callbackUrl;
   if (!callbackUrl) {
     return htmlResponse("<h2>Invalid state: missing callback URL</h2>");
   }

@@ -217,6 +217,7 @@ model CoupleInvite {
   coupleId  String
   email     String
   invitedBy String
+  token     String   @unique @default(uuid())
   status    String   @default("PENDING")
   createdAt DateTime @default(now())
   couple    Couple   @relation(fields: [coupleId], references: [id], onDelete: Cascade)
