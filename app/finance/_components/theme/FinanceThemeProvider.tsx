@@ -81,7 +81,10 @@ export const FinanceThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   return (
     <ThemeContext.Provider value={{ isDark, toggleTheme }}>
       <FinanceGlobalStyle />
-      <div className="finance-app">{children}</div>
+      <div className="finance-app">
+        {children}
+        <div id="finance-portal-root" />
+      </div>
     </ThemeContext.Provider>
   );
 };
