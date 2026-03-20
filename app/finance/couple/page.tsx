@@ -622,7 +622,9 @@ export default function CouplePage() {
                   <MemberName>{member.user.name || "Unknown"}</MemberName>
                   <MemberEmail>{member.user.email}</MemberEmail>
                 </MemberInfo>
-                <RoleBadge $role={member.role}>{member.role}</RoleBadge>
+                <RoleBadge $role={member.role}>
+                  {member.role === "OWNER" ? "Group Creator" : "Partner"}
+                </RoleBadge>
               </MemberCard>
             ))}
 
@@ -703,7 +705,9 @@ export default function CouplePage() {
                   <MemberName>{member.user.name || "Unknown"}</MemberName>
                   <MemberEmail>{member.user.email}</MemberEmail>
                 </MemberInfo>
-                <RoleBadge $role={member.role}>{member.role}</RoleBadge>
+                <RoleBadge $role={member.role}>
+                  {member.role === "OWNER" ? "Group Creator" : "Partner"}
+                </RoleBadge>
               </MemberCard>
             ))}
 
