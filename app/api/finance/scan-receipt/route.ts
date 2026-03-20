@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/_lib/auth";
+import { createWorker } from "tesseract.js";
 import { z } from "zod";
 
-export const maxDuration = 60; // Vercel Pro: up to 60s (hobby: still capped at 10s)
+export const maxDuration = 60;
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+// TODO: Re-enable Gemini when API quota is restored
+// const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
-const FETCH_TIMEOUT = 30_000; // 30s
 
 // Magic bytes for file type validation
 const MAGIC_BYTES: Record<string, number[][]> = {
@@ -24,7 +26,7 @@ function validateMagicBytes(buffer: Buffer, mimeType: string): boolean {
   );
 }
 
-// Zod schema for validating AI response
+// Zod schema for validating parsed result
 const receiptResponseSchema = z.object({
   storeName: z.string().max(200).nullable().optional(),
   totalAmount: z.number().min(0).max(100_000_000),
@@ -38,36 +40,10 @@ const receiptResponseSchema = z.object({
   confidence: z.number().min(0).max(100).optional().default(50),
 });
 
-const RECEIPT_PROMPT = `You are a receipt/bill parser. Extract structured data from this receipt text.
-Return ONLY valid JSON (no markdown, no code fences) with these fields:
-{
-  "storeName": "store or merchant name if visible",
-  "totalAmount": <number — the total/grand total amount>,
-  "date": "YYYY-MM-DD if visible, otherwise null",
-  "category": "<best fit from: Food, Rent, Transport, Shopping, Entertainment, Health, Education, Utilities, EMI, Other>",
-  "description": "brief 3-5 word summary of what was purchased",
-  "items": [{"name": "item name", "amount": <number>}],
-  "confidence": <0-100 how confident you are in the extraction>
-}
-If you cannot parse the data, return: {"error": "Could not read receipt", "confidence": 0}`;
-
-const VISION_PROMPT = `You are a receipt/bill parser. Extract structured data from the receipt image.
-Return ONLY valid JSON (no markdown, no code fences) with these fields:
-{
-  "storeName": "store or merchant name if visible",
-  "totalAmount": <number — the total/grand total amount>,
-  "date": "YYYY-MM-DD if visible, otherwise null",
-  "category": "<best fit from: Food, Rent, Transport, Shopping, Entertainment, Health, Education, Utilities, EMI, Other>",
-  "description": "brief 3-5 word summary of what was purchased",
-  "items": [{"name": "item name", "amount": <number>}],
-  "confidence": <0-100 how confident you are in the extraction>
-}
-If you cannot read the receipt, return: {"error": "Could not read receipt", "confidence": 0}`;
-
 /* ── In-memory rate limiter ── */
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT = 20; // requests per window
-const RATE_WINDOW = 60_000; // 1 minute
+const RATE_LIMIT = 20;
+const RATE_WINDOW = 60_000;
 
 function checkRateLimit(userId: string): boolean {
   const now = Date.now();
@@ -81,102 +57,113 @@ function checkRateLimit(userId: string): boolean {
   return true;
 }
 
-/* ── Gemini AI call ── */
-async function callGeminiVision(base64: string, mimeType: string): Promise<string> {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(FETCH_TIMEOUT),
-      body: JSON.stringify({
-        contents: [{ parts: [
-          { text: VISION_PROMPT },
-          { inline_data: { mime_type: mimeType, data: base64 } },
-        ]}],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
-      }),
-    }
-  );
-  if (!res.ok) {
-    const status = res.status;
-    console.error("[scan-receipt] Gemini error status:", status);
-    throw Object.assign(new Error("Gemini API error"), { status });
-  }
-  const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-}
-
-async function callGeminiText(text: string): Promise<string> {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(FETCH_TIMEOUT),
-      body: JSON.stringify({
-        contents: [{ parts: [
-          { text: RECEIPT_PROMPT + "\n\nReceipt text:\n" + text.substring(0, 15_000) },
-        ]}],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
-      }),
-    }
-  );
-  if (!res.ok) {
-    throw new Error("Gemini text API error");
-  }
-  const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-}
-
-/* ── OCR fallback via Tesseract.js ── */
-async function ocrFallback(buffer: Buffer): Promise<string | null> {
+/* ── OCR via Tesseract.js ── */
+async function runOCR(buffer: Buffer): Promise<{ text: string; confidence: number } | null> {
   try {
-    const { createWorker } = await import("tesseract.js");
     const worker = await createWorker("eng");
     const { data } = await worker.recognize(buffer);
     await worker.terminate();
-    return data.text;
+    if (!data.text || data.text.trim().length < 10) return null;
+    return { text: data.text, confidence: data.confidence };
   } catch (err) {
-    console.warn("[scan-receipt] Tesseract fallback unavailable:", err);
+    console.error("[scan-receipt] Tesseract OCR failed:", err);
     return null;
   }
 }
 
-/* ── Regex-based receipt parser (last resort) ── */
-function parseReceiptText(text: string) {
+/* ── Category detection ── */
+const CATEGORY_KEYWORDS: Record<string, string[]> = {
+  Food: ["restaurant", "cafe", "coffee", "pizza", "burger", "food", "swiggy", "zomato", "uber eats", "dominos", "mcdonalds", "starbucks", "kfc", "subway", "bakery", "grocery", "supermarket", "bigbasket", "blinkit", "zepto", "dmart", "reliance fresh", "more", "spar"],
+  Transport: ["uber", "ola", "lyft", "rapido", "taxi", "cab", "metro", "bus", "train", "petrol", "diesel", "fuel", "parking", "toll", "irctc", "redbus"],
+  Shopping: ["amazon", "flipkart", "myntra", "ajio", "mall", "store", "shop", "retail", "mart", "clothing", "electronics", "wear", "fashion"],
+  Entertainment: ["netflix", "spotify", "hotstar", "prime video", "movie", "cinema", "pvr", "inox", "theater", "theatre", "game", "play"],
+  Health: ["pharmacy", "medical", "hospital", "clinic", "doctor", "medicine", "lab", "diagnostic", "apollo", "medplus", "1mg", "pharmeasy", "netmeds"],
+  Education: ["book", "course", "udemy", "coursera", "school", "college", "tuition", "library", "stationery"],
+  Utilities: ["electricity", "water", "gas", "internet", "broadband", "wifi", "mobile", "recharge", "jio", "airtel", "vodafone", "bsnl", "bill pay"],
+  Rent: ["rent", "lease", "landlord", "housing", "apartment", "flat"],
+  EMI: ["emi", "loan", "installment", "credit card"],
+};
+
+function detectCategory(text: string): string {
+  const lower = text.toLowerCase();
+  for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+    if (keywords.some((kw) => lower.includes(kw))) {
+      return category;
+    }
+  }
+  return "Other";
+}
+
+/* ── Receipt text parser ── */
+function parseReceiptText(text: string, ocrConfidence: number) {
   const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
 
-  // Find total amount — look for common patterns
+  // ── Find total amount ──
   let totalAmount: number | null = null;
   const totalPatterns = [
-    /(?:total|grand\s*total|amount\s*due|net\s*amount|payable)[:\s]*[₹$]?\s*([\d,]+\.?\d*)/i,
-    /[₹$]\s*([\d,]+\.?\d*)\s*$/,
+    // Explicit total labels
+    /(?:grand\s*total|sub\s*total|total\s*amount|total\s*due|amount\s*due|amount\s*payable|net\s*amount|net\s*payable|total\s*bill|bill\s*total|total)[:\s]*[₹$€£]?\s*([\d,]+\.?\d*)/i,
+    // Total with currency symbol prefix
+    /(?:total|amount)[:\s]*(?:Rs\.?|INR|₹)\s*([\d,]+\.?\d*)/i,
+    // Standalone currency amounts on total-like lines
+    /(?:total|payable|due|balance|paid)[^\d]*[₹$€£]?\s*([\d,]+\.?\d{0,2})\s*$/i,
   ];
+
+  // Search from bottom up (totals are usually near the end)
   for (const line of [...lines].reverse()) {
     for (const pat of totalPatterns) {
       const m = line.match(pat);
       if (m) {
-        totalAmount = parseFloat(m[1].replace(/,/g, ""));
-        break;
+        const val = parseFloat(m[1].replace(/,/g, ""));
+        if (val > 0 && val < 100_000_000) {
+          totalAmount = val;
+          break;
+        }
       }
     }
     if (totalAmount) break;
   }
 
-  // Find date
+  // If no labeled total, find the largest currency amount
+  if (!totalAmount) {
+    const amountPattern = /[₹$€£]\s*([\d,]+\.?\d*)|(?:Rs\.?|INR)\s*([\d,]+\.?\d*)|([\d,]+\.\d{2})/g;
+    let maxAmount = 0;
+    for (const line of lines) {
+      let match;
+      while ((match = amountPattern.exec(line)) !== null) {
+        const val = parseFloat((match[1] || match[2] || match[3]).replace(/,/g, ""));
+        if (val > maxAmount && val < 100_000_000) {
+          maxAmount = val;
+        }
+      }
+    }
+    if (maxAmount > 0) totalAmount = maxAmount;
+  }
+
+  // ── Find date ──
   let date: string | null = null;
-  const datePatterns = [
-    /(\d{4}[-/]\d{2}[-/]\d{2})/,
-    /(\d{2}[-/]\d{2}[-/]\d{4})/,
-    /(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+\d{4})/i,
+  const datePatterns: { re: RegExp; parse: (m: RegExpMatchArray) => Date | null }[] = [
+    // YYYY-MM-DD or YYYY/MM/DD
+    { re: /(\d{4})[-/](\d{1,2})[-/](\d{1,2})/, parse: (m) => new Date(`${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`) },
+    // DD-MM-YYYY or DD/MM/YYYY
+    { re: /(\d{1,2})[-/](\d{1,2})[-/](\d{4})/, parse: (m) => {
+      const day = parseInt(m[1]), month = parseInt(m[2]);
+      if (month >= 1 && month <= 12) return new Date(`${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`);
+      if (day >= 1 && day <= 12) return new Date(`${m[3]}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}`);
+      return null;
+    }},
+    // DD Mon YYYY or DD Month YYYY
+    { re: /(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*[\s,]+(\d{4})/i, parse: (m) => new Date(`${m[2]} ${m[1]}, ${m[3]}`) },
+    // Mon DD, YYYY
+    { re: /(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+(\d{1,2})[\s,]+(\d{4})/i, parse: (m) => new Date(`${m[1]} ${m[2]}, ${m[3]}`) },
   ];
+
   for (const line of lines) {
-    for (const pat of datePatterns) {
-      const m = line.match(pat);
+    for (const { re, parse } of datePatterns) {
+      const m = line.match(re);
       if (m) {
-        const d = new Date(m[1]);
-        if (!isNaN(d.getTime())) {
+        const d = parse(m);
+        if (d && !isNaN(d.getTime()) && d.getFullYear() >= 2000 && d.getFullYear() <= 2030) {
           date = d.toISOString().split("T")[0];
           break;
         }
@@ -185,30 +172,55 @@ function parseReceiptText(text: string) {
     if (date) break;
   }
 
-  // Store name is usually the first non-empty line
-  const storeName = lines[0] || null;
+  // ── Find store name (first meaningful line) ──
+  let storeName: string | null = null;
+  for (const line of lines.slice(0, 5)) {
+    // Skip lines that are just numbers, dates, or very short
+    if (line.length < 3) continue;
+    if (/^\d+[/\-.]?\d*[/\-.]?\d*$/.test(line)) continue;
+    if (/^(date|time|tel|ph|fax|gstin|gst|tin|invoice|receipt|bill|tax)/i.test(line)) continue;
+    storeName = line.substring(0, 100);
+    break;
+  }
+
+  // ── Extract line items ──
+  const items: { name: string; amount: number }[] = [];
+  const itemPattern = /^(.+?)\s+[₹$]?\s*([\d,]+\.?\d{0,2})\s*$/;
+  for (const line of lines) {
+    const m = line.match(itemPattern);
+    if (m) {
+      const name = m[1].trim();
+      const amount = parseFloat(m[2].replace(/,/g, ""));
+      // Skip total/subtotal lines and header-like lines
+      if (
+        name.length >= 2 &&
+        amount > 0 &&
+        amount < (totalAmount ?? Infinity) &&
+        !/total|subtotal|tax|gst|cgst|sgst|discount|round|change|cash|card|upi|paid/i.test(name)
+      ) {
+        items.push({ name: name.substring(0, 200), amount });
+      }
+    }
+  }
 
   if (!totalAmount) return null;
+
+  const category = detectCategory(text);
+  // Scale OCR confidence (0-100) to our receipt confidence
+  // Good OCR (>80) with total found → 55-65 confidence
+  const confidence = Math.min(65, Math.max(35, Math.round(ocrConfidence * 0.6 + (items.length > 0 ? 10 : 0) + (date ? 5 : 0))));
 
   return {
     storeName,
     totalAmount,
     date,
-    category: "Other" as const,
-    description: storeName ? storeName.substring(0, 50) : "Receipt purchase",
-    items: [] as { name: string; amount: number }[],
-    confidence: 30,
+    category,
+    description: storeName
+      ? `${category} at ${storeName.substring(0, 30)}`
+      : `${category} purchase`,
+    items,
+    confidence,
   };
-}
-
-function extractJson(text: string) {
-  const m = text.match(/\{[\s\S]*\}/);
-  if (!m) return null;
-  try {
-    return JSON.parse(m[0]);
-  } catch {
-    return null;
-  }
 }
 
 /* ── Handler ── */
@@ -239,62 +251,38 @@ export async function POST(req: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Validate file magic bytes
     if (!validateMagicBytes(buffer, file.type)) {
       return NextResponse.json({ error: "File content doesn't match its type" }, { status: 400 });
     }
 
-    const base64 = buffer.toString("base64");
-
-    // Strategy 1: Gemini Vision (primary)
-    if (GEMINI_API_KEY) {
-      try {
-        const text = await callGeminiVision(base64, file.type);
-        const raw = extractJson(text);
-        if (raw && !raw.error) {
-          const validated = receiptResponseSchema.safeParse(raw);
-          if (validated.success) {
-            return NextResponse.json({ success: true, data: validated.data, method: "gemini-vision" });
-          }
-        }
-      } catch (err: unknown) {
-        const status = (err as { status?: number }).status;
-        if (status !== 429 && status !== 403) {
-          console.error("[scan-receipt] Gemini non-retryable error, status:", status);
-        }
-        console.warn("[scan-receipt] Gemini Vision failed, trying fallback…");
-      }
+    // OCR the image with Tesseract.js
+    const ocrResult = await runOCR(buffer);
+    if (!ocrResult) {
+      return NextResponse.json(
+        { error: "Could not read text from image. Try a clearer, well-lit photo." },
+        { status: 422 }
+      );
     }
 
-    // Strategy 2: OCR (tesseract.js) + Gemini Text (hybrid fallback)
-    const ocrText = await ocrFallback(buffer);
-    if (ocrText && ocrText.trim().length > 20) {
-      if (GEMINI_API_KEY) {
-        try {
-          const aiText = await callGeminiText(ocrText);
-          const raw = extractJson(aiText);
-          if (raw && !raw.error) {
-            const validated = receiptResponseSchema.safeParse(raw);
-            if (validated.success) {
-              return NextResponse.json({ success: true, data: validated.data, method: "ocr+gemini-text" });
-            }
-          }
-        } catch {
-          console.warn("[scan-receipt] Gemini text fallback also failed");
-        }
-      }
-
-      // Strategy 3: Pure regex parsing on OCR text (fully offline)
-      const regexResult = parseReceiptText(ocrText);
-      if (regexResult) {
-        return NextResponse.json({ success: true, data: regexResult, method: "ocr+regex" });
-      }
+    // Parse the OCR text
+    const parsed = parseReceiptText(ocrResult.text, ocrResult.confidence);
+    if (!parsed) {
+      return NextResponse.json(
+        { error: "Could not find a total amount in the receipt. Try a clearer photo." },
+        { status: 422 }
+      );
     }
 
-    return NextResponse.json(
-      { error: "Could not extract data from receipt. Try a clearer photo." },
-      { status: 422 }
-    );
+    const validated = receiptResponseSchema.safeParse(parsed);
+    if (!validated.success) {
+      console.warn("[scan-receipt] Validation failed:", validated.error.message);
+      return NextResponse.json(
+        { error: "Could not extract valid data from receipt." },
+        { status: 422 }
+      );
+    }
+
+    return NextResponse.json({ success: true, data: validated.data, method: "tesseract-ocr" });
   } catch (error) {
     console.error("[scan-receipt] Unhandled error:", error instanceof Error ? error.message : "Unknown");
     return NextResponse.json({ error: "Failed to process receipt" }, { status: 500 });

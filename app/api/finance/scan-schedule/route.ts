@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/_lib/auth";
+import { createWorker } from "tesseract.js";
 import { z } from "zod";
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+// TODO: Re-enable Gemini when API quota is restored
+// const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
-const FETCH_TIMEOUT = 30_000; // 30s
 const ALLOWED_TYPES = [
   "application/pdf",
   "image/jpeg",
@@ -51,34 +53,6 @@ const scheduleResponseSchema = z.object({
   confidence: z.number().min(0).max(100).optional().default(50),
 });
 
-const SCHEDULE_PROMPT = `You are a loan repayment schedule parser. Extract structured loan data from this document.
-Return ONLY valid JSON (no markdown, no code fences) with these fields:
-{
-  "loanName": "name/type of loan (e.g. Home Loan, Car Loan, Personal Loan)",
-  "principal": <number — original loan/principal amount>,
-  "interestRate": <number — annual interest rate in percent, e.g. 8.5>,
-  "tenureMonths": <number — total tenure in months>,
-  "emiAmount": <number — monthly EMI amount>,
-  "startDate": "YYYY-MM-DD of first EMI or disbursement date",
-  "remainingBalance": <number — outstanding balance, or same as principal if new>,
-  "schedule": [
-    {
-      "month": <number — installment number starting from 1>,
-      "date": "YYYY-MM-DD",
-      "emi": <number>,
-      "principal": <number — principal component>,
-      "interest": <number — interest component>,
-      "balance": <number — outstanding balance after this EMI>
-    }
-  ],
-  "confidence": <0-100 how confident you are>
-}
-IMPORTANT:
-- Extract as many schedule rows as visible
-- Interest rate must be annual (not monthly)
-- schedule array ordered by month
-- If not a repayment schedule: {"error": "Not a repayment schedule", "confidence": 0}`;
-
 /* ── In-memory rate limiter ── */
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT = 10;
@@ -96,49 +70,18 @@ function checkRateLimit(userId: string): boolean {
   return true;
 }
 
-/* ── Gemini call ── */
-async function callGemini(base64: string, mimeType: string): Promise<string> {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(FETCH_TIMEOUT),
-      body: JSON.stringify({
-        contents: [{ parts: [
-          { text: SCHEDULE_PROMPT },
-          { inline_data: { mime_type: mimeType, data: base64 } },
-        ]}],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 8192 },
-      }),
-    }
-  );
-  if (!res.ok) {
-    console.error("[scan-schedule] Gemini error status:", res.status);
-    throw Object.assign(new Error("Gemini API error"), { status: res.status });
+/* ── OCR via Tesseract.js (for images) ── */
+async function runOCR(buffer: Buffer): Promise<string | null> {
+  try {
+    const worker = await createWorker("eng");
+    const { data } = await worker.recognize(buffer);
+    await worker.terminate();
+    if (!data.text || data.text.trim().length < 20) return null;
+    return data.text;
+  } catch (err) {
+    console.error("[scan-schedule] Tesseract OCR failed:", err);
+    return null;
   }
-  const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-}
-
-async function callGeminiText(text: string): Promise<string> {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(FETCH_TIMEOUT),
-      body: JSON.stringify({
-        contents: [{ parts: [
-          { text: SCHEDULE_PROMPT + "\n\nExtracted PDF text:\n" + text.substring(0, 30_000) },
-        ]}],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 8192 },
-      }),
-    }
-  );
-  if (!res.ok) throw new Error("Gemini text API error");
-  const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 }
 
 /* ── pdf-parse fallback ── */
@@ -235,16 +178,6 @@ function parseScheduleText(text: string) {
   };
 }
 
-function extractJson(text: string) {
-  const m = text.match(/\{[\s\S]*\}/);
-  if (!m) return null;
-  try {
-    return JSON.parse(m[0]);
-  } catch {
-    return null;
-  }
-}
-
 /* ── Handler ── */
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -280,63 +213,47 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "File content does not match declared type" }, { status: 400 });
     }
 
-    const base64 = buffer.toString("base64");
     const isPdf = file.type === "application/pdf";
+    let extractedText: string | null = null;
 
-    // Strategy 1: Gemini Vision (primary — works for both PDF and images)
-    if (GEMINI_API_KEY) {
-      try {
-        const text = await callGemini(base64, file.type);
-        const parsed = extractJson(text);
-        if (parsed && !parsed.error) {
-          const validated = scheduleResponseSchema.safeParse(parsed);
-          if (validated.success) {
-            return NextResponse.json({ success: true, data: validated.data, method: "gemini-vision" });
-          }
-          console.warn("[scan-schedule] Zod validation failed for gemini-vision");
-        }
-      } catch (err: unknown) {
-        const status = (err as { status?: number }).status;
-        if (status !== 429 && status !== 403) {
-          console.error("[scan-schedule] Gemini non-retryable error, status:", status);
-        }
-        console.warn("[scan-schedule] Gemini Vision failed, trying fallback…");
-      }
-    }
-
-    // Strategy 2: pdf-parse text extraction + Gemini Text (for PDFs)
     if (isPdf) {
-      const pdfText = await extractPdfText(buffer);
-      if (pdfText && pdfText.trim().length > 50) {
-        // Try Gemini text parsing (cheaper, text-only call)
-        if (GEMINI_API_KEY) {
-          try {
-            const aiText = await callGeminiText(pdfText);
-            const parsed = extractJson(aiText);
-            if (parsed && !parsed.error) {
-              const validated = scheduleResponseSchema.safeParse(parsed);
-              if (validated.success) {
-                return NextResponse.json({ success: true, data: validated.data, method: "pdf-parse+gemini-text" });
-              }
-              console.warn("[scan-schedule] Zod validation failed for pdf-parse+gemini-text");
-            }
-          } catch {
-            console.warn("[scan-schedule] Gemini text fallback also failed");
-          }
-        }
-
-        // Strategy 3: Pure regex parsing on PDF text (fully offline)
-        const regexResult = parseScheduleText(pdfText);
-        if (regexResult) {
-          return NextResponse.json({ success: true, data: regexResult, method: "pdf-parse+regex" });
-        }
-      }
+      extractedText = await extractPdfText(buffer);
+    } else {
+      extractedText = await runOCR(buffer);
     }
 
-    return NextResponse.json(
-      { error: "Could not extract schedule data. Try a clearer document or PDF with selectable text." },
-      { status: 422 }
-    );
+    if (!extractedText || extractedText.trim().length < 20) {
+      return NextResponse.json(
+        { error: isPdf
+          ? "Could not extract text from PDF. Try a PDF with selectable text."
+          : "Could not read text from image. Try a clearer, well-lit photo."
+        },
+        { status: 422 }
+      );
+    }
+
+    const parsed = parseScheduleText(extractedText);
+    if (!parsed) {
+      return NextResponse.json(
+        { error: "Could not extract loan schedule data. Try a clearer document." },
+        { status: 422 }
+      );
+    }
+
+    const validated = scheduleResponseSchema.safeParse(parsed);
+    if (!validated.success) {
+      console.warn("[scan-schedule] Validation failed:", validated.error.message);
+      return NextResponse.json(
+        { error: "Could not extract valid schedule data." },
+        { status: 422 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: validated.data,
+      method: isPdf ? "pdf-parse+regex" : "tesseract-ocr+regex",
+    });
   } catch (error) {
     console.error("[scan-schedule] Unhandled error:", error instanceof Error ? error.message : "Unknown");
     return NextResponse.json({ error: "Failed to process document" }, { status: 500 });

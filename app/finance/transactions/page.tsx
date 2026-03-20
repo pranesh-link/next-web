@@ -347,7 +347,7 @@ export default function TransactionsPage() {
   const [scannedData, setScannedData] = useState<Partial<Transaction> | null>(null);
 
   const [filters, setFilters] = useState<Filters>({
-    month: "",
+    month: new Date().toISOString().slice(0, 7),
     category: "",
     accountId: "",
   });
@@ -493,7 +493,7 @@ export default function TransactionsPage() {
   }
 
   function handleClearFilters() {
-    setFilters({ month: "", category: "", accountId: "" });
+    setFilters({ month: new Date().toISOString().slice(0, 7), category: "", accountId: "" });
   }
 
   async function handleAccountSubmit(data: {
