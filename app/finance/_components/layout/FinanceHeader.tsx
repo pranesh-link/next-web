@@ -1,6 +1,7 @@
 "use client";
 
-import styled from "styled-components";
+import { useState, useCallback } from "react";
+import styled, { keyframes, css } from "styled-components";
 
 interface FinanceHeaderProps {
   title: string;
@@ -8,9 +9,50 @@ interface FinanceHeaderProps {
     label: string;
     onClick: () => void;
   };
+  onRefresh?: () => Promise<void>;
 }
 
 const EASING = "cubic-bezier(0.16, 1, 0.3, 1)";
+
+const spin = keyframes`
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+`;
+
+const RefreshButton = styled.button<{ $spinning: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: all 0.25s ${EASING};
+
+  &:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+  }
+
+  &:active {
+    transform: scale(0.92);
+  }
+
+  svg {
+    width: 18px;
+    height: 18px;
+    ${({ $spinning }) =>
+      $spinning &&
+      css`
+        animation: ${spin} 0.8s linear infinite;
+      `}
+  }
+`;
 
 const HeaderWrapper = styled.header`
   position: sticky;
@@ -88,10 +130,49 @@ const ActionButton = styled.button`
   }
 `;
 
-export default function FinanceHeader({ title, action }: FinanceHeaderProps) {
+export default function FinanceHeader({
+  title,
+  action,
+  onRefresh,
+}: FinanceHeaderProps) {
+  const [spinning, setSpinning] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    if (!onRefresh || spinning) return;
+    setSpinning(true);
+    try {
+      await onRefresh();
+    } finally {
+      setSpinning(false);
+    }
+  }, [onRefresh, spinning]);
+
   return (
     <HeaderWrapper>
       <Title>{title}</Title>
+      {onRefresh && (
+        <RefreshButton
+          type="button"
+          onClick={handleRefresh}
+          $spinning={spinning}
+          aria-label="Refresh data"
+          disabled={spinning}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="23 4 23 10 17 10" />
+            <polyline points="1 20 1 14 7 14" />
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+          </svg>
+        </RefreshButton>
+      )}
       {action && (
         <ActionButton type="button" onClick={action.onClick}>
           <svg

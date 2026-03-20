@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import styled from "styled-components";
 import { getDashboardInsights } from "@/finance/_actions/insights";
 import FinanceHeader from "@/finance/_components/layout/FinanceHeader";
@@ -367,30 +367,28 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
+  const fetchData = useCallback(async () => {
+    const result = await getDashboardInsights();
+    if (result.success) {
+      setData(result.data);
+      setError(null);
+    } else {
+      setError(result.error);
+    }
+  }, []);
 
-    async function fetchData() {
-      const result = await getDashboardInsights();
-      if (cancelled) return;
-      if (result.success) {
-        setData(result.data);
-      } else {
-        setError(result.error);
-      }
+  useEffect(() => {
+    async function load() {
+      await fetchData();
       setLoading(false);
     }
-
-    fetchData();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    load();
+  }, [fetchData]);
 
   if (loading) {
     return (
       <>
-        <FinanceHeader title="Dashboard" />
+        <FinanceHeader title="Dashboard" onRefresh={fetchData} />
         <LoadingWrapper>
           <LoadingGrid>
             {Array.from({ length: 4 }).map((_, i) => (
@@ -410,7 +408,7 @@ export default function DashboardPage() {
   if (error || !data) {
     return (
       <>
-        <FinanceHeader title="Dashboard" />
+        <FinanceHeader title="Dashboard" onRefresh={fetchData} />
         <PageWrapper>
           <ErrorBanner>{error ?? "Failed to load dashboard data."}</ErrorBanner>
         </PageWrapper>
@@ -433,7 +431,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <FinanceHeader title="Dashboard" />
+      <FinanceHeader title="Dashboard" onRefresh={fetchData} />
       <PageWrapper>
         {/* ── Summary Cards ──────────────────────── */}
         <SummaryGrid>

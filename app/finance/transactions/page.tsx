@@ -530,6 +530,9 @@ export default function TransactionsPage() {
       <FinanceHeader
         title="Transactions"
         action={{ label: "Add Transaction", onClick: handleOpenAdd }}
+        onRefresh={async () => {
+          await Promise.all([fetchTransactions(), fetchAccounts()]);
+        }}
       />
 
       <PageWrapper>

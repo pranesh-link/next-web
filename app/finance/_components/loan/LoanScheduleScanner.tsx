@@ -143,6 +143,13 @@ const FileSize = styled.p`
 const ButtonRow = styled.div`
   display: flex;
   gap: 12px;
+  position: sticky;
+  bottom: -28px;
+  margin: 0 -28px -28px;
+  padding: 16px 28px;
+  background: #ffffff;
+  border-top: 1px solid #e5e7eb;
+  z-index: 1;
 `;
 
 const ScanButton = styled.button`

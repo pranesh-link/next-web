@@ -49,25 +49,10 @@ const Content = styled.div<{ $maxWidth: string }>`
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12), 0 4px 16px rgba(0, 0, 0, 0.06);
   max-width: ${(p) => p.$maxWidth};
   width: calc(100% - 32px);
-  max-height: 80vh;
-  overflow-y: auto;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
   animation: ${scaleIn} 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-
-  &::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: #f1f5f9;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 3px;
-  }
-
-  scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 #f1f5f9;
 `;
 
 const Header = styled.div`
@@ -76,6 +61,7 @@ const Header = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
 `;
 
 const Title = styled.h2`
@@ -108,6 +94,25 @@ const CloseButton = styled.button`
 
 const Body = styled.div`
   padding: 28px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #f1f5f9;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+  }
+
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
 `;
 
 export default function Modal({

@@ -564,7 +564,7 @@ export default function CouplePage() {
 
   return (
     <>
-      <FinanceHeader title="Partner" />
+      <FinanceHeader title="Partner" onRefresh={fetchCouple} />
 
       {notification && (
         <NotificationBanner $type={notification.type} $leaving={notifLeaving}>
