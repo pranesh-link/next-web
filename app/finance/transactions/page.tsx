@@ -1,23 +1,23 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
-import styled, { keyframes } from "styled-components";
+import { createAccount, getAccounts } from "@/finance/_actions/accounts";
 import {
-  getTransactions,
-  createTransaction,
-  updateTransaction,
-  deleteTransaction,
+    createTransaction,
+    deleteTransaction,
+    getTransactions,
+    updateTransaction,
 } from "@/finance/_actions/transactions";
-import { getAccounts, createAccount } from "@/finance/_actions/accounts";
-import FinanceHeader from "@/finance/_components/layout/FinanceHeader";
-import TransactionTable from "@/finance/_components/tables/TransactionTable";
-import TransactionForm from "@/finance/_components/forms/TransactionForm";
 import AccountForm from "@/finance/_components/forms/AccountForm";
-import ReceiptScanner from "@/finance/_components/receipt/ReceiptScanner";
+import TransactionForm from "@/finance/_components/forms/TransactionForm";
+import FinanceHeader from "@/finance/_components/layout/FinanceHeader";
 import type { ScannedReceipt } from "@/finance/_components/receipt/ReceiptScanner";
-import Modal from "@/finance/_components/shared/Modal";
+import ReceiptScanner from "@/finance/_components/receipt/ReceiptScanner";
 import EmptyState from "@/finance/_components/shared/EmptyState";
 import LoadingSkeleton from "@/finance/_components/shared/LoadingSkeleton";
+import Modal from "@/finance/_components/shared/Modal";
+import TransactionTable from "@/finance/_components/tables/TransactionTable";
+import { useCallback, useEffect, useRef, useState } from "react";
+import styled, { keyframes } from "styled-components";
 
 /* ── Types ──────────────────────────────────────────── */
 
