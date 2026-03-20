@@ -4,6 +4,7 @@ import prisma from "@/_lib/prisma";
 import { goalSchema } from "@/_lib/validations/finance";
 import { calculateGoalProgress } from "@/_services/finance";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
+import { getUserIdsForCouple } from "@/_services/finance/couple-service";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -21,10 +22,11 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       );
     }
 
+    const coupleUserIds = await getUserIdsForCouple(userId);
     const { id } = await context.params;
 
     const goal = await prisma.savingsGoal.findFirst({
-      where: { id, userId: userId },
+      where: { id, userId: { in: coupleUserIds } },
     });
 
     if (!goal) {
@@ -68,10 +70,11 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       );
     }
 
+    const coupleUserIds = await getUserIdsForCouple(userId);
     const { id } = await context.params;
 
     const existing = await prisma.savingsGoal.findFirst({
-      where: { id, userId: userId },
+      where: { id, userId: { in: coupleUserIds } },
     });
 
     if (!existing) {
@@ -133,10 +136,11 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
       );
     }
 
+    const coupleUserIds = await getUserIdsForCouple(userId);
     const { id } = await context.params;
 
     const existing = await prisma.savingsGoal.findFirst({
-      where: { id, userId: userId },
+      where: { id, userId: { in: coupleUserIds } },
     });
 
     if (!existing) {

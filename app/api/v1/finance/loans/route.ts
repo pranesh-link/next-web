@@ -4,6 +4,7 @@ import prisma from "@/_lib/prisma";
 import { loanSchema } from "@/_lib/validations/finance";
 import { calculateEMI } from "@/_services/finance";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
+import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
 
 export async function OPTIONS() {
   return handleOptions();
@@ -19,8 +20,10 @@ export async function GET() {
       );
     }
 
+    const coupleUserIds = await getUserIdsForCouple(userId);
+
     const loans = await prisma.loan.findMany({
-      where: { userId: userId },
+      where: { userId: { in: coupleUserIds } },
       orderBy: { createdAt: "desc" },
     });
 
@@ -50,6 +53,8 @@ export async function POST(request: Request) {
       );
     }
 
+    const coupleId = await getCoupleIdForUser(userId);
+
     const body = await request.json();
 
     let emiAmount = body.emiAmount;
@@ -66,6 +71,7 @@ export async function POST(request: Request) {
     const loan = await prisma.loan.create({
       data: {
         userId: userId,
+        ...(coupleId ? { coupleId } : {}),
         name: validated.name,
         principal: validated.principal,
         interestRate: validated.interestRate,

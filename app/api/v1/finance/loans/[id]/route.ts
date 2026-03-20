@@ -5,6 +5,7 @@ import { loanSchema } from "@/_lib/validations/finance";
 import { getLoanInsights } from "@/_services/finance";
 import type { LoanData } from "@/_services/finance";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
+import { getUserIdsForCouple } from "@/_services/finance/couple-service";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -44,10 +45,11 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       );
     }
 
+    const coupleUserIds = await getUserIdsForCouple(userId);
     const { id } = await context.params;
 
     const loan = await prisma.loan.findFirst({
-      where: { id, userId: userId },
+      where: { id, userId: { in: coupleUserIds } },
     });
 
     if (!loan) {
@@ -85,10 +87,11 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       );
     }
 
+    const coupleUserIds = await getUserIdsForCouple(userId);
     const { id } = await context.params;
 
     const existing = await prisma.loan.findFirst({
-      where: { id, userId: userId },
+      where: { id, userId: { in: coupleUserIds } },
     });
 
     if (!existing) {
@@ -156,10 +159,11 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
       );
     }
 
+    const coupleUserIds = await getUserIdsForCouple(userId);
     const { id } = await context.params;
 
     const existing = await prisma.loan.findFirst({
-      where: { id, userId: userId },
+      where: { id, userId: { in: coupleUserIds } },
     });
 
     if (!existing) {

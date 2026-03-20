@@ -3,14 +3,17 @@
 import prisma from "@/_lib/prisma";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { goalSchema } from "@/_lib/validations/finance";
+import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
 
 export async function getGoals() {
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
 
+    const coupleUserIds = await getUserIdsForCouple(user.id);
+
     const goals = await prisma.savingsGoal.findMany({
-      where: { userId: user.id },
+      where: { userId: { in: coupleUserIds } },
       orderBy: { createdAt: "desc" },
     });
 
@@ -29,7 +32,7 @@ export async function getGoal(id: string) {
     if (!user) return { success: false as const, error: "Not authenticated" };
 
     const goal = await prisma.savingsGoal.findFirst({
-      where: { id, userId: user.id },
+      where: { id, userId: { in: await getUserIdsForCouple(user.id) } },
     });
 
     if (!goal) {
@@ -56,6 +59,7 @@ export async function createGoal(data: {
     if (!user) return { success: false as const, error: "Not authenticated" };
 
     const validated = goalSchema.parse(data);
+    const coupleId = await getCoupleIdForUser(user.id);
 
     const goal = await prisma.savingsGoal.create({
       data: {
@@ -64,6 +68,7 @@ export async function createGoal(data: {
         targetAmount: validated.targetAmount,
         currentAmount: validated.currentAmount,
         deadline: validated.deadline,
+        ...(coupleId ? { coupleId } : {}),
       },
     });
 
@@ -90,7 +95,7 @@ export async function updateGoal(
     if (!user) return { success: false as const, error: "Not authenticated" };
 
     const existing = await prisma.savingsGoal.findFirst({
-      where: { id, userId: user.id },
+      where: { id, userId: { in: await getUserIdsForCouple(user.id) } },
     });
 
     if (!existing) {
@@ -131,7 +136,7 @@ export async function deleteGoal(id: string) {
     if (!user) return { success: false as const, error: "Not authenticated" };
 
     const existing = await prisma.savingsGoal.findFirst({
-      where: { id, userId: user.id },
+      where: { id, userId: { in: await getUserIdsForCouple(user.id) } },
     });
 
     if (!existing) {
@@ -159,7 +164,7 @@ export async function contributeToGoal(id: string, amount: number) {
     }
 
     const existing = await prisma.savingsGoal.findFirst({
-      where: { id, userId: user.id },
+      where: { id, userId: { in: await getUserIdsForCouple(user.id) } },
     });
 
     if (!existing) {

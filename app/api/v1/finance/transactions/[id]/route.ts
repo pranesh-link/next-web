@@ -3,6 +3,7 @@ import { getAuthUserId } from "@/api/v1/_lib/auth";
 import prisma from "@/_lib/prisma";
 import { transactionSchema } from "@/_lib/validations/finance";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
+import { getUserIdsForCouple } from "@/_services/finance/couple-service";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -20,10 +21,11 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       );
     }
 
+    const coupleUserIds = await getUserIdsForCouple(userId);
     const { id } = await context.params;
 
     const transaction = await prisma.transaction.findFirst({
-      where: { id, userId: userId },
+      where: { id, userId: { in: coupleUserIds } },
       include: { account: { select: { name: true } } },
     });
 
@@ -62,10 +64,11 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       );
     }
 
+    const coupleUserIds = await getUserIdsForCouple(userId);
     const { id } = await context.params;
 
     const existing = await prisma.transaction.findFirst({
-      where: { id, userId: userId },
+      where: { id, userId: { in: coupleUserIds } },
     });
 
     if (!existing) {
@@ -89,7 +92,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
     if (validated.accountId !== existing.accountId) {
       const newAccount = await prisma.financialAccount.findFirst({
-        where: { id: validated.accountId, userId: userId },
+        where: { id: validated.accountId, userId: { in: coupleUserIds } },
       });
       if (!newAccount) {
         return NextResponse.json(
@@ -170,10 +173,11 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
       );
     }
 
+    const coupleUserIds = await getUserIdsForCouple(userId);
     const { id } = await context.params;
 
     const existing = await prisma.transaction.findFirst({
-      where: { id, userId: userId },
+      where: { id, userId: { in: coupleUserIds } },
     });
 
     if (!existing) {

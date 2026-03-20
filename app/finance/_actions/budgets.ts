@@ -4,6 +4,7 @@ import prisma from "@/_lib/prisma";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { budgetSchema } from "@/_lib/validations/finance";
 import type { Budget } from "@prisma/client";
+import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
 
 function currentMonth(): string {
   const now = new Date();
@@ -17,14 +18,16 @@ export async function getBudgets(month?: string) {
     const targetMonth = month ?? currentMonth();
     const [year, m] = targetMonth.split("-").map(Number);
 
+    const coupleUserIds = await getUserIdsForCouple(user.id);
+
     const budgetsPromise = prisma.budget.findMany({
-      where: { userId: user.id, month: targetMonth },
+      where: { userId: { in: coupleUserIds }, month: targetMonth },
       orderBy: { category: "asc" },
     });
     const spentPromise = prisma.transaction.groupBy({
       by: ["category"] as const,
       where: {
-        userId: user.id,
+        userId: { in: coupleUserIds },
         type: "EXPENSE" as const,
         date: {
           gte: new Date(year, m - 1, 1),
@@ -66,6 +69,8 @@ export async function createBudget(data: {
 
     const validated = budgetSchema.parse(data);
 
+    const coupleId = await getCoupleIdForUser(user.id);
+
     const budget = await prisma.budget.upsert({
       where: {
         userId_category_month: {
@@ -80,6 +85,7 @@ export async function createBudget(data: {
         category: validated.category,
         limit: validated.limit,
         month: validated.month,
+        ...(coupleId ? { coupleId } : {}),
       },
     });
 
@@ -98,7 +104,7 @@ export async function updateBudget(id: string, data: { limit?: number }) {
     if (!user) return { success: false as const, error: "Not authenticated" };
 
     const existing = await prisma.budget.findFirst({
-      where: { id, userId: user.id },
+      where: { id, userId: { in: await getUserIdsForCouple(user.id) } },
     });
 
     if (!existing) {
@@ -129,7 +135,7 @@ export async function deleteBudget(id: string) {
     if (!user) return { success: false as const, error: "Not authenticated" };
 
     const existing = await prisma.budget.findFirst({
-      where: { id, userId: user.id },
+      where: { id, userId: { in: await getUserIdsForCouple(user.id) } },
     });
 
     if (!existing) {
@@ -154,13 +160,15 @@ export async function getBudgetStatus(month?: string) {
     const targetMonth = month ?? currentMonth();
     const [year, m] = targetMonth.split("-").map(Number);
 
+    const coupleUserIds = await getUserIdsForCouple(user.id);
+
     const budgetsPromise = prisma.budget.findMany({
-      where: { userId: user.id, month: targetMonth },
+      where: { userId: { in: coupleUserIds }, month: targetMonth },
     });
     const spentPromise = prisma.transaction.groupBy({
       by: ["category"] as const,
       where: {
-        userId: user.id,
+        userId: { in: coupleUserIds },
         type: "EXPENSE" as const,
         date: {
           gte: new Date(year, m - 1, 1),

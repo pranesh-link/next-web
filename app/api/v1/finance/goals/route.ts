@@ -4,6 +4,7 @@ import prisma from "@/_lib/prisma";
 import { goalSchema } from "@/_lib/validations/finance";
 import { calculateGoalProgress } from "@/_services/finance";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
+import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
 
 export async function OPTIONS() {
   return handleOptions();
@@ -19,8 +20,10 @@ export async function GET() {
       );
     }
 
+    const coupleUserIds = await getUserIdsForCouple(userId);
+
     const goals = await prisma.savingsGoal.findMany({
-      where: { userId: userId },
+      where: { userId: { in: coupleUserIds } },
       orderBy: { createdAt: "desc" },
     });
 
@@ -61,12 +64,15 @@ export async function POST(request: Request) {
       );
     }
 
+    const coupleId = await getCoupleIdForUser(userId);
+
     const body = await request.json();
     const validated = goalSchema.parse(body);
 
     const goal = await prisma.savingsGoal.create({
       data: {
         userId: userId,
+        ...(coupleId ? { coupleId } : {}),
         name: validated.name,
         targetAmount: validated.targetAmount,
         currentAmount: validated.currentAmount,

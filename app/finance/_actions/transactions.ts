@@ -3,6 +3,7 @@
 import prisma from "@/_lib/prisma";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { transactionSchema } from "@/_lib/validations/finance";
+import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
 
 export async function getTransactions(params?: {
   month?: string;
@@ -14,7 +15,11 @@ export async function getTransactions(params?: {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
 
-    const where: { userId: string; date?: { gte: Date; lt: Date }; category?: string; accountId?: string } = { userId: user.id };
+    const where: { userId: string | { in: string[] }; date?: { gte: Date; lt: Date }; category?: string; accountId?: string } = { userId: user.id };
+
+    // Expand to couple scope
+    const coupleUserIds = await getUserIdsForCouple(user.id);
+    (where as Record<string, unknown>).userId = { in: coupleUserIds };
 
     if (params?.month) {
       const [year, month] = params.month.split("-").map(Number);
@@ -53,8 +58,10 @@ export async function getTransaction(id: string) {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
 
+    const coupleUserIds = await getUserIdsForCouple(user.id);
+
     const transaction = await prisma.transaction.findFirst({
-      where: { id, userId: user.id },
+      where: { id, userId: { in: coupleUserIds } },
       include: { account: { select: { name: true } } },
     });
 
@@ -85,9 +92,10 @@ export async function createTransaction(data: {
 
     const validated = transactionSchema.parse(data);
 
-    // Verify account ownership
+    // Verify account ownership (couple-wide)
+    const coupleUserIds = await getUserIdsForCouple(user.id);
     const account = await prisma.financialAccount.findFirst({
-      where: { id: validated.accountId, userId: user.id },
+      where: { id: validated.accountId, userId: { in: coupleUserIds } },
     });
 
     if (!account) {
@@ -96,6 +104,8 @@ export async function createTransaction(data: {
 
     const balanceAdjustment =
       validated.type === "INCOME" ? validated.amount : -validated.amount;
+
+    const coupleId = await getCoupleIdForUser(user.id);
 
     const [transaction] = await prisma.$transaction([
       prisma.transaction.create({
@@ -107,6 +117,7 @@ export async function createTransaction(data: {
           category: validated.category,
           description: validated.description,
           date: validated.date,
+          ...(coupleId ? { coupleId } : {}),
         },
       }),
       prisma.financialAccount.update({
@@ -140,7 +151,7 @@ export async function updateTransaction(
     if (!user) return { success: false as const, error: "Not authenticated" };
 
     const existing = await prisma.transaction.findFirst({
-      where: { id, userId: user.id },
+      where: { id, userId: { in: await getUserIdsForCouple(user.id) } },
     });
 
     if (!existing) {
@@ -158,10 +169,11 @@ export async function updateTransaction(
 
     const validated = transactionSchema.parse(merged);
 
-    // If account changed, verify ownership of new account
+    // If account changed, verify ownership of new account (couple-wide)
     if (validated.accountId !== existing.accountId) {
+      const coupleUserIds = await getUserIdsForCouple(user.id);
       const newAccount = await prisma.financialAccount.findFirst({
-        where: { id: validated.accountId, userId: user.id },
+        where: { id: validated.accountId, userId: { in: coupleUserIds } },
       });
       if (!newAccount) {
         return { success: false as const, error: "Account not found" };
@@ -223,7 +235,7 @@ export async function deleteTransaction(id: string) {
     if (!user) return { success: false as const, error: "Not authenticated" };
 
     const existing = await prisma.transaction.findFirst({
-      where: { id, userId: user.id },
+      where: { id, userId: { in: await getUserIdsForCouple(user.id) } },
     });
 
     if (!existing) {
@@ -257,10 +269,11 @@ export async function getTransactionsByMonth(month: string) {
     if (!user) return { success: false as const, error: "Not authenticated" };
 
     const [year, m] = month.split("-").map(Number);
+    const coupleUserIds = await getUserIdsForCouple(user.id);
 
     const transactions = await prisma.transaction.findMany({
       where: {
-        userId: user.id,
+        userId: { in: coupleUserIds },
         date: {
           gte: new Date(year, m - 1, 1),
           lt: new Date(year, m, 1),
@@ -290,11 +303,12 @@ export async function getCategoryAggregation(month?: string) {
       `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
     const [year, m] = targetMonth.split("-").map(Number);
+    const coupleUserIds = await getUserIdsForCouple(user.id);
 
     const aggregation = await prisma.transaction.groupBy({
       by: ["category"],
       where: {
-        userId: user.id,
+        userId: { in: coupleUserIds },
         type: "EXPENSE",
         date: {
           gte: new Date(year, m - 1, 1),
