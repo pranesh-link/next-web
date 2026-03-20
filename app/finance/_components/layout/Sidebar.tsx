@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useCallback } from "react";
+import { signOut } from "next-auth/react";
 import styled from "styled-components";
 import { useFinanceTheme } from "@/finance/_components/theme/FinanceThemeProvider";
 
@@ -331,16 +332,20 @@ const UserEmail = styled.p`
   text-overflow: ellipsis;
 `;
 
-const SignOutLink = styled(Link)`
+const SignOutButton = styled.button`
   display: flex;
   align-items: center;
   gap: 12px;
+  width: 100%;
   padding: 10px 12px;
   border-radius: 8px;
+  border: none;
+  background: transparent;
+  font-family: inherit;
   font-size: 13px;
   font-weight: 500;
   color: var(--text-muted);
-  text-decoration: none;
+  cursor: pointer;
   transition: all 0.2s ${EASING};
 
   &:hover {
@@ -355,16 +360,99 @@ const SignOutLink = styled(Link)`
   }
 `;
 
-const SignOutLabel = styled.span<{ $visible: boolean }>`
+const SignOutButtonLabel = styled.span<{ $visible: boolean }>`
   white-space: nowrap;
   opacity: ${(p) => (p.$visible ? 1 : 0)};
   transition: opacity 0.2s ${EASING};
+`;
+
+/* ── Sign-out confirmation modal ── */
+
+const ModalOverlay = styled.div<{ $open: boolean }>`
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  opacity: ${(p) => (p.$open ? 1 : 0)};
+  pointer-events: ${(p) => (p.$open ? "auto" : "none")};
+  transition: opacity 0.2s ${EASING};
+`;
+
+const ModalCard = styled.div`
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px;
+  width: 340px;
+  max-width: 90vw;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+`;
+
+const ModalIcon = styled.div`
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+
+  svg {
+    width: 24px;
+    height: 24px;
+  }
+`;
+
+const ModalTitle = styled.h3`
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 6px;
+`;
+
+const ModalDesc = styled.p`
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0 0 24px;
+  line-height: 1.5;
+`;
+
+const ModalActions = styled.div`
+  display: flex;
+  gap: 10px;
+`;
+
+const ModalBtn = styled.button<{ $danger?: boolean }>`
+  flex: 1;
+  padding: 10px 0;
+  border-radius: 10px;
+  border: none;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ${EASING};
+
+  background: ${(p) => (p.$danger ? "#ef4444" : "var(--surface)")};
+  color: ${(p) => (p.$danger ? "#fff" : "var(--text)")};
+
+  &:hover {
+    background: ${(p) => (p.$danger ? "#dc2626" : "var(--surface-hover)")};
+  }
 `;
 
 export default function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
   const { isDark, toggleTheme } = useFinanceTheme();
   const [expanded, setExpanded] = useState(false);
+  const [showSignOut, setShowSignOut] = useState(false);
 
   const isActive = useCallback(
     (href: string) => {
@@ -522,7 +610,29 @@ export default function Sidebar({ user }: SidebarProps) {
             </UserArea>
           )}
 
-          <SignOutLink href="/api/auth/signout">
+          <SignOutButton type="button" onClick={() => setShowSignOut(true)}>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1-2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+            <SignOutButtonLabel $visible={expanded}>Sign Out</SignOutButtonLabel>
+          </SignOutButton>
+        </BottomSection>
+      </SidebarWrapper>
+
+      {/* Sign-out confirmation modal */}
+      <ModalOverlay $open={showSignOut} onClick={() => setShowSignOut(false)}>
+        <ModalCard onClick={(e) => e.stopPropagation()}>
+          <ModalIcon>
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
@@ -536,10 +646,23 @@ export default function Sidebar({ user }: SidebarProps) {
               <polyline points="16 17 21 12 16 7" />
               <line x1="21" y1="12" x2="9" y2="12" />
             </svg>
-            <SignOutLabel $visible={expanded}>Sign Out</SignOutLabel>
-          </SignOutLink>
-        </BottomSection>
-      </SidebarWrapper>
+          </ModalIcon>
+          <ModalTitle>Sign out?</ModalTitle>
+          <ModalDesc>You&apos;ll need to sign in again to access your account.</ModalDesc>
+          <ModalActions>
+            <ModalBtn type="button" onClick={() => setShowSignOut(false)}>
+              Cancel
+            </ModalBtn>
+            <ModalBtn
+              type="button"
+              $danger
+              onClick={() => signOut({ callbackUrl: "/finance/login" })}
+            >
+              Sign Out
+            </ModalBtn>
+          </ModalActions>
+        </ModalCard>
+      </ModalOverlay>
     </>
   );
 }
