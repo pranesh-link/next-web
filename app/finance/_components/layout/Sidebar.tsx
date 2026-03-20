@@ -142,7 +142,7 @@ const SidebarWrapper = styled.aside<{ $expanded: boolean }>`
   z-index: 40;
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100dvh;
   width: ${(p) => (p.$expanded ? "256px" : "64px")};
   background: var(--bg-elevated);
   border-right: 1px solid var(--border);
