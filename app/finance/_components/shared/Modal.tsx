@@ -180,6 +180,6 @@ export default function Modal({
         <Body>{children}</Body>
       </Content>
     </Overlay>,
-    document.body,
+    document.getElementById('finance-portal-root') || document.body,
   );
 }
