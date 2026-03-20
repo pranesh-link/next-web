@@ -3,14 +3,17 @@
 import prisma from "@/_lib/prisma";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { accountSchema } from "@/_lib/validations/finance";
+import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
 
 export async function getAccounts() {
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
 
+    const coupleUserIds = await getUserIdsForCouple(user.id);
+
     const accounts = await prisma.financialAccount.findMany({
-      where: { userId: user.id },
+      where: { userId: { in: coupleUserIds } },
       orderBy: { createdAt: "desc" },
     });
 
@@ -28,8 +31,10 @@ export async function getAccount(id: string) {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
 
+    const coupleUserIds = await getUserIdsForCouple(user.id);
+
     const account = await prisma.financialAccount.findFirst({
-      where: { id, userId: user.id },
+      where: { id, userId: { in: coupleUserIds } },
     });
 
     if (!account) {
@@ -63,12 +68,15 @@ export async function createAccount(
 
     const validated = accountSchema.parse(raw);
 
+    const coupleId = await getCoupleIdForUser(user.id);
+
     const account = await prisma.financialAccount.create({
       data: {
         userId: user.id,
         name: validated.name,
         type: validated.type,
         balance: validated.balance,
+        ...(coupleId ? { coupleId } : {}),
       },
     });
 
@@ -89,8 +97,10 @@ export async function updateAccount(
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
 
+    const coupleUserIds = await getUserIdsForCouple(user.id);
+
     const existing = await prisma.financialAccount.findFirst({
-      where: { id, userId: user.id },
+      where: { id, userId: { in: coupleUserIds } },
     });
 
     if (!existing) {
@@ -128,8 +138,10 @@ export async function deleteAccount(id: string) {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
 
+    const coupleUserIds = await getUserIdsForCouple(user.id);
+
     const existing = await prisma.financialAccount.findFirst({
-      where: { id, userId: user.id },
+      where: { id, userId: { in: coupleUserIds } },
     });
 
     if (!existing) {
@@ -152,8 +164,10 @@ export async function getTotalBalance() {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
 
+    const coupleUserIds = await getUserIdsForCouple(user.id);
+
     const result = await prisma.financialAccount.aggregate({
-      where: { userId: user.id },
+      where: { userId: { in: coupleUserIds } },
       _sum: { balance: true },
     });
 

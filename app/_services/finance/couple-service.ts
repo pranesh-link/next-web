@@ -125,6 +125,16 @@ export async function getUserIdsForCouple(
   return membership.couple.members.map((m) => m.userId);
 }
 
+export async function getCoupleIdForUser(
+  userId: string
+): Promise<string | null> {
+  const membership = await prisma.coupleMember.findFirst({
+    where: { userId },
+    select: { coupleId: true },
+  });
+  return membership?.coupleId ?? null;
+}
+
 export async function cancelInvite(inviteId: string, userId: string) {
   const invite = await prisma.coupleInvite.findUnique({
     where: { id: inviteId },

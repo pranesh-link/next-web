@@ -18,6 +18,7 @@ import type {
   Loan,
   SavingsGoal,
 } from "@prisma/client";
+import { getUserIdsForCouple } from "@/_services/finance/couple-service";
 
 function currentMonth(): string {
   const now = new Date();
@@ -36,40 +37,43 @@ export async function getDashboardInsights() {
     const monthStart = new Date(year, m - 1, 1);
     const monthEnd = new Date(year, m, 1);
 
+    // Resolve couple scope
+    const coupleUserIds = await getUserIdsForCouple(user.id);
+
     // Fire all queries in parallel
     const accountsP = prisma.financialAccount.findMany({
-      where: { userId: user.id },
+      where: { userId: { in: coupleUserIds } },
     });
     const allTransactionsP = prisma.transaction.findMany({
-      where: { userId: user.id },
+      where: { userId: { in: coupleUserIds } },
       orderBy: { date: "desc" as const },
     });
     const currentMonthTxP = prisma.transaction.findMany({
       where: {
-        userId: user.id,
+        userId: { in: coupleUserIds },
         date: { gte: monthStart, lt: monthEnd },
       },
     });
     const budgetsP = prisma.budget.findMany({
-      where: { userId: user.id, month },
+      where: { userId: { in: coupleUserIds }, month },
     });
     const budgetSpentP = prisma.transaction.groupBy({
       by: ["category"] as const,
       where: {
-        userId: user.id,
+        userId: { in: coupleUserIds },
         type: "EXPENSE" as const,
         date: { gte: monthStart, lt: monthEnd },
       },
       _sum: { amount: true },
     });
     const loansP = prisma.loan.findMany({
-      where: { userId: user.id },
+      where: { userId: { in: coupleUserIds } },
     });
     const goalsP = prisma.savingsGoal.findMany({
-      where: { userId: user.id },
+      where: { userId: { in: coupleUserIds } },
     });
     const recentTxP = prisma.transaction.findMany({
-      where: { userId: user.id },
+      where: { userId: { in: coupleUserIds } },
       orderBy: { date: "desc" as const },
       take: 5,
       include: { account: { select: { name: true } } },
@@ -211,29 +215,31 @@ export async function getFinancialHealthScore() {
     const month = currentMonth();
     const [year, m] = month.split("-").map(Number);
 
+    const coupleUserIds = await getUserIdsForCouple(user.id);
+
     const accountsP = prisma.financialAccount.findMany({
-      where: { userId: user.id },
+      where: { userId: { in: coupleUserIds } },
     });
     const transactionsP = prisma.transaction.findMany({
       where: {
-        userId: user.id,
+        userId: { in: coupleUserIds },
         date: { gte: new Date(year, m - 1, 1), lt: new Date(year, m, 1) },
       },
     });
     const budgetsP = prisma.budget.findMany({
-      where: { userId: user.id, month },
+      where: { userId: { in: coupleUserIds }, month },
     });
     const budgetSpentP = prisma.transaction.groupBy({
       by: ["category"] as const,
       where: {
-        userId: user.id,
+        userId: { in: coupleUserIds },
         type: "EXPENSE" as const,
         date: { gte: new Date(year, m - 1, 1), lt: new Date(year, m, 1) },
       },
       _sum: { amount: true },
     });
     const loansP = prisma.loan.findMany({
-      where: { userId: user.id },
+      where: { userId: { in: coupleUserIds } },
     });
 
     const accounts: FinancialAccount[] = await accountsP;

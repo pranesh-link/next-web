@@ -3,6 +3,7 @@ import { getAuthUserId } from "@/api/v1/_lib/auth";
 import prisma from "@/_lib/prisma";
 import { budgetSchema } from "@/_lib/validations/finance";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
+import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
 
 export async function OPTIONS() {
   return handleOptions();
@@ -19,6 +20,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const coupleUserIds = await getUserIdsForCouple(userId);
+
     const { searchParams } = request.nextUrl;
     const month =
       searchParams.get("month") ?? currentMonth();
@@ -26,13 +29,13 @@ export async function GET(request: NextRequest) {
 
     const [budgets, spentByCategory] = await Promise.all([
       prisma.budget.findMany({
-        where: { userId: userId, month },
+        where: { userId: { in: coupleUserIds }, month },
         orderBy: { category: "asc" },
       }),
       prisma.transaction.groupBy({
         by: ["category"] as const,
         where: {
-          userId: userId,
+          userId: { in: coupleUserIds },
           type: "EXPENSE" as const,
           date: {
             gte: new Date(year, m - 1, 1),
@@ -85,6 +88,8 @@ export async function POST(request: Request) {
       );
     }
 
+    const coupleId = await getCoupleIdForUser(userId);
+
     const body = await request.json();
     const validated = budgetSchema.parse(body);
 
@@ -99,6 +104,7 @@ export async function POST(request: Request) {
       update: { limit: validated.limit },
       create: {
         userId: userId,
+        ...(coupleId ? { coupleId } : {}),
         category: validated.category,
         limit: validated.limit,
         month: validated.month,

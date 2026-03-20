@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
 import prisma from "@/_lib/prisma";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
+import { getUserIdsForCouple } from "@/_services/finance/couple-service";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -19,10 +20,11 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       );
     }
 
+    const coupleUserIds = await getUserIdsForCouple(userId);
     const { id } = await context.params;
 
     const existing = await prisma.budget.findFirst({
-      where: { id, userId: userId },
+      where: { id, userId: { in: coupleUserIds } },
     });
 
     if (!existing) {
@@ -74,10 +76,11 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
       );
     }
 
+    const coupleUserIds = await getUserIdsForCouple(userId);
     const { id } = await context.params;
 
     const existing = await prisma.budget.findFirst({
-      where: { id, userId: userId },
+      where: { id, userId: { in: coupleUserIds } },
     });
 
     if (!existing) {

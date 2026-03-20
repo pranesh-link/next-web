@@ -3,6 +3,7 @@ import { getAuthUserId } from "@/api/v1/_lib/auth";
 import prisma from "@/_lib/prisma";
 import { accountSchema } from "@/_lib/validations/finance";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
+import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
 
 export async function OPTIONS() {
   return handleOptions();
@@ -18,8 +19,10 @@ export async function GET() {
       );
     }
 
+    const coupleUserIds = await getUserIdsForCouple(userId);
+
     const accounts = await prisma.financialAccount.findMany({
-      where: { userId: userId },
+      where: { userId: { in: coupleUserIds } },
       orderBy: { createdAt: "desc" },
     });
 
@@ -48,12 +51,15 @@ export async function POST(request: Request) {
       );
     }
 
+    const coupleId = await getCoupleIdForUser(userId);
+
     const body = await request.json();
     const validated = accountSchema.parse(body);
 
     const account = await prisma.financialAccount.create({
       data: {
         userId: userId,
+        ...(coupleId ? { coupleId } : {}),
         name: validated.name,
         type: validated.type,
         balance: validated.balance,

@@ -10,14 +10,17 @@ import {
   generateAmortizationSchedule,
 } from "@/_services/finance";
 import type { LoanData } from "@/_services/finance";
+import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
 
 export async function getLoans() {
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
 
+    const coupleUserIds = await getUserIdsForCouple(user.id);
+
     const loans = await prisma.loan.findMany({
-      where: { userId: user.id },
+      where: { userId: { in: coupleUserIds } },
       orderBy: { createdAt: "desc" },
     });
 
@@ -36,7 +39,7 @@ export async function getLoan(id: string) {
     if (!user) return { success: false as const, error: "Not authenticated" };
 
     const loan = await prisma.loan.findFirst({
-      where: { id, userId: user.id },
+      where: { id, userId: { in: await getUserIdsForCouple(user.id) } },
     });
 
     if (!loan) {
@@ -65,10 +68,11 @@ export async function createLoan(data: {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
 
-    // Check for duplicate loan (same name + principal + rate + tenure)
+    // Check for duplicate loan (same name + principal + rate + tenure) across couple
+    const coupleUserIds = await getUserIdsForCouple(user.id);
     const duplicate = await prisma.loan.findFirst({
       where: {
-        userId: user.id,
+        userId: { in: coupleUserIds },
         name: data.name,
         principal: data.principal,
         interestRate: data.interestRate,
@@ -90,6 +94,8 @@ export async function createLoan(data: {
 
     const validated = loanSchema.parse({ ...data, emiAmount });
 
+    const coupleId = await getCoupleIdForUser(user.id);
+
     const loan = await prisma.loan.create({
       data: {
         userId: user.id,
@@ -100,6 +106,7 @@ export async function createLoan(data: {
         emiAmount: validated.emiAmount,
         startDate: validated.startDate,
         remainingBalance: validated.remainingBalance,
+        ...(coupleId ? { coupleId } : {}),
       },
     });
 
@@ -129,7 +136,7 @@ export async function updateLoan(
     if (!user) return { success: false as const, error: "Not authenticated" };
 
     const existing = await prisma.loan.findFirst({
-      where: { id, userId: user.id },
+      where: { id, userId: { in: await getUserIdsForCouple(user.id) } },
     });
 
     if (!existing) {
@@ -176,7 +183,7 @@ export async function deleteLoan(id: string) {
     if (!user) return { success: false as const, error: "Not authenticated" };
 
     const existing = await prisma.loan.findFirst({
-      where: { id, userId: user.id },
+      where: { id, userId: { in: await getUserIdsForCouple(user.id) } },
     });
 
     if (!existing) {
@@ -225,7 +232,7 @@ export async function simulateLoanPrepayment(
     if (!user) return { success: false as const, error: "Not authenticated" };
 
     const loan = await prisma.loan.findFirst({
-      where: { id, userId: user.id },
+      where: { id, userId: { in: await getUserIdsForCouple(user.id) } },
     });
 
     if (!loan) {
@@ -253,7 +260,7 @@ export async function getLoanInsightsAction(id: string) {
     if (!user) return { success: false as const, error: "Not authenticated" };
 
     const loan = await prisma.loan.findFirst({
-      where: { id, userId: user.id },
+      where: { id, userId: { in: await getUserIdsForCouple(user.id) } },
     });
 
     if (!loan) {
@@ -277,7 +284,7 @@ export async function getLoanSchedule(id: string) {
     if (!user) return { success: false as const, error: "Not authenticated" };
 
     const loan = await prisma.loan.findFirst({
-      where: { id, userId: user.id },
+      where: { id, userId: { in: await getUserIdsForCouple(user.id) } },
     });
 
     if (!loan) {

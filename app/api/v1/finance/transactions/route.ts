@@ -3,6 +3,7 @@ import { getAuthUserId } from "@/api/v1/_lib/auth";
 import prisma from "@/_lib/prisma";
 import { transactionSchema } from "@/_lib/validations/finance";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
+import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
 
 export async function OPTIONS() {
   return handleOptions();
@@ -18,6 +19,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const coupleUserIds = await getUserIdsForCouple(userId);
+
     const { searchParams } = request.nextUrl;
     const month = searchParams.get("month");
     const category = searchParams.get("category");
@@ -25,11 +28,11 @@ export async function GET(request: NextRequest) {
     const limitParam = searchParams.get("limit");
 
     const where: {
-      userId: string;
+      userId: { in: string[] };
       date?: { gte: Date; lt: Date };
       category?: string;
       accountId?: string;
-    } = { userId: userId };
+    } = { userId: { in: coupleUserIds } };
 
     if (month) {
       const [year, m] = month.split("-").map(Number);
@@ -82,11 +85,14 @@ export async function POST(request: Request) {
       );
     }
 
+    const coupleUserIds = await getUserIdsForCouple(userId);
+    const coupleId = await getCoupleIdForUser(userId);
+
     const body = await request.json();
     const validated = transactionSchema.parse(body);
 
     const account = await prisma.financialAccount.findFirst({
-      where: { id: validated.accountId, userId: userId },
+      where: { id: validated.accountId, userId: { in: coupleUserIds } },
     });
 
     if (!account) {
@@ -103,6 +109,7 @@ export async function POST(request: Request) {
       prisma.transaction.create({
         data: {
           userId: userId,
+          ...(coupleId ? { coupleId } : {}),
           accountId: validated.accountId,
           amount: validated.amount,
           type: validated.type,

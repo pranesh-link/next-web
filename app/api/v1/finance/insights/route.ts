@@ -18,6 +18,7 @@ import type {
   SavingsGoal,
 } from "@prisma/client";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
+import { getUserIdsForCouple } from "@/_services/finance/couple-service";
 
 function currentMonth(): string {
   const now = new Date();
@@ -38,6 +39,8 @@ export async function GET() {
       );
     }
 
+    const coupleUserIds = await getUserIdsForCouple(userId);
+
     const month = currentMonth();
     const [year, m] = month.split("-").map(Number);
     const monthStart = new Date(year, m - 1, 1);
@@ -45,38 +48,38 @@ export async function GET() {
 
     // Fire all queries in parallel
     const accountsP = prisma.financialAccount.findMany({
-      where: { userId: userId },
+      where: { userId: { in: coupleUserIds } },
     });
     const allTransactionsP = prisma.transaction.findMany({
-      where: { userId: userId },
+      where: { userId: { in: coupleUserIds } },
       orderBy: { date: "desc" as const },
     });
     const currentMonthTxP = prisma.transaction.findMany({
       where: {
-        userId: userId,
+        userId: { in: coupleUserIds },
         date: { gte: monthStart, lt: monthEnd },
       },
     });
     const budgetsP = prisma.budget.findMany({
-      where: { userId: userId, month },
+      where: { userId: { in: coupleUserIds }, month },
     });
     const budgetSpentP = prisma.transaction.groupBy({
       by: ["category"] as const,
       where: {
-        userId: userId,
+        userId: { in: coupleUserIds },
         type: "EXPENSE" as const,
         date: { gte: monthStart, lt: monthEnd },
       },
       _sum: { amount: true },
     });
     const loansP = prisma.loan.findMany({
-      where: { userId: userId },
+      where: { userId: { in: coupleUserIds } },
     });
     const goalsP = prisma.savingsGoal.findMany({
-      where: { userId: userId },
+      where: { userId: { in: coupleUserIds } },
     });
     const recentTxP = prisma.transaction.findMany({
-      where: { userId: userId },
+      where: { userId: { in: coupleUserIds } },
       orderBy: { date: "desc" as const },
       take: 5,
       include: { account: { select: { name: true } } },
