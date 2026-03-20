@@ -5,7 +5,11 @@
 /.pnp
 .pnp.js
 .yarn/install-state.gz
+# pwa build output
+/public/sw.js
 /public/sw.js.map
+/public/workbox-*.js
+/public/fallback-*.js
 
 # testing
 /coverage

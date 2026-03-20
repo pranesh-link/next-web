@@ -767,6 +767,7 @@ export default function GoalsPage() {
       <FinanceHeader
         title="Savings Goals"
         action={{ label: "New Goal", onClick: handleOpenAdd }}
+        onRefresh={fetchGoals}
       />
 
       <PageWrapper>

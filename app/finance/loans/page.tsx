@@ -1025,6 +1025,7 @@ export default function LoansPage() {
       <FinanceHeader
         title="Loans & EMIs"
         action={{ label: "Add Loan", onClick: handleOpenAdd }}
+        onRefresh={fetchLoans}
       />
 
       <PageWrapper>

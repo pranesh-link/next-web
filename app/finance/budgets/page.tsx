@@ -566,6 +566,7 @@ export default function BudgetsPage() {
       <FinanceHeader
         title="Budgets"
         action={{ label: "Set Budget", onClick: handleOpenAdd }}
+        onRefresh={fetchBudgets}
       />
 
       <PageWrapper>
