@@ -20,6 +20,7 @@ export type ScannedReceipt = {
 interface ReceiptScannerProps {
   onScanComplete: (data: ScannedReceipt) => void;
   onClose: () => void;
+  onScanningChange?: (scanning: boolean) => void;
 }
 
 /* ── Keyframes ── */
@@ -298,10 +299,12 @@ const ConfidenceBadge = styled.span<{ $level: "high" | "medium" | "low" }>`
 export default function ReceiptScanner({
   onScanComplete,
   onClose,
+  onScanningChange,
 }: ReceiptScannerProps) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-  const [scanning, setScanning] = useState(false);
+  const [scanning, setScanning_] = useState(false);
+  const setScanning = (v: boolean) => { setScanning_(v); onScanningChange?.(v); };
   const [result, setResult] = useState<ScannedReceipt | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);

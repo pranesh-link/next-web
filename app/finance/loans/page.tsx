@@ -809,6 +809,7 @@ export default function LoansPage() {
 
   /* PDF Scanner State */
   const [showScanModal, setShowScanModal] = useState(false);
+  const [isScanningSchedule, setIsScanningSchedule] = useState(false);
   const [scannedLoan, setScannedLoan] = useState<Partial<Loan> | null>(null);
 
   const [notification, setNotification] = useState<Notification | null>(null);
@@ -1579,10 +1580,12 @@ export default function LoansPage() {
         onClose={() => setShowScanModal(false)}
         title="Import from PDF"
         size="md"
+        preventClose={isScanningSchedule}
       >
         <LoanScheduleScanner
           onScanComplete={handleScanComplete}
           onClose={() => setShowScanModal(false)}
+          onScanningChange={setIsScanningSchedule}
         />
       </Modal>
     </>
