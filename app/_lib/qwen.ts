@@ -16,4 +16,4 @@ export function getQwenClient(): OpenAI {
   return _client;
 }
 
-export const QWEN_MODEL = "qwen/qwen2.5-vl-32b-instruct:free";
+export const QWEN_MODEL = "nvidia/nemotron-nano-12b-v2-vl:free";
