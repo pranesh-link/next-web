@@ -20,7 +20,10 @@ export default async function FinanceRootLayout({
 
   // Redirect unauthenticated users to login (except the login page itself)
   if (!session?.user && !pathname.startsWith("/finance/login")) {
-    redirect("/finance/login");
+    const loginUrl = pathname && pathname !== "/finance/login"
+      ? `/finance/login?callbackUrl=${encodeURIComponent(pathname)}`
+      : "/finance/login";
+    redirect(loginUrl);
   }
 
   const user = session?.user
