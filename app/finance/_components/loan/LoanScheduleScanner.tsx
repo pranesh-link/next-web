@@ -30,6 +30,7 @@ export type ScannedLoanData = {
 interface LoanScheduleScannerProps {
   onScanComplete: (data: ScannedLoanData) => void;
   onClose: () => void;
+  onScanningChange?: (scanning: boolean) => void;
 }
 
 /* ── Keyframes ── */
@@ -316,9 +317,11 @@ function formatFileSize(bytes: number): string {
 export default function LoanScheduleScanner({
   onScanComplete,
   onClose,
+  onScanningChange,
 }: LoanScheduleScannerProps) {
   const [file, setFile] = useState<File | null>(null);
-  const [scanning, setScanning] = useState(false);
+  const [scanning, setScanning_] = useState(false);
+  const setScanning = (v: boolean) => { setScanning_(v); onScanningChange?.(v); };
   const [result, setResult] = useState<ScannedLoanData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);

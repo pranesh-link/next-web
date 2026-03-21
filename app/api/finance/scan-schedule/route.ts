@@ -1,10 +1,7 @@
 import { auth } from "@/_lib/auth";
-import { getQwenClient, QWEN_MODEL } from "@/_lib/qwen";
 import { NextRequest, NextResponse } from "next/server";
+import { createWorker } from "tesseract.js";
 import { z } from "zod";
-
-// TODO: Re-enable Gemini when API quota is restored
-// const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 const ALLOWED_TYPES = [
@@ -71,92 +68,23 @@ function checkRateLimit(userId: string): boolean {
   return true;
 }
 
-const SCHEDULE_PROMPT = `You are a loan amortization schedule extractor. Analyze this document and extract the loan schedule data into a JSON object:
-{
-  "loanName": "type of loan (Home Loan, Car Loan, Personal Loan, Education Loan, or Imported Loan)",
-  "principal": total loan principal amount (number),
-  "interestRate": annual interest rate as percentage (number),
-  "tenureMonths": total number of months (number),
-  "emiAmount": monthly EMI amount (number),
-  "startDate": "YYYY-MM-DD or empty string",
-  "remainingBalance": remaining balance (number),
-  "schedule": [
-    {
-      "month": month number (1-based integer),
-      "date": "YYYY-MM-DD or empty string",
-      "emi": EMI payment amount (number),
-      "principal": principal component (number),
-      "interest": interest component (number),
-      "balance": outstanding balance after payment (number)
-    }
-  ],
-  "confidence": 0-100 how confident you are in the extraction
-}
-Extract as many schedule rows as visible. Return ONLY the JSON object, no markdown fences, no explanation.`;
+export const maxDuration = 60;
 
-/* ── Qwen VL vision extraction (for images) ── */
-async function extractScheduleWithVision(
-  buffer: Buffer,
-  mimeType: string,
-): Promise<z.infer<typeof scheduleResponseSchema> | null> {
-  const base64 = buffer.toString("base64");
-  const dataUrlType = mimeType === "image/heic" || mimeType === "image/heif" ? "image/jpeg" : mimeType;
-  const dataUrl = `data:${dataUrlType};base64,${base64}`;
-
-  const response = await getQwenClient().chat.completions.create({
-    model: QWEN_MODEL,
-    messages: [
-      {
-        role: "user",
-        content: [
-          { type: "image_url", image_url: { url: dataUrl } },
-          { type: "text", text: SCHEDULE_PROMPT },
-        ],
-      },
-    ],
-    max_tokens: 4096,
-  });
-
-  const raw = response.choices[0]?.message?.content ?? "";
-  if (!raw.trim()) return null;
-
+/* ── OCR via Tesseract.js (for images) ── */
+async function runOCR(buffer: Buffer): Promise<string | null> {
   try {
-    const clean = raw.replace(/```json\n?|```\n?/g, "").trim();
-    return JSON.parse(clean);
-  } catch {
-    console.warn("[scan-schedule] Failed to parse Qwen response as JSON:", raw.substring(0, 200));
+    const worker = await createWorker("eng");
+    const { data } = await worker.recognize(buffer);
+    await worker.terminate();
+    if (!data.text || data.text.trim().length < 20) return null;
+    return data.text;
+  } catch (err) {
+    console.error("[scan-schedule] Tesseract OCR failed:", err);
     return null;
   }
 }
 
-/* ── Qwen text extraction (for PDF text) ── */
-async function extractScheduleFromText(
-  text: string,
-): Promise<z.infer<typeof scheduleResponseSchema> | null> {
-  const response = await getQwenClient().chat.completions.create({
-    model: QWEN_MODEL,
-    messages: [
-      {
-        role: "user",
-        content: SCHEDULE_PROMPT + "\n\nDocument text:\n" + text.substring(0, 8000),
-      },
-    ],
-    max_tokens: 4096,
-  });
-
-  const raw = response.choices[0]?.message?.content ?? "";
-  if (!raw.trim()) return null;
-
-  try {
-    const clean = raw.replace(/```json\n?|```\n?/g, "").trim();
-    return JSON.parse(clean);
-  } catch {
-    console.warn("[scan-schedule] Failed to parse Qwen text response as JSON:", raw.substring(0, 200));
-    return null;
-  }
-}
-
-/* ── pdf-parse fallback ── */
+/* ── pdf-parse text extraction ── */
 async function extractPdfText(buffer: Buffer): Promise<string | null> {
   try {
     const { PDFParse } = await import("pdf-parse");
@@ -286,29 +214,28 @@ export async function POST(req: NextRequest) {
     }
 
     const isPdf = file.type === "application/pdf";
-    let parsed: z.infer<typeof scheduleResponseSchema> | null = null;
+    let extractedText: string | null = null;
 
     if (isPdf) {
-      // For PDFs: extract text first, then send text to Qwen
-      const pdfText = await extractPdfText(buffer);
-      if (pdfText && pdfText.trim().length >= 20) {
-        parsed = await extractScheduleFromText(pdfText);
-      }
-      // Fallback: regex-based parser on extracted text
-      if (!parsed && pdfText) {
-        parsed = parseScheduleText(pdfText);
-      }
+      extractedText = await extractPdfText(buffer);
     } else {
-      // For images: use Qwen VL vision directly
-      parsed = await extractScheduleWithVision(buffer, file.type);
+      extractedText = await runOCR(buffer);
     }
 
-    if (!parsed) {
+    if (!extractedText || extractedText.trim().length < 20) {
       return NextResponse.json(
         { error: isPdf
-          ? "Could not extract loan schedule from PDF. Try a PDF with selectable text."
-          : "Could not extract loan schedule from image. Try a clearer, well-lit photo."
+          ? "Could not extract text from PDF. Try a PDF with selectable text."
+          : "Could not read text from image. Try a clearer, well-lit photo."
         },
+        { status: 422 }
+      );
+    }
+
+    const parsed = parseScheduleText(extractedText);
+    if (!parsed) {
+      return NextResponse.json(
+        { error: "Could not extract loan schedule data. Try a clearer document." },
         { status: 422 }
       );
     }
@@ -325,7 +252,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       data: validated.data,
-      method: isPdf ? "pdf-parse+qwen" : "qwen-vl",
+      method: isPdf ? "pdf-parse+regex" : "tesseract-ocr+regex",
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Unknown";

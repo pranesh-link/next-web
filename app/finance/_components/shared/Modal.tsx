@@ -10,6 +10,7 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   size?: 'sm' | 'md' | 'lg';
+  preventClose?: boolean;
 }
 
 const fadeIn = keyframes`
@@ -121,14 +122,15 @@ export default function Modal({
   title,
   children,
   size = 'md',
+  preventClose = false,
 }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape' && !preventClose) onClose();
     },
-    [onClose],
+    [onClose, preventClose],
   );
 
   useEffect(() => {
@@ -146,7 +148,7 @@ export default function Modal({
   if (!isOpen) return null;
 
   function handleBackdropClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (e.target === overlayRef.current) onClose();
+    if (e.target === overlayRef.current && !preventClose) onClose();
   }
 
   return createPortal(
@@ -160,7 +162,7 @@ export default function Modal({
       <Content $maxWidth={sizeMap[size]}>
         <Header>
           <Title>{title}</Title>
-          <CloseButton type="button" onClick={onClose} aria-label="Close modal">
+          <CloseButton type="button" onClick={onClose} aria-label="Close modal" disabled={preventClose} style={preventClose ? { opacity: 0.3, pointerEvents: 'none' } : undefined}>
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="18"

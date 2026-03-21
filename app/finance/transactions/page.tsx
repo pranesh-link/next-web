@@ -344,6 +344,7 @@ export default function TransactionsPage() {
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [showScanModal, setShowScanModal] = useState(false);
+  const [isScanningReceipt, setIsScanningReceipt] = useState(false);
   const [scannedData, setScannedData] = useState<Partial<Transaction> | null>(null);
 
   const [filters, setFilters] = useState<Filters>({
@@ -737,10 +738,12 @@ export default function TransactionsPage() {
         onClose={() => setShowScanModal(false)}
         title="Scan Receipt"
         size="md"
+        preventClose={isScanningReceipt}
       >
         <ReceiptScanner
           onScanComplete={handleScanComplete}
           onClose={() => setShowScanModal(false)}
+          onScanningChange={setIsScanningReceipt}
         />
       </Modal>
     </>

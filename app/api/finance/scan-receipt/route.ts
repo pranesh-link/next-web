@@ -1,6 +1,6 @@
 import { auth } from "@/_lib/auth";
-import { getQwenClient, QWEN_MODEL } from "@/_lib/qwen";
 import { NextRequest, NextResponse } from "next/server";
+import { createWorker } from "tesseract.js";
 import { z } from "zod";
 
 export const maxDuration = 60;
@@ -54,52 +54,139 @@ function checkRateLimit(userId: string): boolean {
   return true;
 }
 
-const RECEIPT_PROMPT = `You are a receipt/invoice data extractor. Analyze this receipt image and extract the following into a JSON object:
-{
-  "storeName": "store or vendor name (string or null)",
-  "totalAmount": total amount paid (number, required),
-  "date": "YYYY-MM-DD or null if not found",
-  "category": "one of: Food, Transport, Shopping, Entertainment, Health, Education, Utilities, Rent, EMI, Other",
-  "description": "short description of the purchase",
-  "items": [{"name": "item name", "amount": number}],
-  "confidence": 0-100 how confident you are in the extraction
-}
-Return ONLY the JSON object, no markdown fences, no explanation.`;
-
-/* ── Qwen VL vision extraction ── */
-async function extractReceiptWithVision(
-  buffer: Buffer,
-  mimeType: string,
-): Promise<z.infer<typeof receiptResponseSchema> | null> {
-  const base64 = buffer.toString("base64");
-  // Map HEIC/HEIF to JPEG for the data URL (converted upstream or best-effort)
-  const dataUrlType = mimeType === "image/heic" || mimeType === "image/heif" ? "image/jpeg" : mimeType;
-  const dataUrl = `data:${dataUrlType};base64,${base64}`;
-
-  const response = await getQwenClient().chat.completions.create({
-    model: QWEN_MODEL,
-    messages: [
-      {
-        role: "user",
-        content: [
-          { type: "image_url", image_url: { url: dataUrl } },
-          { type: "text", text: RECEIPT_PROMPT },
-        ],
-      },
-    ],
-    max_tokens: 2048,
-  });
-
-  const raw = response.choices[0]?.message?.content ?? "";
-  if (!raw.trim()) return null;
-
+/* ── OCR via Tesseract.js ── */
+async function runOCR(buffer: Buffer): Promise<{ text: string; confidence: number } | null> {
   try {
-    const clean = raw.replace(/```json\n?|```\n?/g, "").trim();
-    return JSON.parse(clean);
-  } catch {
-    console.warn("[scan-receipt] Failed to parse Qwen response as JSON:", raw.substring(0, 200));
+    const worker = await createWorker("eng");
+    const { data } = await worker.recognize(buffer);
+    await worker.terminate();
+    if (!data.text || data.text.trim().length < 10) return null;
+    return { text: data.text, confidence: data.confidence };
+  } catch (err) {
+    console.error("[scan-receipt] Tesseract OCR failed:", err);
     return null;
   }
+}
+
+/* ── Category detection ── */
+const CATEGORY_KEYWORDS: Record<string, string[]> = {
+  Food: ["restaurant", "cafe", "coffee", "pizza", "burger", "food", "swiggy", "zomato", "uber eats", "dominos", "mcdonalds", "starbucks", "kfc", "subway", "bakery", "grocery", "supermarket", "bigbasket", "blinkit", "zepto", "dmart", "reliance fresh", "more", "spar"],
+  Transport: ["uber", "ola", "lyft", "rapido", "taxi", "cab", "metro", "bus", "train", "petrol", "diesel", "fuel", "parking", "toll", "irctc", "redbus"],
+  Shopping: ["amazon", "flipkart", "myntra", "ajio", "mall", "store", "shop", "retail", "mart", "clothing", "electronics", "wear", "fashion"],
+  Entertainment: ["netflix", "spotify", "hotstar", "prime video", "movie", "cinema", "pvr", "inox", "theater", "theatre", "game", "play"],
+  Health: ["pharmacy", "medical", "hospital", "clinic", "doctor", "medicine", "lab", "diagnostic", "apollo", "medplus", "1mg", "pharmeasy", "netmeds"],
+  Education: ["book", "course", "udemy", "coursera", "school", "college", "tuition", "library", "stationery"],
+  Utilities: ["electricity", "water", "gas", "internet", "broadband", "wifi", "mobile", "recharge", "jio", "airtel", "vodafone", "bsnl", "bill pay"],
+  Rent: ["rent", "lease", "landlord", "housing", "apartment", "flat"],
+  EMI: ["emi", "loan", "installment", "credit card"],
+};
+
+function detectCategory(text: string): string {
+  const lower = text.toLowerCase();
+  for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+    if (keywords.some((kw) => lower.includes(kw))) return category;
+  }
+  return "Other";
+}
+
+/* ── Receipt text parser ── */
+function parseReceiptText(text: string, ocrConfidence: number) {
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+
+  // ── Find total amount ──
+  let totalAmount: number | null = null;
+  const totalPatterns = [
+    /(?:grand\s*total|sub\s*total|total\s*amount|total\s*due|amount\s*due|amount\s*payable|net\s*amount|net\s*payable|total\s*bill|bill\s*total|total)[:\s]*[₹$€£]?\s*([\d,]+\.?\d*)/i,
+    /(?:total|amount)[:\s]*(?:Rs\.?|INR|₹)\s*([\d,]+\.?\d*)/i,
+    /(?:total|payable|due|balance|paid)[^\d]*[₹$€£]?\s*([\d,]+\.?\d{0,2})\s*$/i,
+  ];
+
+  for (const line of [...lines].reverse()) {
+    for (const pat of totalPatterns) {
+      const m = line.match(pat);
+      if (m) {
+        const val = parseFloat(m[1].replace(/,/g, ""));
+        if (val > 0 && val < 100_000_000) { totalAmount = val; break; }
+      }
+    }
+    if (totalAmount) break;
+  }
+
+  if (!totalAmount) {
+    const amountPattern = /[₹$€£]\s*([\d,]+\.?\d*)|(?:Rs\.?|INR)\s*([\d,]+\.?\d*)|([\d,]+\.\d{2})/g;
+    let maxAmount = 0;
+    for (const line of lines) {
+      let match;
+      while ((match = amountPattern.exec(line)) !== null) {
+        const val = parseFloat((match[1] || match[2] || match[3]).replace(/,/g, ""));
+        if (val > maxAmount && val < 100_000_000) maxAmount = val;
+      }
+    }
+    if (maxAmount > 0) totalAmount = maxAmount;
+  }
+
+  // ── Find date ──
+  let date: string | null = null;
+  const datePatterns: { re: RegExp; parse: (m: RegExpMatchArray) => Date | null }[] = [
+    { re: /(\d{4})[-/](\d{1,2})[-/](\d{1,2})/, parse: (m) => new Date(`${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`) },
+    { re: /(\d{1,2})[-/](\d{1,2})[-/](\d{4})/, parse: (m) => {
+      const day = parseInt(m[1]), month = parseInt(m[2]);
+      if (month >= 1 && month <= 12) return new Date(`${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`);
+      if (day >= 1 && day <= 12) return new Date(`${m[3]}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}`);
+      return null;
+    }},
+    { re: /(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*[\s,]+(\d{4})/i, parse: (m) => new Date(`${m[2]} ${m[1]}, ${m[3]}`) },
+    { re: /(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+(\d{1,2})[\s,]+(\d{4})/i, parse: (m) => new Date(`${m[1]} ${m[2]}, ${m[3]}`) },
+  ];
+  for (const line of lines) {
+    for (const { re, parse } of datePatterns) {
+      const m = line.match(re);
+      if (m) {
+        const d = parse(m);
+        if (d && !isNaN(d.getTime()) && d.getFullYear() >= 2000 && d.getFullYear() <= 2030) { date = d.toISOString().split("T")[0]; break; }
+      }
+    }
+    if (date) break;
+  }
+
+  // ── Find store name ──
+  let storeName: string | null = null;
+  for (const line of lines.slice(0, 5)) {
+    if (line.length < 3) continue;
+    if (/^\d+[/\-.]?\d*[/\-.]?\d*$/.test(line)) continue;
+    if (/^(date|time|tel|ph|fax|gstin|gst|tin|invoice|receipt|bill|tax)/i.test(line)) continue;
+    storeName = line.substring(0, 100);
+    break;
+  }
+
+  // ── Extract line items ──
+  const items: { name: string; amount: number }[] = [];
+  const itemPattern = /^(.+?)\s+[₹$]?\s*([\d,]+\.?\d{0,2})\s*$/;
+  for (const line of lines) {
+    const m = line.match(itemPattern);
+    if (m) {
+      const name = m[1].trim();
+      const amount = parseFloat(m[2].replace(/,/g, ""));
+      if (name.length >= 2 && amount > 0 && amount < (totalAmount ?? Infinity) && !/total|subtotal|tax|gst|cgst|sgst|discount|round|change|cash|card|upi|paid/i.test(name)) {
+        items.push({ name: name.substring(0, 200), amount });
+      }
+    }
+  }
+
+  if (!totalAmount) return null;
+
+  const category = detectCategory(text);
+  const confidence = Math.min(65, Math.max(35, Math.round(ocrConfidence * 0.6 + (items.length > 0 ? 10 : 0) + (date ? 5 : 0))));
+
+  return {
+    storeName,
+    totalAmount,
+    date,
+    category,
+    description: storeName ? `${category} at ${storeName.substring(0, 30)}` : `${category} purchase`,
+    items,
+    confidence,
+  };
 }
 
 /* ── Handler ── */
@@ -134,11 +221,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "File content doesn't match its type" }, { status: 400 });
     }
 
-    // Extract receipt data with Qwen VL vision model
-    const parsed = await extractReceiptWithVision(buffer, file.type);
+    const ocrResult = await runOCR(buffer);
+    if (!ocrResult) {
+      return NextResponse.json(
+        { error: "Could not read text from image. Try a clearer, well-lit photo." },
+        { status: 422 }
+      );
+    }
+
+    const parsed = parseReceiptText(ocrResult.text, ocrResult.confidence);
     if (!parsed) {
       return NextResponse.json(
-        { error: "Could not extract data from receipt image. Try a clearer, well-lit photo." },
+        { error: "Could not find a total amount in the receipt. Try a clearer photo." },
         { status: 422 }
       );
     }
@@ -152,7 +246,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json({ success: true, data: validated.data, method: "qwen-vl" });
+    return NextResponse.json({ success: true, data: validated.data, method: "tesseract-ocr" });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Unknown";
     console.error("[scan-receipt] Unhandled error:", msg);
