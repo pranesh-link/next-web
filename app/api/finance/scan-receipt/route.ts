@@ -154,7 +154,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, data: validated.data, method: "qwen-vl" });
   } catch (error) {
-    console.error("[scan-receipt] Unhandled error:", error instanceof Error ? error.message : "Unknown");
-    return NextResponse.json({ error: "Failed to process receipt" }, { status: 500 });
+    const msg = error instanceof Error ? error.message : "Unknown";
+    console.error("[scan-receipt] Unhandled error:", msg);
+    return NextResponse.json({ error: `Failed to process receipt: ${msg}` }, { status: 500 });
   }
 }

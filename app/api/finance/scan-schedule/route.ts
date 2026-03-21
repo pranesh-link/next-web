@@ -328,7 +328,8 @@ export async function POST(req: NextRequest) {
       method: isPdf ? "pdf-parse+qwen" : "qwen-vl",
     });
   } catch (error) {
-    console.error("[scan-schedule] Unhandled error:", error instanceof Error ? error.message : "Unknown");
-    return NextResponse.json({ error: "Failed to process document" }, { status: 500 });
+    const msg = error instanceof Error ? error.message : "Unknown";
+    console.error("[scan-schedule] Unhandled error:", msg);
+    return NextResponse.json({ error: `Failed to process document: ${msg}` }, { status: 500 });
   }
 }
