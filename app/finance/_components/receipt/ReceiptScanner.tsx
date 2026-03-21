@@ -202,6 +202,11 @@ const CancelButton = styled.button`
   &:hover {
     background: var(--surface-hover);
   }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
 `;
 
 const Spinner = styled.div`
@@ -498,7 +503,7 @@ export default function ReceiptScanner({
       <ButtonRow>
         {!result ? (
           <>
-            <CancelButton type="button" onClick={onClose}>
+            <CancelButton type="button" onClick={onClose} disabled={scanning}>
               Cancel
             </CancelButton>
             <ScanButton
