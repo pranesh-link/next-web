@@ -85,21 +85,58 @@ const HiddenInput = styled.input`
   height: 0;
 `;
 
-const UploadIcon = styled.div`
-  font-size: 40px;
+const UploadOptions = styled.div`
+  display: flex;
+  gap: 16px;
+  width: 100%;
+  padding: 8px 16px;
+
+  @media (max-width: 480px) {
+    flex-direction: column;
+    gap: 12px;
+  }
 `;
 
-const UploadText = styled.p`
+const OptionButton = styled.button`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 16px;
+  background: var(--surface);
+  border: 1.5px dashed var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ${EASING};
+  font-family: inherit;
+
+  &:hover {
+    border-color: var(--accent);
+    background: rgba(59, 130, 246, 0.04);
+  }
+`;
+
+const OptionIcon = styled.span`
+  font-size: 32px;
+`;
+
+const OptionLabel = styled.span`
   font-size: 14px;
-  color: var(--text-muted);
-  margin: 0;
-  text-align: center;
-  line-height: 1.5;
+  font-weight: 600;
+  color: var(--text);
 `;
 
-const UploadHint = styled.span`
+const OptionHint = styled.span`
   font-size: 12px;
-  color: var(--text-dim);
+  color: var(--text-muted);
+`;
+
+const UploadHint = styled.p`
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  margin: 0;
 `;
 
 const PreviewImage = styled.img`
@@ -268,7 +305,8 @@ export default function ReceiptScanner({
   const [result, setResult] = useState<ScannedReceipt | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const uploadRef = useRef<HTMLInputElement>(null);
 
   function handleFile(f: File) {
     if (!f.type.startsWith("image/")) {
@@ -335,18 +373,10 @@ export default function ReceiptScanner({
   return (
     <Wrapper>
       {!scanning && !result && (
-        <DropZone
-          $dragging={dragging}
-          $hasImage={!!preview}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragging(true);
-          }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={handleDrop}
-        >
+        <>
+          {/* Hidden file inputs */}
           <HiddenInput
-            ref={inputRef}
+            ref={cameraRef}
             type="file"
             accept="image/*"
             capture="environment"
@@ -355,18 +385,52 @@ export default function ReceiptScanner({
               if (f) handleFile(f);
             }}
           />
+          <HiddenInput
+            ref={uploadRef}
+            type="file"
+            accept="image/*"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleFile(f);
+            }}
+          />
+
           {preview ? (
-            <PreviewImage src={preview} alt="Receipt preview" />
+            <DropZone
+              $dragging={dragging}
+              $hasImage
+              onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={handleDrop}
+              onClick={() => uploadRef.current?.click()}
+            >
+              <PreviewImage src={preview} alt="Receipt preview" />
+            </DropZone>
           ) : (
             <>
-              <UploadIcon>📸</UploadIcon>
-              <UploadText>
-                Tap to take a photo or upload a receipt
-              </UploadText>
-              <UploadHint>Supports JPG, PNG, HEIC/HEIF up to 10MB</UploadHint>
+              <UploadOptions>
+                <OptionButton type="button" onClick={() => cameraRef.current?.click()}>
+                  <OptionIcon>📸</OptionIcon>
+                  <OptionLabel>Take Photo</OptionLabel>
+                  <OptionHint>Use your camera</OptionHint>
+                </OptionButton>
+                <OptionButton
+                  type="button"
+                  onClick={() => uploadRef.current?.click()}
+                  onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+                  onDragLeave={() => setDragging(false)}
+                  onDrop={handleDrop}
+                  style={dragging ? { borderColor: "var(--accent)", background: "rgba(59, 130, 246, 0.08)" } : undefined}
+                >
+                  <OptionIcon>📁</OptionIcon>
+                  <OptionLabel>Upload Image</OptionLabel>
+                  <OptionHint>From gallery or files</OptionHint>
+                </OptionButton>
+              </UploadOptions>
+              <UploadHint>Supports JPG, PNG, WebP, HEIC/HEIF up to 10MB</UploadHint>
             </>
           )}
-        </DropZone>
+        </>
       )}
 
       {scanning && (
