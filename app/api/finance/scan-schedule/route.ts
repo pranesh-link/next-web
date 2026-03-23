@@ -9,7 +9,7 @@ const SCAN_SERVICE_URL = process.env.SCAN_SERVICE_URL;
 const SCAN_SERVICE_API_KEY = process.env.SCAN_SERVICE_API_KEY;
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_SCHEDULE_MODEL = process.env.GEMINI_SCHEDULE_MODEL || "gemini-flash-latest";
+const GEMINI_SCHEDULE_MODEL = process.env.GEMINI_SCHEDULE_MODEL || "gemini-2.0-flash";
 
 // Singleton — avoid creating a new client per request
 const ai = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
@@ -397,9 +397,14 @@ export async function POST(req: NextRequest) {
 
       // Fall through to Python service if available
       if (!SCAN_SERVICE_URL) {
+        const isTimeout = msg.includes("timed out");
         return NextResponse.json(
-          { error: "Could not read schedule. Try a clearer, well-lit photo." },
-          { status: 422 }
+          {
+            error: isTimeout
+              ? "Document took too long to process. Try a shorter schedule or upload a PDF."
+              : "Could not read schedule. Try a clearer, well-lit photo.",
+          },
+          { status: isTimeout ? 504 : 422 }
         );
       }
     }
