@@ -1,5 +1,5 @@
-import { GoogleGenAI } from "@google/genai";
 import { auth } from "@/_lib/auth";
+import { GoogleGenAI } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 60;
