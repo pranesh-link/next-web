@@ -31,6 +31,7 @@ export interface LoanData {
   emiAmount: number;
   startDate: Date | string;
   remainingBalance: number;
+  prepayments?: { date: string; amount: number; balanceAfter?: number }[];
 }
 
 export interface GoalData {
@@ -71,6 +72,16 @@ export interface LoanInsight {
   monthsRemaining: number;
   earlyPayoffSavings?: number;
   prepaymentAmount?: number;
+  scenarios?: ClosureScenario[];
+}
+
+export interface ClosureScenario {
+  extraMonthlyAmount: number;
+  newTotalEMI: number;
+  monthsToClose: number;
+  monthsSaved: number;
+  closureDate: string;
+  interestSaved: number;
 }
 
 export interface PrepaymentSimulation {

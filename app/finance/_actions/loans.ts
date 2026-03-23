@@ -8,6 +8,7 @@ import {
   simulatePrepayment,
   getLoanInsights,
   generateAmortizationSchedule,
+  getEarlyClosureScenarios,
 } from "@/_services/finance";
 import type { LoanData } from "@/_services/finance";
 import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
@@ -57,32 +58,48 @@ export async function getLoan(id: string) {
 
 export async function createLoan(data: {
   name: string;
+  loanProvider?: string;
   principal: number;
   interestRate: number;
   tenureMonths: number;
   emiAmount: number;
   startDate: string | Date;
   remainingBalance: number;
+  loanAccountNumber?: string;
+  scheduleGeneratedOn?: string;
+  prepayments?: { date: string; amount: number; balanceAfter?: number }[];
+  schedule?: { month: number; date: string; emi: number; principal: number; interest: number; balance: number }[];
 }) {
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
 
-    // Check for duplicate loan (same name + principal + rate + tenure) across couple
     const coupleUserIds = await getUserIdsForCouple(user.id);
-    const duplicate = await prisma.loan.findFirst({
-      where: {
-        userId: { in: coupleUserIds },
-        name: data.name,
-        principal: data.principal,
-        interestRate: data.interestRate,
-        tenureMonths: data.tenureMonths,
-      },
-    });
+
+    // Duplicate check: prefer loanAccountNumber, fallback to name+principal+rate+tenure
+    const duplicate = data.loanAccountNumber
+      ? await prisma.loan.findFirst({
+          where: {
+            userId: { in: coupleUserIds },
+            loanAccountNumber: data.loanAccountNumber,
+          },
+        })
+      : await prisma.loan.findFirst({
+          where: {
+            userId: { in: coupleUserIds },
+            name: data.name,
+            principal: data.principal,
+            interestRate: data.interestRate,
+            tenureMonths: data.tenureMonths,
+          },
+        });
+
     if (duplicate) {
       return {
         success: false as const,
-        error: `A loan "${data.name}" with the same principal, rate, and tenure already exists`,
+        error: data.loanAccountNumber
+          ? `A loan with account number "${data.loanAccountNumber}" already exists`
+          : `A loan "${data.name}" with the same principal, rate, and tenure already exists`,
       };
     }
 
@@ -100,12 +117,21 @@ export async function createLoan(data: {
       data: {
         userId: user.id,
         name: validated.name,
+        loanProvider: validated.loanProvider || null,
+        loanAccountNumber: validated.loanAccountNumber || null,
+        scheduleGeneratedOn: validated.scheduleGeneratedOn || null,
         principal: validated.principal,
         interestRate: validated.interestRate,
         tenureMonths: validated.tenureMonths,
         emiAmount: validated.emiAmount,
         startDate: validated.startDate,
         remainingBalance: validated.remainingBalance,
+        ...(validated.prepayments && validated.prepayments.length > 0
+          ? { prepayments: validated.prepayments }
+          : {}),
+        ...(validated.schedule && validated.schedule.length > 0
+          ? { schedule: validated.schedule }
+          : {}),
         ...(coupleId ? { coupleId } : {}),
       },
     });
@@ -123,12 +149,17 @@ export async function updateLoan(
   id: string,
   data: {
     name?: string;
+    loanProvider?: string;
     principal?: number;
     interestRate?: number;
     tenureMonths?: number;
     emiAmount?: number;
     startDate?: string | Date;
     remainingBalance?: number;
+    loanAccountNumber?: string;
+    scheduleGeneratedOn?: string;
+    prepayments?: { date: string; amount: number; balanceAfter?: number }[];
+    schedule?: { month: number; date: string; emi: number; principal: number; interest: number; balance: number }[];
   },
 ) {
   try {
@@ -145,12 +176,17 @@ export async function updateLoan(
 
     const merged = {
       name: data.name ?? existing.name,
+      loanProvider: data.loanProvider ?? (existing.loanProvider ?? undefined),
+      loanAccountNumber: data.loanAccountNumber ?? (existing.loanAccountNumber ?? undefined),
+      scheduleGeneratedOn: data.scheduleGeneratedOn ?? (existing.scheduleGeneratedOn ?? undefined),
       principal: data.principal ?? existing.principal,
       interestRate: data.interestRate ?? existing.interestRate,
       tenureMonths: data.tenureMonths ?? existing.tenureMonths,
       emiAmount: data.emiAmount ?? existing.emiAmount,
       startDate: data.startDate ?? existing.startDate,
       remainingBalance: data.remainingBalance ?? existing.remainingBalance,
+      prepayments: data.prepayments ?? (existing.prepayments as { date: string; amount: number; balanceAfter?: number }[] | undefined),
+      schedule: data.schedule ?? (existing.schedule as { month: number; date: string; emi: number; principal: number; interest: number; balance: number }[] | undefined),
     };
 
     const validated = loanSchema.parse(merged);
@@ -159,12 +195,21 @@ export async function updateLoan(
       where: { id },
       data: {
         name: validated.name,
+        loanProvider: validated.loanProvider || null,
+        loanAccountNumber: validated.loanAccountNumber || null,
+        scheduleGeneratedOn: validated.scheduleGeneratedOn || null,
         principal: validated.principal,
         interestRate: validated.interestRate,
         tenureMonths: validated.tenureMonths,
         emiAmount: validated.emiAmount,
         startDate: validated.startDate,
         remainingBalance: validated.remainingBalance,
+        prepayments: validated.prepayments && validated.prepayments.length > 0
+          ? validated.prepayments
+          : undefined,
+        schedule: validated.schedule && validated.schedule.length > 0
+          ? validated.schedule
+          : undefined,
       },
     });
 
@@ -210,6 +255,7 @@ function toLoanData(loan: {
   emiAmount: number;
   startDate: Date;
   remainingBalance: number;
+  prepayments?: unknown;
 }): LoanData {
   return {
     id: loan.id,
@@ -220,6 +266,7 @@ function toLoanData(loan: {
     emiAmount: loan.emiAmount,
     startDate: loan.startDate,
     remainingBalance: loan.remainingBalance,
+    ...(Array.isArray(loan.prepayments) ? { prepayments: loan.prepayments as LoanData['prepayments'] } : {}),
   };
 }
 
@@ -268,8 +315,9 @@ export async function getLoanInsightsAction(id: string) {
     }
 
     const result = getLoanInsights(toLoanData(loan));
+    const scenarios = getEarlyClosureScenarios(toLoanData(loan), [5000, 10000, 25000, 50000]);
 
-    return { success: true as const, data: result };
+    return { success: true as const, data: { ...result, scenarios } };
   } catch (error) {
     return {
       success: false as const,
@@ -291,6 +339,15 @@ export async function getLoanSchedule(id: string) {
       return { success: false as const, error: "Loan not found" };
     }
 
+    // If a PDF-extracted schedule is stored in the DB, return it directly
+    if (Array.isArray(loan.schedule) && (loan.schedule as unknown[]).length > 0) {
+      return { success: true as const, data: loan.schedule as {
+        month: number; date: string; emi: number; principal: number; interest: number; balance: number;
+        totalPrincipalPaid?: number; totalInterestPaid?: number;
+      }[] };
+    }
+
+    // Fallback: compute amortization schedule from loan parameters
     const schedule = generateAmortizationSchedule(toLoanData(loan));
 
     return { success: true as const, data: schedule };

@@ -160,7 +160,12 @@ model Loan {
   emiAmount        Float
   startDate        DateTime
   remainingBalance Float
-  coupleId         String?
+  prepayments         Json?
+  schedule            Json?
+  loanAccountNumber   String? @map("loan_account_number")
+  scheduleGeneratedOn String? @map("schedule_generated_on")
+  loanProvider        String? @map("loan_provider")
+  coupleId            String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 

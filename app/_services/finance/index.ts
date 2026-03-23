@@ -12,6 +12,7 @@ export type {
   PrepaymentSimulation,
   MonthlyTrend,
   AmortizationEntry,
+  ClosureScenario,
 } from './types';
 
 export { calculateMonthlyCashFlow, calculateMonthlyTrends } from './cash-flow';
@@ -25,4 +26,5 @@ export {
   simulatePrepayment,
   getLoanInsights,
   generateAmortizationSchedule,
+  getEarlyClosureScenarios,
 } from './loan-calculator';

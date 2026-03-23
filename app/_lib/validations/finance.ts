@@ -23,12 +23,28 @@ export const budgetSchema = z.object({
 
 export const loanSchema = z.object({
   name: z.string().min(1, "Name is required").max(100, "Name too long"),
+  loanProvider: z.string().optional(),
+  loanAccountNumber: z.string().optional(),
+  scheduleGeneratedOn: z.string().optional(),
   principal: z.number().positive("Principal must be positive").max(500_000_000, "Principal too large"),
   interestRate: z.number().min(0, "Rate cannot be negative").max(50, "Interest rate unrealistically high"),
   tenureMonths: z.number().int().positive("Tenure must be at least 1 month").max(600, "Tenure cannot exceed 50 years"),
   emiAmount: z.number().positive("EMI must be positive").max(100_000_000, "EMI too large"),
   startDate: z.coerce.date(),
   remainingBalance: z.number().nonnegative("Remaining balance cannot be negative").max(500_000_000, "Balance too large"),
+  prepayments: z.array(z.object({
+    date: z.string(),
+    amount: z.number(),
+    balanceAfter: z.number().optional(),
+  })).optional(),
+  schedule: z.array(z.object({
+    month: z.number(),
+    date: z.string(),
+    emi: z.number(),
+    principal: z.number(),
+    interest: z.number(),
+    balance: z.number(),
+  })).optional(),
 });
 
 export const goalSchema = z.object({

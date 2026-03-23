@@ -1,4 +1,4 @@
-import type { LoanData, LoanInsight, PrepaymentSimulation, AmortizationEntry } from './types';
+import type { LoanData, LoanInsight, PrepaymentSimulation, AmortizationEntry, ClosureScenario } from './types';
 
 export function calculateEMI(
   principal: number,
@@ -153,7 +153,7 @@ export function generateAmortizationSchedule(
     totalInterestPaid += interestPortion;
 
     const date = new Date(start);
-    date.setMonth(date.getMonth() + m);
+    date.setMonth(date.getMonth() + (m - 1));
 
     schedule.push({
       month: m,
@@ -170,4 +170,63 @@ export function generateAmortizationSchedule(
   }
 
   return schedule;
+}
+
+export function getEarlyClosureScenarios(
+  loan: LoanData,
+  extraAmounts: number[],
+): ClosureScenario[] {
+  const { emiAmount, remainingBalance, interestRate } = loan;
+
+  const baseMonthsRemaining = calculateTenureForBalance(
+    remainingBalance,
+    emiAmount,
+    interestRate,
+  );
+
+  const baseRemainingInterest = calculateRemainingInterest(
+    emiAmount,
+    baseMonthsRemaining,
+    remainingBalance,
+  );
+
+  const today = new Date();
+
+  return extraAmounts
+    .map((extra) => {
+      const newTotalEMI = emiAmount + extra;
+      const monthsToClose = calculateTenureForBalance(
+        remainingBalance,
+        newTotalEMI,
+        interestRate,
+      );
+
+      if (!Number.isFinite(monthsToClose) || monthsToClose <= 0) return null;
+
+      const newRemainingInterest = calculateRemainingInterest(
+        newTotalEMI,
+        monthsToClose,
+        remainingBalance,
+      );
+
+      const monthsSaved = Math.max(0, baseMonthsRemaining - monthsToClose);
+      const interestSaved = Math.max(0, baseRemainingInterest - newRemainingInterest);
+
+      const closureDate = new Date(today);
+      closureDate.setMonth(closureDate.getMonth() + monthsToClose);
+      const formattedDate = closureDate.toLocaleDateString("en-IN", {
+        month: "short",
+        year: "numeric",
+      });
+
+      return {
+        extraMonthlyAmount: extra,
+        newTotalEMI,
+        monthsToClose,
+        monthsSaved,
+        closureDate: formattedDate,
+        interestSaved,
+      } satisfies ClosureScenario;
+    })
+    .filter((s): s is ClosureScenario => s !== null && s.monthsSaved > 0);
 }

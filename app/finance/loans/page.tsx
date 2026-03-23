@@ -24,12 +24,16 @@ import LoadingSkeleton from "@/finance/_components/shared/LoadingSkeleton";
 type Loan = {
   id: string;
   name: string;
+  loanProvider?: string | null;
+  loanAccountNumber?: string | null;
+  scheduleGeneratedOn?: string | null;
   principal: number;
   interestRate: number;
   tenureMonths: number;
   emiAmount: number;
   startDate: string | Date;
   remainingBalance: number;
+  prepayments?: { date: string; amount: number; balanceAfter?: number }[] | null;
   createdAt: string | Date;
   updatedAt: string | Date;
 };
@@ -42,11 +46,21 @@ type PrepaymentResult = {
   originalTenure: number;
 };
 
+type ClosureScenario = {
+  extraMonthlyAmount: number;
+  newTotalEMI: number;
+  monthsToClose: number;
+  monthsSaved: number;
+  closureDate: string;
+  interestSaved: number;
+};
+
 type InsightResult = {
   totalInterestPayable: number;
   monthsRemaining: number;
   earlyPayoffSavings?: number;
   prepaymentAmount?: number;
+  scenarios?: ClosureScenario[];
 };
 
 type ScheduleEntry = {
@@ -325,7 +339,7 @@ const RemainingRow = styled.div`
 
 const RemainingLabel = styled.span`
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--text-dim);
 `;
 
 const RemainingValue = styled.span`
@@ -337,7 +351,88 @@ const RemainingValue = styled.span`
 const StartDate = styled.p`
   font-size: 12px;
   color: var(--text-dim);
+  margin: 0 0 4px 0;
+`;
+
+const ScheduleSourceNote = styled.p`
+  font-size: 11px;
+  color: var(--text);
+  font-style: italic;
   margin: 0 0 16px 0;
+  padding: 5px 8px;
+  background: rgba(59, 130, 246, 0.1);
+  border-left: 2px solid rgba(59, 130, 246, 0.4);
+  border-radius: 0 4px 4px 0;
+`;
+
+const AccountBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-light);
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.18);
+  border-radius: 5px;
+  padding: 2px 7px;
+  letter-spacing: 0.3px;
+`;
+
+const LoanMeta = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  margin-top: -10px;
+`;
+
+const LoanProviderText = styled.span`
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.2px;
+`;
+
+const ScenarioTable = styled.div`
+  margin-top: 12px;
+  border: 1px solid rgba(245, 158, 11, 0.15);
+  border-radius: 8px;
+  overflow: hidden;
+`;
+
+const ScenarioRow = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  padding: 7px 10px;
+  font-size: 12px;
+  border-bottom: 1px solid rgba(245, 158, 11, 0.08);
+  min-width: 0;
+
+  &:last-child { border-bottom: none; }
+  &:first-child {
+    background: rgba(245, 158, 11, 0.06);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--warning);
+  }
+
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+  }
+`;
+
+const ScenarioCell = styled.span<{ $color?: string }>`
+  color: ${(p) => p.$color ?? "var(--text-dim)"};
+  font-variant-numeric: tabular-nums;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
 const CardMetaRow = styled.div`
@@ -358,7 +453,7 @@ const MetaLabel = styled.span`
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: var(--text-muted);
+  color: var(--text-dim);
 `;
 
 const MetaValue = styled.span<{ $urgent?: boolean }>`
@@ -376,7 +471,7 @@ const ButtonRow = styled.div`
 `;
 
 const SmallButton = styled.button<{
-  $variant?: "primary" | "outline" | "accent";
+  $variant?: "primary" | "outline" | "accent" | "orange" | "green";
 }>`
   padding: 7px 14px;
   border-radius: 8px;
@@ -395,19 +490,31 @@ const SmallButton = styled.button<{
       ? "var(--accent)"
       : p.$variant === "accent"
         ? "rgba(59, 130, 246, 0.1)"
-        : "transparent"};
+        : p.$variant === "orange"
+          ? "rgba(234, 130, 50, 0.15)"
+          : p.$variant === "green"
+            ? "rgba(34, 197, 94, 0.12)"
+            : "transparent"};
   color: ${(p) =>
     p.$variant === "primary"
       ? "#fff"
       : p.$variant === "accent"
         ? "var(--accent-light)"
-        : "var(--text-dim)"};
+        : p.$variant === "orange"
+          ? "rgb(194, 100, 20)"
+          : p.$variant === "green"
+            ? "rgb(22, 163, 74)"
+            : "var(--text-dim)"};
   border-color: ${(p) =>
     p.$variant === "primary"
       ? "var(--accent)"
       : p.$variant === "accent"
         ? "rgba(59, 130, 246, 0.3)"
-        : "var(--border)"};
+        : p.$variant === "orange"
+          ? "rgba(234, 130, 50, 0.4)"
+          : p.$variant === "green"
+            ? "rgba(34, 197, 94, 0.35)"
+            : "var(--border)"};
 
   &:hover {
     transform: translateY(-1px);
@@ -615,15 +722,6 @@ const SchedulePanel = styled.div`
   animation: ${fadeIn} 0.3s ${EASING};
 `;
 
-const ScheduleTitle = styled.h4`
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--accent-light);
-  margin: 0 0 16px 0;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-`;
-
 const ScheduleTableWrapper = styled.div`
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
@@ -657,6 +755,66 @@ const ScheduleTd = styled.td<{ $align?: string; $color?: string }>`
   border-bottom: 1px solid rgba(255, 255, 255, 0.03);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+`;
+
+/* ── Accordion ── */
+
+const AccordionSection = styled.div`
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+
+  & + & {
+    margin-top: 12px;
+  }
+`;
+
+const AccordionHeader = styled.button<{ $open: boolean }>`
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: ${(p) => (p.$open ? "rgba(59, 130, 246, 0.06)" : "var(--surface)")};
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s ${EASING};
+
+  &:hover {
+    background: rgba(59, 130, 246, 0.08);
+  }
+`;
+
+const AccordionTitle = styled.span<{ $color?: string }>`
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: ${(p) => p.$color ?? "var(--text)"};
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const AccordionBadge = styled.span<{ $color?: string }>`
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: ${(p) => p.$color ?? "rgba(59, 130, 246, 0.15)"};
+  color: ${(p) => p.$color === "rgba(34, 197, 94, 0.15)" ? "var(--success)" : "var(--accent-light)"};
+`;
+
+const AccordionChevron = styled.span<{ $open: boolean }>`
+  font-size: 12px;
+  color: var(--text-muted);
+  transition: transform 0.2s ${EASING};
+  transform: rotate(${(p) => (p.$open ? "180deg" : "0deg")});
+`;
+
+const AccordionBody = styled.div<{ $open: boolean }>`
+  display: ${(p) => (p.$open ? "block" : "none")};
 `;
 
 /* ── Import Bar ── */
@@ -806,11 +964,25 @@ export default function LoansPage() {
   const [scheduleLoanId, setScheduleLoanId] = useState<string | null>(null);
   const [scheduleLoading, setScheduleLoading] = useState(false);
   const [scheduleData, setScheduleData] = useState<ScheduleEntry[] | null>(null);
+  const [schedulePendingOpen, setSchedulePendingOpen] = useState(true);
+  const [schedulePaidOpen, setSchedulePaidOpen] = useState(false);
 
   /* PDF Scanner State */
   const [showScanModal, setShowScanModal] = useState(false);
   const [isScanningSchedule, setIsScanningSchedule] = useState(false);
   const [scannedLoan, setScannedLoan] = useState<Partial<Loan> | null>(null);
+  const [scannedLoanAccountNumber, setScannedLoanAccountNumber] = useState<string | null>(null);
+  const [scannedLoanProvider, setScannedLoanProvider] = useState<string | null>(null);
+  const [scannedScheduleGeneratedOn, setScannedScheduleGeneratedOn] = useState<string | null>(null);
+  const [scannedPrepayments, setScannedPrepayments] = useState<
+    { date: string; amount: number; balanceAfter?: number }[] | null
+  >(null);
+  const [scannedSchedule, setScannedSchedule] = useState<
+    { month: number; date: string; emi: number; principal: number; interest: number; balance: number }[] | null
+  >(null);
+
+  /* Prepayments Modal State */
+  const [prepaymentModalLoanId, setPrepaymentModalLoanId] = useState<string | null>(null);
 
   const [notification, setNotification] = useState<Notification | null>(null);
   const [notifLeaving, setNotifLeaving] = useState(false);
@@ -843,8 +1015,13 @@ export default function LoansPage() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      await fetchLoans();
-      setLoading(false);
+      try {
+        await fetchLoans();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load loans");
+      } finally {
+        setLoading(false);
+      }
     }
     load();
   }, [fetchLoans]);
@@ -865,14 +1042,26 @@ export default function LoansPage() {
 
   function handleScanComplete(data: ScannedLoanData) {
     setShowScanModal(false);
+    setScannedPrepayments(
+      data.prepayments && data.prepayments.length > 0 ? data.prepayments : null,
+    );
+    setScannedSchedule(
+      data.schedule && data.schedule.length > 0 ? data.schedule : null,
+    );
+    setScannedLoanAccountNumber(data.loanAccountNumber ?? null);
+    setScannedLoanProvider(data.loanProvider ?? null);
+    setScannedScheduleGeneratedOn(data.scheduleGeneratedOn ?? null);
     setScannedLoan({
       name: data.loanName ?? "",
+      loanProvider: data.loanProvider ?? null,
+      loanAccountNumber: data.loanAccountNumber ?? null,
+      scheduleGeneratedOn: data.scheduleGeneratedOn ?? null,
       principal: data.principal ?? 0,
       interestRate: data.interestRate ?? 0,
       tenureMonths: data.tenureMonths ?? 0,
       emiAmount: data.emiAmount ?? 0,
       startDate: data.startDate ?? new Date().toISOString().split("T")[0],
-      remainingBalance: data.remainingBalance ?? data.principal ?? 0,
+      remainingBalance: data.remainingBalance || data.principal || 0,
     });
     setEditTarget(null);
     setShowModal(true);
@@ -906,6 +1095,8 @@ export default function LoansPage() {
 
   async function handleFormSubmit(data: {
     name: string;
+    loanProvider?: string;
+    loanAccountNumber?: string;
     principalAmount: number;
     interestRate: number;
     tenureMonths: number;
@@ -917,12 +1108,26 @@ export default function LoansPage() {
 
     const payload = {
       name: data.name,
+      // Prefer the scanned value; fall back to whatever was in the form
+      ...(scannedLoanProvider
+        ? { loanProvider: scannedLoanProvider }
+        : data.loanProvider
+          ? { loanProvider: data.loanProvider }
+          : {}),
+      ...(scannedLoanAccountNumber
+        ? { loanAccountNumber: scannedLoanAccountNumber }
+        : data.loanAccountNumber
+          ? { loanAccountNumber: data.loanAccountNumber }
+          : {}),
       principal: data.principalAmount,
       interestRate: data.interestRate,
       tenureMonths: data.tenureMonths,
       emiAmount: data.emiAmount,
       startDate: data.startDate,
       remainingBalance: data.remainingBalance,
+      ...(scannedScheduleGeneratedOn ? { scheduleGeneratedOn: scannedScheduleGeneratedOn } : {}),
+      ...(scannedPrepayments ? { prepayments: scannedPrepayments } : {}),
+      ...(scannedSchedule ? { schedule: scannedSchedule } : {}),
     };
 
     const result = editTarget
@@ -930,6 +1135,11 @@ export default function LoansPage() {
       : await createLoan(payload);
 
     setSubmitting(false);
+    setScannedPrepayments(null);
+    setScannedSchedule(null);
+    setScannedLoanAccountNumber(null);
+    setScannedLoanProvider(null);
+    setScannedScheduleGeneratedOn(null);
 
     if (result.success) {
       notify(editTarget ? "Loan updated" : "Loan added", "success");
@@ -952,6 +1162,8 @@ export default function LoansPage() {
       setSimulatorLoanId(loanId);
       setSimResult(null);
       setPrepaymentAmount("");
+      // close other panels for this loan
+      if (insightsLoanId === loanId) { setInsightsLoanId(null); setInsightsData(null); }
     }
   }
 
@@ -979,6 +1191,8 @@ export default function LoansPage() {
       setInsightsData(null);
       return;
     }
+    // close other panels for this loan
+    if (simulatorLoanId === loanId) { setSimulatorLoanId(null); setSimResult(null); setPrepaymentAmount(""); }
     setInsightsLoanId(loanId);
     setInsightsLoading(true);
     const result = await getLoanInsightsAction(loanId);
@@ -995,12 +1209,13 @@ export default function LoansPage() {
   /* ── Repayment Schedule ── */
 
   async function toggleSchedule(loanId: string) {
-    if (scheduleLoanId === loanId) {
-      setScheduleLoanId(null);
-      setScheduleData(null);
-      return;
-    }
+    // close other panels for this loan before opening the schedule modal
+    if (simulatorLoanId === loanId) { setSimulatorLoanId(null); setSimResult(null); setPrepaymentAmount(""); }
+    if (insightsLoanId === loanId) { setInsightsLoanId(null); setInsightsData(null); }
     setScheduleLoanId(loanId);
+    setScheduleData(null);
+    setSchedulePendingOpen(true);
+    setSchedulePaidOpen(false);
     setScheduleLoading(true);
     const result = await getLoanSchedule(loanId);
     setScheduleLoading(false);
@@ -1071,6 +1286,22 @@ export default function LoansPage() {
             {/* Loan Cards */}
             <LoanGrid>
               {loans.map((loan) => {
+                // Calculate months elapsed and EMIs paid
+                const start = new Date(loan.startDate);
+                const now = new Date();
+                const monthsElapsed = Math.max(
+                  0,
+                  (now.getFullYear() - start.getFullYear()) * 12 +
+                    (now.getMonth() - start.getMonth()),
+                );
+                // First EMI is paid in the start month itself; if this month's
+                // EMI date has passed, count the current month too
+                const emiDayPassed = now.getDate() >= start.getDate();
+                const emisPaid = Math.min(
+                  monthsElapsed + (emiDayPassed ? 1 : 0),
+                  loan.tenureMonths,
+                );
+
                 const repaidPct =
                   loan.principal > 0
                     ? Math.round(
@@ -1080,30 +1311,28 @@ export default function LoansPage() {
                       )
                     : 0;
 
-                // Calculate months elapsed and next EMI date
-                const start = new Date(loan.startDate);
-                const now = new Date();
-                const monthsElapsed = Math.max(
-                  0,
-                  (now.getFullYear() - start.getFullYear()) * 12 +
-                    (now.getMonth() - start.getMonth()),
-                );
-                const emisPaid = Math.min(monthsElapsed, loan.tenureMonths);
-
-                // Next EMI date = startDate + (monthsElapsed + 1) months, same day
+                // Next EMI date
+                const nextEmiOffset = emiDayPassed ? monthsElapsed + 1 : monthsElapsed;
                 const nextEmi = new Date(start);
-                nextEmi.setMonth(nextEmi.getMonth() + monthsElapsed + 1);
+                nextEmi.setMonth(nextEmi.getMonth() + nextEmiOffset);
                 const daysUntilNextEmi = Math.ceil(
                   (nextEmi.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
                 );
                 const isUrgent = daysUntilNextEmi <= 7 && daysUntilNextEmi >= 0;
                 const loanCompleted = emisPaid >= loan.tenureMonths;
 
+                // End date
+                const endDate = new Date(start);
+                endDate.setMonth(endDate.getMonth() + loan.tenureMonths - 1);
+                const endDateStr = endDate.toLocaleDateString("en-IN", { month: "short", year: "numeric" });
+
                 return (
                   <LoanCard key={loan.id}>
                     {/* Header */}
                     <LoanCardHeader>
-                      <LoanName>{loan.name}</LoanName>
+                      <LoanName>
+                        {loan.name}
+                      </LoanName>
                       <CardActions>
                         <IconButton
                           $variant="edit"
@@ -1144,6 +1373,20 @@ export default function LoansPage() {
                       </CardActions>
                     </LoanCardHeader>
 
+                    {/* Account & Provider Meta */}
+                    {(loan.loanAccountNumber || loan.loanProvider) && (
+                      <LoanMeta>
+                        {loan.loanAccountNumber && (
+                          <AccountBadge title="Loan Account Number">
+                            🔖 {loan.loanAccountNumber}
+                          </AccountBadge>
+                        )}
+                        {loan.loanProvider && (
+                          <LoanProviderText>{loan.loanProvider}</LoanProviderText>
+                        )}
+                      </LoanMeta>
+                    )}
+
                     {/* Details Grid */}
                     <DetailsGrid>
                       <DetailItem>
@@ -1163,12 +1406,34 @@ export default function LoansPage() {
                         </DetailValue>
                       </DetailItem>
                       <DetailItem>
+                        <DetailLabel>Ends</DetailLabel>
+                        <DetailValue>{endDateStr}</DetailValue>
+                      </DetailItem>
+                      <DetailItem>
                         <DetailLabel>EMI</DetailLabel>
                         <DetailValue $color="var(--accent-light)">
                           {formatCurrency(loan.emiAmount)}
                         </DetailValue>
                       </DetailItem>
                     </DetailsGrid>
+
+                    {/* Schedule + Prepayments modal buttons — below EMI field */}
+                    <ButtonRow style={{ marginBottom: "10px" }}>
+                      <SmallButton
+                        $variant="orange"
+                        onClick={() => toggleSchedule(loan.id)}
+                      >
+                        EMI Schedule
+                      </SmallButton>
+                      {loan.prepayments && Array.isArray(loan.prepayments) && loan.prepayments.length > 0 && (
+                        <SmallButton
+                          $variant="green"
+                          onClick={() => setPrepaymentModalLoanId(loan.id)}
+                        >
+                          Prepayments ({loan.prepayments.length})
+                        </SmallButton>
+                      )}
+                    </ButtonRow>
 
                     {/* Progress Bar */}
                     <ProgressSection>
@@ -1181,15 +1446,15 @@ export default function LoansPage() {
                       </ProgressTrack>
                     </ProgressSection>
 
-                    {/* Remaining Balance */}
+                    {/* Principal Outstanding */}
                     <RemainingRow>
-                      <RemainingLabel>Remaining</RemainingLabel>
+                      <RemainingLabel>Principal Outstanding</RemainingLabel>
                       <RemainingValue>
                         {formatCurrency(loan.remainingBalance)}
                       </RemainingValue>
                     </RemainingRow>
 
-                    {/* EMI Meta: Next EMI Date + EMIs Paid */}
+                    {/* EMI Meta: Next EMI Date + EMIs Remaining */}
                     <CardMetaRow>
                       <MetaItem>
                         <MetaLabel>Next EMI</MetaLabel>
@@ -1207,15 +1472,20 @@ export default function LoansPage() {
                       </MetaItem>
                     </CardMetaRow>
 
-                    {/* Start Date */}
+                    {/* Start Date + Schedule Source Note */}
                     <StartDate>
                       Started {formatDate(loan.startDate)}
                     </StartDate>
+                    {loan.scheduleGeneratedOn && (
+                      <ScheduleSourceNote>
+                        Based on repayment schedule dated {formatDate(loan.scheduleGeneratedOn)}
+                      </ScheduleSourceNote>
+                    )}
 
                     {/* Action Buttons */}
                     <ButtonRow>
                       <SmallButton
-                        $variant="accent"
+                        $variant={simulatorLoanId === loan.id ? "accent" : "outline"}
                         onClick={() => toggleSimulator(loan.id)}
                       >
                         {simulatorLoanId === loan.id
@@ -1223,20 +1493,12 @@ export default function LoansPage() {
                           : "Prepayment Simulator"}
                       </SmallButton>
                       <SmallButton
-                        $variant="outline"
+                        $variant={insightsLoanId === loan.id ? "accent" : "outline"}
                         onClick={() => toggleInsights(loan.id)}
                       >
                         {insightsLoanId === loan.id
                           ? "Hide Insights"
                           : "Insights"}
-                      </SmallButton>
-                      <SmallButton
-                        $variant="outline"
-                        onClick={() => toggleSchedule(loan.id)}
-                      >
-                        {scheduleLoanId === loan.id
-                          ? "Hide Schedule"
-                          : "EMI Schedule"}
                       </SmallButton>
                     </ButtonRow>
 
@@ -1391,91 +1653,45 @@ export default function LoansPage() {
                                   </InsightValue>
                                 </InsightRow>
                               )}
+                            {insightsData.scenarios && insightsData.scenarios.length > 0 && (
+                              <>
+                                <InsightRow style={{ marginTop: 12 }}>
+                                  <InsightLabel style={{ fontWeight: 700, color: "var(--warning)" }}>
+                                    Early Closure Scenarios
+                                  </InsightLabel>
+                                </InsightRow>
+                                <ScenarioTable>
+                                  <ScenarioRow>
+                                    <ScenarioCell>Extra/mo</ScenarioCell>
+                                    <ScenarioCell>New EMI</ScenarioCell>
+                                    <ScenarioCell>Closes</ScenarioCell>
+                                    <ScenarioCell>Saves</ScenarioCell>
+                                  </ScenarioRow>
+                                  {insightsData.scenarios.map((s) => (
+                                    <ScenarioRow key={s.extraMonthlyAmount}>
+                                      <ScenarioCell $color="var(--accent-light)">
+                                        +{formatCurrency(s.extraMonthlyAmount)}
+                                      </ScenarioCell>
+                                      <ScenarioCell>
+                                        {formatCurrency(s.newTotalEMI)}
+                                      </ScenarioCell>
+                                      <ScenarioCell $color="var(--text)">
+                                        {s.closureDate}
+                                      </ScenarioCell>
+                                      <ScenarioCell $color="var(--success)">
+                                        {formatCurrency(s.interestSaved)}
+                                      </ScenarioCell>
+                                    </ScenarioRow>
+                                  ))}
+                                </ScenarioTable>
+                              </>
+                            )}
                           </>
                         ) : null}
                       </InsightsPanel>
                     )}
 
-                    {/* Repayment Schedule */}
-                    {scheduleLoanId === loan.id && (
-                      <SchedulePanel>
-                        <ScheduleTitle>EMI Repayment Schedule</ScheduleTitle>
-                        {scheduleLoading ? (
-                          <InsightRow>
-                            <InsightLabel>Loading schedule…</InsightLabel>
-                          </InsightRow>
-                        ) : scheduleData && scheduleData.length > 0 ? (
-                          <ScheduleTableWrapper>
-                            <ScheduleTable>
-                              <thead>
-                                <tr>
-                                  <ScheduleTh>#</ScheduleTh>
-                                  <ScheduleTh>Date</ScheduleTh>
-                                  <ScheduleTh $align="right">EMI</ScheduleTh>
-                                  <ScheduleTh $align="right">Principal</ScheduleTh>
-                                  <ScheduleTh $align="right">Interest</ScheduleTh>
-                                  <ScheduleTh $align="right">Balance</ScheduleTh>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {scheduleData.map((entry) => (
-                                  <tr key={entry.month}>
-                                    <ScheduleTd>{entry.month}</ScheduleTd>
-                                    <ScheduleTd>
-                                      {new Date(entry.date).toLocaleDateString("en-IN", {
-                                        month: "short",
-                                        year: "numeric",
-                                      })}
-                                    </ScheduleTd>
-                                    <ScheduleTd $align="right">
-                                      {formatCurrency(entry.emi)}
-                                    </ScheduleTd>
-                                    <ScheduleTd $align="right" $color="var(--success)">
-                                      {formatCurrency(entry.principal)}
-                                    </ScheduleTd>
-                                    <ScheduleTd $align="right" $color="var(--danger)">
-                                      {formatCurrency(entry.interest)}
-                                    </ScheduleTd>
-                                    <ScheduleTd $align="right">
-                                      {formatCurrency(entry.balance)}
-                                    </ScheduleTd>
-                                  </tr>
-                                ))}
-                              </tbody>
-                              <tfoot>
-                                <tr>
-                                  <ScheduleTd colSpan={2}><strong>Total</strong></ScheduleTd>
-                                  <ScheduleTd $align="right">
-                                    <strong>
-                                      {formatCurrency(
-                                        scheduleData.reduce((s, e) => s + e.emi, 0)
-                                      )}
-                                    </strong>
-                                  </ScheduleTd>
-                                  <ScheduleTd $align="right" $color="var(--success)">
-                                    <strong>
-                                      {formatCurrency(
-                                        scheduleData[scheduleData.length - 1]?.totalPrincipalPaid ?? 0
-                                      )}
-                                    </strong>
-                                  </ScheduleTd>
-                                  <ScheduleTd $align="right" $color="var(--danger)">
-                                    <strong>
-                                      {formatCurrency(
-                                        scheduleData[scheduleData.length - 1]?.totalInterestPaid ?? 0
-                                      )}
-                                    </strong>
-                                  </ScheduleTd>
-                                  <ScheduleTd $align="right">
-                                    <strong>{formatCurrency(0)}</strong>
-                                  </ScheduleTd>
-                                </tr>
-                              </tfoot>
-                            </ScheduleTable>
-                          </ScheduleTableWrapper>
-                        ) : null}
-                      </SchedulePanel>
-                    )}
+
                   </LoanCard>
                 );
               })}
@@ -1499,6 +1715,8 @@ export default function LoansPage() {
             editTarget
               ? {
                   name: editTarget.name,
+                  loanProvider: editTarget.loanProvider ?? undefined,
+                  loanAccountNumber: editTarget.loanAccountNumber ?? undefined,
                   principalAmount: editTarget.principal,
                   interestRate: editTarget.interestRate,
                   tenureMonths: editTarget.tenureMonths,
@@ -1514,6 +1732,8 @@ export default function LoansPage() {
               : scannedLoan
                 ? {
                     name: scannedLoan.name ?? "",
+                    loanProvider: scannedLoan.loanProvider ?? undefined,
+                    loanAccountNumber: scannedLoan.loanAccountNumber ?? undefined,
                     principalAmount: scannedLoan.principal ?? 0,
                     interestRate: scannedLoan.interestRate ?? 0,
                     tenureMonths: scannedLoan.tenureMonths ?? 0,
@@ -1574,6 +1794,155 @@ export default function LoansPage() {
         </ConfirmBody>
       </Modal>
 
+      {/* EMI Schedule Modal */}
+      <Modal
+        isOpen={!!scheduleLoanId}
+        onClose={() => {
+          setScheduleLoanId(null);
+          setScheduleData(null);
+          setSchedulePaidOpen(false);
+          setSchedulePendingOpen(true);
+        }}
+        title={`EMI Schedule — ${loans.find((l) => l.id === scheduleLoanId)?.name ?? ""}`}
+        size="lg"
+      >
+        {scheduleLoading ? (
+          <SchedulePanel>
+            <InsightRow>
+              <InsightLabel>Loading schedule…</InsightLabel>
+            </InsightRow>
+          </SchedulePanel>
+        ) : scheduleData && scheduleData.length > 0 ? (
+          (() => {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const paidEntries = scheduleData.filter((e) => new Date(e.date) <= today);
+            const pendingEntries = scheduleData.filter((e) => new Date(e.date) > today);
+
+            const renderTable = (entries: ScheduleEntry[]) => (
+              <ScheduleTableWrapper>
+                <ScheduleTable>
+                  <thead>
+                    <tr>
+                      <ScheduleTh>#</ScheduleTh>
+                      <ScheduleTh>Date</ScheduleTh>
+                      <ScheduleTh $align="right">EMI</ScheduleTh>
+                      <ScheduleTh $align="right">Principal</ScheduleTh>
+                      <ScheduleTh $align="right">Interest</ScheduleTh>
+                      <ScheduleTh $align="right">Balance</ScheduleTh>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {entries.map((entry) => (
+                      <tr key={entry.month}>
+                        <ScheduleTd>{entry.month}</ScheduleTd>
+                        <ScheduleTd>
+                          {new Date(entry.date).toLocaleDateString("en-IN", {
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </ScheduleTd>
+                        <ScheduleTd $align="right">
+                          {formatCurrency(entry.emi)}
+                        </ScheduleTd>
+                        <ScheduleTd $align="right" $color="var(--success)">
+                          {formatCurrency(entry.principal)}
+                        </ScheduleTd>
+                        <ScheduleTd $align="right" $color="var(--danger)">
+                          {formatCurrency(entry.interest)}
+                        </ScheduleTd>
+                        <ScheduleTd $align="right">
+                          {formatCurrency(entry.balance)}
+                        </ScheduleTd>
+                      </tr>
+                    ))}
+                  </tbody>
+                </ScheduleTable>
+              </ScheduleTableWrapper>
+            );
+
+            return (
+              <div>
+                {/* Pending Dues — open by default */}
+                {pendingEntries.length > 0 && (
+                  <AccordionSection>
+                    <AccordionHeader
+                      $open={schedulePendingOpen}
+                      onClick={() => setSchedulePendingOpen((o) => !o)}
+                    >
+                      <AccordionTitle $color="var(--warning)">
+                        Pending Dues
+                        <AccordionBadge>{pendingEntries.length}</AccordionBadge>
+                      </AccordionTitle>
+                      <AccordionChevron $open={schedulePendingOpen}>▼</AccordionChevron>
+                    </AccordionHeader>
+                    <AccordionBody $open={schedulePendingOpen}>
+                      {renderTable(pendingEntries)}
+                    </AccordionBody>
+                  </AccordionSection>
+                )}
+
+                {/* Paid Dues — closed by default */}
+                {paidEntries.length > 0 && (
+                  <AccordionSection>
+                    <AccordionHeader
+                      $open={schedulePaidOpen}
+                      onClick={() => setSchedulePaidOpen((o) => !o)}
+                    >
+                      <AccordionTitle $color="var(--success)">
+                        Paid
+                        <AccordionBadge $color="rgba(34, 197, 94, 0.15)">{paidEntries.length}</AccordionBadge>
+                      </AccordionTitle>
+                      <AccordionChevron $open={schedulePaidOpen}>▼</AccordionChevron>
+                    </AccordionHeader>
+                    <AccordionBody $open={schedulePaidOpen}>
+                      {renderTable(paidEntries)}
+                    </AccordionBody>
+                  </AccordionSection>
+                )}
+
+                {/* Summary footer */}
+                <div style={{ marginTop: 12, padding: "12px 16px", background: "var(--surface)", borderRadius: 10, border: "1px solid var(--border)" }}>
+                  <ScheduleTableWrapper>
+                    <ScheduleTable>
+                      <tfoot>
+                        <tr>
+                          <ScheduleTd colSpan={2}><strong>Total</strong></ScheduleTd>
+                          <ScheduleTd $align="right">
+                            <strong>
+                              {formatCurrency(
+                                scheduleData.reduce((s, e) => s + e.emi, 0)
+                              )}
+                            </strong>
+                          </ScheduleTd>
+                          <ScheduleTd $align="right" $color="var(--success)">
+                            <strong>
+                              {formatCurrency(
+                                scheduleData[scheduleData.length - 1]?.totalPrincipalPaid ?? 0
+                              )}
+                            </strong>
+                          </ScheduleTd>
+                          <ScheduleTd $align="right" $color="var(--danger)">
+                            <strong>
+                              {formatCurrency(
+                                scheduleData[scheduleData.length - 1]?.totalInterestPaid ?? 0
+                              )}
+                            </strong>
+                          </ScheduleTd>
+                          <ScheduleTd $align="right">
+                            <strong>{formatCurrency(0)}</strong>
+                          </ScheduleTd>
+                        </tr>
+                      </tfoot>
+                    </ScheduleTable>
+                  </ScheduleTableWrapper>
+                </div>
+              </div>
+            );
+          })()
+        ) : null}
+      </Modal>
+
       {/* Scan Schedule Modal */}
       <Modal
         isOpen={showScanModal}
@@ -1588,6 +1957,79 @@ export default function LoansPage() {
           onScanningChange={setIsScanningSchedule}
         />
       </Modal>
+
+      {/* Prepayments Modal */}
+      {(() => {
+        const ppLoan = loans.find((l) => l.id === prepaymentModalLoanId);
+        const ppList =
+          ppLoan?.prepayments && Array.isArray(ppLoan.prepayments)
+            ? (ppLoan.prepayments as { date: string; amount: number; balanceAfter?: number }[])
+            : [];
+        return (
+          <Modal
+            isOpen={!!prepaymentModalLoanId}
+            onClose={() => setPrepaymentModalLoanId(null)}
+            title={`Prepayments — ${ppLoan?.name ?? ""}`}
+            size="md"
+          >
+            {ppList.length > 0 ? (
+              <ScheduleTableWrapper>
+                <ScheduleTable>
+                  <thead>
+                    <tr>
+                      <ScheduleTh>#</ScheduleTh>
+                      <ScheduleTh>Date</ScheduleTh>
+                      <ScheduleTh $align="right">Amount</ScheduleTh>
+                      <ScheduleTh $align="right">Balance After</ScheduleTh>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ppList.map((pp, i) => (
+                      <tr key={i}>
+                        <ScheduleTd>{i + 1}</ScheduleTd>
+                        <ScheduleTd>
+                          {new Date(pp.date).toLocaleDateString("en-IN", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </ScheduleTd>
+                        <ScheduleTd $align="right" $color="var(--success)">
+                          {formatCurrency(pp.amount)}
+                        </ScheduleTd>
+                        <ScheduleTd $align="right">
+                          {pp.balanceAfter != null
+                            ? formatCurrency(pp.balanceAfter)
+                            : "—"}
+                        </ScheduleTd>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <ScheduleTd colSpan={2}>
+                        <strong>Total Prepaid</strong>
+                      </ScheduleTd>
+                      <ScheduleTd $align="right" $color="var(--success)">
+                        <strong>
+                          {formatCurrency(
+                            ppList.reduce((s, p) => s + p.amount, 0),
+                          )}
+                        </strong>
+                      </ScheduleTd>
+                      <ScheduleTd />
+                    </tr>
+                  </tfoot>
+                </ScheduleTable>
+              </ScheduleTableWrapper>
+            ) : (
+              <SchedulePanel>
+                <InsightLabel>No prepayments recorded</InsightLabel>
+              </SchedulePanel>
+            )}
+          </Modal>
+        );
+      })()}
     </>
   );
 }

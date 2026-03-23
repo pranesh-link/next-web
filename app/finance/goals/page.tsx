@@ -661,8 +661,13 @@ export default function GoalsPage() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      await fetchGoals();
-      setLoading(false);
+      try {
+        await fetchGoals();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load goals");
+      } finally {
+        setLoading(false);
+      }
     }
     load();
   }, [fetchGoals]);
