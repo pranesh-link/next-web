@@ -53,7 +53,12 @@ Rules:
 async function scanWithGemini(fileBuffer: ArrayBuffer, mimeType: string) {
   if (!ai) throw new Error("Gemini API key not configured");
 
-  const response = await ai.models.generateContent({
+  // Fail gracefully at 50s so the error is catchable before Vercel's 60s hard kill
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error("Gemini request timed out")), 50_000)
+  );
+
+  const geminiPromise = ai.models.generateContent({
     model: "gemini-flash-latest",
     config: {
       temperature: 0.2,
@@ -70,6 +75,8 @@ async function scanWithGemini(fileBuffer: ArrayBuffer, mimeType: string) {
       },
     ],
   });
+
+  const response = await Promise.race([geminiPromise, timeoutPromise]);
 
   let text = response.text?.trim() ?? "";
 

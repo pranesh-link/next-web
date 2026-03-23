@@ -1,5 +1,5 @@
-import { GoogleGenAI } from "@google/genai";
 import { auth } from "@/_lib/auth";
+import { GoogleGenAI } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 60;
@@ -9,7 +9,7 @@ const SCAN_SERVICE_URL = process.env.SCAN_SERVICE_URL;
 const SCAN_SERVICE_API_KEY = process.env.SCAN_SERVICE_API_KEY;
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_SCHEDULE_MODEL = process.env.GEMINI_SCHEDULE_MODEL || "gemini-2.5-flash";
+const GEMINI_SCHEDULE_MODEL = process.env.GEMINI_SCHEDULE_MODEL || "gemini-flash-latest";
 
 // Singleton — avoid creating a new client per request
 const ai = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
@@ -272,7 +272,12 @@ function normalizeScheduleData(parsed: ScheduleData): ScheduleData {
 async function scanWithGemini(fileBuffer: ArrayBuffer, mimeType: string): Promise<ScheduleData> {
   if (!ai) throw new Error("Gemini API key not configured");
 
-  const response = await ai.models.generateContent({
+  // Fail gracefully at 50s so the error is catchable before Vercel's 60s hard kill
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error("Gemini request timed out")), 50_000)
+  );
+
+  const geminiPromise = ai.models.generateContent({
     model: GEMINI_SCHEDULE_MODEL,
     config: {
       temperature: 0.2,
@@ -287,6 +292,8 @@ async function scanWithGemini(fileBuffer: ArrayBuffer, mimeType: string): Promis
       },
     ],
   });
+
+  const response = await Promise.race([geminiPromise, timeoutPromise]);
 
   let text = response.text?.trim() ?? "";
 
