@@ -15,6 +15,8 @@ import type { ScannedLoanData } from "@/finance/_components/loan/LoanScheduleSca
 
 const loanSchema = z.object({
   name: z.string().min(1, "Loan name is required").max(100),
+  loanProvider: z.string().optional(),
+  loanAccountNumber: z.string().optional(),
   principalAmount: z.number().positive("Principal must be positive"),
   interestRate: z
     .number()
@@ -31,7 +33,7 @@ const loanSchema = z.object({
 type LoanData = z.infer<typeof loanSchema>;
 
 interface LoanFormProps {
-  initialData?: Partial<LoanData>;
+  initialData?: Partial<LoanData & { loanProvider?: string | null; loanAccountNumber?: string | null }>;
   onSubmit: (data: LoanData) => Promise<void>;
   onCancel?: () => void;
   isLoading?: boolean;
@@ -156,6 +158,21 @@ const ImportPdfButton = styled.button`
   }
 `;
 
+const AccountNumberBadge = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-light, #60a5fa);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.3px;
+`;
+
 const ScannerWrapper = styled.div`
   border: 1px solid rgba(59, 130, 246, 0.2);
   border-radius: 12px;
@@ -184,6 +201,8 @@ export default function LoanForm({
 }: LoanFormProps) {
   const [form, setForm] = useState<LoanData>({
     name: initialData?.name ?? "",
+    loanProvider: initialData?.loanProvider ?? undefined,
+    loanAccountNumber: initialData?.loanAccountNumber ?? undefined,
     principalAmount: initialData?.principalAmount ?? 0,
     interestRate: initialData?.interestRate ?? 0,
     tenureMonths: initialData?.tenureMonths ?? 0,
@@ -201,6 +220,8 @@ export default function LoanForm({
   const handleScanComplete = useCallback((data: ScannedLoanData) => {
     setForm({
       name: data.loanName || form.name || "",
+      loanProvider: data.loanProvider ?? form.loanProvider ?? undefined,
+      loanAccountNumber: data.loanAccountNumber ?? form.loanAccountNumber ?? undefined,
       principalAmount: data.principal || form.principalAmount || 0,
       interestRate: data.interestRate || form.interestRate || 0,
       tenureMonths: data.tenureMonths || form.tenureMonths || 0,
@@ -249,7 +270,7 @@ export default function LoanForm({
   }
 
   return (
-    <FormWrapper onSubmit={handleSubmit}>
+    <FormWrapper onSubmit={handleSubmit} noValidate>
       {/* Import from PDF */}
       {showScanner ? (
         <ScannerWrapper>
@@ -278,6 +299,22 @@ export default function LoanForm({
         {errors.name && <FinanceErrorText>{errors.name}</FinanceErrorText>}
       </FieldGroup>
 
+      {/* Loan Account Number (read-only, shown when populated) */}
+      {form.loanAccountNumber && (
+        <FieldGroup>
+          <FinanceLabel>Loan Account Number</FinanceLabel>
+          <AccountNumberBadge>🔖 {form.loanAccountNumber}</AccountNumberBadge>
+        </FieldGroup>
+      )}
+
+      {/* Loan Provider (read-only, shown when populated) */}
+      {form.loanProvider && (
+        <FieldGroup>
+          <FinanceLabel>Lender / Provider</FinanceLabel>
+          <AccountNumberBadge>🏦 {form.loanProvider}</AccountNumberBadge>
+        </FieldGroup>
+      )}
+
       {/* Principal Amount */}
       <FieldGroup>
         <FinanceLabel htmlFor="loan-principal">
@@ -287,7 +324,7 @@ export default function LoanForm({
           id="loan-principal"
           type="number"
           min="0"
-          step="1000"
+          step="any"
           value={form.principalAmount || ""}
           onChange={(e) =>
             updateField("principalAmount", parseFloat(e.target.value) || 0)
@@ -416,7 +453,7 @@ export default function LoanForm({
           id="loan-remaining"
           type="number"
           min="0"
-          step="1000"
+          step="any"
           value={form.remainingBalance || ""}
           onChange={(e) =>
             updateField(

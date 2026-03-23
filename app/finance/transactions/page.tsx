@@ -408,8 +408,13 @@ export default function TransactionsPage() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      await Promise.all([fetchTransactions(), fetchAccounts()]);
-      setLoading(false);
+      try {
+        await Promise.all([fetchTransactions(), fetchAccounts()]);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load transactions");
+      } finally {
+        setLoading(false);
+      }
     }
     load();
   }, [fetchTransactions, fetchAccounts]);

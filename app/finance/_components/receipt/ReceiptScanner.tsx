@@ -301,6 +301,45 @@ const ConfidenceBadge = styled.span<{ $level: "high" | "medium" | "low" }>`
 
 /* ── Component ── */
 
+/** Compress image client-side to max 1500px and JPEG 80% before uploading */
+function compressImage(file: File, maxDim = 1500, quality = 0.8): Promise<File> {
+  return new Promise((resolve) => {
+    // Skip non-rasterizable or already small files
+    if (!file.type.startsWith("image/") || file.size < 200_000) {
+      resolve(file);
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width <= maxDim && height <= maxDim && file.size < 500_000) {
+        resolve(file);
+        return;
+      }
+      const scale = Math.min(maxDim / width, maxDim / height, 1);
+      width = Math.round(width * scale);
+      height = Math.round(height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          if (blob && blob.size < file.size) {
+            resolve(new File([blob], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" }));
+          } else {
+            resolve(file);
+          }
+        },
+        "image/jpeg",
+        quality
+      );
+    };
+    img.onerror = () => resolve(file);
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 export default function ReceiptScanner({
   onScanComplete,
   onClose,
@@ -340,8 +379,9 @@ export default function ReceiptScanner({
     setError(null);
 
     try {
+      const compressed = await compressImage(file);
       const formData = new FormData();
-      formData.append("receipt", file);
+      formData.append("receipt", compressed);
 
       const res = await fetch("/api/finance/scan-receipt", {
         method: "POST",

@@ -25,6 +25,7 @@
     "@auth/prisma-adapter": "^2.11.1",
     "@ducanh2912/next-pwa": "10.2.7",
     "@emailjs/browser": "4.3.3",
+    "@google/genai": "^1.46.0",
     "@prisma/adapter-pg": "^7.5.0",
     "@prisma/client": "^7.5.0",
     "@prisma/extension-accelerate": "^2.0.2",

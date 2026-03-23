@@ -481,8 +481,13 @@ export default function BudgetsPage() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      await fetchBudgets();
-      setLoading(false);
+      try {
+        await fetchBudgets();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load budgets");
+      } finally {
+        setLoading(false);
+      }
     }
     load();
   }, [fetchBudgets]);
