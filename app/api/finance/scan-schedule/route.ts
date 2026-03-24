@@ -446,17 +446,20 @@ export async function POST(req: NextRequest) {
         const isTimeout = msg.includes("timed out");
         const isEmpty = msg.includes("empty response");
         const isTooLarge = msg.includes("too large") || msg.includes("truncated");
+        const isQuotaExceeded = msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED") || msg.includes("quota");
         return NextResponse.json(
           {
             error: isTimeout
               ? "Document took too long to process. Try a shorter schedule or upload a PDF."
               : isTooLarge
               ? "Schedule is too long to process in one pass. Try uploading a PDF with fewer pages."
+              : isQuotaExceeded
+              ? "AI service is temporarily unavailable (rate limit). Please try again in a minute."
               : isEmpty
               ? "Could not read this document. Try uploading a clearer copy or a different file."
               : `Could not parse the document. ${msg.includes("Response started with:") ? msg.split("Response started with:")[1]?.trim().slice(0, 80) : "Try a different file or clearer scan."}`,
           },
-          { status: isTimeout ? 504 : 422 }
+          { status: isTimeout ? 504 : isQuotaExceeded ? 503 : 422 }
         );
       }
     }
