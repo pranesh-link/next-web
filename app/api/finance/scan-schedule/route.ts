@@ -320,20 +320,35 @@ async function scanWithGemini(fileBuffer: ArrayBuffer, mimeType: string): Promis
 
   const response = await Promise.race([geminiPromise, timeoutPromise]);
 
+  const finishReason = (response as { candidates?: Array<{ finishReason?: string }> }).candidates?.[0]?.finishReason;
+
   let text = response.text?.trim() ?? "";
+  console.error("[scan-schedule] finishReason:", finishReason, "| text length:", text.length);
+  if (text) console.error("[scan-schedule] Gemini raw (first 500):", text.slice(0, 500));
+
   if (!text) {
-    console.error("[scan-schedule] Gemini returned empty response");
-    throw new Error("Gemini returned an empty response");
+    throw new Error(`Gemini returned an empty response (finishReason: ${finishReason})`);
   }
 
-  console.error("[scan-schedule] Gemini raw (first 300):", text.slice(0, 300));
+  if (finishReason === "MAX_TOKENS") {
+    throw new Error("Schedule document too large: Gemini output was truncated");
+  }
 
   // Strip markdown code fences if Gemini adds them
   if (text.startsWith("```")) {
     text = text.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "").trim();
   }
 
-  return JSON.parse(text) as ScheduleData;
+  // Direct parse — if it fails, try extracting JSON from within surrounding text
+  try {
+    return JSON.parse(text) as ScheduleData;
+  } catch {
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]) as ScheduleData;
+    }
+    throw new Error(`JSON parse failed. Response started with: ${text.slice(0, 120)}`);
+  }
 }
 
 async function scanWithPythonService(file: File) {
@@ -430,13 +445,16 @@ export async function POST(req: NextRequest) {
       if (!SCAN_SERVICE_URL) {
         const isTimeout = msg.includes("timed out");
         const isEmpty = msg.includes("empty response");
+        const isTooLarge = msg.includes("too large") || msg.includes("truncated");
         return NextResponse.json(
           {
             error: isTimeout
               ? "Document took too long to process. Try a shorter schedule or upload a PDF."
+              : isTooLarge
+              ? "Schedule is too long to process in one pass. Try uploading a PDF with fewer pages."
               : isEmpty
               ? "Could not read this document. Try uploading a clearer copy or a different file."
-              : "Could not parse the document. Try a different file or clearer scan.",
+              : `Could not parse the document. ${msg.includes("Response started with:") ? msg.split("Response started with:")[1]?.trim().slice(0, 80) : "Try a different file or clearer scan."}`,
           },
           { status: isTimeout ? 504 : 422 }
         );
