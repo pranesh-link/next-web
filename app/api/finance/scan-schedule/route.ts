@@ -1,6 +1,7 @@
 import { auth } from "@/_lib/auth";
 import { GoogleGenAI } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
+import { PDFParse } from "pdf-parse";
 
 export const maxDuration = 60;
 
@@ -269,29 +270,54 @@ function normalizeScheduleData(parsed: ScheduleData): ScheduleData {
   return normalized;
 }
 
+async function extractPdfText(fileBuffer: ArrayBuffer): Promise<string | null> {
+  try {
+    const parser = new PDFParse({ data: new Uint8Array(fileBuffer) });
+    const result = await parser.getText();
+    const text = result.text?.trim();
+    return text && text.length >= 20 ? text : null;
+  } catch {
+    return null;
+  }
+}
+
 async function scanWithGemini(fileBuffer: ArrayBuffer, mimeType: string): Promise<ScheduleData> {
   if (!ai) throw new Error("Gemini API key not configured");
 
   // Fail gracefully at 50s so the error is catchable before Vercel's 60s hard kill
+  const timeoutMs = 50_000;
   const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error("Gemini request timed out")), 50_000)
+    setTimeout(() => reject(new Error("Gemini request timed out")), timeoutMs)
   );
 
-  const geminiPromise = ai.models.generateContent({
-    model: GEMINI_SCHEDULE_MODEL,
-    config: {
-      temperature: 0.2,
-      thinkingConfig: { thinkingBudget: 0 },
-    },
-    contents: [
-      {
-        parts: [
-          { inlineData: { mimeType, data: Buffer.from(fileBuffer).toString("base64") } },
-          { text: buildSchedulePrompt() },
-        ],
-      },
-    ],
-  });
+  let geminiPromise: ReturnType<typeof ai.models.generateContent>;
+
+  if (mimeType === "application/pdf") {
+    // Extract text locally and send as a text prompt — much faster and more reliable
+    // than sending raw PDF bytes as base64 to the Vision API.
+    const pdfText = await extractPdfText(fileBuffer);
+    if (!pdfText) throw new Error("Could not extract text from PDF");
+
+    geminiPromise = ai.models.generateContent({
+      model: GEMINI_SCHEDULE_MODEL,
+      config: { temperature: 0.2 },
+      contents: [{ parts: [{ text: `${buildSchedulePrompt()}\n\nPDF text content:\n${pdfText}` }] }],
+    });
+  } else {
+    // Image: use Vision (inline base64)
+    geminiPromise = ai.models.generateContent({
+      model: GEMINI_SCHEDULE_MODEL,
+      config: { temperature: 0.2 },
+      contents: [
+        {
+          parts: [
+            { inlineData: { mimeType, data: Buffer.from(fileBuffer).toString("base64") } },
+            { text: buildSchedulePrompt() },
+          ],
+        },
+      ],
+    });
+  }
 
   const response = await Promise.race([geminiPromise, timeoutPromise]);
 
