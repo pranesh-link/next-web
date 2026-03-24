@@ -19,7 +19,7 @@ const nextConfig = {
   allowedDevOrigins: ["dev.data.lilly.com", "192.168.1.9"],
   compiler: {
     styledComponents: true,
-    removeConsole: process.env.NODE_ENV === "production",
+    removeConsole: process.env.NODE_ENV === "production" ? { exclude: ["error", "warn"] } : false,
   },
   env: {
     version: packageJson.version,
