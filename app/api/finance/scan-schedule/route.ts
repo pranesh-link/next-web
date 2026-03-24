@@ -1,7 +1,6 @@
 import { auth } from "@/_lib/auth";
 import { GoogleGenAI } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
-import { PDFParse } from "pdf-parse";
 
 export const maxDuration = 60;
 
@@ -272,6 +271,8 @@ function normalizeScheduleData(parsed: ScheduleData): ScheduleData {
 
 async function extractPdfText(fileBuffer: ArrayBuffer): Promise<string | null> {
   try {
+    // Dynamic import avoids module-level crashes from pdfjs-dist worker init in serverless
+    const { PDFParse } = await import("pdf-parse");
     const parser = new PDFParse({ data: new Uint8Array(fileBuffer) });
     const result = await parser.getText();
     const text = result.text?.trim();
@@ -292,19 +293,17 @@ async function scanWithGemini(fileBuffer: ArrayBuffer, mimeType: string): Promis
 
   let geminiPromise: ReturnType<typeof ai.models.generateContent>;
 
-  if (mimeType === "application/pdf") {
-    // Extract text locally and send as a text prompt — much faster and more reliable
-    // than sending raw PDF bytes as base64 to the Vision API.
-    const pdfText = await extractPdfText(fileBuffer);
-    if (!pdfText) throw new Error("Could not extract text from PDF");
+  const pdfText = mimeType === "application/pdf" ? await extractPdfText(fileBuffer) : null;
 
+  if (pdfText) {
+    // Fast path: PDF text extracted locally — send as text prompt (no Vision token cost)
     geminiPromise = ai.models.generateContent({
       model: GEMINI_SCHEDULE_MODEL,
       config: { temperature: 0.2 },
       contents: [{ parts: [{ text: `${buildSchedulePrompt()}\n\nPDF text content:\n${pdfText}` }] }],
     });
   } else {
-    // Image: use Vision (inline base64)
+    // Fallback: send raw file as base64 (Vision API — works for images and scanned PDFs)
     geminiPromise = ai.models.generateContent({
       model: GEMINI_SCHEDULE_MODEL,
       config: { temperature: 0.2 },
