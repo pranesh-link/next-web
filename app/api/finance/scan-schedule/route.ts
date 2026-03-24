@@ -321,6 +321,12 @@ async function scanWithGemini(fileBuffer: ArrayBuffer, mimeType: string): Promis
   const response = await Promise.race([geminiPromise, timeoutPromise]);
 
   let text = response.text?.trim() ?? "";
+  if (!text) {
+    console.error("[scan-schedule] Gemini returned empty response");
+    throw new Error("Gemini returned an empty response");
+  }
+
+  console.error("[scan-schedule] Gemini raw (first 300):", text.slice(0, 300));
 
   // Strip markdown code fences if Gemini adds them
   if (text.startsWith("```")) {
@@ -423,11 +429,14 @@ export async function POST(req: NextRequest) {
       // Fall through to Python service if available
       if (!SCAN_SERVICE_URL) {
         const isTimeout = msg.includes("timed out");
+        const isEmpty = msg.includes("empty response");
         return NextResponse.json(
           {
             error: isTimeout
               ? "Document took too long to process. Try a shorter schedule or upload a PDF."
-              : "Could not read schedule. Try a clearer, well-lit photo.",
+              : isEmpty
+              ? "Could not read this document. Try uploading a clearer copy or a different file."
+              : "Could not parse the document. Try a different file or clearer scan.",
           },
           { status: isTimeout ? 504 : 422 }
         );
