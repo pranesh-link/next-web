@@ -269,19 +269,6 @@ function normalizeScheduleData(parsed: ScheduleData): ScheduleData {
   return normalized;
 }
 
-async function extractPdfText(fileBuffer: ArrayBuffer): Promise<string | null> {
-  try {
-    // Dynamic import avoids module-level crashes from pdfjs-dist worker init in serverless
-    const { PDFParse } = await import("pdf-parse");
-    const parser = new PDFParse({ data: new Uint8Array(fileBuffer) });
-    const result = await parser.getText();
-    const text = result.text?.trim();
-    return text && text.length >= 20 ? text : null;
-  } catch {
-    return null;
-  }
-}
-
 async function scanWithGemini(fileBuffer: ArrayBuffer, mimeType: string): Promise<ScheduleData> {
   if (!ai) throw new Error("Gemini API key not configured");
 
@@ -291,36 +278,23 @@ async function scanWithGemini(fileBuffer: ArrayBuffer, mimeType: string): Promis
     setTimeout(() => reject(new Error("Gemini request timed out")), timeoutMs)
   );
 
-  let geminiPromise: ReturnType<typeof ai.models.generateContent>;
-
-  const pdfText = mimeType === "application/pdf" ? await extractPdfText(fileBuffer) : null;
-
-  // thinkingBudget: 0 disables Gemini 2.5 thinking mode — without it, 2.5-flash can exceed the 50s timeout
+  // thinkingBudget: 0 disables Gemini 2.5 thinking mode — required to stay within 50s timeout
   // temperature must be 1.0 for Gemini 2.5 models
   const geminiConfig = { temperature: 1.0, thinkingConfig: { thinkingBudget: 0 } };
 
-  if (pdfText) {
-    // Fast path: PDF text extracted locally — send as text prompt (no Vision token cost)
-    geminiPromise = ai.models.generateContent({
-      model: GEMINI_SCHEDULE_MODEL,
-      config: geminiConfig,
-      contents: [{ parts: [{ text: `${buildSchedulePrompt()}\n\nPDF text content:\n${pdfText}` }] }],
-    });
-  } else {
-    // Fallback: send raw file as base64 (Vision API — works for images and scanned PDFs)
-    geminiPromise = ai.models.generateContent({
-      model: GEMINI_SCHEDULE_MODEL,
-      config: geminiConfig,
-      contents: [
-        {
-          parts: [
-            { inlineData: { mimeType, data: Buffer.from(fileBuffer).toString("base64") } },
-            { text: buildSchedulePrompt() },
-          ],
-        },
-      ],
-    });
-  }
+  // Always use Vision/base64 path — avoids pdfjs-dist canvas polyfill errors on Vercel
+  const geminiPromise = ai.models.generateContent({
+    model: GEMINI_SCHEDULE_MODEL,
+    config: geminiConfig,
+    contents: [
+      {
+        parts: [
+          { inlineData: { mimeType, data: Buffer.from(fileBuffer).toString("base64") } },
+          { text: buildSchedulePrompt() },
+        ],
+      },
+    ],
+  });
 
   const response = await Promise.race([geminiPromise, timeoutPromise]);
 
