@@ -1991,40 +1991,29 @@ export default function LoansPage() {
                 )}
 
                 {/* Summary footer */}
-                <div style={{ marginTop: 12, padding: "12px 16px", background: "var(--surface)", borderRadius: 10, border: "1px solid var(--border)" }}>
-                  <ScheduleTableWrapper>
-                    <ScheduleTable>
-                      <tfoot>
-                        <tr>
-                          <ScheduleTd colSpan={2}><strong>Total</strong></ScheduleTd>
-                          <ScheduleTd $align="right">
-                            <strong>
-                              {formatCurrency(
-                                scheduleData.reduce((s, e) => s + e.emi, 0)
-                              )}
-                            </strong>
-                          </ScheduleTd>
-                          <ScheduleTd $align="right" $color="var(--success)">
-                            <strong>
-                              {formatCurrency(
-                                scheduleData[scheduleData.length - 1]?.totalPrincipalPaid ?? 0
-                              )}
-                            </strong>
-                          </ScheduleTd>
-                          <ScheduleTd $align="right" $color="var(--danger)">
-                            <strong>
-                              {formatCurrency(
-                                scheduleData[scheduleData.length - 1]?.totalInterestPaid ?? 0
-                              )}
-                            </strong>
-                          </ScheduleTd>
-                          <ScheduleTd $align="right">
-                            <strong>{formatCurrency(0)}</strong>
-                          </ScheduleTd>
-                        </tr>
-                      </tfoot>
-                    </ScheduleTable>
-                  </ScheduleTableWrapper>
+                <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+                  {[
+                    {
+                      label: "Total Payable",
+                      value: scheduleData.reduce((s, e) => s + e.emi, 0),
+                      color: "var(--text)",
+                    },
+                    {
+                      label: "Principal",
+                      value: scheduleData.reduce((s, e) => s + (e.principal || 0), 0),
+                      color: "var(--success)",
+                    },
+                    {
+                      label: "Interest",
+                      value: scheduleData.reduce((s, e) => s + (e.interest || 0), 0),
+                      color: "var(--danger)",
+                    },
+                  ].map(({ label, value, color }) => (
+                    <div key={label} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 14px" }}>
+                      <SummaryLabel style={{ fontSize: 10, marginBottom: 6 }}>{label}</SummaryLabel>
+                      <SummaryValue $color={color} style={{ fontSize: 15, letterSpacing: "-0.5px" }}>{formatCurrency(value)}</SummaryValue>
+                    </div>
+                  ))}
                 </div>
               </div>
             );
