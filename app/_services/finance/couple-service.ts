@@ -222,3 +222,28 @@ export async function leaveCouple(userId: string) {
 
   return { success: true };
 }
+
+export async function renameCouple(userId: string, newName: string) {
+  const membership = await prisma.coupleMember.findFirst({
+    where: { userId },
+  });
+  if (!membership) throw new Error('Not in a couple');
+
+  const couple = await prisma.couple.update({
+    where: { id: membership.coupleId },
+    data: { name: newName || null },
+  });
+  return couple;
+}
+
+export async function disbandCouple(userId: string) {
+  const membership = await prisma.coupleMember.findFirst({
+    where: { userId },
+  });
+  if (!membership) throw new Error('Not in a couple');
+
+  // Cascade deletes all CoupleMember and CoupleInvite records
+  await prisma.couple.delete({ where: { id: membership.coupleId } });
+
+  return { success: true };
+}

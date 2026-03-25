@@ -7,7 +7,8 @@ import {
   createNewCouple,
   sendInvite,
   revokeInvite,
-  leaveExistingCouple,
+  renameCoupleAction,
+  disbandCoupleAction,
 } from "@/finance/_actions/couples";
 import FinanceHeader from "@/finance/_components/layout/FinanceHeader";
 import Modal from "@/finance/_components/shared/Modal";
@@ -141,6 +142,76 @@ const CardTitle = styled.h2`
   font-weight: 700;
   color: #1e293b;
   margin: 0 0 8px 0;
+`;
+
+const TitleRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const EditButton = styled.button`
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  color: #94a3b8;
+  font-size: 14px;
+  line-height: 1;
+  transition: all 0.2s ease;
+
+  &:hover {
+    color: #3b82f6;
+    background: rgba(59, 130, 246, 0.08);
+  }
+`;
+
+const RenameRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+`;
+
+const RenameInput = styled.input`
+  background: #ffffff;
+  border: 1px solid #3b82f6;
+  color: #1e293b;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 16px;
+  font-weight: 700;
+  font-family: inherit;
+  width: 200px;
+  transition: box-shadow 0.2s ease;
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+  }
+`;
+
+const SmallButton = styled.button<{ $variant?: 'primary' | 'ghost' }>`
+  background: ${(p) => p.$variant === 'primary' ? '#3b82f6' : 'transparent'};
+  color: ${(p) => p.$variant === 'primary' ? '#ffffff' : '#64748b'};
+  border: ${(p) => p.$variant === 'primary' ? 'none' : '1px solid #d1d5db'};
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover:not(:disabled) {
+    background: ${(p) => p.$variant === 'primary' ? '#2563eb' : '#f1f5f9'};
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 `;
 
 const CardDescription = styled.p`
@@ -468,7 +539,9 @@ export default function CouplePage() {
   const [coupleName, setCoupleName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [error, setError] = useState("");
-  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [showDisbandConfirm, setShowDisbandConfirm] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [newCoupleName, setNewCoupleName] = useState("");
 
   const [cancellingId, setCancellingId] = useState<string | null>(null);
 
@@ -549,13 +622,36 @@ export default function CouplePage() {
     setCancellingId(null);
   };
 
-  const handleLeave = async () => {
+  const handleStartRename = () => {
+    setIsRenaming(true);
+    setNewCoupleName(couple?.name || "");
+  };
+
+  const handleCancelRename = () => {
+    setIsRenaming(false);
+    setNewCoupleName("");
+  };
+
+  const handleRename = async () => {
     setSaving(true);
-    const res = await leaveExistingCouple();
+    const res = await renameCoupleAction(newCoupleName.trim());
     if (res.success) {
-      notify("You left the couple", "success");
+      notify("Group renamed!", "success");
+      setIsRenaming(false);
+      await fetchCouple();
+    } else {
+      notify(res.error, "error");
+    }
+    setSaving(false);
+  };
+
+  const handleDisband = async () => {
+    setSaving(true);
+    const res = await disbandCoupleAction();
+    if (res.success) {
+      notify("Group disbanded", "success");
       setCouple(null);
-      setShowLeaveConfirm(false);
+      setShowDisbandConfirm(false);
     } else {
       notify(res.error, "error");
     }
@@ -608,7 +704,32 @@ export default function CouplePage() {
         ) : couple.members.length < 2 ? (
           /* ── One member: invite partner ── */
           <CoupleCard>
-            <CardTitle>{couple.name || "Your Couple"}</CardTitle>
+            {isRenaming ? (
+              <RenameRow>
+                <RenameInput
+                  value={newCoupleName}
+                  onChange={(e) => setNewCoupleName(e.target.value)}
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleRename();
+                    if (e.key === 'Escape') handleCancelRename();
+                  }}
+                />
+                <SmallButton $variant="primary" onClick={handleRename} disabled={saving}>
+                  Save
+                </SmallButton>
+                <SmallButton $variant="ghost" onClick={handleCancelRename} disabled={saving}>
+                  Cancel
+                </SmallButton>
+              </RenameRow>
+            ) : (
+              <TitleRow>
+                <CardTitle>{couple.name || "Your Couple"}</CardTitle>
+                <EditButton onClick={handleStartRename} title="Rename group">
+                  ✏️
+                </EditButton>
+              </TitleRow>
+            )}
 
             <Divider />
 
@@ -687,11 +808,46 @@ export default function CouplePage() {
                 ))}
               </>
             )}
+
+            <LeaveSection>
+              <OutlineButton
+                type="button"
+                onClick={() => setShowDisbandConfirm(true)}
+                style={{ color: "#dc2626", borderColor: "#fca5a5" }}
+              >
+                Disband Group
+              </OutlineButton>
+            </LeaveSection>
           </CoupleCard>
         ) : (
           /* ── Full couple ── */
           <CoupleCard>
-            <CardTitle>{couple.name || "Your Couple"} 💑</CardTitle>
+            {isRenaming ? (
+              <RenameRow>
+                <RenameInput
+                  value={newCoupleName}
+                  onChange={(e) => setNewCoupleName(e.target.value)}
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleRename();
+                    if (e.key === 'Escape') handleCancelRename();
+                  }}
+                />
+                <SmallButton $variant="primary" onClick={handleRename} disabled={saving}>
+                  Save
+                </SmallButton>
+                <SmallButton $variant="ghost" onClick={handleCancelRename} disabled={saving}>
+                  Cancel
+                </SmallButton>
+              </RenameRow>
+            ) : (
+              <TitleRow>
+                <CardTitle>{couple.name || "Your Couple"} 💑</CardTitle>
+                <EditButton onClick={handleStartRename} title="Rename group">
+                  ✏️
+                </EditButton>
+              </TitleRow>
+            )}
 
             <Divider />
 
@@ -714,36 +870,37 @@ export default function CouplePage() {
             <LeaveSection>
               <OutlineButton
                 type="button"
-                onClick={() => setShowLeaveConfirm(true)}
+                onClick={() => setShowDisbandConfirm(true)}
                 style={{ color: "#dc2626", borderColor: "#fca5a5" }}
               >
-                Leave Couple
+                Disband Group
               </OutlineButton>
             </LeaveSection>
           </CoupleCard>
         )}
       </PageWrapper>
 
-      {/* Leave confirmation modal */}
+      {/* Disband confirmation modal */}
       <Modal
-        isOpen={showLeaveConfirm}
-        onClose={() => setShowLeaveConfirm(false)}
-        title="Leave Couple"
+        isOpen={showDisbandConfirm}
+        onClose={() => setShowDisbandConfirm(false)}
+        title="Disband Group"
         size="sm"
       >
         <ConfirmText>
-          Are you sure? Your partner will retain access to their own data.
+          Are you sure? This will permanently delete the group. Both members
+          will lose couple data sharing and can create new groups independently.
         </ConfirmText>
         <ButtonRow>
           <OutlineButton
             type="button"
-            onClick={() => setShowLeaveConfirm(false)}
+            onClick={() => setShowDisbandConfirm(false)}
             disabled={saving}
           >
             Cancel
           </OutlineButton>
-          <DangerButton type="button" onClick={handleLeave} disabled={saving}>
-            {saving ? "Leaving…" : "Leave"}
+          <DangerButton type="button" onClick={handleDisband} disabled={saving}>
+            {saving ? "Disbanding…" : "Disband"}
           </DangerButton>
         </ButtonRow>
       </Modal>
