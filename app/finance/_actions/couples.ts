@@ -11,6 +11,8 @@ import {
   getInviteByToken as getInviteByTokenService,
   cancelInvite as cancelInviteService,
   leaveCouple as leaveCoupleService,
+  renameCouple as renameCoupleService,
+  disbandCouple as disbandCoupleService,
 } from '@/_services/finance/couple-service';
 
 export async function getCouple() {
@@ -126,6 +128,35 @@ export async function getInviteByToken(token: string) {
     return { success: true as const, data: invite };
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Failed to get invite';
+    return { success: false as const, error: message };
+  }
+}
+
+export async function renameCoupleAction(newName: string) {
+  const user = await requireAuthForAction();
+  if (!user) return { success: false as const, error: 'Not authenticated' };
+
+  try {
+    const validated = coupleSchema.parse({ name: newName });
+    await renameCoupleService(user.id, validated.name || '');
+    return { success: true as const, data: null };
+  } catch (e: unknown) {
+    if (e !== null && typeof e === 'object' && 'issues' in e)
+      return { success: false as const, error: JSON.stringify((e as { issues: unknown }).issues) };
+    const message = e instanceof Error ? e.message : 'Failed to rename couple';
+    return { success: false as const, error: message };
+  }
+}
+
+export async function disbandCoupleAction() {
+  const user = await requireAuthForAction();
+  if (!user) return { success: false as const, error: 'Not authenticated' };
+
+  try {
+    await disbandCoupleService(user.id);
+    return { success: true as const, data: null };
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Failed to disband couple';
     return { success: false as const, error: message };
   }
 }
