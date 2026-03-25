@@ -446,7 +446,7 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      return NextResponse.json({ success: true, data: parsed, method: "gemini-js" });
+      return NextResponse.json({ success: true, data: parsed, method: "gemini-js", model: GEMINI_SCHEDULE_MODEL });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("[scan-schedule] Gemini JS error:", msg);
