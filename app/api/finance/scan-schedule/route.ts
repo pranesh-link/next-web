@@ -9,7 +9,7 @@ const SCAN_SERVICE_URL = process.env.SCAN_SERVICE_URL;
 const SCAN_SERVICE_API_KEY = process.env.SCAN_SERVICE_API_KEY;
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_SCHEDULE_MODEL = process.env.GEMINI_SCHEDULE_MODEL || "gemini-2.0-flash";
+const GEMINI_SCHEDULE_MODEL = process.env.GEMINI_SCHEDULE_MODEL || "gemini-2.5-flash";
 
 // Singleton — avoid creating a new client per request
 const ai = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
@@ -295,18 +295,22 @@ async function scanWithGemini(fileBuffer: ArrayBuffer, mimeType: string): Promis
 
   const pdfText = mimeType === "application/pdf" ? await extractPdfText(fileBuffer) : null;
 
+  // thinkingBudget: 0 disables Gemini 2.5 thinking mode — without it, 2.5-flash can exceed the 50s timeout
+  // temperature must be 1.0 for Gemini 2.5 models
+  const geminiConfig = { temperature: 1.0, thinkingConfig: { thinkingBudget: 0 } };
+
   if (pdfText) {
     // Fast path: PDF text extracted locally — send as text prompt (no Vision token cost)
     geminiPromise = ai.models.generateContent({
       model: GEMINI_SCHEDULE_MODEL,
-      config: { temperature: 0.2 },
+      config: geminiConfig,
       contents: [{ parts: [{ text: `${buildSchedulePrompt()}\n\nPDF text content:\n${pdfText}` }] }],
     });
   } else {
     // Fallback: send raw file as base64 (Vision API — works for images and scanned PDFs)
     geminiPromise = ai.models.generateContent({
       model: GEMINI_SCHEDULE_MODEL,
-      config: { temperature: 0.2 },
+      config: geminiConfig,
       contents: [
         {
           parts: [
