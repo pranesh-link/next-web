@@ -981,6 +981,19 @@ export default function LoansPage() {
     { month: number; date: string; emi: number; principal: number; interest: number; balance: number }[] | null
   >(null);
 
+  /* Phase 2 — background schedule extraction state */
+  const [pendingScheduleParams, setPendingScheduleParams] = useState<{
+    rawScheduleText: string;
+    tenureMonths: number;
+  } | null>(null);
+  const [pendingSchedule, setPendingSchedule] = useState<{
+    loanId: string;
+    rawScheduleText: string;
+    tenureMonths: number;
+  } | null>(null);
+  const [scheduleLoadingLoanId, setScheduleLoadingLoanId] = useState<string | null>(null);
+  const [scheduleLoadErrors, setScheduleLoadErrors] = useState<Record<string, string>>({});
+
   /* Prepayments Modal State */
   const [prepaymentModalLoanId, setPrepaymentModalLoanId] = useState<string | null>(null);
 
@@ -1051,6 +1064,16 @@ export default function LoansPage() {
     setScannedLoanAccountNumber(data.loanAccountNumber ?? null);
     setScannedLoanProvider(data.loanProvider ?? null);
     setScannedScheduleGeneratedOn(data.scheduleGeneratedOn ?? null);
+
+    // Capture raw schedule text for Phase 2 background extraction
+    const rawText = data.rawScheduleText ?? "";
+    const tenure = data.tenureMonths ?? 0;
+    if (rawText && tenure > 0) {
+      setPendingScheduleParams({ rawScheduleText: rawText, tenureMonths: tenure });
+    } else {
+      setPendingScheduleParams(null);
+    }
+
     setScannedLoan({
       name: data.loanName ?? "",
       loanProvider: data.loanProvider ?? null,
@@ -1146,8 +1169,49 @@ export default function LoansPage() {
       setShowModal(false);
       setEditTarget(null);
       await fetchLoans();
+
+      // Phase 2: auto-trigger background schedule extraction if raw text was captured from scan
+      if (pendingScheduleParams?.rawScheduleText && result.data?.id) {
+        const { rawScheduleText, tenureMonths } = pendingScheduleParams;
+        const loanId = result.data.id as string;
+        setPendingScheduleParams(null);
+        const pending = { loanId, rawScheduleText, tenureMonths };
+        setPendingSchedule(pending);
+        loadFullSchedule(loanId, rawScheduleText, tenureMonths);
+      }
     } else {
       notify(result.error, "error");
+    }
+  }
+
+  async function loadFullSchedule(loanId: string, rawScheduleText: string, tenureMonths: number) {
+    setScheduleLoadingLoanId(loanId);
+    setScheduleLoadErrors((prev) => { const n = { ...prev }; delete n[loanId]; return n; });
+
+    try {
+      const res = await fetch("/api/finance/update-schedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ loanId, rawScheduleText, tenureMonths }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        setScheduleLoadErrors((prev) => ({
+          ...prev,
+          [loanId]: data.error || "Schedule extraction failed",
+        }));
+      } else {
+        setPendingSchedule(null);
+        await fetchLoans();
+      }
+    } catch {
+      setScheduleLoadErrors((prev) => ({
+        ...prev,
+        [loanId]: "Network error \u2014 tap Retry to try again",
+      }));
+    } finally {
+      setScheduleLoadingLoanId(null);
     }
   }
 
@@ -1419,12 +1483,37 @@ export default function LoansPage() {
 
                     {/* Schedule + Prepayments modal buttons — below EMI field */}
                     <ButtonRow style={{ marginBottom: "10px" }}>
-                      <SmallButton
-                        $variant="orange"
-                        onClick={() => toggleSchedule(loan.id)}
-                      >
-                        EMI Schedule
-                      </SmallButton>
+                      {scheduleLoadingLoanId === loan.id ? (
+                        <SmallButton $variant="orange" disabled>
+                          Loading schedule…
+                        </SmallButton>
+                      ) : scheduleLoadErrors[loan.id] ? (
+                        <>
+                          <SmallButton
+                            $variant="orange"
+                            onClick={() => {
+                              if (pendingSchedule?.loanId === loan.id) {
+                                loadFullSchedule(loan.id, pendingSchedule.rawScheduleText, pendingSchedule.tenureMonths);
+                              }
+                            }}
+                          >
+                            ↺ Retry Schedule
+                          </SmallButton>
+                          <SmallButton
+                            $variant="orange"
+                            onClick={() => toggleSchedule(loan.id)}
+                          >
+                            EMI Schedule
+                          </SmallButton>
+                        </>
+                      ) : (
+                        <SmallButton
+                          $variant="orange"
+                          onClick={() => toggleSchedule(loan.id)}
+                        >
+                          EMI Schedule
+                        </SmallButton>
+                      )}
                       {loan.prepayments && Array.isArray(loan.prepayments) && loan.prepayments.length > 0 && (
                         <SmallButton
                           $variant="green"

@@ -48,6 +48,7 @@ JSON format:
   "startDate": "YYYY-MM-DD or empty string",
   "remainingBalance": 0.00,
   "prepayments": [],
+  "rawScheduleText": "Dump the ENTIRE amortization/schedule table as plain text — one row per line, pipe-separated: month|date|emi|principal|interest|balance. Include ALL regular EMI rows in order. Exclude prepayment/part-payment rows. Use YYYY-MM-DD for dates. Return empty string if no table found.",
   "schedule": [],
   "confidence": 85
 }
@@ -98,6 +99,7 @@ type ScheduleData = {
   totalScheduleRows?: number;
   prepayments?: PrepaymentEntry[];
   schedule?: ScheduleRow[];
+  rawScheduleText?: string;
   emisPaid?: number;
   confidence: number;
 };
@@ -229,6 +231,7 @@ function normalizeScheduleData(parsed: ScheduleData): ScheduleData {
     loanProvider: parsed.loanProvider?.trim() || null,
     loanAccountNumber: parsed.loanAccountNumber?.trim() || null,
     scheduleGeneratedOn: parsed.scheduleGeneratedOn?.trim() || null,
+    rawScheduleText: typeof parsed.rawScheduleText === "string" ? parsed.rawScheduleText.trim() : undefined,
     principal: principalFromFirstRow || Math.max(0, roundMoney(parsed.principal || 0)),
     interestRate: Math.max(0, parsed.interestRate || 0),
     tenureMonths: schedule.length || Math.max(0, Math.trunc(parsed.tenureMonths || 0)),
