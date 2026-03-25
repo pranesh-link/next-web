@@ -34,6 +34,7 @@ type Loan = {
   startDate: string | Date;
   remainingBalance: number;
   prepayments?: { date: string; amount: number; balanceAfter?: number }[] | null;
+  schedule?: ScheduleEntry[] | null;
   createdAt: string | Date;
   updatedAt: string | Date;
 };
@@ -984,15 +985,14 @@ export default function LoansPage() {
   /* Phase 2 — background schedule extraction state */
   const [pendingScheduleParams, setPendingScheduleParams] = useState<{
     rawScheduleText: string;
-    tenureMonths: number;
   } | null>(null);
   const [pendingSchedule, setPendingSchedule] = useState<{
     loanId: string;
     rawScheduleText: string;
-    tenureMonths: number;
   } | null>(null);
   const [scheduleLoadingLoanId, setScheduleLoadingLoanId] = useState<string | null>(null);
   const [scheduleLoadErrors, setScheduleLoadErrors] = useState<Record<string, string>>({});
+  const [scheduleCache, setScheduleCache] = useState<Record<string, ScheduleEntry[]>>({});
 
   /* Prepayments Modal State */
   const [prepaymentModalLoanId, setPrepaymentModalLoanId] = useState<string | null>(null);
@@ -1018,8 +1018,19 @@ export default function LoansPage() {
   const fetchLoans = useCallback(async () => {
     const result = await getLoans();
     if (result.success) {
-      setLoans(result.data as unknown as Loan[]);
+      const loansData = result.data as unknown as Loan[];
+      setLoans(loansData);
       setError(null);
+      // Pre-populate schedule cache for loans that already have DB-stored rows
+      setScheduleCache((prev) => {
+        const updated = { ...prev };
+        for (const loan of loansData) {
+          if (Array.isArray(loan.schedule) && loan.schedule.length > 0) {
+            updated[loan.id] = loan.schedule;
+          }
+        }
+        return updated;
+      });
     } else {
       setError(result.error);
     }
@@ -1065,11 +1076,9 @@ export default function LoansPage() {
     setScannedLoanProvider(data.loanProvider ?? null);
     setScannedScheduleGeneratedOn(data.scheduleGeneratedOn ?? null);
 
-    // Capture raw schedule text for Phase 2 background extraction
     const rawText = data.rawScheduleText ?? "";
-    const tenure = data.tenureMonths ?? 0;
-    if (rawText && tenure > 0) {
-      setPendingScheduleParams({ rawScheduleText: rawText, tenureMonths: tenure });
+    if (rawText) {
+      setPendingScheduleParams({ rawScheduleText: rawText });
     } else {
       setPendingScheduleParams(null);
     }
@@ -1168,23 +1177,25 @@ export default function LoansPage() {
       notify(editTarget ? "Loan updated" : "Loan added", "success");
       setShowModal(false);
       setEditTarget(null);
-      await fetchLoans();
 
-      // Phase 2: auto-trigger background schedule extraction if raw text was captured from scan
+      // Phase 2: if raw schedule text is available, skip the first fetchLoans here —
+      // loadFullSchedule will call fetchLoans after saving the schedule (single fetch, no duplicate).
       if (pendingScheduleParams?.rawScheduleText && result.data?.id) {
-        const { rawScheduleText, tenureMonths } = pendingScheduleParams;
+        const { rawScheduleText } = pendingScheduleParams;
         const loanId = result.data.id as string;
         setPendingScheduleParams(null);
-        const pending = { loanId, rawScheduleText, tenureMonths };
-        setPendingSchedule(pending);
-        loadFullSchedule(loanId, rawScheduleText, tenureMonths);
+        setPendingSchedule({ loanId, rawScheduleText });
+        loadFullSchedule(loanId, rawScheduleText);
+      } else {
+        // No schedule extraction — fetch immediately to refresh list
+        await fetchLoans();
       }
     } else {
       notify(result.error, "error");
     }
   }
 
-  async function loadFullSchedule(loanId: string, rawScheduleText: string, tenureMonths: number) {
+  async function loadFullSchedule(loanId: string, rawScheduleText: string) {
     setScheduleLoadingLoanId(loanId);
     setScheduleLoadErrors((prev) => { const n = { ...prev }; delete n[loanId]; return n; });
 
@@ -1192,7 +1203,7 @@ export default function LoansPage() {
       const res = await fetch("/api/finance/update-schedule", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ loanId, rawScheduleText, tenureMonths }),
+        body: JSON.stringify({ loanId, rawScheduleText }),
       });
       const data = await res.json();
 
@@ -1277,15 +1288,25 @@ export default function LoansPage() {
     if (simulatorLoanId === loanId) { setSimulatorLoanId(null); setSimResult(null); setPrepaymentAmount(""); }
     if (insightsLoanId === loanId) { setInsightsLoanId(null); setInsightsData(null); }
     setScheduleLoanId(loanId);
-    setScheduleData(null);
     setSchedulePendingOpen(true);
     setSchedulePaidOpen(false);
+
+    // Use cache if available — no server call needed
+    if (scheduleCache[loanId]) {
+      setScheduleData(scheduleCache[loanId]);
+      return;
+    }
+
+    setScheduleData(null);
     setScheduleLoading(true);
     const result = await getLoanSchedule(loanId);
     setScheduleLoading(false);
 
     if (result.success) {
-      setScheduleData(result.data as ScheduleEntry[]);
+      const rows = result.data as ScheduleEntry[];
+      setScheduleData(rows);
+      // Cache for subsequent opens
+      setScheduleCache((prev) => ({ ...prev, [loanId]: rows }));
     } else {
       notify(result.error, "error");
       setScheduleLoanId(null);
@@ -1493,7 +1514,7 @@ export default function LoansPage() {
                             $variant="orange"
                             onClick={() => {
                               if (pendingSchedule?.loanId === loan.id) {
-                                loadFullSchedule(loan.id, pendingSchedule.rawScheduleText, pendingSchedule.tenureMonths);
+                                loadFullSchedule(loan.id, pendingSchedule.rawScheduleText);
                               }
                             }}
                           >
