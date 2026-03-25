@@ -217,6 +217,31 @@ function getMostRecentScheduleRow(schedule: ScheduleRow[], today: Date): Schedul
   return latest;
 }
 
+/**
+ * When schedule rows are not extracted (Phase 1 metadata-only mode), parse
+ * the pipe-separated rawScheduleText to find the correct remaining balance.
+ * Format per line: month|YYYY-MM-DD|emi|principal|interest|balance
+ */
+function getRemainingBalanceFromRawText(raw: string, today: Date): number | null {
+  let latestDate: Date | null = null;
+  let latestBalance: number | null = null;
+
+  for (const line of raw.split("\n")) {
+    const parts = line.trim().split("|");
+    if (parts.length < 6) continue;
+    const date = parseIsoDate(parts[1].trim());
+    const balance = parseFloat(parts[5].replace(/,/g, ""));
+    if (!date || !Number.isFinite(balance) || balance < 0) continue;
+    if (date.getTime() > today.getTime()) continue;
+    if (!latestDate || date.getTime() >= latestDate.getTime()) {
+      latestDate = date;
+      latestBalance = Math.round(balance);
+    }
+  }
+
+  return latestBalance;
+}
+
 function normalizeScheduleData(parsed: ScheduleData): ScheduleData {
   const today = startOfToday();
   const schedule = normalizeScheduleRows(parsed.schedule);
@@ -226,12 +251,20 @@ function normalizeScheduleData(parsed: ScheduleData): ScheduleData {
   const firstRowDate = firstRow ? parseIsoDate(firstRow.date) : null;
   const principalFromFirstRow = firstRow ? roundMoney(firstRow.principal + firstRow.balance) : 0;
 
+  // When schedule rows aren't extracted, derive remaining balance directly from
+  // the raw text dump — this prevents Gemini from confusing prepayment balances
+  // with the actual EMI schedule balance.
+  const rawText = typeof parsed.rawScheduleText === "string" ? parsed.rawScheduleText.trim() : "";
+  const balanceFromRawText = (schedule.length === 0 && rawText)
+    ? getRemainingBalanceFromRawText(rawText, today)
+    : null;
+
   const normalized: ScheduleData = {
     loanName: parsed.loanName?.trim() || "Imported Loan",
     loanProvider: parsed.loanProvider?.trim() || null,
     loanAccountNumber: parsed.loanAccountNumber?.trim() || null,
     scheduleGeneratedOn: parsed.scheduleGeneratedOn?.trim() || null,
-    rawScheduleText: typeof parsed.rawScheduleText === "string" ? parsed.rawScheduleText.trim() : undefined,
+    rawScheduleText: rawText || undefined,
     principal: principalFromFirstRow || Math.max(0, roundMoney(parsed.principal || 0)),
     interestRate: Math.max(0, parsed.interestRate || 0),
     tenureMonths: schedule.length || Math.max(0, Math.trunc(parsed.tenureMonths || 0)),
@@ -241,7 +274,7 @@ function normalizeScheduleData(parsed: ScheduleData): ScheduleData {
     startDate: firstRowDate ? firstRow.date : (parsed.startDate || ""),
     remainingBalance: latestDueRow
       ? latestDueRow.balance
-      : Math.max(0, roundMoney(parsed.remainingBalance || 0)),
+      : balanceFromRawText ?? Math.max(0, roundMoney(parsed.remainingBalance || 0)),
     totalScheduleRows: schedule.length,
     prepayments,
     schedule,
