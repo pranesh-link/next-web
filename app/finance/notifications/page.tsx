@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import styled from "styled-components";
 import FinanceHeader from "@/finance/_components/layout/FinanceHeader";
@@ -198,20 +198,30 @@ export default function NotificationsPage() {
   const [markingAll, setMarkingAll] = useState(false);
   const [inviteDetails, setInviteDetails] = useState<Record<string, InviteDetail>>({});
   const [loading, setLoading] = useState(true);
+  const fetchedIdsRef = useRef<Set<string>>(new Set());
 
-  // Fetch invite details for COUPLE_INVITE notifications
+  // Fetch invite details for COUPLE_INVITE notifications (only for new IDs)
   useEffect(() => {
-    const fetchInviteDetails = async () => {
-      const inviteNotifs = notifications.filter(
-        (n) => n.type === "COUPLE_INVITE" && n.featureId && !inviteDetails[n.featureId]
-      );
+    const inviteNotifs = notifications.filter(
+      (n) =>
+        n.type === "COUPLE_INVITE" &&
+        n.featureId &&
+        !fetchedIdsRef.current.has(n.featureId)
+    );
 
-      if (inviteNotifs.length === 0) {
-        setLoading(false);
-        return;
-      }
+    if (inviteNotifs.length === 0) {
+      setLoading(false);
+      return;
+    }
 
-      const res = await getMyPendingInvites();
+    // Mark as fetched immediately to prevent re-fetching
+    for (const n of inviteNotifs) {
+      fetchedIdsRef.current.add(n.featureId!);
+    }
+
+    let cancelled = false;
+    getMyPendingInvites().then((res) => {
+      if (cancelled) return;
       if (res.success && res.data) {
         const details: Record<string, InviteDetail> = {};
         for (const invite of res.data) {
@@ -227,14 +237,9 @@ export default function NotificationsPage() {
         setInviteDetails((prev) => ({ ...prev, ...details }));
       }
       setLoading(false);
-    };
+    });
 
-    if (notifications.length > 0) {
-      fetchInviteDetails();
-    } else {
-      setLoading(false);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => { cancelled = true; };
   }, [notifications]);
 
   const handleAccept = useCallback(

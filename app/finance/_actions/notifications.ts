@@ -14,14 +14,25 @@ export async function getMyNotifications() {
   if (!user) return { success: false as const, error: 'Not authenticated' };
 
   try {
-    // Backfill any missing invite notifications on each fetch
-    if (user.email) {
-      await syncMissingInviteNotifications(user.id, user.email);
-    }
     const notifications = await getNotificationsForUser(user.id);
     return { success: true as const, data: notifications };
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Failed to get notifications';
+    return { success: false as const, error: message };
+  }
+}
+
+export async function syncNotifications() {
+  const user = await requireAuthForAction();
+  if (!user) return { success: false as const, error: 'Not authenticated' };
+
+  try {
+    if (user.email) {
+      await syncMissingInviteNotifications(user.id, user.email);
+    }
+    return { success: true as const, data: null };
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Failed to sync notifications';
     return { success: false as const, error: message };
   }
 }

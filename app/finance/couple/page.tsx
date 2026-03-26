@@ -544,6 +544,7 @@ export default function CouplePage() {
   const [newCoupleName, setNewCoupleName] = useState("");
 
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const inviteSubmitting = useRef(false);
 
   const [notification, setNotification] = useState<Notification | null>(null);
   const [notifLeaving, setNotifLeaving] = useState(false);
@@ -591,23 +592,29 @@ export default function CouplePage() {
       setError("Email is required");
       return;
     }
+    if (inviteSubmitting.current) return;
+    inviteSubmitting.current = true;
     setSaving(true);
     setError("");
-    const res = await sendInvite({ email: inviteEmail.trim() });
-    if (res.success) {
-      if (res.inviteLink) {
-        await navigator.clipboard.writeText(res.inviteLink);
-        notify("Invite created! Link copied to clipboard.", "success");
+    try {
+      const res = await sendInvite({ email: inviteEmail.trim() });
+      if (res.success) {
+        if (res.inviteLink) {
+          await navigator.clipboard.writeText(res.inviteLink);
+          notify("Invite created! Link copied to clipboard.", "success");
+        } else {
+          notify("Invite created!", "success");
+        }
+        setInviteEmail("");
+        await fetchCouple();
       } else {
-        notify("Invite created!", "success");
+        setError(res.error);
+        notify(res.error, "error");
       }
-      setInviteEmail("");
-      await fetchCouple();
-    } else {
-      setError(res.error);
-      notify(res.error, "error");
+    } finally {
+      setSaving(false);
+      inviteSubmitting.current = false;
     }
-    setSaving(false);
   };
 
   const handleCancelInvite = async (inviteId: string) => {
