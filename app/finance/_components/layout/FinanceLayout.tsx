@@ -3,6 +3,7 @@
 import React from "react";
 import styled from "styled-components";
 import { FinanceThemeProvider } from "@/finance/_components/theme/FinanceThemeProvider";
+import { NotificationProvider } from "@/finance/_components/notifications/NotificationProvider";
 import Sidebar from "@/finance/_components/layout/Sidebar";
 
 interface FinanceLayoutUser {
@@ -37,10 +38,12 @@ const MainContent = styled.main<{ $hasSidebar: boolean }>`
 export default function FinanceLayout({ children, user }: FinanceLayoutProps) {
   return (
     <FinanceThemeProvider>
-      <LayoutContainer>
-        {user && <Sidebar user={user} />}
-        <MainContent $hasSidebar={!!user}>{children}</MainContent>
-      </LayoutContainer>
+      <NotificationProvider hasUser={!!user}>
+        <LayoutContainer>
+          {user && <Sidebar user={user} />}
+          <MainContent $hasSidebar={!!user}>{children}</MainContent>
+        </LayoutContainer>
+      </NotificationProvider>
     </FinanceThemeProvider>
   );
 }

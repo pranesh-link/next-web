@@ -13,6 +13,8 @@ import {
   leaveCouple as leaveCoupleService,
   renameCouple as renameCoupleService,
   disbandCouple as disbandCoupleService,
+  getPendingInvitesForUser as getPendingInvitesService,
+  declineInvite as declineInviteService,
 } from '@/_services/finance/couple-service';
 
 export async function getCouple() {
@@ -157,6 +159,32 @@ export async function disbandCoupleAction() {
     return { success: true as const, data: null };
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Failed to disband couple';
+    return { success: false as const, error: message };
+  }
+}
+
+export async function getMyPendingInvites() {
+  const user = await requireAuthForAction();
+  if (!user) return { success: false as const, error: 'Not authenticated' };
+
+  try {
+    const invites = await getPendingInvitesService(user.email!);
+    return { success: true as const, data: invites };
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Failed to get invites';
+    return { success: false as const, error: message };
+  }
+}
+
+export async function declineInviteAction(inviteId: string) {
+  const user = await requireAuthForAction();
+  if (!user) return { success: false as const, error: 'Not authenticated' };
+
+  try {
+    await declineInviteService(inviteId, user.email!);
+    return { success: true as const, data: null };
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Failed to decline invite';
     return { success: false as const, error: message };
   }
 }

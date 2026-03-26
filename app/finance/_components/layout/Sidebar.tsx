@@ -7,6 +7,7 @@ import { useState, useCallback } from "react";
 import { signOut } from "next-auth/react";
 import styled from "styled-components";
 import { useFinanceTheme } from "@/finance/_components/theme/FinanceThemeProvider";
+import { useNotifications } from "@/finance/_components/notifications/NotificationProvider";
 
 interface SidebarUser {
   name?: string;
@@ -84,6 +85,16 @@ const navItems = [
         <circle cx="9" cy="7" r="4" />
         <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
         <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </>
+    ),
+  },
+  {
+    label: "Notifications",
+    href: "/finance/notifications",
+    iconPath: (
+      <>
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
       </>
     ),
   },
@@ -237,6 +248,22 @@ const NavLinkLabel = styled.span<{ $visible: boolean }>`
   white-space: nowrap;
   opacity: ${(p) => (p.$visible ? 1 : 0)};
   transition: opacity 0.2s ${EASING};
+`;
+
+const NavBadge = styled.span`
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  margin-left: auto;
 `;
 
 const BottomSection = styled.div`
@@ -451,6 +478,7 @@ const ModalBtn = styled.button<{ $danger?: boolean }>`
 export default function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
   const { isDark, toggleTheme } = useFinanceTheme();
+  const { unreadCount } = useNotifications();
   const [expanded, setExpanded] = useState(false);
   const [showSignOut, setShowSignOut] = useState(false);
 
@@ -542,6 +570,9 @@ export default function Sidebar({ user }: SidebarProps) {
                   {item.iconPath}
                 </svg>
                 <NavLinkLabel $visible={expanded}>{item.label}</NavLinkLabel>
+                {item.label === "Notifications" && unreadCount > 0 && (
+                  <NavBadge>{unreadCount}</NavBadge>
+                )}
               </NavLink>
             );
           })}

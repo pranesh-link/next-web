@@ -78,6 +78,9 @@ model User {
   // Couple relations
   coupleMembers  CoupleMember[]
 
+  // Notification relations
+  notifications  Notification[]
+
   @@map("users")
 }
 
@@ -227,4 +230,21 @@ model CoupleInvite {
   couple    Couple   @relation(fields: [coupleId], references: [id], onDelete: Cascade)
 
   @@map("couple_invites")
+}
+
+// ─── Notification Models ────────────────────────────────────
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String   @default("COUPLE_INVITE")
+  featureId String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([featureId])
+  @@map("notifications")
 }
