@@ -1,4 +1,5 @@
 import prisma from '@/_lib/prisma';
+import { createNotification } from '@/_services/finance/notification-service';
 
 export async function createCouple(userId: string, name?: string) {
   const couple = await prisma.couple.create({
@@ -69,6 +70,12 @@ export async function invitePartner(
   const invite = await prisma.coupleInvite.create({
     data: { coupleId, email, invitedBy: invitedByUserId },
   });
+
+  // Create notification for the invited user if they have an account
+  const invitedUser = await prisma.user.findUnique({ where: { email } });
+  if (invitedUser) {
+    await createNotification(invitedUser.id, 'COUPLE_INVITE', invite.id);
+  }
 
   return invite;
 }
@@ -244,6 +251,41 @@ export async function disbandCouple(userId: string) {
 
   // Cascade deletes all CoupleMember and CoupleInvite records
   await prisma.couple.delete({ where: { id: membership.coupleId } });
+
+  return { success: true };
+}
+
+export async function getPendingInvitesForUser(email: string) {
+  return prisma.coupleInvite.findMany({
+    where: { email, status: 'PENDING' },
+    include: {
+      couple: {
+        include: {
+          members: {
+            include: {
+              user: { select: { id: true, name: true, image: true } },
+            },
+          },
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+}
+
+export async function declineInvite(inviteId: string, userEmail: string) {
+  const invite = await prisma.coupleInvite.findUnique({
+    where: { id: inviteId },
+  });
+
+  if (!invite) throw new Error('Invite not found');
+  if (invite.status !== 'PENDING') throw new Error('Invite is no longer pending');
+  if (invite.email !== userEmail) throw new Error('Not authorized to decline this invite');
+
+  await prisma.coupleInvite.update({
+    where: { id: inviteId },
+    data: { status: 'DECLINED' },
+  });
 
   return { success: true };
 }
