@@ -13,6 +13,7 @@ import {
   getMyUnreadCount,
   markNotificationRead,
   markAllNotificationsRead,
+  syncNotifications,
 } from "@/finance/_actions/notifications";
 
 type NotificationItem = NonNullable<
@@ -44,24 +45,43 @@ export function NotificationProvider({
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
+  const hasUserRef = useRef(hasUser);
+  const fetchingRef = useRef(false);
+  const syncedRef = useRef(false);
+
+  hasUserRef.current = hasUser;
 
   const refresh = useCallback(async () => {
-    if (!hasUser) return;
-    const [notifRes, countRes] = await Promise.all([
-      getMyNotifications(),
-      getMyUnreadCount(),
-    ]);
-    if (notifRes.success) setNotifications(notifRes.data ?? []);
-    if (countRes.success) setUnreadCount(countRes.data ?? 0);
-  }, [hasUser]);
+    if (!hasUserRef.current || fetchingRef.current) return;
+    fetchingRef.current = true;
+    try {
+      const [notifRes, countRes] = await Promise.all([
+        getMyNotifications(),
+        getMyUnreadCount(),
+      ]);
+      if (notifRes.success) setNotifications(notifRes.data ?? []);
+      if (countRes.success) setUnreadCount(countRes.data ?? 0);
+    } finally {
+      fetchingRef.current = false;
+    }
+  }, []);
 
   useEffect(() => {
-    refresh();
+    if (!hasUser) return;
+
+    // Backfill sync only once per session
+    if (!syncedRef.current) {
+      syncedRef.current = true;
+      syncNotifications().then(() => refresh());
+    } else {
+      refresh();
+    }
+
     intervalRef.current = setInterval(refresh, POLL_INTERVAL);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [refresh]);
+  }, [hasUser, refresh]);
 
   const markRead = useCallback(
     async (id: string) => {
