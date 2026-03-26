@@ -266,6 +266,46 @@ const NavBadge = styled.span`
   margin-left: auto;
 `;
 
+const IconBadgeDot = styled.span`
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  border: 2px solid var(--bg-elevated);
+  box-sizing: content-box;
+`;
+
+const IconWrapper = styled.span`
+  position: relative;
+  display: inline-flex;
+`;
+
+const HamburgerBadge = styled.span`
+  display: none;
+  @media (max-width: 768px) {
+    display: flex;
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: #ef4444;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 700;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    border: 2px solid var(--bg-elevated);
+    box-sizing: content-box;
+  }
+`;
+
 const BottomSection = styled.div`
   border-top: 1px solid var(--border);
   padding: 12px;
@@ -506,6 +546,9 @@ export default function Sidebar({ user }: SidebarProps) {
         onClick={() => setExpanded((v) => !v)}
         aria-label={expanded ? "Close sidebar" : "Open sidebar"}
       >
+        {!expanded && unreadCount > 0 && (
+          <HamburgerBadge>{unreadCount}</HamburgerBadge>
+        )}
         {expanded ? (
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -558,19 +601,36 @@ export default function Sidebar({ user }: SidebarProps) {
                 $active={active}
                 onClick={() => setExpanded(false)}
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  {item.iconPath}
-                </svg>
+                {item.label === "Notifications" && unreadCount > 0 ? (
+                  <IconWrapper>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      {item.iconPath}
+                    </svg>
+                    {!expanded && <IconBadgeDot />}
+                  </IconWrapper>
+                ) : (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    {item.iconPath}
+                  </svg>
+                )}
                 <NavLinkLabel $visible={expanded}>{item.label}</NavLinkLabel>
-                {item.label === "Notifications" && unreadCount > 0 && (
+                {item.label === "Notifications" && unreadCount > 0 && expanded && (
                   <NavBadge>{unreadCount}</NavBadge>
                 )}
               </NavLink>
