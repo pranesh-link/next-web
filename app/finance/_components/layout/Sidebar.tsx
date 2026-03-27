@@ -217,13 +217,14 @@ const LogoText = styled.span<{ $visible: boolean }>`
   transition: opacity 0.2s ${EASING};
 `;
 
-const Nav = styled.nav`
+const Nav = styled.nav<{ $disabled?: boolean }>`
   flex: 1;
   padding: 16px 8px;
   display: flex;
   flex-direction: column;
   gap: 4px;
   overflow-y: auto;
+  ${(p) => p.$disabled && `pointer-events: none; opacity: 0.5;`}
 `;
 
 const NavLink = styled(Link)<{ $active: boolean }>`
@@ -531,6 +532,7 @@ export default function Sidebar({ user }: SidebarProps) {
   const { unreadCount } = useNotifications();
   const [expanded, setExpanded] = useState(false);
   const [showSignOut, setShowSignOut] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   const isActive = useCallback(
     (href: string) => {
@@ -601,7 +603,7 @@ export default function Sidebar({ user }: SidebarProps) {
           <LogoText $visible={expanded}>Coupletastic</LogoText>
         </LogoArea>
 
-        <Nav>
+        <Nav $disabled={signingOut}>
           {navItems.map((item) => {
             const active = isActive(item.href);
             return (
@@ -711,7 +713,7 @@ export default function Sidebar({ user }: SidebarProps) {
             </UserArea>
           )}
 
-          <SignOutButton type="button" onClick={() => setShowSignOut(true)}>
+          <SignOutButton type="button" disabled={signingOut} onClick={() => setShowSignOut(true)}>
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
@@ -731,7 +733,7 @@ export default function Sidebar({ user }: SidebarProps) {
       </SidebarWrapper>
 
       {/* Sign-out confirmation modal */}
-      <ModalOverlay $open={showSignOut} onClick={() => setShowSignOut(false)}>
+      <ModalOverlay $open={showSignOut} onClick={() => !signingOut && setShowSignOut(false)}>
         <ModalCard onClick={(e) => e.stopPropagation()}>
           <ModalIcon>
             <svg
@@ -751,15 +753,19 @@ export default function Sidebar({ user }: SidebarProps) {
           <ModalTitle>Sign out?</ModalTitle>
           <ModalDesc>You&apos;ll need to sign in again to access your account.</ModalDesc>
           <ModalActions>
-            <ModalBtn type="button" onClick={() => setShowSignOut(false)}>
+            <ModalBtn type="button" disabled={signingOut} onClick={() => setShowSignOut(false)}>
               Cancel
             </ModalBtn>
             <ModalBtn
               type="button"
               $danger
-              onClick={() => signOut({ callbackUrl: "/finance/login" })}
+              disabled={signingOut}
+              onClick={() => {
+                setSigningOut(true);
+                signOut({ callbackUrl: "/finance/login" });
+              }}
             >
-              Sign Out
+              {signingOut ? "Signing out\u2026" : "Sign Out"}
             </ModalBtn>
           </ModalActions>
         </ModalCard>
