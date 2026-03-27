@@ -288,6 +288,12 @@ const DetailValue = styled.p<{ $color?: string }>`
   margin: 0;
 `;
 
+const EmiTooltip = styled.span`
+  margin-left: 6px;
+  cursor: help;
+  font-size: 14px;
+`;
+
 /* ── Progress Bar ── */
 
 const ProgressSection = styled.div`
@@ -1495,9 +1501,42 @@ export default function LoansPage() {
                         <DetailValue>{endDateStr}</DetailValue>
                       </DetailItem>
                       <DetailItem>
-                        <DetailLabel>EMI</DetailLabel>
+                        <DetailLabel>
+                          {(() => {
+                            const schedule = loan.schedule;
+                            if (!schedule || schedule.length < 2) return "EMI";
+                            const rows = schedule.length > 2 ? schedule.slice(0, -1) : schedule;
+                            const firstEmi = rows[0].emi;
+                            const isVarying = rows.some((r) => Math.abs(r.emi - firstEmi) > 1);
+                            return isVarying ? "Next EMI" : "EMI";
+                          })()}
+                        </DetailLabel>
                         <DetailValue $color="var(--accent-light)">
-                          {formatCurrency(loan.emiAmount)}
+                          {(() => {
+                            const schedule = loan.schedule;
+                            if (!schedule || schedule.length === 0) return formatCurrency(loan.emiAmount);
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            const nextEntry = schedule.find((e) => {
+                              const d = new Date(e.date);
+                              d.setHours(0, 0, 0, 0);
+                              return d.getTime() >= today.getTime();
+                            });
+                            return formatCurrency(nextEntry ? nextEntry.emi : loan.emiAmount);
+                          })()}
+                          {(() => {
+                            const schedule = loan.schedule;
+                            if (!schedule || schedule.length < 2) return null;
+                            const rows = schedule.length > 2 ? schedule.slice(0, -1) : schedule;
+                            const firstEmi = rows[0].emi;
+                            const isVarying = rows.some((r) => Math.abs(r.emi - firstEmi) > 1);
+                            if (!isVarying) return null;
+                            return (
+                              <EmiTooltip title="This loan has varying EMIs. The amount shown is your next scheduled payment.">
+                                ℹ️
+                              </EmiTooltip>
+                            );
+                          })()}
                         </DetailValue>
                       </DetailItem>
                     </DetailsGrid>

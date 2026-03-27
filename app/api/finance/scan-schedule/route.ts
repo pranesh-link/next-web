@@ -61,7 +61,7 @@ Rules:
 - startDate: first EMI payment date in YYYY-MM-DD format, or empty string
 - remainingBalance: find the MOST RECENT EMI row whose date is on or before today (${today}). Return the closing/outstanding principal balance from that row. If no rows on or before today, return 0.
 - prepayments: array of any part-payment, prepayment, or principal adjustment rows found in the schedule — rows where principal paid is significantly larger than a normal EMI principal. Each entry: {"date": "YYYY-MM-DD", "amount": 0.00, "balanceAfter": 0.00}. Return [] if none found.
-- schedule: always return an empty array []. Do NOT populate individual EMI rows.
+- schedule: always return an empty array []. Do NOT populate individual EMI rows — use rawScheduleText instead.
 - confidence: integer 1-100 reflecting how clearly you could read the document
 - Return ONLY valid JSON, absolutely no other text`;
 }
@@ -218,8 +218,39 @@ function getMostRecentScheduleRow(schedule: ScheduleRow[], today: Date): Schedul
 }
 
 /**
- * When schedule rows are not extracted (Phase 1 metadata-only mode), parse
- * the pipe-separated rawScheduleText to find the correct remaining balance.
+ * Parse pipe-separated rawScheduleText into structured ScheduleRow[].
+ * Format per line: month|YYYY-MM-DD|emi|principal|interest|balance
+ */
+function parseRawScheduleToRows(raw: string): ScheduleRow[] {
+  const rows: ScheduleRow[] = [];
+
+  for (const line of raw.split("\n")) {
+    const parts = line.trim().split("|");
+    if (parts.length < 6) continue;
+    const date = parts[1].trim();
+    if (!parseIsoDate(date)) continue;
+    const emi = parseFloat(parts[2].replace(/,/g, ""));
+    const principal = parseFloat(parts[3].replace(/,/g, ""));
+    const interest = parseFloat(parts[4].replace(/,/g, ""));
+    const balance = parseFloat(parts[5].replace(/,/g, ""));
+    if (!Number.isFinite(emi) && !Number.isFinite(principal)) continue;
+
+    rows.push({
+      month: rows.length + 1,
+      date,
+      emi: Number.isFinite(emi) ? Math.max(0, Math.round(emi)) : 0,
+      principal: Number.isFinite(principal) ? Math.max(0, Math.round(principal)) : 0,
+      interest: Number.isFinite(interest) ? Math.max(0, Math.round(interest)) : 0,
+      balance: Number.isFinite(balance) ? Math.max(0, Math.round(balance)) : 0,
+    });
+  }
+
+  return rows;
+}
+
+/**
+ * When schedule rows are not extracted, parse the pipe-separated rawScheduleText
+ * to find the correct remaining balance.
  * Format per line: month|YYYY-MM-DD|emi|principal|interest|balance
  */
 function getRemainingBalanceFromRawText(raw: string, today: Date): number | null {
@@ -246,16 +277,20 @@ function normalizeScheduleData(parsed: ScheduleData): ScheduleData {
   const today = startOfToday();
   const schedule = normalizeScheduleRows(parsed.schedule);
   const prepayments = normalizePrepayments(parsed.prepayments);
-  const firstRow = schedule[0];
-  const latestDueRow = getMostRecentScheduleRow(schedule, today);
-  const firstRowDate = firstRow ? parseIsoDate(firstRow.date) : null;
-  const principalFromFirstRow = firstRow ? roundMoney(firstRow.principal + firstRow.balance) : 0;
 
-  // When schedule rows aren't extracted, derive remaining balance directly from
-  // the raw text dump — this prevents Gemini from confusing prepayment balances
-  // with the actual EMI schedule balance.
+  // When Gemini returns rawScheduleText but no schedule rows, parse the raw text into structured rows
   const rawText = typeof parsed.rawScheduleText === "string" ? parsed.rawScheduleText.trim() : "";
-  const balanceFromRawText = (schedule.length === 0 && rawText)
+
+  // When Gemini returns rawScheduleText but no schedule rows, parse the raw text into structured rows
+  const effectiveSchedule = schedule.length === 0 && rawText
+    ? normalizeScheduleRows(parseRawScheduleToRows(rawText))
+    : schedule;
+  const effectiveFirstRow = effectiveSchedule[0];
+  const effectiveLatestDueRow = getMostRecentScheduleRow(effectiveSchedule, today);
+  const effectiveFirstRowDate = effectiveFirstRow ? parseIsoDate(effectiveFirstRow.date) : null;
+  const principalFromParsedSchedule = effectiveFirstRow ? roundMoney(effectiveFirstRow.principal + effectiveFirstRow.balance) : 0;
+
+  const balanceFromRawText = (effectiveSchedule.length === 0 && rawText)
     ? getRemainingBalanceFromRawText(rawText, today)
     : null;
 
@@ -265,24 +300,24 @@ function normalizeScheduleData(parsed: ScheduleData): ScheduleData {
     loanAccountNumber: parsed.loanAccountNumber?.trim() || null,
     scheduleGeneratedOn: parsed.scheduleGeneratedOn?.trim() || null,
     rawScheduleText: rawText || undefined,
-    principal: principalFromFirstRow || Math.max(0, roundMoney(parsed.principal || 0)),
+    principal: principalFromParsedSchedule || Math.max(0, roundMoney(parsed.principal || 0)),
     interestRate: Math.max(0, parsed.interestRate || 0),
-    tenureMonths: schedule.length || Math.max(0, Math.trunc(parsed.tenureMonths || 0)),
-    emiAmount: schedule.length > 0
-      ? getRegularEmiAmount(schedule)
+    tenureMonths: effectiveSchedule.length || Math.max(0, Math.trunc(parsed.tenureMonths || 0)),
+    emiAmount: effectiveSchedule.length > 0
+      ? getRegularEmiAmount(effectiveSchedule)
       : Math.max(0, roundMoney(parsed.emiAmount || 0)),
-    startDate: firstRowDate ? firstRow.date : (parsed.startDate || ""),
-    remainingBalance: latestDueRow
-      ? latestDueRow.balance
+    startDate: effectiveFirstRowDate ? effectiveFirstRow.date : (parsed.startDate || ""),
+    remainingBalance: effectiveLatestDueRow
+      ? effectiveLatestDueRow.balance
       : balanceFromRawText ?? Math.max(0, roundMoney(parsed.remainingBalance || 0)),
-    totalScheduleRows: schedule.length,
+    totalScheduleRows: effectiveSchedule.length,
     prepayments,
-    schedule,
-    emisPaid: latestDueRow ? schedule.findIndex((row) => row.month === latestDueRow.month) + 1 : parsed.emisPaid,
+    schedule: effectiveSchedule,
+    emisPaid: effectiveLatestDueRow ? effectiveSchedule.findIndex((row) => row.month === effectiveLatestDueRow.month) + 1 : parsed.emisPaid,
     confidence: clamp(Math.round(parsed.confidence || 0), 1, 100),
   };
 
-  if (schedule.length === 0 && normalized.startDate) {
+  if (effectiveSchedule.length === 0 && normalized.startDate) {
     const start = parseIsoDate(normalized.startDate);
     if (start) {
       const monthsElapsed = Math.max(
@@ -451,27 +486,25 @@ export async function POST(req: NextRequest) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("[scan-schedule] Gemini JS error:", msg);
 
-      // Fall through to Python service if available
-      if (!SCAN_SERVICE_URL) {
-        const isTimeout = msg.includes("timed out");
-        const isEmpty = msg.includes("empty response");
-        const isTooLarge = msg.includes("too large") || msg.includes("truncated");
-        const isQuotaExceeded = msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED") || msg.includes("quota");
-        return NextResponse.json(
-          {
-            error: isTimeout
-              ? "Document took too long to process. Try a shorter schedule or upload a PDF."
-              : isTooLarge
-              ? "Schedule is too long to process in one pass. Try uploading a PDF with fewer pages."
-              : isQuotaExceeded
-              ? "AI service is temporarily unavailable (rate limit). Please try again in a minute."
-              : isEmpty
-              ? "Could not read this document. Try uploading a clearer copy or a different file."
-              : `Could not parse the document. ${msg.includes("Response started with:") ? msg.split("Response started with:")[1]?.trim().slice(0, 80) : "Try a different file or clearer scan."}`,
-          },
-          { status: isTimeout ? 504 : isQuotaExceeded ? 503 : 422 }
-        );
-      }
+      const isTimeout = msg.includes("timed out");
+      const isEmpty = msg.includes("empty response");
+      const isTooLarge = msg.includes("too large") || msg.includes("truncated");
+      const isQuotaExceeded = msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED") || msg.includes("quota");
+      return NextResponse.json(
+        {
+          error: isTimeout
+            ? "Document took too long to process. Try a shorter schedule or upload a PDF."
+            : isTooLarge
+            ? "Schedule is too long to process in one pass. Try uploading a PDF with fewer pages."
+            : isQuotaExceeded
+            ? "AI service is temporarily unavailable (rate limit). Please try again in a minute."
+            : isEmpty
+            ? "Could not read this document. Try uploading a clearer copy or a different file."
+            : `Could not parse the document. ${msg.includes("Response started with:") ? msg.split("Response started with:")[1]?.trim().slice(0, 80) : "Try a different file or clearer scan."}`,
+          geminiError: msg,
+        },
+        { status: isTimeout ? 504 : isQuotaExceeded ? 503 : 422 }
+      );
     }
   }
 
