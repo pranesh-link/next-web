@@ -12,12 +12,14 @@ import {
   FinanceErrorText,
 } from "@/finance/_components/theme/styled-primitives";
 
-const ACCOUNT_TYPES = ["BANK", "CASH", "CREDIT_CARD"] as const;
+const ACCOUNT_TYPES = ["SAVINGS_ACCOUNT", "CREDIT_ACCOUNT", "CREDIT_CARD", "RECURRING_DEPOSIT", "FIXED_DEPOSIT"] as const;
 
 const ACCOUNT_TYPE_LABELS: Record<(typeof ACCOUNT_TYPES)[number], string> = {
-  BANK: "Bank Account",
-  CASH: "Cash",
+  SAVINGS_ACCOUNT: "Savings Account",
+  CREDIT_ACCOUNT: "Credit Account",
   CREDIT_CARD: "Credit Card",
+  RECURRING_DEPOSIT: "Recurring Deposit",
+  FIXED_DEPOSIT: "Fixed Deposit",
 };
 
 const accountSchema = z.object({
@@ -76,7 +78,7 @@ export default function AccountForm({
 }: AccountFormProps) {
   const [form, setForm] = useState<AccountData>({
     name: initialData?.name ?? "",
-    type: initialData?.type ?? "BANK",
+    type: initialData?.type ?? "SAVINGS_ACCOUNT",
     balance: initialData?.balance ?? 0,
   });
 

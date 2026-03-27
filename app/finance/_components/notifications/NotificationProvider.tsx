@@ -14,6 +14,7 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
   syncNotifications,
+  syncIncomeReminderAction,
 } from "@/finance/_actions/notifications";
 
 type NotificationItem = NonNullable<
@@ -29,6 +30,8 @@ interface NotificationContextValue {
   refresh: () => Promise<void>;
   markRead: (id: string) => Promise<void>;
   markAllRead: () => Promise<void>;
+  incomePopup: { month: string } | null;
+  dismissIncomePopup: () => void;
 }
 
 const NotificationContext = createContext<NotificationContextValue | null>(null);
@@ -44,6 +47,7 @@ export function NotificationProvider({
 }) {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [incomePopup, setIncomePopup] = useState<{ month: string } | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
   const hasUserRef = useRef(hasUser);
   const fetchingRef = useRef(false);
@@ -72,7 +76,15 @@ export function NotificationProvider({
     // Backfill sync only once per session
     if (!syncedRef.current) {
       syncedRef.current = true;
-      syncNotifications().then(() => refresh());
+      Promise.all([
+        syncNotifications(),
+        syncIncomeReminderAction(),
+      ]).then(async ([, incomeRes]) => {
+        if (incomeRes.success && incomeRes.data?.unread) {
+          setIncomePopup({ month: incomeRes.data.month });
+        }
+        await refresh();
+      });
     } else {
       refresh();
     }
@@ -100,9 +112,13 @@ export function NotificationProvider({
     setUnreadCount(0);
   }, []);
 
+  const dismissIncomePopup = useCallback(() => {
+    setIncomePopup(null);
+  }, []);
+
   return (
     <NotificationContext.Provider
-      value={{ notifications, unreadCount, refresh, markRead, markAllRead }}
+      value={{ notifications, unreadCount, refresh, markRead, markAllRead, incomePopup, dismissIncomePopup }}
     >
       {children}
     </NotificationContext.Provider>

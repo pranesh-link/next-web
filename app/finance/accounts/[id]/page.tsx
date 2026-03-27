@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import styled, { keyframes } from "styled-components";
+import ReactSelect, { StylesConfig } from "react-select";
 import {
   getAccount,
   updateAccountBalance,
@@ -66,18 +67,22 @@ function formatDateTime(d: string | Date): string {
 
 function typeIcon(type: string): string {
   switch (type) {
-    case "BANK": return "🏦";
-    case "CASH": return "💵";
+    case "SAVINGS_ACCOUNT": return "🏦";
+    case "CREDIT_ACCOUNT": return "🏧";
     case "CREDIT_CARD": return "💳";
+    case "RECURRING_DEPOSIT": return "🔄";
+    case "FIXED_DEPOSIT": return "🔒";
     default: return "💰";
   }
 }
 
 function typeLabel(type: string): string {
   switch (type) {
-    case "BANK": return "Bank";
-    case "CASH": return "Cash";
+    case "SAVINGS_ACCOUNT": return "Savings Account";
+    case "CREDIT_ACCOUNT": return "Credit Account";
     case "CREDIT_CARD": return "Credit Card";
+    case "RECURRING_DEPOSIT": return "Recurring Deposit";
+    case "FIXED_DEPOSIT": return "Fixed Deposit";
     default: return type;
   }
 }
@@ -434,23 +439,56 @@ const Label = styled.label`
   margin-bottom: 6px;
 `;
 
-const Select = styled.select`
-  width: 100%;
-  padding: 10px 14px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
-  font-family: inherit;
-  font-size: 14px;
-  cursor: pointer;
-  box-sizing: border-box;
+type SelectOption = { value: string; label: string };
 
-  &:focus {
-    outline: none;
-    border-color: var(--accent);
-  }
-`;
+const selectStyles: StylesConfig<SelectOption, false> = {
+  control: (base, state) => ({
+    ...base,
+    borderRadius: 8,
+    border: `1px solid ${state.isFocused ? "#3b82f6" : "rgba(0,0,0,0.10)"}`,
+    background: "#f8fafc",
+    fontFamily: "inherit",
+    fontSize: 14,
+    boxShadow: "none",
+    minHeight: 42,
+    cursor: "pointer",
+    "&:hover": { borderColor: "#3b82f6" },
+  }),
+  singleValue: (base) => ({ ...base, color: "#1a1a2e" }),
+  menu: (base) => ({
+    ...base,
+    background: "#ffffff",
+    border: "1px solid rgba(0,0,0,0.10)",
+    borderRadius: 8,
+    zIndex: 9999,
+    boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+  }),
+  option: (base, state) => ({
+    ...base,
+    fontSize: 14,
+    cursor: "pointer",
+    background: state.isSelected
+      ? "#3b82f6"
+      : state.isFocused
+        ? "rgba(0,0,0,0.03)"
+        : "transparent",
+    color: state.isSelected ? "#fff" : "#1a1a2e",
+    "&:active": { background: "rgba(0,0,0,0.03)" },
+  }),
+  indicatorSeparator: () => ({ display: "none" }),
+  dropdownIndicator: (base) => ({ ...base, color: "#94a3b8", padding: "0 8px" }),
+  placeholder: (base) => ({ ...base, color: "#94a3b8" }),
+  input: (base) => ({ ...base, color: "#1a1a2e" }),
+  menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+};
+
+const accountTypeOptions: SelectOption[] = [
+  { value: "SAVINGS_ACCOUNT", label: "🏦 Savings Account" },
+  { value: "CREDIT_ACCOUNT", label: "🏧 Credit Account" },
+  { value: "CREDIT_CARD", label: "💳 Credit Card" },
+  { value: "RECURRING_DEPOSIT", label: "🔄 Recurring Deposit" },
+  { value: "FIXED_DEPOSIT", label: "🔒 Fixed Deposit" },
+];
 
 const ModalInput = styled.input`
   width: 100%;
@@ -858,11 +896,15 @@ export default function AccountDetailPage() {
         </FormGroup>
         <FormGroup>
           <Label>Account Type</Label>
-          <Select value={editType} onChange={(e) => setEditType(e.target.value)}>
-            <option value="BANK">🏦 Bank</option>
-            <option value="CASH">💵 Cash</option>
-            <option value="CREDIT_CARD">💳 Credit Card</option>
-          </Select>
+          <ReactSelect<SelectOption>
+            options={accountTypeOptions}
+            value={accountTypeOptions.find((o) => o.value === editType)}
+            onChange={(opt) => setEditType(opt?.value ?? "SAVINGS_ACCOUNT")}
+            styles={selectStyles}
+            isSearchable={false}
+            menuPortalTarget={typeof document !== "undefined" ? document.body : null}
+            menuPosition="fixed"
+          />
         </FormGroup>
         {editError && <ErrorText>{editError}</ErrorText>}
         <ModalActions>
