@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState, useCallback, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import styled, { keyframes } from "styled-components";
+import ReactSelect, { StylesConfig } from "react-select";
 import {
   getAccounts,
   createAccount,
@@ -12,6 +13,7 @@ import FinanceHeader from "@/finance/_components/layout/FinanceHeader";
 import Modal from "@/finance/_components/shared/Modal";
 import EmptyState from "@/finance/_components/shared/EmptyState";
 import LoadingSkeleton from "@/finance/_components/shared/LoadingSkeleton";
+import AddIncomeModal from "@/finance/_components/shared/AddIncomeModal";
 
 /* ── Types ──────────────────────────────────────────── */
 
@@ -20,6 +22,7 @@ type Account = {
   name: string;
   type: string;
   balance: number;
+  isSalaryAccount: boolean;
   createdAt: string | Date;
   updatedAt: string | Date;
 };
@@ -48,18 +51,22 @@ function formatDate(d: string | Date): string {
 
 function typeIcon(type: string): string {
   switch (type) {
-    case "BANK": return "🏦";
-    case "CASH": return "💵";
+    case "SAVINGS_ACCOUNT": return "🏦";
+    case "CREDIT_ACCOUNT": return "🏧";
     case "CREDIT_CARD": return "💳";
+    case "RECURRING_DEPOSIT": return "🔄";
+    case "FIXED_DEPOSIT": return "🔒";
     default: return "💰";
   }
 }
 
 function typeLabel(type: string): string {
   switch (type) {
-    case "BANK": return "Bank";
-    case "CASH": return "Cash";
+    case "SAVINGS_ACCOUNT": return "Savings Account";
+    case "CREDIT_ACCOUNT": return "Credit Account";
     case "CREDIT_CARD": return "Credit Card";
+    case "RECURRING_DEPOSIT": return "Recurring Deposit";
+    case "FIXED_DEPOSIT": return "Fixed Deposit";
     default: return type;
   }
 }
@@ -289,21 +296,64 @@ const Label = styled.label`
   margin-bottom: 6px;
 `;
 
-const Select = styled.select`
-  width: 100%;
+type SelectOption = { value: string; label: string };
+
+const selectStyles: StylesConfig<SelectOption, false> = {
+  control: (base, state) => ({
+    ...base,
+    borderRadius: 8,
+    border: `1px solid ${state.isFocused ? "#3b82f6" : "rgba(0,0,0,0.10)"}`,
+    background: "#f8fafc",
+    fontFamily: "inherit",
+    fontSize: 14,
+    boxShadow: "none",
+    minHeight: 42,
+    cursor: "pointer",
+    "&:hover": { borderColor: "#3b82f6" },
+  }),
+  singleValue: (base) => ({ ...base, color: "#1a1a2e" }),
+  menu: (base) => ({
+    ...base,
+    background: "#ffffff",
+    border: "1px solid rgba(0,0,0,0.10)",
+    borderRadius: 8,
+    zIndex: 9999,
+    boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+  }),
+  option: (base, state) => ({
+    ...base,
+    fontSize: 14,
+    cursor: "pointer",
+    background: state.isSelected
+      ? "#3b82f6"
+      : state.isFocused
+        ? "rgba(0,0,0,0.03)"
+        : "transparent",
+    color: state.isSelected ? "#fff" : "#1a1a2e",
+    "&:active": { background: "rgba(0,0,0,0.03)" },
+  }),
+  indicatorSeparator: () => ({ display: "none" }),
+  dropdownIndicator: (base) => ({ ...base, color: "#94a3b8", padding: "0 8px" }),
+  placeholder: (base) => ({ ...base, color: "#94a3b8" }),
+  input: (base) => ({ ...base, color: "#1a1a2e" }),
+  menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+};
+
+const accountTypeOptions: SelectOption[] = [
+  { value: "SAVINGS_ACCOUNT", label: "🏦 Savings Account" },
+];
+
+const TypeDisplay = styled.div`
+  min-height: 42px;
   padding: 10px 14px;
   border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  background: #f8fafc;
+  color: #1a1a2e;
   font-family: inherit;
   font-size: 14px;
-  cursor: pointer;
-
-  &:focus {
-    outline: none;
-    border-color: var(--accent);
-  }
+  display: flex;
+  align-items: center;
 `;
 
 const ModalInput = styled.input`
@@ -358,20 +408,57 @@ const ModalButton = styled.button<{ $primary?: boolean }>`
   }
 `;
 
+const CheckboxRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+`;
+
+const CheckboxLabel = styled.label`
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+`;
+
+const WarningAlert = styled.div`
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  color: #b45309;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 16px;
+`;
+
+const SalaryBadge = styled.span`
+  font-size: 10px;
+  font-weight: 600;
+  color: #b45309;
+  background: rgba(251, 191, 36, 0.15);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+`;
+
 /* ── Component ──────────────────────────────────────── */
 
-export default function AccountsPage() {
+function AccountsPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [totalBalance, setTotalBalance] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  const [showAddIncome, setShowAddIncome] = useState(false);
 
   // Create form
   const [newName, setNewName] = useState("");
-  const [newType, setNewType] = useState("BANK");
+  const [newType, setNewType] = useState("SAVINGS_ACCOUNT");
   const [newBalance, setNewBalance] = useState("");
+  const [newIsSalary, setNewIsSalary] = useState(false);
   const [createError, setCreateError] = useState("");
 
   // Notification
@@ -403,6 +490,14 @@ export default function AccountsPage() {
     fetchData();
   }, [fetchData]);
 
+  useEffect(() => {
+    if (searchParams.get("addIncome") === "true" && !loading && accounts.length > 0) {
+      setShowAddIncome(true);
+    }
+  }, [searchParams, loading, accounts.length]);
+
+  const existingSalaryAccount = accounts.find((a) => a.isSalaryAccount);
+
   const handleCreate = async () => {
     setSaving(true);
     setCreateError("");
@@ -410,13 +505,15 @@ export default function AccountsPage() {
       name: newName.trim(),
       type: newType,
       balance: parseFloat(newBalance) || 0,
+      isSalaryAccount: newIsSalary,
     });
     if (res.success) {
       notify("Account created!", "success");
       setShowCreate(false);
       setNewName("");
-      setNewType("BANK");
+      setNewType("SAVINGS_ACCOUNT");
       setNewBalance("");
+      setNewIsSalary(false);
       await fetchData();
     } else {
       setCreateError(res.error);
@@ -452,7 +549,10 @@ export default function AccountsPage() {
             <TotalLabel>Total Balance</TotalLabel>
             <TotalAmount>{formatCurrency(totalBalance)}</TotalAmount>
           </div>
-          <AddButton onClick={() => setShowCreate(true)}>+ Add Account</AddButton>
+          <AddButton onClick={() => {
+            setShowCreate(true);
+            setNewIsSalary(!existingSalaryAccount);
+          }}>+ Add Account</AddButton>
         </TotalBar>
 
         {/* ── Account Cards ── */}
@@ -460,7 +560,7 @@ export default function AccountsPage() {
           <EmptyState
             icon="🏦"
             title="No accounts yet"
-            description="Add your first bank account, cash wallet, or credit card to start tracking balances."
+            description="Add your first savings account to start tracking balances."
           />
         ) : (
           <CardGrid>
@@ -472,12 +572,12 @@ export default function AccountsPage() {
                 <CardHeader>
                   <CardIcon>{typeIcon(acc.type)}</CardIcon>
                   <CardInfo>
-                    <CardName>{acc.name}</CardName>
+                    <CardName>{acc.name}{acc.isSalaryAccount && <SalaryBadge>Salary</SalaryBadge>}</CardName>
                     <CardType>{typeLabel(acc.type)}</CardType>
                   </CardInfo>
                   <div>
                     <CardBalance>{formatCurrency(acc.balance)}</CardBalance>
-                    <CardUpdated>{formatDate(acc.updatedAt)}</CardUpdated>
+                    <CardUpdated>on {formatDate(acc.updatedAt)}</CardUpdated>
                   </div>
                   <CardChevron>›</CardChevron>
                 </CardHeader>
@@ -493,6 +593,7 @@ export default function AccountsPage() {
         onClose={() => {
           setShowCreate(false);
           setCreateError("");
+          setNewIsSalary(false);
         }}
         title="Add Account"
         size="sm"
@@ -507,11 +608,19 @@ export default function AccountsPage() {
         </FormGroup>
         <FormGroup>
           <Label>Account Type</Label>
-          <Select value={newType} onChange={(e) => setNewType(e.target.value)}>
-            <option value="BANK">🏦 Bank</option>
-            <option value="CASH">💵 Cash</option>
-            <option value="CREDIT_CARD">💳 Credit Card</option>
-          </Select>
+          {accountTypeOptions.length === 1 ? (
+            <TypeDisplay>{accountTypeOptions[0].label}</TypeDisplay>
+          ) : (
+            <ReactSelect<SelectOption>
+              options={accountTypeOptions}
+              value={accountTypeOptions.find((o) => o.value === newType)}
+              onChange={(opt) => setNewType(opt?.value ?? "SAVINGS_ACCOUNT")}
+              styles={selectStyles}
+              isSearchable={false}
+              menuPortalTarget={typeof document !== "undefined" ? document.body : null}
+              menuPosition="fixed"
+            />
+          )}
         </FormGroup>
         <FormGroup>
           <Label>Opening Balance</Label>
@@ -522,12 +631,27 @@ export default function AccountsPage() {
             onChange={(e) => setNewBalance(e.target.value)}
           />
         </FormGroup>
+        <CheckboxRow>
+          <input
+            type="checkbox"
+            id="isSalary"
+            checked={newIsSalary}
+            onChange={(e) => setNewIsSalary(e.target.checked)}
+          />
+          <CheckboxLabel htmlFor="isSalary">Set as salary account?</CheckboxLabel>
+        </CheckboxRow>
+        {newIsSalary && existingSalaryAccount && (
+          <WarningAlert>
+            ⚠️ <strong>{existingSalaryAccount.name}</strong> is currently your salary account. Creating this as salary account will replace it.
+          </WarningAlert>
+        )}
         {createError && <ErrorText>{createError}</ErrorText>}
         <ModalActions>
           <ModalButton
             onClick={() => {
               setShowCreate(false);
               setCreateError("");
+              setNewIsSalary(false);
             }}
           >
             Cancel
@@ -541,6 +665,26 @@ export default function AccountsPage() {
           </ModalButton>
         </ModalActions>
       </Modal>
+
+      <AddIncomeModal
+        isOpen={showAddIncome}
+        onClose={() => setShowAddIncome(false)}
+        accounts={accounts}
+        month={searchParams.get("month") || undefined}
+        onSuccess={() => {
+          setShowAddIncome(false);
+          fetchData();
+          notify("Income recorded!", "success");
+        }}
+      />
     </PageWrapper>
+  );
+}
+
+export default function AccountsPage() {
+  return (
+    <Suspense fallback={<div />}>
+      <AccountsPageContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/_lib/prisma";
+import { AccountType } from "@prisma/client";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { accountSchema } from "@/_lib/validations/finance";
 import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
@@ -52,7 +53,7 @@ export async function getAccount(id: string) {
 }
 
 export async function createAccount(
-  formData: FormData | { name: string; type: string; balance: number },
+  formData: FormData | { name: string; type: string; balance: number; isSalaryAccount?: boolean },
 ) {
   try {
     const user = await requireAuthForAction();
@@ -67,18 +68,34 @@ export async function createAccount(
           }
         : formData;
 
+    const isSalaryAccount =
+      formData instanceof FormData
+        ? formData.get("isSalaryAccount") === "true"
+        : formData.isSalaryAccount === true;
+
     const validated = accountSchema.parse(raw);
 
     const coupleId = await getCoupleIdForUser(user.id);
+    const coupleUserIds = await getUserIdsForCouple(user.id);
 
-    const account = await prisma.financialAccount.create({
-      data: {
-        userId: user.id,
-        name: validated.name,
-        type: validated.type,
-        balance: validated.balance,
-        ...(coupleId ? { coupleId } : {}),
-      },
+    const account = await prisma.$transaction(async (tx) => {
+      if (isSalaryAccount) {
+        await tx.financialAccount.updateMany({
+          where: { userId: { in: coupleUserIds }, isSalaryAccount: true },
+          data: { isSalaryAccount: false },
+        });
+      }
+
+      return tx.financialAccount.create({
+        data: {
+          userId: user.id,
+          name: validated.name,
+          type: validated.type as AccountType,
+          balance: validated.balance,
+          isSalaryAccount,
+          ...(coupleId ? { coupleId } : {}),
+        },
+      });
     });
 
     if (validated.balance !== 0) {
@@ -126,7 +143,7 @@ export async function updateAccount(
       where: { id },
       data: {
         name: validated.name,
-        type: validated.type,
+        type: validated.type as AccountType,
         balance: validated.balance,
       },
     });
@@ -259,6 +276,42 @@ export async function getAccountBalanceHistory(accountId: string, cursor?: strin
     return {
       success: false as const,
       error: error instanceof Error ? error.message : "Failed to fetch balance history",
+    };
+  }
+}
+
+export async function setSalaryAccount(accountId: string) {
+  try {
+    const user = await requireAuthForAction();
+    if (!user) return { success: false as const, error: "Not authenticated" };
+
+    const coupleUserIds = await getUserIdsForCouple(user.id);
+
+    const existing = await prisma.financialAccount.findFirst({
+      where: { id: accountId, userId: { in: coupleUserIds } },
+    });
+
+    if (!existing) {
+      return { success: false as const, error: "Account not found" };
+    }
+
+    const updatedAccount = await prisma.$transaction(async (tx) => {
+      await tx.financialAccount.updateMany({
+        where: { userId: { in: coupleUserIds }, isSalaryAccount: true },
+        data: { isSalaryAccount: false },
+      });
+
+      return tx.financialAccount.update({
+        where: { id: accountId },
+        data: { isSalaryAccount: true },
+      });
+    });
+
+    return { success: true as const, data: updatedAccount };
+  } catch (error) {
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : "Failed to set salary account",
     };
   }
 }

@@ -85,14 +85,15 @@ model User {
 }
 
 model FinancialAccount {
-  id        String   @id @default(uuid())
-  userId    String
-  name      String
-  type      AccountType
-  balance   Float    @default(0)
-  coupleId  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(uuid())
+  userId          String
+  name            String
+  type            AccountType
+  balance         Float    @default(0)
+  isSalaryAccount Boolean  @default(false)
+  coupleId        String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions   Transaction[]
@@ -120,9 +121,11 @@ model BalanceHistory {
 }
 
 enum AccountType {
-  BANK
-  CASH
+  SAVINGS_ACCOUNT
+  CREDIT_ACCOUNT
   CREDIT_CARD
+  RECURRING_DEPOSIT
+  FIXED_DEPOSIT
 }
 
 model Transaction {

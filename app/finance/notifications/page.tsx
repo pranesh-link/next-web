@@ -108,6 +108,8 @@ const IconCircle = styled.div<{ $type: string }>`
   background: ${(p) =>
     p.$type === "COUPLE_INVITE"
       ? "rgba(59, 130, 246, 0.12)"
+      : p.$type === "INCOME_REMINDER"
+      ? "rgba(251, 191, 36, 0.15)"
       : "var(--surface)"};
 `;
 
@@ -310,6 +312,19 @@ export default function NotificationsPage() {
         inviteId: detail?.id,
       };
     }
+    if (notif.type === "INCOME_REMINDER" && notif.featureId) {
+      const [year, monthNum] = notif.featureId.split("-");
+      const monthName = new Date(Number(year), Number(monthNum) - 1).toLocaleString("en-US", { month: "long", year: "numeric" });
+      return {
+        icon: "💰",
+        title: `Record your income for ${monthName}`,
+        meta: "Income reminder",
+        hasActions: false,
+        token: undefined,
+        inviteId: undefined,
+        linkTo: "/finance/accounts?addIncome=true",
+      };
+    }
     return {
       icon: "🔔",
       title: "New notification",
@@ -400,6 +415,21 @@ export default function NotificationsPage() {
                           }}
                         >
                           {processingId === notif.id ? "Accepting…" : "Accept"}
+                        </ActionButton>
+                      </ActionRow>
+                    )}
+
+                    {"linkTo" in content && content.linkTo && (
+                      <ActionRow>
+                        <ActionButton
+                          $variant="accept"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            markRead(notif.id);
+                            router.push(content.linkTo as string);
+                          }}
+                        >
+                          Add Income
                         </ActionButton>
                       </ActionRow>
                     )}

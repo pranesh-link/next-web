@@ -7,6 +7,7 @@ import {
   markAsRead,
   markAllAsRead,
   syncMissingInviteNotifications,
+  syncIncomeReminder as syncIncomeReminderService,
 } from '@/_services/finance/notification-service';
 
 export async function getMyNotifications() {
@@ -72,6 +73,19 @@ export async function markAllNotificationsRead() {
     return { success: true as const, data: null };
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Failed to mark all as read';
+    return { success: false as const, error: message };
+  }
+}
+
+export async function syncIncomeReminderAction() {
+  const user = await requireAuthForAction();
+  if (!user) return { success: false as const, error: 'Not authenticated' };
+
+  try {
+    const result = await syncIncomeReminderService(user.id);
+    return { success: true as const, data: result };
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Failed to sync income reminder';
     return { success: false as const, error: message };
   }
 }

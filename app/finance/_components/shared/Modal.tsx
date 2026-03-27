@@ -53,6 +53,7 @@ const Content = styled.div<{ $maxWidth: string }>`
   max-height: 85vh;
   display: flex;
   flex-direction: column;
+  min-width: 0;
   animation: ${scaleIn} 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 `;
 
@@ -63,6 +64,10 @@ const Header = styled.div`
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
+
+  @media (max-width: 480px) {
+    padding: 20px 16px;
+  }
 `;
 
 const Title = styled.h2`
@@ -96,8 +101,14 @@ const CloseButton = styled.button`
 const Body = styled.div`
   padding: 28px;
   overflow-y: auto;
+  overflow-x: hidden;
   flex: 1;
   min-height: 0;
+  min-width: 0;
+
+  @media (max-width: 480px) {
+    padding: 20px 16px;
+  }
 
   &::-webkit-scrollbar {
     width: 6px;

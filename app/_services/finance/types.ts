@@ -10,7 +10,7 @@ export interface TransactionData {
 export interface AccountData {
   id: string;
   name: string;
-  type: 'BANK' | 'CASH' | 'CREDIT_CARD';
+  type: 'SAVINGS_ACCOUNT' | 'CREDIT_ACCOUNT' | 'CREDIT_CARD' | 'RECURRING_DEPOSIT' | 'FIXED_DEPOSIT';
   balance: number;
 }
 

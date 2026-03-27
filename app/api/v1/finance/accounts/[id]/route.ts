@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
 import prisma from "@/_lib/prisma";
+import { AccountType } from "@prisma/client";
 import { accountSchema } from "@/_lib/validations/finance";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 import { getUserIdsForCouple } from "@/_services/finance/couple-service";
@@ -87,7 +88,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       where: { id },
       data: {
         name: validated.name,
-        type: validated.type,
+        type: validated.type as AccountType,
         balance: validated.balance,
       },
     });
