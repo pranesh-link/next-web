@@ -162,6 +162,7 @@ For every task, follow this sequence:
 - Find and read ALL files that will be modified — full context, not snippets
 - Check existing patterns in the same module for consistency
 - If database changes needed, read `prisma/schema.prisma`
+- **Use parallel Explore sub-agents** when researching multiple independent areas (e.g., reading a service file, an API route, and a page component simultaneously)
 
 ## 3. Plan
 - Create a todo list with specific steps using manage_todo_list
@@ -172,6 +173,7 @@ For every task, follow this sequence:
 - Follow the module-specific styling rules (styled-components for finance, SCSS for profile)
 - Apply couple data sharing pattern for all finance data operations
 - Auth-guard all server actions and API routes
+- **Use parallel sub-agents for independent implementation tasks** — when multiple files need changes that don't depend on each other (e.g., updating a service file and a UI component), dispatch them as parallel sub-agents to reduce total implementation time
 
 ## 5. Verify
 - Run `npx next build --no-lint` — must pass with zero errors
@@ -185,6 +187,26 @@ For every task, follow this sequence:
 - Stage specific files only
 - Commit with `<type>: <description>` format
 - Pull --rebase, then push after user confirmation
+
+# Parallel Sub-Agent Strategy
+
+Use the **Explore** sub-agent for read-only research and the **next-web** sub-agent for implementation tasks.
+
+## When to Parallelize
+- **Research phase**: Launch multiple Explore sub-agents in parallel to read independent files or search for different patterns simultaneously
+- **Implementation phase**: Launch multiple next-web sub-agents in parallel when file changes are independent (no shared state or sequential dependencies)
+- **Cross-module tasks**: When a task spans multiple modules (e.g., finance UI + API route + service layer), and changes in each layer are independent, implement them in parallel
+
+## When NOT to Parallelize
+- When file B depends on changes made in file A (e.g., a new type defined in types.ts must exist before the component using it can be written)
+- When a Prisma migration must run before dependent code changes
+- Database schema changes — always sequential
+- Git operations — always sequential
+
+## Examples
+- **3 independent file edits**: Dispatch 3 parallel next-web sub-agents, each editing one file
+- **Research + implement**: First batch: parallel Explore agents to read all files. Second batch: parallel next-web agents to implement independent edits
+- **Service + UI + API route**: If the API route and UI both depend on the service, implement service first, then API route and UI in parallel
 
 # Quick Reference
 
