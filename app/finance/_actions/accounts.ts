@@ -4,6 +4,7 @@ import prisma from "@/_lib/prisma";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { accountSchema } from "@/_lib/validations/finance";
 import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
+import { recordBalanceChange, getHistoryForAccount } from "@/_services/finance/balance-history-service";
 
 export async function getAccounts() {
   try {
@@ -79,6 +80,12 @@ export async function createAccount(
         ...(coupleId ? { coupleId } : {}),
       },
     });
+
+    if (validated.balance !== 0) {
+      await recordBalanceChange(
+        account.id, 0, validated.balance, user.id, coupleId, "Opening balance",
+      );
+    }
 
     return { success: true as const, data: account };
   } catch (error) {
@@ -176,6 +183,82 @@ export async function getTotalBalance() {
     return {
       success: false as const,
       error: error instanceof Error ? error.message : "Failed to calculate total balance",
+    };
+  }
+}
+
+export async function updateAccountBalance(
+  id: string,
+  newBalance: number,
+  note?: string,
+) {
+  try {
+    const user = await requireAuthForAction();
+    if (!user) return { success: false as const, error: "Not authenticated" };
+
+    const coupleUserIds = await getUserIdsForCouple(user.id);
+
+    const existing = await prisma.financialAccount.findFirst({
+      where: { id, userId: { in: coupleUserIds } },
+    });
+
+    if (!existing) {
+      return { success: false as const, error: "Account not found" };
+    }
+
+    if (existing.balance === newBalance) {
+      return { success: false as const, error: "Balance is the same" };
+    }
+
+    const coupleId = await getCoupleIdForUser(user.id);
+
+    const [account] = await prisma.$transaction([
+      prisma.financialAccount.update({
+        where: { id },
+        data: { balance: newBalance },
+      }),
+      prisma.balanceHistory.create({
+        data: {
+          accountId: id,
+          balance: newBalance,
+          change: newBalance - existing.balance,
+          note: note || null,
+          userId: user.id,
+          coupleId: coupleId || null,
+        },
+      }),
+    ]);
+
+    return { success: true as const, data: account };
+  } catch (error) {
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : "Failed to update balance",
+    };
+  }
+}
+
+export async function getAccountBalanceHistory(accountId: string, cursor?: string) {
+  try {
+    const user = await requireAuthForAction();
+    if (!user) return { success: false as const, error: "Not authenticated" };
+
+    const coupleUserIds = await getUserIdsForCouple(user.id);
+
+    const account = await prisma.financialAccount.findFirst({
+      where: { id: accountId, userId: { in: coupleUserIds } },
+    });
+
+    if (!account) {
+      return { success: false as const, error: "Account not found" };
+    }
+
+    const { items, nextCursor } = await getHistoryForAccount(accountId, coupleUserIds, 20, cursor);
+    return { success: true as const, data: { items, nextCursor } };
+  } catch (error) {
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : "Failed to fetch balance history",
     };
   }
 }
