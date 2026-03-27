@@ -4,7 +4,6 @@ import React from "react";
 import styled from "styled-components";
 import { FinanceThemeProvider } from "@/finance/_components/theme/FinanceThemeProvider";
 import { NotificationProvider } from "@/finance/_components/notifications/NotificationProvider";
-import IncomeReminderPopup from "@/finance/_components/notifications/IncomeReminderPopup";
 import Sidebar from "@/finance/_components/layout/Sidebar";
 
 interface FinanceLayoutUser {
@@ -44,7 +43,6 @@ export default function FinanceLayout({ children, user }: FinanceLayoutProps) {
           {user && <Sidebar user={user} />}
           <MainContent $hasSidebar={!!user}>{children}</MainContent>
         </LayoutContainer>
-        <IncomeReminderPopup />
       </NotificationProvider>
     </FinanceThemeProvider>
   );
