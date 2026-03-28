@@ -127,7 +127,20 @@ export async function getDashboardInsights() {
     const loansSummary = {
       count: loans.length,
       totalRemaining: loans.reduce((sum, l) => sum + l.remainingBalance, 0),
-      totalEMI: loans.reduce((sum, l) => sum + l.emiAmount, 0),
+      totalEMI: loans.reduce((sum, l) => {
+        const schedule = Array.isArray(l.schedule) ? l.schedule as { date: string; emi: number }[] : null;
+        if (schedule && schedule.length > 0) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const nextEntry = schedule.find((e) => {
+            const d = new Date(e.date);
+            d.setHours(0, 0, 0, 0);
+            return d.getTime() >= today.getTime();
+          });
+          return sum + (nextEntry ? nextEntry.emi : l.emiAmount);
+        }
+        return sum + l.emiAmount;
+      }, 0),
     };
 
     // 7. Goals summary
@@ -259,7 +272,20 @@ export async function getFinancialHealthScore() {
 
     const savingsRate = calculateSavingsRate(income, expenses);
 
-    const totalMonthlyEMI = loans.reduce((sum, l) => sum + l.emiAmount, 0);
+    const totalMonthlyEMI = loans.reduce((sum, l) => {
+      const schedule = Array.isArray(l.schedule) ? l.schedule as { date: string; emi: number }[] : null;
+      if (schedule && schedule.length > 0) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const nextEntry = schedule.find((e) => {
+          const d = new Date(e.date);
+          d.setHours(0, 0, 0, 0);
+          return d.getTime() >= today.getTime();
+        });
+        return sum + (nextEntry ? nextEntry.emi : l.emiAmount);
+      }
+      return sum + l.emiAmount;
+    }, 0);
     const debtToIncomeRatio = income > 0 ? (totalMonthlyEMI / income) * 100 : 0;
 
     const emergencyFundMonths = expenses > 0 ? totalBalance / expenses : 0;

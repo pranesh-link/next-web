@@ -36,6 +36,7 @@ export const loanSchema = z.object({
     date: z.string(),
     amount: z.number(),
     balanceAfter: z.number().optional(),
+    source: z.enum(["scanned", "manual"]).optional(),
   })).optional(),
   schedule: z.array(z.object({
     month: z.number(),

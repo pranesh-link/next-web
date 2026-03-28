@@ -1064,9 +1064,11 @@ export default function BudgetPlannerPage() {
 
     const newItems = result.data
       .filter((loan) => !existingEMINotes.has(loan.name))
-      .map((loan) => ({
+      .map((loan: { name: string; emiAmount: number; nextEmiAmount?: number }) => ({
         category: "EMI",
-        amount: mode === "yearly" ? loan.emiAmount * 12 : loan.emiAmount,
+        amount: mode === "yearly"
+          ? (loan.nextEmiAmount ?? loan.emiAmount) * 12
+          : (loan.nextEmiAmount ?? loan.emiAmount),
         note: loan.name,
       }));
 
