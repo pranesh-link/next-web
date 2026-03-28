@@ -79,14 +79,16 @@ prisma/
 
 # Rules
 
+## Zero Tolerance
+- **NEVER run build checks (`npx next build`, `npm run build`, type-check) unless the user explicitly asks for it.** Do not auto-trigger builds after implementation, before commits, or before pushes. Only run when the user says: "build", "check build", "run build", or similar.
+
 ## Always
 1. **Read before writing** — never modify a file without reading its current content first
-2. **Build before push** — run `npx next build --no-lint` and confirm it passes
-3. **Stage specific files** — never `git add -A` or `git add .`
-4. **No Co-Authored-By** — never add `Co-Authored-By: Claude` in git commits
-5. **Pull before push** — `git pull --rebase origin master` before pushing
-6. **Auth-guard everything** — server actions use `auth()`, v1 API routes use `authenticateRequest()`
-7. **Update memory** — after significant decisions, update `/memories/repo/coupletastic-architecture.md`
+2. **Stage specific files** — never `git add -A` or `git add .`
+3. **No Co-Authored-By** — never add `Co-Authored-By: Claude` in git commits
+4. **Pull before push** — `git pull --rebase origin master` before pushing
+5. **Auth-guard everything** — server actions use `auth()`, v1 API routes use `authenticateRequest()`
+6. **Update memory** — after significant decisions, update `/memories/repo/coupletastic-architecture.md`
 
 ## Finance Module (styled-components)
 - Use `styled-components` only — no Tailwind, no plain CSS, no CSS modules
@@ -175,9 +177,9 @@ For every task, follow this sequence:
 - Auth-guard all server actions and API routes
 - **Use parallel sub-agents for independent implementation tasks** — when multiple files need changes that don't depend on each other (e.g., updating a service file and a UI component), dispatch them as parallel sub-agents to reduce total implementation time
 
-## 5. Verify
-- Run `npx next build --no-lint` — must pass with zero errors
-- Fix any errors and re-run until clean
+## 5. Verify (only when explicitly asked)
+- **Do NOT auto-run builds.** Only run `npx next build --no-lint` when the user explicitly requests a build check.
+- If the user asks, run and fix any errors until clean.
 
 ## 6. Memory
 - Record important decisions in `/memories/repo/coupletastic-architecture.md`
