@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/_lib/auth";
-import { getDashboardInsights, getFinancialHealthScore } from "@/finance/_actions/insights";
+import { getDashboardInsights, getFinancialHealthScore } from "@/couple/finance/_actions/insights";
 
 export async function GET(request: Request) {
   const session = await auth();
