@@ -64,8 +64,15 @@ export async function middleware(req: NextRequest) {
       });
     }
 
-    // Redirect all routes to homepage except root, admin, and finance
-    if (pathname !== "/" && !pathname.startsWith("/api") && !pathname.startsWith("/admin") && !pathname.startsWith("/finance")) {
+    // Backward compatibility: redirect old /finance routes to /couple/finance
+    if (pathname.startsWith("/finance")) {
+      const newPath = pathname.replace(/^\/finance/, "/couple/finance");
+      req.nextUrl.pathname = newPath;
+      return NextResponse.redirect(req.nextUrl, { status: 308, headers: responseHeaders });
+    }
+
+    // Redirect all routes to homepage except root, admin, and couple
+    if (pathname !== "/" && !pathname.startsWith("/api") && !pathname.startsWith("/admin") && !pathname.startsWith("/couple")) {
       req.nextUrl.pathname = "/";
       return NextResponse.redirect(req.nextUrl, { headers: responseHeaders });
     }
