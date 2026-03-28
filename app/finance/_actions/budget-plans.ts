@@ -158,3 +158,31 @@ export async function deleteBudgetPlan(id: string) {
     };
   }
 }
+
+export async function getActiveLoans() {
+  try {
+    const user = await requireAuthForAction();
+    if (!user) return { success: false as const, error: "Not authenticated" };
+
+    const coupleUserIds = await getUserIdsForCouple(user.id);
+
+    const loans = await prisma.loan.findMany({
+      where: {
+        userId: { in: coupleUserIds },
+        remainingBalance: { gt: 0 },
+      },
+      select: { name: true, emiAmount: true },
+      orderBy: { name: "asc" },
+    });
+
+    return { success: true as const, data: loans };
+  } catch (error) {
+    return {
+      success: false as const,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch active loans",
+    };
+  }
+}
