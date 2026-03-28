@@ -7,6 +7,7 @@ import {
   getBudgetPlan,
   saveBudgetPlan,
   deleteBudgetPlan,
+  getActiveLoans,
 } from "@/finance/_actions/budget-plans";
 import FinanceHeader from "@/finance/_components/layout/FinanceHeader";
 import Modal from "@/finance/_components/shared/Modal";
@@ -501,6 +502,13 @@ const RemoveButton = styled.button`
   }
 `;
 
+const ExpenseActions = styled.div`
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+`;
+
 const AddButton = styled.button`
   display: inline-flex;
   align-items: center;
@@ -515,7 +523,6 @@ const AddButton = styled.button`
   font-family: inherit;
   cursor: pointer;
   transition: all 0.2s ${EASING};
-  margin-top: 4px;
 
   &:hover {
     background: rgba(59, 130, 246, 0.05);
@@ -1037,6 +1044,41 @@ export default function BudgetPlannerPage() {
     setLineItems((prev) => [...prev, { category: "", amount: 0 }]);
   }
 
+  async function importEMIs() {
+    const result = await getActiveLoans();
+    if (!result.success || !result.data) {
+      notify(result.error || "Failed to fetch loans", "error");
+      return;
+    }
+    if (result.data.length === 0) {
+      notify("No active loans found", "error");
+      return;
+    }
+
+    const existingEMINotes = new Set(
+      lineItems.filter((i) => i.category === "EMI" && i.note).map((i) => i.note)
+    );
+
+    const newItems = result.data
+      .filter((loan) => !existingEMINotes.has(loan.name))
+      .map((loan) => ({
+        category: "EMI",
+        amount: mode === "yearly" ? loan.emiAmount * 12 : loan.emiAmount,
+        note: loan.name,
+      }));
+
+    if (newItems.length === 0) {
+      notify("All loan EMIs already imported", "info" as "success");
+      return;
+    }
+
+    setLineItems((prev) => {
+      const cleaned = prev.filter((i) => i.category !== "" || i.amount > 0);
+      return cleaned.length > 0 ? [...cleaned, ...newItems] : newItems;
+    });
+    notify(`Imported ${newItems.length} loan EMI(s)`, "success");
+  }
+
   function resetForm() {
     setIncome(0);
     setIncomeHint("");
@@ -1284,7 +1326,10 @@ export default function BudgetPlannerPage() {
                 ))}
               </LineItemGrid>
 
-              <AddButton onClick={addLineItem}>+ Add Expense</AddButton>
+              <ExpenseActions>
+                <AddButton onClick={addLineItem}>+ Add Expense</AddButton>
+                <AddButton onClick={importEMIs}>📥 Import existing loan EMIs</AddButton>
+              </ExpenseActions>
 
               <TotalRow>
                 <span>Total Expected Expenses</span>
