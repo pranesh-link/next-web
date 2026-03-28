@@ -74,6 +74,7 @@ model User {
   budgets        Budget[]
   loans          Loan[]
   savingsGoals   SavingsGoal[]
+  budgetPlans    BudgetPlan[]
 
   // Couple relations
   coupleMembers  CoupleMember[]
@@ -251,6 +252,26 @@ model CoupleInvite {
   couple    Couple   @relation(fields: [coupleId], references: [id], onDelete: Cascade)
 
   @@map("couple_invites")
+}
+
+// ─── Budget Plan Models ─────────────────────────────────────
+
+model BudgetPlan {
+  id           String   @id @default(uuid())
+  userId       String
+  monthAndYear String   @map("month_and_year") // "2026-04" or "2026" format
+  mode         String   @default("monthly") // "monthly" | "yearly"
+  income       Float
+  lineItems    Json     // [{category: string, amount: number, note?: string}]
+  coupleId     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, monthAndYear, mode])
+  @@index([userId])
+  @@map("budget_plans")
 }
 
 // ─── Notification Models ────────────────────────────────────

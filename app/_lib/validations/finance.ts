@@ -54,6 +54,17 @@ export const goalSchema = z.object({
   deadline: z.coerce.date().optional(),
 });
 
+export const budgetPlanSchema = z.object({
+  monthAndYear: z.string().regex(/^\d{4}(-\d{2})?$/, "Must be in YYYY-MM or YYYY format"),
+  mode: z.enum(["monthly", "yearly"]),
+  income: z.number().positive("Income must be positive"),
+  lineItems: z.array(z.object({
+    category: z.string().min(1, "Category is required"),
+    amount: z.number().positive("Amount must be positive"),
+    note: z.string().optional(),
+  })).min(1, "At least one expense line item is required"),
+});
+
 export const coupleSchema = z.object({
   name: z.string().max(100).optional(),
 });
@@ -67,5 +78,6 @@ export type TransactionInput = z.infer<typeof transactionSchema>;
 export type BudgetInput = z.infer<typeof budgetSchema>;
 export type LoanInput = z.infer<typeof loanSchema>;
 export type GoalInput = z.infer<typeof goalSchema>;
+export type BudgetPlanInput = z.infer<typeof budgetPlanSchema>;
 export type CoupleInput = z.infer<typeof coupleSchema>;
 export type InviteInput = z.infer<typeof inviteSchema>;
