@@ -10,6 +10,8 @@ import {
   simulateLoanPrepayment,
   getLoanInsightsAction,
   getLoanSchedule,
+  addPrepayment,
+  removePrepayment,
 } from "@/finance/_actions/loans";
 import FinanceHeader from "@/finance/_components/layout/FinanceHeader";
 import LoanForm from "@/finance/_components/forms/LoanForm";
@@ -33,7 +35,7 @@ type Loan = {
   emiAmount: number;
   startDate: string | Date;
   remainingBalance: number;
-  prepayments?: { date: string; amount: number; balanceAfter?: number }[] | null;
+  prepayments?: { date: string; amount: number; balanceAfter?: number; source?: "scanned" | "manual" }[] | null;
   schedule?: ScheduleEntry[] | null;
   createdAt: string | Date;
   updatedAt: string | Date;
@@ -290,8 +292,39 @@ const DetailValue = styled.p<{ $color?: string }>`
 
 const EmiTooltip = styled.span`
   margin-left: 6px;
-  cursor: help;
+  cursor: pointer;
   font-size: 14px;
+  position: relative;
+  display: inline-block;
+`;
+
+const EmiTooltipBubble = styled.span`
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 8px);
+  transform: translateY(-50%);
+  width: 220px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg-elevated, #1e1e2e);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.4;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  z-index: 10;
+  pointer-events: auto;
+  white-space: normal;
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: 100%;
+    transform: translateY(-50%);
+    border: 6px solid transparent;
+    border-right-color: var(--border);
+  }
 `;
 
 /* ── Progress Bar ── */
@@ -982,7 +1015,7 @@ export default function LoansPage() {
   const [scannedLoanProvider, setScannedLoanProvider] = useState<string | null>(null);
   const [scannedScheduleGeneratedOn, setScannedScheduleGeneratedOn] = useState<string | null>(null);
   const [scannedPrepayments, setScannedPrepayments] = useState<
-    { date: string; amount: number; balanceAfter?: number }[] | null
+    { date: string; amount: number; balanceAfter?: number; source?: "scanned" | "manual" }[] | null
   >(null);
   const [scannedSchedule, setScannedSchedule] = useState<
     { month: number; date: string; emi: number; principal: number; interest: number; balance: number }[] | null
@@ -1002,6 +1035,9 @@ export default function LoansPage() {
 
   /* Prepayments Modal State */
   const [prepaymentModalLoanId, setPrepaymentModalLoanId] = useState<string | null>(null);
+  const [ppDate, setPpDate] = useState("");
+  const [ppAmount, setPpAmount] = useState("");
+  const [ppSubmitting, setPpSubmitting] = useState(false);
 
   const [notification, setNotification] = useState<Notification | null>(null);
   const [notifLeaving, setNotifLeaving] = useState(false);
@@ -1018,6 +1054,15 @@ export default function LoansPage() {
       setTimeout(() => setNotification(null), 300);
     }, 3000);
   }, []);
+
+  /* Varying-EMI tooltip */
+  const [varyingEmiTipId, setVaryingEmiTipId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!varyingEmiTipId) return;
+    const close = () => setVaryingEmiTipId(null);
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [varyingEmiTipId]);
 
   /* ── Data fetching ── */
 
@@ -1060,7 +1105,21 @@ export default function LoansPage() {
 
   const totalLoans = loans.length;
   const totalOutstanding = loans.reduce((s, l) => s + l.remainingBalance, 0);
-  const monthlyEmiLoad = loans.reduce((s, l) => s + l.emiAmount, 0);
+  const monthlyEmiLoad = loans.reduce((s, l) => {
+    // Use next EMI from schedule if available, otherwise fall back to emiAmount
+    const schedule = scheduleCache[l.id] ?? (Array.isArray(l.schedule) ? l.schedule : null);
+    if (schedule && schedule.length > 0) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const nextEntry = schedule.find((e) => {
+        const d = new Date(e.date);
+        d.setHours(0, 0, 0, 0);
+        return d.getTime() >= today.getTime();
+      });
+      return s + (nextEntry ? nextEntry.emi : l.emiAmount);
+    }
+    return s + l.emiAmount;
+  }, 0);
 
   /* ── Handlers ── */
 
@@ -1073,7 +1132,9 @@ export default function LoansPage() {
   function handleScanComplete(data: ScannedLoanData) {
     setShowScanModal(false);
     setScannedPrepayments(
-      data.prepayments && data.prepayments.length > 0 ? data.prepayments : null,
+      data.prepayments && data.prepayments.length > 0
+        ? data.prepayments.map((pp) => ({ ...pp, source: "scanned" as const }))
+        : null,
     );
     setScannedSchedule(
       data.schedule && data.schedule.length > 0 ? data.schedule : null,
@@ -1319,6 +1380,42 @@ export default function LoansPage() {
     }
   }
 
+  /* ── Add / Remove Prepayment ── */
+
+  async function handleAddPrepayment() {
+    if (!prepaymentModalLoanId || !ppDate || !ppAmount) return;
+    const amount = parseFloat(ppAmount);
+    if (isNaN(amount) || amount <= 0) return;
+
+    setPpSubmitting(true);
+    const result = await addPrepayment(prepaymentModalLoanId, {
+      date: ppDate,
+      amount,
+    });
+    setPpSubmitting(false);
+
+    if (result.success) {
+      notify("Prepayment added — remaining balance updated", "success");
+      setPpDate("");
+      setPpAmount("");
+      await fetchLoans();
+    } else {
+      notify(result.error, "error");
+    }
+  }
+
+  async function handleRemovePrepayment(index: number) {
+    if (!prepaymentModalLoanId) return;
+    const result = await removePrepayment(prepaymentModalLoanId, index);
+
+    if (result.success) {
+      notify("Prepayment removed — remaining balance restored", "success");
+      await fetchLoans();
+    } else {
+      notify(result.error, "error");
+    }
+  }
+
   /* ── Render ── */
 
   return (
@@ -1532,8 +1629,18 @@ export default function LoansPage() {
                             const isVarying = rows.some((r) => Math.abs(r.emi - firstEmi) > 1);
                             if (!isVarying) return null;
                             return (
-                              <EmiTooltip title="This loan has varying EMIs. The amount shown is your next scheduled payment.">
+                              <EmiTooltip
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setVaryingEmiTipId((prev) => prev === loan.id ? null : loan.id);
+                                }}
+                              >
                                 ℹ️
+                                {varyingEmiTipId === loan.id && (
+                                  <EmiTooltipBubble>
+                                    This loan has varying EMIs. The amount shown is your next scheduled payment.
+                                  </EmiTooltipBubble>
+                                )}
                               </EmiTooltip>
                             );
                           })()}
@@ -1574,14 +1681,12 @@ export default function LoansPage() {
                           EMI Schedule
                         </SmallButton>
                       )}
-                      {loan.prepayments && Array.isArray(loan.prepayments) && loan.prepayments.length > 0 && (
-                        <SmallButton
-                          $variant="green"
-                          onClick={() => setPrepaymentModalLoanId(loan.id)}
-                        >
-                          Prepayments ({loan.prepayments.length})
-                        </SmallButton>
-                      )}
+                      <SmallButton
+                        $variant="green"
+                        onClick={() => setPrepaymentModalLoanId(loan.id)}
+                      >
+                        Prepayments{loan.prepayments && Array.isArray(loan.prepayments) && loan.prepayments.length > 0 ? ` (${loan.prepayments.length})` : ""}
+                      </SmallButton>
                     </ButtonRow>
 
                     {/* Progress Bar */}
@@ -1630,6 +1735,16 @@ export default function LoansPage() {
                         Based on repayment schedule dated {formatDate(loan.scheduleGeneratedOn)}
                       </ScheduleSourceNote>
                     )}
+                    {(() => {
+                      const pp = Array.isArray(loan.prepayments) ? loan.prepayments : [];
+                      const hasManual = pp.some((p: { source?: string }) => p.source === "manual");
+                      if (!hasManual) return null;
+                      return (
+                        <ScheduleSourceNote style={{ color: "var(--accent)", borderColor: "rgba(var(--accent-rgb, 99, 102, 241), 0.3)" }}>
+                          ⚡ Balance adjusted by manual prepayments
+                        </ScheduleSourceNote>
+                      );
+                    })()}
 
                     {/* Action Buttons */}
                     <ButtonRow>
@@ -2101,15 +2216,63 @@ export default function LoansPage() {
         const ppLoan = loans.find((l) => l.id === prepaymentModalLoanId);
         const ppList =
           ppLoan?.prepayments && Array.isArray(ppLoan.prepayments)
-            ? (ppLoan.prepayments as { date: string; amount: number; balanceAfter?: number }[])
+            ? (ppLoan.prepayments as { date: string; amount: number; balanceAfter?: number; source?: "scanned" | "manual" }[])
+                .slice()
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
             : [];
+        const loanStart = ppLoan ? new Date(ppLoan.startDate).toISOString().split("T")[0] : "";
+        const todayStr = new Date().toISOString().split("T")[0];
         return (
           <Modal
             isOpen={!!prepaymentModalLoanId}
-            onClose={() => setPrepaymentModalLoanId(null)}
+            onClose={() => {
+              setPrepaymentModalLoanId(null);
+              setPpDate("");
+              setPpAmount("");
+            }}
             title={`Prepayments — ${ppLoan?.name ?? ""}`}
             size="md"
           >
+            {/* Add Prepayment Form */}
+            <div style={{ padding: "0 0 16px", borderBottom: "1px solid var(--border)" }}>
+              <p style={{ fontSize: "13px", fontWeight: 600, color: "var(--text)", marginBottom: "10px" }}>
+                Add Prepayment
+              </p>
+              <div style={{ display: "flex", gap: "8px", alignItems: "flex-end", flexWrap: "wrap" }}>
+                <div style={{ flex: "1 1 140px", minWidth: 0 }}>
+                  <label style={{ fontSize: "11px", color: "var(--text-muted)", display: "block", marginBottom: "4px" }}>Date</label>
+                  <DarkInput
+                    type="date"
+                    value={ppDate}
+                    min={loanStart}
+                    max={todayStr}
+                    onChange={(e) => setPpDate(e.target.value)}
+                    style={{ width: "100%" }}
+                  />
+                </div>
+                <div style={{ flex: "1 1 120px", minWidth: 0 }}>
+                  <label style={{ fontSize: "11px", color: "var(--text-muted)", display: "block", marginBottom: "4px" }}>Amount (₹)</label>
+                  <DarkInput
+                    type="number"
+                    min="1"
+                    placeholder="e.g. 50000"
+                    value={ppAmount}
+                    onChange={(e) => setPpAmount(e.target.value)}
+                    style={{ width: "100%" }}
+                  />
+                </div>
+                <SmallButton
+                  $variant="primary"
+                  onClick={handleAddPrepayment}
+                  disabled={ppSubmitting || !ppDate || !ppAmount}
+                  style={{ height: "36px", whiteSpace: "nowrap" }}
+                >
+                  {ppSubmitting ? "Adding…" : "+ Add"}
+                </SmallButton>
+              </div>
+            </div>
+
+            {/* Prepayment List */}
             {ppList.length > 0 ? (
               <ScheduleTableWrapper>
                 <ScheduleTable>
@@ -2119,29 +2282,66 @@ export default function LoansPage() {
                       <ScheduleTh>Date</ScheduleTh>
                       <ScheduleTh $align="right">Amount</ScheduleTh>
                       <ScheduleTh $align="right">Balance After</ScheduleTh>
+                      <ScheduleTh>Source</ScheduleTh>
+                      <ScheduleTh $align="center">Action</ScheduleTh>
                     </tr>
                   </thead>
                   <tbody>
-                    {ppList.map((pp, i) => (
-                      <tr key={i}>
-                        <ScheduleTd>{i + 1}</ScheduleTd>
-                        <ScheduleTd>
-                          {new Date(pp.date).toLocaleDateString("en-IN", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          })}
-                        </ScheduleTd>
-                        <ScheduleTd $align="right" $color="var(--success)">
-                          {formatCurrency(pp.amount)}
-                        </ScheduleTd>
-                        <ScheduleTd $align="right">
-                          {pp.balanceAfter != null
-                            ? formatCurrency(pp.balanceAfter)
-                            : "—"}
-                        </ScheduleTd>
-                      </tr>
-                    ))}
+                    {ppList.map((pp, i) => {
+                      const isScanned = !pp.source || pp.source === "scanned";
+                      return (
+                        <tr key={i}>
+                          <ScheduleTd>{i + 1}</ScheduleTd>
+                          <ScheduleTd>
+                            {new Date(pp.date).toLocaleDateString("en-IN", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </ScheduleTd>
+                          <ScheduleTd $align="right" $color="var(--success)">
+                            {formatCurrency(pp.amount)}
+                          </ScheduleTd>
+                          <ScheduleTd $align="right">
+                            {pp.balanceAfter != null
+                              ? formatCurrency(pp.balanceAfter)
+                              : "—"}
+                          </ScheduleTd>
+                          <ScheduleTd>
+                            <span style={{
+                              fontSize: "10px",
+                              fontWeight: 600,
+                              padding: "2px 6px",
+                              borderRadius: "4px",
+                              background: isScanned
+                                ? "rgba(var(--accent-rgb, 99, 102, 241), 0.15)"
+                                : "rgba(34, 197, 94, 0.15)",
+                              color: isScanned ? "var(--accent)" : "var(--success, #22c55e)",
+                            }}>
+                              {isScanned ? "🔖 Statement" : "✏️ Manual"}
+                            </span>
+                          </ScheduleTd>
+                          <ScheduleTd $align="center">
+                            {isScanned ? (
+                              <span style={{ fontSize: "11px", color: "var(--text-muted)" }} title="Extracted from loan statement — cannot remove">🔒</span>
+                            ) : (
+                              <IconButton
+                                title="Remove prepayment"
+                                onClick={() => handleRemovePrepayment(i)}
+                                style={{ color: "var(--danger)" }}
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M3 6h18" />
+                                  <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+                                  <path d="M10 11v6" />
+                                  <path d="M14 11v6" />
+                                </svg>
+                              </IconButton>
+                            )}
+                          </ScheduleTd>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                   <tfoot>
                     <tr>
@@ -2155,14 +2355,14 @@ export default function LoansPage() {
                           )}
                         </strong>
                       </ScheduleTd>
-                      <ScheduleTd />
+                      <ScheduleTd colSpan={3} />
                     </tr>
                   </tfoot>
                 </ScheduleTable>
               </ScheduleTableWrapper>
             ) : (
-              <SchedulePanel>
-                <InsightLabel>No prepayments recorded</InsightLabel>
+              <SchedulePanel style={{ marginTop: "16px" }}>
+                <InsightLabel>No prepayments recorded. Use the form above to add one.</InsightLabel>
               </SchedulePanel>
             )}
           </Modal>

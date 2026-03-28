@@ -171,11 +171,43 @@ export async function getActiveLoans() {
         userId: { in: coupleUserIds },
         remainingBalance: { gt: 0 },
       },
-      select: { name: true, emiAmount: true },
+      select: {
+        name: true,
+        emiAmount: true,
+        principal: true,
+        interestRate: true,
+        tenureMonths: true,
+        startDate: true,
+        remainingBalance: true,
+        schedule: true,
+      },
       orderBy: { name: "asc" },
     });
 
-    return { success: true as const, data: loans };
+    // Compute next EMI for each loan from schedule
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const data = loans.map((loan) => {
+      let nextEmiAmount = loan.emiAmount;
+
+      // Try to get next EMI from stored schedule
+      const schedule = Array.isArray(loan.schedule) ? loan.schedule as { month: number; date: string; emi: number }[] : null;
+      if (schedule && schedule.length > 0) {
+        const nextEntry = schedule.find((e) => {
+          const d = new Date(e.date);
+          d.setHours(0, 0, 0, 0);
+          return d.getTime() >= today.getTime();
+        });
+        if (nextEntry) {
+          nextEmiAmount = nextEntry.emi;
+        }
+      }
+
+      return { name: loan.name, emiAmount: loan.emiAmount, nextEmiAmount };
+    });
+
+    return { success: true as const, data };
   } catch (error) {
     return {
       success: false as const,

@@ -27,7 +27,7 @@ export type ScannedLoanData = {
     balance: number;
   }[];
   totalScheduleRows?: number;
-  prepayments?: { date: string; amount: number; balanceAfter?: number }[];
+  prepayments?: { date: string; amount: number; balanceAfter?: number; source?: "scanned" }[];
   emisPaid?: number;
   confidence?: number;
   rawScheduleText?: string;  // transport-only: raw table text for Phase 2 chunked extraction

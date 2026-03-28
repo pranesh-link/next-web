@@ -185,8 +185,8 @@ export async function updateLoan(
       emiAmount: data.emiAmount ?? existing.emiAmount,
       startDate: data.startDate ?? existing.startDate,
       remainingBalance: data.remainingBalance ?? existing.remainingBalance,
-      prepayments: data.prepayments ?? (existing.prepayments as { date: string; amount: number; balanceAfter?: number }[] | undefined),
-      schedule: data.schedule ?? (existing.schedule as { month: number; date: string; emi: number; principal: number; interest: number; balance: number }[] | undefined),
+      prepayments: data.prepayments ?? (existing.prepayments as { date: string; amount: number; balanceAfter?: number }[] | null) ?? undefined,
+      schedule: data.schedule ?? (existing.schedule as { month: number; date: string; emi: number; principal: number; interest: number; balance: number }[] | null) ?? undefined,
     };
 
     const validated = loanSchema.parse(merged);
@@ -355,6 +355,123 @@ export async function getLoanSchedule(id: string) {
     return {
       success: false as const,
       error: error instanceof Error ? error.message : "Failed to generate schedule",
+    };
+  }
+}
+
+export async function addPrepayment(
+  loanId: string,
+  data: { date: string; amount: number },
+) {
+  try {
+    const user = await requireAuthForAction();
+    if (!user) return { success: false as const, error: "Not authenticated" };
+
+    const coupleUserIds = await getUserIdsForCouple(user.id);
+    const loan = await prisma.loan.findFirst({
+      where: { id: loanId, userId: { in: coupleUserIds } },
+    });
+
+    if (!loan) return { success: false as const, error: "Loan not found" };
+
+    // Validate date is between loan start and today
+    const prepayDate = new Date(data.date);
+    const loanStart = new Date(loan.startDate);
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    loanStart.setHours(0, 0, 0, 0);
+    prepayDate.setHours(0, 0, 0, 0);
+
+    if (prepayDate < loanStart || prepayDate > today) {
+      return { success: false as const, error: "Prepayment date must be between loan start date and today" };
+    }
+
+    if (data.amount <= 0) {
+      return { success: false as const, error: "Prepayment amount must be positive" };
+    }
+
+    if (data.amount > loan.remainingBalance) {
+      return { success: false as const, error: "Prepayment amount exceeds remaining balance" };
+    }
+
+    const existing = Array.isArray(loan.prepayments)
+      ? (loan.prepayments as { date: string; amount: number; balanceAfter?: number; source?: string }[])
+      : [];
+
+    const newBalance = loan.remainingBalance - data.amount;
+
+    const newPrepayment = {
+      date: data.date,
+      amount: data.amount,
+      balanceAfter: Math.round(newBalance * 100) / 100,
+      source: "manual" as const,
+    };
+
+    // Add and sort descending by date (recent first)
+    const updated = [...existing, newPrepayment].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+    );
+
+    await prisma.loan.update({
+      where: { id: loanId },
+      data: {
+        prepayments: updated,
+        remainingBalance: Math.round(newBalance * 100) / 100,
+      },
+    });
+
+    return { success: true as const };
+  } catch (error) {
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : "Failed to add prepayment",
+    };
+  }
+}
+
+export async function removePrepayment(loanId: string, index: number) {
+  try {
+    const user = await requireAuthForAction();
+    if (!user) return { success: false as const, error: "Not authenticated" };
+
+    const coupleUserIds = await getUserIdsForCouple(user.id);
+    const loan = await prisma.loan.findFirst({
+      where: { id: loanId, userId: { in: coupleUserIds } },
+    });
+
+    if (!loan) return { success: false as const, error: "Loan not found" };
+
+    const existing = Array.isArray(loan.prepayments)
+      ? (loan.prepayments as { date: string; amount: number; balanceAfter?: number; source?: string }[])
+      : [];
+
+    if (index < 0 || index >= existing.length) {
+      return { success: false as const, error: "Invalid prepayment index" };
+    }
+
+    const target = existing[index];
+
+    // Only manual prepayments can be removed (no source or source=scanned means scanned)
+    if (!target.source || target.source === "scanned") {
+      return { success: false as const, error: "Cannot remove scanned prepayments — they were extracted from your loan statement" };
+    }
+
+    const restoredBalance = loan.remainingBalance + target.amount;
+    const updated = existing.filter((_, i) => i !== index);
+
+    await prisma.loan.update({
+      where: { id: loanId },
+      data: {
+        prepayments: updated.length > 0 ? updated : [],
+        remainingBalance: Math.round(restoredBalance * 100) / 100,
+      },
+    });
+
+    return { success: true as const };
+  } catch (error) {
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : "Failed to remove prepayment",
     };
   }
 }
