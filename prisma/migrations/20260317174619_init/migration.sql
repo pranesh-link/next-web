@@ -1,5 +1,5 @@
 -- CreateEnum
--- CREATE TYPE "AccountType" AS ENUM ('BANK', 'CASH', 'CREDIT_CARD');
+CREATE TYPE "AccountType" AS ENUM ('BANK', 'CASH', 'CREDIT_CARD');
 
 -- CreateEnum
 CREATE TYPE "TransactionType" AS ENUM ('INCOME', 'EXPENSE');
