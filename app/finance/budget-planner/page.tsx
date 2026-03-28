@@ -1037,7 +1037,10 @@ export default function BudgetPlannerPage() {
   }
 
   function removeLineItem(index: number) {
-    setLineItems((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== index)));
+    setLineItems((prev) => {
+      const filtered = prev.filter((_, i) => i !== index);
+      return filtered.length > 0 ? filtered : [{ category: "", amount: 0 }];
+    });
   }
 
   function addLineItem() {
