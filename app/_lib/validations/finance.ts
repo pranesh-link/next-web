@@ -119,7 +119,6 @@ export const depositSchema = z.object({
   totalInstallments: z.number().int().positive().optional(),
   startDate: z.coerce.date(),
   maturityDate: z.coerce.date(),
-  maturityAmount: z.number().positive("Maturity amount must be positive"),
   nextInstallmentDate: z.coerce.date().optional(),
   sourceAccountId: z.string().uuid().optional(),
 }).superRefine((data, ctx) => {
