@@ -5,6 +5,59 @@ import { requireAuthForAction } from "@/_lib/auth-utils";
 import { transactionSchema } from "@/_lib/validations/finance";
 import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
 
+type TransactionQueryParams = {
+  month?: string;
+  category?: string;
+  accountId?: string;
+  limit?: number;
+};
+
+type TransactionWhere = {
+  userId: { in: string[] };
+  date?: { gte: Date; lt: Date };
+  category?: string;
+  accountId?: string;
+};
+
+function buildTransactionsWhere(coupleUserIds: string[], params?: TransactionQueryParams): TransactionWhere {
+  const where: TransactionWhere = { userId: { in: coupleUserIds } };
+
+  if (params?.month) {
+    const [year, month] = params.month.split("-").map(Number);
+    where.date = {
+      gte: new Date(year, month - 1, 1),
+      lt: new Date(year, month, 1),
+    };
+  }
+
+  if (params?.category) {
+    where.category = params.category;
+  }
+
+  if (params?.accountId) {
+    where.accountId = params.accountId;
+  }
+
+  return where;
+}
+
+async function fetchTransactionsForUsers(coupleUserIds: string[], params?: TransactionQueryParams) {
+  return prisma.transaction.findMany({
+    where: buildTransactionsWhere(coupleUserIds, params),
+    orderBy: { date: "desc" },
+    take: params?.limit,
+    include: { account: { select: { name: true } } },
+  });
+}
+
+async function fetchAccountsForUsers(coupleUserIds: string[]) {
+  return prisma.financialAccount.findMany({
+    where: { userId: { in: coupleUserIds } },
+    orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
+    include: { user: { select: { id: true, name: true } } },
+  });
+}
+
 export async function getTransactions(params?: {
   month?: string;
   category?: string;
@@ -15,40 +68,41 @@ export async function getTransactions(params?: {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
 
-    const where: { userId: string | { in: string[] }; date?: { gte: Date; lt: Date }; category?: string; accountId?: string } = { userId: user.id };
-
-    // Expand to couple scope
     const coupleUserIds = await getUserIdsForCouple(user.id);
-    (where as Record<string, unknown>).userId = { in: coupleUserIds };
-
-    if (params?.month) {
-      const [year, month] = params.month.split("-").map(Number);
-      where.date = {
-        gte: new Date(year, month - 1, 1),
-        lt: new Date(year, month, 1),
-      };
-    }
-
-    if (params?.category) {
-      where.category = params.category;
-    }
-
-    if (params?.accountId) {
-      where.accountId = params.accountId;
-    }
-
-    const transactions = await prisma.transaction.findMany({
-      where,
-      orderBy: { date: "desc" },
-      take: params?.limit,
-      include: { account: { select: { name: true } } },
-    });
+    const transactions = await fetchTransactionsForUsers(coupleUserIds, params);
 
     return { success: true as const, data: transactions };
   } catch (error) {
     return {
       success: false as const,
       error: error instanceof Error ? error.message : "Failed to fetch transactions",
+    };
+  }
+}
+
+export async function getTransactionsPageData(params?: TransactionQueryParams) {
+  try {
+    const user = await requireAuthForAction();
+    if (!user) return { success: false as const, error: "Not authenticated" };
+
+    const coupleUserIds = await getUserIdsForCouple(user.id);
+
+    const [transactions, accounts] = await Promise.all([
+      fetchTransactionsForUsers(coupleUserIds, params),
+      fetchAccountsForUsers(coupleUserIds),
+    ]);
+
+    return {
+      success: true as const,
+      data: {
+        transactions,
+        accounts,
+      },
+    };
+  } catch (error) {
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : "Failed to fetch transactions page data",
     };
   }
 }

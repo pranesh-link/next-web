@@ -1,10 +1,10 @@
 "use client";
 
-import { createAccount, getAccounts } from "@/couple/finance/_actions/accounts";
+import { createAccount } from "@/couple/finance/_actions/accounts";
 import {
     createTransaction,
     deleteTransaction,
-    getTransactions,
+    getTransactionsPageData,
     updateTransaction,
 } from "@/couple/finance/_actions/transactions";
 import AccountForm from "@/couple/_components/forms/AccountForm";
@@ -384,10 +384,10 @@ export default function TransactionsPage() {
     if (filters.category) params.category = filters.category;
     if (filters.accountId) params.accountId = filters.accountId;
 
-    const result = await getTransactions(params);
+    const result = await getTransactionsPageData(params);
     if (result.success) {
       setTransactions(
-        result.data.map((t: any) => ({
+        result.data.transactions.map((t: any) => ({
           ...t,
           type: t.type as "INCOME" | "EXPENSE",
           description: t.description ?? "",
@@ -398,24 +398,18 @@ export default function TransactionsPage() {
           accountName: t.account?.name,
         })),
       );
+      setAccounts(result.data.accounts);
       setError(null);
     } else {
       setError(result.error);
     }
   }, [filters]);
 
-  const fetchAccounts = useCallback(async () => {
-    const result = await getAccounts();
-    if (result.success) {
-      setAccounts(result.data);
-    }
-  }, []);
-
   useEffect(() => {
     async function load() {
       setLoading(true);
       try {
-        await Promise.all([fetchTransactions(), fetchAccounts()]);
+        await fetchTransactions();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load transactions");
       } finally {
@@ -423,7 +417,7 @@ export default function TransactionsPage() {
       }
     }
     load();
-  }, [fetchTransactions, fetchAccounts]);
+  }, [fetchTransactions]);
 
   /* ── Handlers ── */
 
@@ -520,7 +514,7 @@ export default function TransactionsPage() {
     if (result.success) {
       notify("Account created", "success");
       setShowAccountModal(false);
-      await fetchAccounts();
+      await fetchTransactions();
     } else {
       notify(result.error, "error");
     }
@@ -543,7 +537,7 @@ export default function TransactionsPage() {
         title="Transactions"
         action={{ label: "Add Transaction", onClick: handleOpenAdd }}
         onRefresh={async () => {
-          await Promise.all([fetchTransactions(), fetchAccounts()]);
+          await fetchTransactions();
         }}
       />
 

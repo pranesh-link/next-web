@@ -1,6 +1,8 @@
 'use server';
 
 import { requireAuthForAction } from '@/_lib/auth-utils';
+import { syncDepositReminders } from '@/couple/finance/_actions/deposits';
+import { syncInvestmentReminders } from '@/couple/finance/_actions/investments';
 import {
   getNotificationsForUser,
   getUnreadCount,
@@ -23,15 +25,51 @@ export async function getMyNotifications() {
   }
 }
 
+export async function getMyNotificationsSnapshot() {
+  const user = await requireAuthForAction();
+  if (!user) return { success: false as const, error: 'Not authenticated' };
+
+  try {
+    const [notifications, unreadCount] = await Promise.all([
+      getNotificationsForUser(user.id),
+      getUnreadCount(user.id),
+    ]);
+
+    return {
+      success: true as const,
+      data: { notifications, unreadCount },
+    };
+  } catch (e: unknown) {
+    const message =
+      e instanceof Error ? e.message : 'Failed to get notifications snapshot';
+    return { success: false as const, error: message };
+  }
+}
+
 export async function syncNotifications() {
   const user = await requireAuthForAction();
   if (!user) return { success: false as const, error: 'Not authenticated' };
 
   try {
-    if (user.email) {
-      await syncMissingInviteNotifications(user.id, user.email);
-    }
-    return { success: true as const, data: null };
+    const inviteSyncTask = user.email
+      ? syncMissingInviteNotifications(user.id, user.email)
+      : Promise.resolve();
+
+    const [_, depositReminders, investmentReminders, incomeReminder] = await Promise.all([
+      inviteSyncTask,
+      syncDepositReminders(user.id),
+      syncInvestmentReminders(user.id),
+      syncIncomeReminderService(user.id),
+    ]);
+
+    return {
+      success: true as const,
+      data: {
+        depositReminders,
+        investmentReminders,
+        incomeReminder,
+      },
+    };
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Failed to sync notifications';
     return { success: false as const, error: message };

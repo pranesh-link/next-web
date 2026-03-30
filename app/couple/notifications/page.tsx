@@ -260,12 +260,21 @@ export default function NotificationsPage() {
   const handleDecline = useCallback(
     async (inviteId: string, notifId: string) => {
       setProcessingId(notifId);
-      await declineInviteAction(inviteId);
-      await markRead(notifId);
-      await refresh();
+      const res = await declineInviteAction(inviteId);
+      if (res.success) {
+        setInviteDetails((prev) => {
+          const current = prev[inviteId];
+          if (!current) return prev;
+          return {
+            ...prev,
+            [inviteId]: { ...current, status: "DECLINED" },
+          };
+        });
+        await markRead(notifId);
+      }
       setProcessingId(null);
     },
-    [markRead, refresh]
+    [markRead]
   );
 
   const handleMarkAllRead = useCallback(async () => {

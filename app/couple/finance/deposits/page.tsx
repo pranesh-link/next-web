@@ -229,6 +229,8 @@ const initialState: FormState = {
   nextInstallmentDate: "",
 };
 
+const LEGACY_MIGRATION_SESSION_KEY = "coupletastic_deposits_legacy_migrated";
+
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -254,9 +256,22 @@ export default function DepositsPage() {
 
   useEffect(() => {
     async function init() {
-      await migrateLegacyDepositAccounts();
-      await loadData();
-      setLoading(false);
+      try {
+        if (typeof window !== "undefined") {
+          const alreadyMigrated = sessionStorage.getItem(LEGACY_MIGRATION_SESSION_KEY) === "1";
+
+          if (!alreadyMigrated) {
+            const migrationRes = await migrateLegacyDepositAccounts();
+            if (migrationRes.success) {
+              sessionStorage.setItem(LEGACY_MIGRATION_SESSION_KEY, "1");
+            }
+          }
+        }
+
+        await loadData();
+      } finally {
+        setLoading(false);
+      }
     }
     init();
   }, [loadData]);

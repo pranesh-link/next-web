@@ -5,11 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import styled, { keyframes } from "styled-components";
 import ReactSelect, { StylesConfig } from "react-select";
 import {
-  getAccounts,
   createAccount,
-  getTotalBalance,
   togglePinAccount,
-  getCoupleUsers,
+  getAccountsPageData,
 } from "@/couple/finance/_actions/accounts";
 import FinanceHeader from "@/couple/_components/layout/FinanceHeader";
 import Modal from "@/couple/_components/shared/Modal";
@@ -594,18 +592,15 @@ function AccountsPageContent() {
   }, []);
 
   const fetchData = useCallback(async () => {
-    const [accRes, balRes, usersRes] = await Promise.all([
-      getAccounts(),
-      getTotalBalance(),
-      getCoupleUsers(),
-    ]);
-    if (accRes.success) setAccounts(accRes.data as Account[]);
-    if (balRes.success) setTotalBalance(balRes.data);
-    if (usersRes.success) {
-      setCoupleUsers(usersRes.data as CoupleUser[]);
-      setCurrentUserId(usersRes.currentUserId || "");
-      if (!newOwnerId && usersRes.currentUserId) {
-        setNewOwnerId(usersRes.currentUserId);
+    const pageDataRes = await getAccountsPageData();
+
+    if (pageDataRes.success) {
+      setAccounts(pageDataRes.data.accounts as Account[]);
+      setTotalBalance(pageDataRes.data.totalBalance);
+      setCoupleUsers(pageDataRes.data.coupleUsers as CoupleUser[]);
+      setCurrentUserId(pageDataRes.data.currentUserId || "");
+      if (!newOwnerId && pageDataRes.data.currentUserId) {
+        setNewOwnerId(pageDataRes.data.currentUserId);
       }
     }
     setLoading(false);

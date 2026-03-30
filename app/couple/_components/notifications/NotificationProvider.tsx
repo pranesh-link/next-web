@@ -9,20 +9,18 @@ import React, {
   useRef,
 } from "react";
 import {
-  getMyNotifications,
-  getMyUnreadCount,
+  getMyNotificationsSnapshot,
   markNotificationRead,
   markAllNotificationsRead,
   syncNotifications,
-  syncIncomeReminderAction,
 } from "@/couple/finance/_actions/notifications";
 
 type NotificationItem = NonNullable<
   Extract<
-    Awaited<ReturnType<typeof getMyNotifications>>,
+    Awaited<ReturnType<typeof getMyNotificationsSnapshot>>,
     { success: true }
   >["data"]
->[number];
+>["notifications"][number];
 
 interface NotificationContextValue {
   notifications: NotificationItem[];
@@ -59,12 +57,11 @@ export function NotificationProvider({
     if (!hasUserRef.current || fetchingRef.current) return;
     fetchingRef.current = true;
     try {
-      const [notifRes, countRes] = await Promise.all([
-        getMyNotifications(),
-        getMyUnreadCount(),
-      ]);
-      if (notifRes.success) setNotifications(notifRes.data ?? []);
-      if (countRes.success) setUnreadCount(countRes.data ?? 0);
+      const snapshotRes = await getMyNotificationsSnapshot();
+      if (snapshotRes.success) {
+        setNotifications(snapshotRes.data?.notifications ?? []);
+        setUnreadCount(snapshotRes.data?.unreadCount ?? 0);
+      }
     } finally {
       fetchingRef.current = false;
     }
@@ -76,12 +73,9 @@ export function NotificationProvider({
     // Backfill sync only once per session
     if (!syncedRef.current) {
       syncedRef.current = true;
-      Promise.all([
-        syncNotifications(),
-        syncIncomeReminderAction(),
-      ]).then(async ([, incomeRes]) => {
-        if (incomeRes.success && incomeRes.data?.unread) {
-          setIncomePopup({ month: incomeRes.data.month });
+      syncNotifications().then(async (syncRes) => {
+        if (syncRes.success && syncRes.data?.incomeReminder?.unread) {
+          setIncomePopup({ month: syncRes.data.incomeReminder.month });
         }
         await refresh();
       });

@@ -45,8 +45,6 @@ export async function getInvestments() {
       orderBy: { createdAt: "desc" },
     });
 
-    await syncInvestmentReminders(user.id);
-
     return { success: true as const, data: investments };
   } catch (error) {
     return {
