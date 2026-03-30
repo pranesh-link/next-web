@@ -16,6 +16,7 @@ import {
   getPendingInvitesForUser as getPendingInvitesService,
   declineInvite as declineInviteService,
 } from '@/_services/finance/couple-service';
+import { invalidateCoupleMembers } from '@/_lib/cache';
 
 export async function getCouple() {
   const user = await requireAuthForAction();
@@ -37,6 +38,7 @@ export async function createNewCouple(raw: unknown) {
   try {
     const validated = coupleSchema.parse(raw);
     const couple = await createCoupleService(user.id, validated.name);
+    invalidateCoupleMembers();
     return { success: true as const, data: couple };
   } catch (e: unknown) {
     if (e !== null && typeof e === 'object' && 'issues' in e)
@@ -77,6 +79,7 @@ export async function acceptInvite(inviteId: string) {
 
   try {
     const member = await acceptInviteService(inviteId, user.id);
+    invalidateCoupleMembers();
     return { success: true as const, data: member };
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Failed to accept invite';
@@ -103,6 +106,7 @@ export async function leaveExistingCouple() {
 
   try {
     await leaveCoupleService(user.id);
+    invalidateCoupleMembers();
     return { success: true as const, data: null };
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Failed to leave couple';
@@ -116,6 +120,7 @@ export async function acceptInviteByToken(token: string) {
 
   try {
     const member = await acceptInviteByTokenService(token, user.id);
+    invalidateCoupleMembers();
     return { success: true as const, data: member };
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Failed to accept invite';
@@ -156,6 +161,7 @@ export async function disbandCoupleAction() {
 
   try {
     await disbandCoupleService(user.id);
+    invalidateCoupleMembers();
     return { success: true as const, data: null };
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Failed to disband couple';

@@ -213,7 +213,7 @@ export async function GET() {
           recentTransactions,
         },
       },
-      { headers: corsHeaders() },
+      { headers: corsHeaders("private, max-age=60") },
     );
   } catch (error) {
     return NextResponse.json(

@@ -19,26 +19,20 @@ import type {
   SavingsGoal,
 } from "@prisma/client";
 import { getUserIdsForCouple } from "@/_services/finance/couple-service";
+import { unstable_cache } from "next/cache";
+import { CACHE_TAGS } from "@/_lib/cache";
 
 function currentMonth(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
-export async function getDashboardInsights() {
-  try {
-    const user = await requireAuthForAction();
-    if (!user) return { success: false as const, error: "Not authenticated" };
-
-    console.log("[dashboard] session user:", { id: user.id, email: user.email });
-
+const fetchDashboardData = unstable_cache(
+  async (coupleUserIds: string[]) => {
     const month = currentMonth();
     const [year, m] = month.split("-").map(Number);
     const monthStart = new Date(year, m - 1, 1);
     const monthEnd = new Date(year, m, 1);
-
-    // Resolve couple scope
-    const coupleUserIds = await getUserIdsForCouple(user.id);
 
     // Fire all queries in parallel
     const accountsP = prisma.financialAccount.findMany({
@@ -230,23 +224,34 @@ export async function getDashboardInsights() {
     const monthlyTrends = calculateMonthlyTrends(allTxData, 6);
 
     return {
-      success: true as const,
-      data: {
-        totalBalance,
-        cashFlow,
-        savingsRate,
-        expenseBreakdown,
-        budgetStatus,
-        loansSummary,
-        goalsSummary,
-        goalsWithProgress,
-        investmentsSummary,
-        depositsSummary,
-        healthScore,
-        monthlyTrends,
-        recentTransactions,
-      },
+      totalBalance,
+      cashFlow,
+      savingsRate,
+      expenseBreakdown,
+      budgetStatus,
+      loansSummary,
+      goalsSummary,
+      goalsWithProgress,
+      investmentsSummary,
+      depositsSummary,
+      healthScore,
+      monthlyTrends,
+      recentTransactions,
     };
+  },
+  ["dashboard-insights"],
+  { revalidate: 60, tags: [CACHE_TAGS.FINANCE_DASHBOARD] },
+);
+
+export async function getDashboardInsights() {
+  try {
+    const user = await requireAuthForAction();
+    if (!user) return { success: false as const, error: "Not authenticated" };
+
+    const coupleUserIds = await getUserIdsForCouple(user.id);
+    const data = await fetchDashboardData(coupleUserIds);
+
+    return { success: true as const, data };
   } catch (error) {
     return {
       success: false as const,

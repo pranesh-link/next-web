@@ -6,6 +6,7 @@ import { depositSchema, depositInstallmentSchema } from "@/_lib/validations/fina
 import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
 import { createNotification } from "@/_services/finance/notification-service";
 import { ZodError } from "zod";
+import { invalidateAfterDepositChange } from "@/_lib/cache";
 
 function monthKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
@@ -274,6 +275,7 @@ export async function createDeposit(data: {
       },
     });
 
+    invalidateAfterDepositChange();
     return { success: true as const, data: deposit };
   } catch (error) {
     return {
@@ -370,6 +372,7 @@ export async function updateDeposit(
       },
     });
 
+    invalidateAfterDepositChange();
     return { success: true as const, data: updated };
   } catch (error) {
     return {
@@ -394,6 +397,7 @@ export async function deleteDeposit(id: string) {
 
     await prisma.depositInstrument.delete({ where: { id } });
 
+    invalidateAfterDepositChange();
     return { success: true as const, data: { id } };
   } catch (error) {
     return {
@@ -470,6 +474,7 @@ export async function addDepositInstallment(data: {
       return created;
     });
 
+    invalidateAfterDepositChange();
     return { success: true as const, data: installment };
   } catch (error) {
     return {

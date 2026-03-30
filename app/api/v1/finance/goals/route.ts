@@ -40,7 +40,7 @@ export async function GET() {
 
     return NextResponse.json(
       { success: true, data },
-      { headers: corsHeaders() },
+      { headers: corsHeaders("private, max-age=30") },
     );
   } catch (error) {
     return NextResponse.json(
