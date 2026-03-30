@@ -132,6 +132,28 @@ const financeNavItems = [
     ),
   },
   {
+    label: "Investments",
+    href: "/couple/finance/investments",
+    iconPath: (
+      <>
+        <path d="m6 3 6 8 6-8" />
+        <path d="m3 9 9 12 9-12" />
+        <path d="M3 9h18" />
+      </>
+    ),
+  },
+  {
+    label: "Deposits",
+    href: "/couple/finance/deposits",
+    iconPath: (
+      <>
+        <rect x="2" y="4" width="20" height="16" rx="2" />
+        <circle cx="16" cy="12" r="2" />
+        <path d="M6 12h2" />
+      </>
+    ),
+  },
+  {
     label: "Loans",
     href: "/couple/finance/loans",
     iconPath: (

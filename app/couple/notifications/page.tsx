@@ -324,6 +324,39 @@ export default function NotificationsPage() {
         linkTo: "/couple/finance/accounts?addIncome=true",
       };
     }
+    if (notif.type === "INVESTMENT_SIP_REMINDER") {
+      return {
+        icon: "📈",
+        title: "SIP installment is due",
+        meta: "Investment reminder",
+        hasActions: false,
+        token: undefined,
+        inviteId: undefined,
+        linkTo: "/couple/finance/investments",
+      };
+    }
+    if (notif.type === "DEPOSIT_MATURITY_REMINDER") {
+      return {
+        icon: "🏦",
+        title: "A deposit is nearing maturity",
+        meta: "Deposit reminder",
+        hasActions: false,
+        token: undefined,
+        inviteId: undefined,
+        linkTo: "/couple/finance/deposits",
+      };
+    }
+    if (notif.type === "DEPOSIT_INSTALLMENT_REMINDER") {
+      return {
+        icon: "🗓️",
+        title: "Recurring deposit installment is due",
+        meta: "Deposit reminder",
+        hasActions: false,
+        token: undefined,
+        inviteId: undefined,
+        linkTo: "/couple/finance/deposits",
+      };
+    }
     return {
       icon: "🔔",
       title: "New notification",

@@ -72,6 +72,19 @@ export async function getDashboardInsights() {
     const goalsP = prisma.savingsGoal.findMany({
       where: { userId: { in: coupleUserIds } },
     });
+    const investmentsP = prisma.investmentHolding.findMany({
+      where: { userId: { in: coupleUserIds } },
+      select: { id: true, investedAmount: true, currentValue: true },
+    });
+    const depositsP = prisma.depositInstrument.findMany({
+      where: { userId: { in: coupleUserIds } },
+      select: {
+        id: true,
+        status: true,
+        principalAmount: true,
+        maturityAmount: true,
+      },
+    });
     const recentTxP = prisma.transaction.findMany({
       where: { userId: { in: coupleUserIds } },
       orderBy: { date: "desc" as const },
@@ -87,6 +100,8 @@ export async function getDashboardInsights() {
     const budgetSpent = await budgetSpentP;
     const loans: Loan[] = await loansP;
     const goals: SavingsGoal[] = await goalsP;
+    const investments = await investmentsP;
+    const deposits = await depositsP;
     const recentTransactions = await recentTxP;
 
     // 1. Total balance
@@ -160,7 +175,26 @@ export async function getDashboardInsights() {
       totalSaved: goals.reduce((sum, g) => sum + g.currentAmount, 0),
     };
 
-    // 8. Financial health score
+    // 8. Investments summary
+    const investmentsSummary = {
+      count: investments.length,
+      totalInvested: investments.reduce((sum, item) => sum + item.investedAmount, 0),
+      currentValue: investments.reduce(
+        (sum, item) => sum + (item.currentValue ?? item.investedAmount),
+        0,
+      ),
+    };
+
+    // 9. Deposits summary
+    const activeDeposits = deposits.filter((item) => item.status === "ACTIVE");
+    const depositsSummary = {
+      count: deposits.length,
+      activeCount: activeDeposits.length,
+      totalPrincipal: activeDeposits.reduce((sum, item) => sum + item.principalAmount, 0),
+      totalMaturity: activeDeposits.reduce((sum, item) => sum + item.maturityAmount, 0),
+    };
+
+    // 10. Financial health score
     const totalMonthlyEMI = loansSummary.totalEMI;
     const monthlyIncome = cashFlow.income || 1;
     const debtToIncomeRatio = (totalMonthlyEMI / monthlyIncome) * 100;
@@ -184,7 +218,7 @@ export async function getDashboardInsights() {
       budgetAdherence: Math.min(budgetAdherence, 100),
     });
 
-    // 9. Monthly trends (last 6 months)
+    // 11. Monthly trends (last 6 months)
     const allTxData: TransactionData[] = allTransactions.map((t) => ({
       id: t.id,
       amount: t.amount,
@@ -206,6 +240,8 @@ export async function getDashboardInsights() {
         loansSummary,
         goalsSummary,
         goalsWithProgress,
+        investmentsSummary,
+        depositsSummary,
         healthScore,
         monthlyTrends,
         recentTransactions,

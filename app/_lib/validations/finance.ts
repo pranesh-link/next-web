@@ -66,6 +66,97 @@ export const budgetPlanSchema = z.object({
   })).min(1, "At least one expense line item is required"),
 });
 
+export const investmentSchema = z.object({
+  name: z.string().min(1, "Name is required").max(120, "Name too long"),
+  assetType: z.enum(["GOLD", "SILVER", "STOCK", "MUTUAL_FUND"]),
+  mode: z.enum(["LUMPSUM", "SIP"]).default("LUMPSUM"),
+  ticker: z.string().max(20, "Ticker too long").optional(),
+  exchange: z.enum(["NSE", "BSE"]).optional(),
+  quantity: z.number().positive("Quantity must be positive").optional(),
+  quantityGrams: z.number().positive("Grams must be positive").optional(),
+  investedAmount: z.number().positive("Invested amount must be positive"),
+  currentPrice: z.number().positive("Current price must be positive").optional(),
+  currentValue: z.number().positive("Current value must be positive").optional(),
+  sipAmount: z.number().positive("SIP amount must be positive").optional(),
+  sipDayOfMonth: z.number().int().min(1).max(31).optional(),
+  startDate: z.coerce.date(),
+  nextSipDate: z.coerce.date().optional(),
+}).superRefine((data, ctx) => {
+  if ((data.assetType === "GOLD" || data.assetType === "SILVER") && !data.quantityGrams) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Gold and silver holdings must include grams",
+      path: ["quantityGrams"],
+    });
+  }
+
+  if (data.assetType === "STOCK" && !data.exchange) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Stocks must include exchange (NSE or BSE)",
+      path: ["exchange"],
+    });
+  }
+
+  if (data.mode === "SIP" && !data.sipAmount) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "SIP amount is required when mode is SIP",
+      path: ["sipAmount"],
+    });
+  }
+});
+
+export const depositSchema = z.object({
+  name: z.string().min(1, "Name is required").max(120, "Name too long"),
+  provider: z.string().max(120, "Provider name too long").optional(),
+  type: z.enum(["RECURRING_DEPOSIT", "FIXED_DEPOSIT"]),
+  principalAmount: z.number().positive("Principal amount must be positive"),
+  interestRate: z.number().min(0, "Interest rate cannot be negative").max(40, "Interest rate too high"),
+  tenureMonths: z.number().int().positive("Tenure must be at least 1 month").max(600, "Tenure too long"),
+  installmentAmount: z.number().positive("Installment must be positive").optional(),
+  paidInstallments: z.number().int().min(0).optional().default(0),
+  totalInstallments: z.number().int().positive().optional(),
+  startDate: z.coerce.date(),
+  maturityDate: z.coerce.date(),
+  maturityAmount: z.number().positive("Maturity amount must be positive"),
+  nextInstallmentDate: z.coerce.date().optional(),
+  sourceAccountId: z.string().uuid().optional(),
+}).superRefine((data, ctx) => {
+  if (data.type === "RECURRING_DEPOSIT") {
+    if (!data.installmentAmount) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Installment amount is required for RD",
+        path: ["installmentAmount"],
+      });
+    }
+    if (!data.totalInstallments) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Total installments is required for RD",
+        path: ["totalInstallments"],
+      });
+    }
+  }
+
+  if (data.maturityDate <= data.startDate) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Maturity date must be after start date",
+      path: ["maturityDate"],
+    });
+  }
+});
+
+export const depositInstallmentSchema = z.object({
+  depositId: z.string().uuid(),
+  amount: z.number().positive("Amount must be positive"),
+  dueDate: z.coerce.date(),
+  paidDate: z.coerce.date().optional(),
+  status: z.enum(["PENDING", "PAID", "MISSED"]).default("PAID"),
+});
+
 export const coupleSchema = z.object({
   name: z.string().max(100).optional(),
 });
@@ -80,5 +171,8 @@ export type BudgetInput = z.infer<typeof budgetSchema>;
 export type LoanInput = z.infer<typeof loanSchema>;
 export type GoalInput = z.infer<typeof goalSchema>;
 export type BudgetPlanInput = z.infer<typeof budgetPlanSchema>;
+export type InvestmentInput = z.infer<typeof investmentSchema>;
+export type DepositInput = z.infer<typeof depositSchema>;
+export type DepositInstallmentInput = z.infer<typeof depositInstallmentSchema>;
 export type CoupleInput = z.infer<typeof coupleSchema>;
 export type InviteInput = z.infer<typeof inviteSchema>;
