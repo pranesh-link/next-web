@@ -614,7 +614,7 @@ export default function DashboardPage() {
                 type: tx.type as "INCOME" | "EXPENSE",
                 category: tx.category,
                 description: tx.description ?? "",
-                date: tx.date.toISOString(),
+                date: typeof tx.date === "string" ? tx.date : new Date(tx.date).toISOString(),
                 accountName: tx.account?.name,
               }))}
             />
