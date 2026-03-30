@@ -6,6 +6,7 @@ import { requireAuthForAction } from "@/_lib/auth-utils";
 import { accountSchema } from "@/_lib/validations/finance";
 import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
 import { recordBalanceChange, getHistoryForAccount } from "@/_services/finance/balance-history-service";
+import { getCoupleMembers } from "@/_services/finance/couple-service";
 
 export async function getAccounts() {
   try {
@@ -16,7 +17,8 @@ export async function getAccounts() {
 
     const accounts = await prisma.financialAccount.findMany({
       where: { userId: { in: coupleUserIds } },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
+      include: { user: { select: { id: true, name: true } } },
     });
 
     return { success: true as const, data: accounts };
@@ -37,6 +39,7 @@ export async function getAccount(id: string) {
 
     const account = await prisma.financialAccount.findFirst({
       where: { id, userId: { in: coupleUserIds } },
+      include: { user: { select: { id: true, name: true } } },
     });
 
     if (!account) {
@@ -53,7 +56,7 @@ export async function getAccount(id: string) {
 }
 
 export async function createAccount(
-  formData: FormData | { name: string; type: string; balance: number; isSalaryAccount?: boolean },
+  formData: FormData | { name: string; type: string; balance: number; isSalaryAccount?: boolean; isEmergencyFund?: boolean; ownerId?: string },
 ) {
   try {
     const user = await requireAuthForAction();
@@ -73,10 +76,35 @@ export async function createAccount(
         ? formData.get("isSalaryAccount") === "true"
         : formData.isSalaryAccount === true;
 
+    const isEmergencyFund =
+      formData instanceof FormData
+        ? formData.get("isEmergencyFund") === "true"
+        : (formData as { isEmergencyFund?: boolean }).isEmergencyFund === true;
+
+    const ownerId =
+      formData instanceof FormData
+        ? (formData.get("ownerId") as string) || user.id
+        : (formData as { ownerId?: string }).ownerId || user.id;
+
     const validated = accountSchema.parse(raw);
 
     const coupleId = await getCoupleIdForUser(user.id);
     const coupleUserIds = await getUserIdsForCouple(user.id);
+
+    // Validate ownerId is a couple member
+    if (!coupleUserIds.includes(ownerId)) {
+      return { success: false as const, error: "Owner must be a couple member" };
+    }
+
+    // Check emergency fund limit (max 2 per couple)
+    if (isEmergencyFund) {
+      const efCount = await prisma.financialAccount.count({
+        where: { userId: { in: coupleUserIds }, isEmergencyFund: true },
+      });
+      if (efCount >= 2) {
+        return { success: false as const, error: "Maximum 2 emergency fund accounts allowed per couple" };
+      }
+    }
 
     const account = await prisma.$transaction(async (tx) => {
       if (isSalaryAccount) {
@@ -88,11 +116,12 @@ export async function createAccount(
 
       return tx.financialAccount.create({
         data: {
-          userId: user.id,
+          userId: ownerId,
           name: validated.name,
           type: validated.type as AccountType,
           balance: validated.balance,
           isSalaryAccount,
+          isEmergencyFund,
           ...(coupleId ? { coupleId } : {}),
         },
       });
@@ -100,7 +129,7 @@ export async function createAccount(
 
     if (validated.balance !== 0) {
       await recordBalanceChange(
-        account.id, 0, validated.balance, user.id, coupleId, "Opening balance",
+        account.id, 0, validated.balance, ownerId, coupleId, "Opening balance",
       );
     }
 
@@ -312,6 +341,256 @@ export async function setSalaryAccount(accountId: string) {
     return {
       success: false as const,
       error: error instanceof Error ? error.message : "Failed to set salary account",
+    };
+  }
+}
+
+export async function togglePinAccount(accountId: string) {
+  try {
+    const user = await requireAuthForAction();
+    if (!user) return { success: false as const, error: "Not authenticated" };
+
+    const coupleUserIds = await getUserIdsForCouple(user.id);
+
+    const existing = await prisma.financialAccount.findFirst({
+      where: { id: accountId, userId: { in: coupleUserIds } },
+    });
+
+    if (!existing) {
+      return { success: false as const, error: "Account not found" };
+    }
+
+    const account = await prisma.financialAccount.update({
+      where: { id: accountId },
+      data: { isPinned: !existing.isPinned },
+    });
+
+    return { success: true as const, data: account };
+  } catch (error) {
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : "Failed to toggle pin",
+    };
+  }
+}
+
+export async function setEmergencyFundAccount(accountId: string) {
+  try {
+    const user = await requireAuthForAction();
+    if (!user) return { success: false as const, error: "Not authenticated" };
+
+    const coupleUserIds = await getUserIdsForCouple(user.id);
+
+    const existing = await prisma.financialAccount.findFirst({
+      where: { id: accountId, userId: { in: coupleUserIds } },
+    });
+
+    if (!existing) {
+      return { success: false as const, error: "Account not found" };
+    }
+
+    if (existing.isEmergencyFund) {
+      return { success: false as const, error: "Already tagged as emergency fund" };
+    }
+
+    const efCount = await prisma.financialAccount.count({
+      where: { userId: { in: coupleUserIds }, isEmergencyFund: true },
+    });
+    if (efCount >= 2) {
+      return { success: false as const, error: "Maximum 2 emergency fund accounts allowed" };
+    }
+
+    const account = await prisma.financialAccount.update({
+      where: { id: accountId },
+      data: { isEmergencyFund: true },
+    });
+
+    return { success: true as const, data: account };
+  } catch (error) {
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : "Failed to set emergency fund",
+    };
+  }
+}
+
+export async function unsetEmergencyFundAccount(accountId: string) {
+  try {
+    const user = await requireAuthForAction();
+    if (!user) return { success: false as const, error: "Not authenticated" };
+
+    const coupleUserIds = await getUserIdsForCouple(user.id);
+
+    const existing = await prisma.financialAccount.findFirst({
+      where: { id: accountId, userId: { in: coupleUserIds } },
+    });
+
+    if (!existing) {
+      return { success: false as const, error: "Account not found" };
+    }
+
+    const account = await prisma.financialAccount.update({
+      where: { id: accountId },
+      data: { isEmergencyFund: false },
+    });
+
+    return { success: true as const, data: account };
+  } catch (error) {
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : "Failed to unset emergency fund",
+    };
+  }
+}
+
+export async function getCoupleUsers() {
+  try {
+    const user = await requireAuthForAction();
+    if (!user) return { success: false as const, error: "Not authenticated" };
+
+    const coupleId = await getCoupleIdForUser(user.id);
+
+    if (!coupleId) {
+      // Solo user — return just themselves
+      const self = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { id: true, name: true, email: true },
+      });
+      return { success: true as const, data: self ? [self] : [], currentUserId: user.id };
+    }
+
+    const members = await getCoupleMembers(coupleId);
+    const users = members.map((m) => ({
+      id: m.user.id,
+      name: m.user.name,
+      email: m.user.email,
+    }));
+
+    return { success: true as const, data: users, currentUserId: user.id };
+  } catch (error) {
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : "Failed to fetch couple users",
+    };
+  }
+}
+
+export async function getAccountActivity(accountId: string, cursor?: string) {
+  try {
+    const user = await requireAuthForAction();
+    if (!user) return { success: false as const, error: "Not authenticated" };
+
+    const coupleUserIds = await getUserIdsForCouple(user.id);
+
+    const account = await prisma.financialAccount.findFirst({
+      where: { id: accountId, userId: { in: coupleUserIds } },
+    });
+
+    if (!account) {
+      return { success: false as const, error: "Account not found" };
+    }
+
+    const pageSize = 20;
+    let cursorDate: Date | undefined;
+    let cursorId: string | undefined;
+    if (cursor) {
+      const [dateStr, id] = cursor.split("|");
+      cursorDate = new Date(dateStr);
+      cursorId = id;
+    }
+
+    // Fetch both in parallel
+    const [balanceHistory, transactions] = await Promise.all([
+      prisma.balanceHistory.findMany({
+        where: { accountId, userId: { in: coupleUserIds } },
+        orderBy: { createdAt: "desc" },
+        take: pageSize + 1,
+        ...(cursorDate ? { where: { accountId, userId: { in: coupleUserIds }, createdAt: { lte: cursorDate } } } : {}),
+      }),
+      prisma.transaction.findMany({
+        where: { accountId, userId: { in: coupleUserIds } },
+        orderBy: { date: "desc" },
+        take: pageSize + 1,
+        ...(cursorDate ? { where: { accountId, userId: { in: coupleUserIds }, date: { lte: cursorDate } } } : {}),
+      }),
+    ]);
+
+    // Normalize to unified items
+    type ActivityItem = {
+      id: string;
+      date: Date;
+      source: "balance" | "transaction";
+      amount: number;
+      change: number;
+      balance: number;
+      note: string | null;
+      description: string | null;
+      category: string | null;
+      type: string | null;
+    };
+
+    const items: ActivityItem[] = [
+      ...balanceHistory.map((h) => ({
+        id: h.id,
+        date: h.createdAt,
+        source: "balance" as const,
+        amount: Math.abs(h.change),
+        change: h.change,
+        balance: h.balance,
+        note: h.note,
+        description: null,
+        category: null,
+        type: null,
+      })),
+      ...transactions.map((t) => ({
+        id: t.id,
+        date: t.date,
+        source: "transaction" as const,
+        amount: t.amount,
+        change: t.type === "INCOME" ? t.amount : -t.amount,
+        balance: 0, // Not tracked per-transaction
+        note: null,
+        description: t.description,
+        category: t.category,
+        type: t.type,
+      })),
+    ];
+
+    // Sort by date DESC, then by id for stable ordering
+    items.sort((a, b) => {
+      const diff = b.date.getTime() - a.date.getTime();
+      if (diff !== 0) return diff;
+      return b.id.localeCompare(a.id);
+    });
+
+    // Remove items before cursor
+    let filtered = items;
+    if (cursorDate && cursorId) {
+      const cursorTime = cursorDate.getTime();
+      const idx = filtered.findIndex(
+        (item) => item.date.getTime() === cursorTime && item.id === cursorId
+      );
+      if (idx !== -1) {
+        filtered = filtered.slice(idx + 1);
+      } else {
+        filtered = filtered.filter(
+          (item) => item.date.getTime() < cursorTime
+        );
+      }
+    }
+
+    const page = filtered.slice(0, pageSize);
+    const hasMore = filtered.length > pageSize;
+    const lastItem = page[page.length - 1];
+    const nextCursor = hasMore && lastItem
+      ? `${lastItem.date.toISOString()}|${lastItem.id}`
+      : null;
+
+    return { success: true as const, data: { items: page, nextCursor } };
+  } catch (error) {
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : "Failed to fetch account activity",
     };
   }
 }

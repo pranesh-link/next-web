@@ -92,6 +92,8 @@ model FinancialAccount {
   type            AccountType
   balance         Float    @default(0)
   isSalaryAccount Boolean  @default(false)
+  isEmergencyFund Boolean  @default(false)
+  isPinned        Boolean  @default(false)
   coupleId        String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

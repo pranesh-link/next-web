@@ -29,7 +29,8 @@ You are **next-web Agent** — the primary development agent for the next-web mo
 
 | Module | Path | Styling | State | Notes |
 |--------|------|---------|-------|-------|
-| Finance (Coupletastic) | `app/finance/` | styled-components | Server Actions | Couple data sharing, Auth.js sessions |
+| Couple (Coupletastic) | `app/couple/` | styled-components | Server Actions | Root module with sidebar, auth, providers |
+| Finance | `app/couple/finance/` | styled-components | Server Actions | Financial features under couple umbrella |
 | Profile / Portfolio | `app/profile/`, `app/profile-2.0/` | SCSS + Tailwind | Redux | Legacy, uses MongoDB for some routes |
 | Admin | `app/admin/` | SCSS | — | Admin panel |
 | Tools | `app/tools/bmi-calculator/` | styled-components | Local | Standalone public tools |
@@ -50,21 +51,30 @@ app/
   _redux/            # Redux store, hooks, actions, reducers
   _store/            # Zustand/context stores: app, common, form, profile
 
-  finance/           # Coupletastic finance SPA
-    _actions/        # Server actions: accounts, transactions, budgets, loans, goals, insights, couples
-    _components/     # Finance UI: auth/, cards/, charts/, forms/, layout/, loan/, receipt/, shared/, tables/, theme/
-    budgets/         # Budget page
-    couple/          # Partner management
-    goals/           # Savings goals
+  couple/            # Coupletastic root (auth, sidebar, providers)
+    _components/     # Couple-wide UI: CoupleProviders, layout/, auth/, cards/, charts/, forms/, loan/, receipt/, shared/, tables/, theme/
+    layout.tsx       # Root layout: SessionProvider → StyledComponentsRegistry → CoupleProviders → FinanceLayout (sidebar+main)
+    page.tsx         # Module dashboard ("Welcome back")
+    details/         # Partner management (was finance/couple)
+    login/           # Auth login page
     invite/[token]/  # Couple invite acceptance
-    loans/           # Loan tracker
-    login/           # Finance login
-    transactions/    # Transactions page
+    notifications/   # Notifications page
+    finance/         # Finance sub-module
+      _actions/      # Server actions: accounts, transactions, budgets, loans, goals, insights, couples, budget-plans, notifications
+      layout.tsx     # Passthrough layout
+      page.tsx       # Finance dashboard
+      accounts/      # Account list + [id] detail
+      transactions/  # Transactions page
+      budgets/       # Budget page
+      budget-planner/# Monthly/yearly budget planning
+      goals/         # Savings goals
+      loans/         # Loan tracker
 
   api/v1/finance/    # REST API: accounts, transactions, budgets, loans, goals, insights
   api/v1/_lib/       # JWT auth helper for v1 routes
   api/auth/          # NextAuth route handlers
   api/               # Legacy API: app, config, feature, files, images, maintenance, profile, pwa
+  api/finance/       # Finance API routes (insights, scan-schedule)
 
   profile/           # Profile page (legacy)
   profile-2.0/       # Profile v2 page
@@ -96,6 +106,8 @@ prisma/
 - Mobile-first responsive: always handle `@media (max-width: 768px)` and `@media (max-width: 480px)`
 - Prevent horizontal scroll: `overflow-x: hidden` on containers, `min-width: 0` on flex children
 - Sidebar: 64px collapsed, 256px expanded; main content `margin-left: 64px`
+- Context-aware sidebar nav: couple-level items on `/couple`, finance-level items on `/couple/finance/*`
+- All finance imports use `@/couple/` prefix (e.g., `@/couple/finance/_actions/accounts`, `@/couple/_components/shared/Modal`)
 
 ## Profile / Legacy Module (SCSS + Tailwind)
 - Maintain existing SCSS/Tailwind patterns — do not introduce styled-components here
@@ -181,9 +193,11 @@ For every task, follow this sequence:
 - **Do NOT auto-run builds.** Only run `npx next build --no-lint` when the user explicitly requests a build check.
 - If the user asks, run and fix any errors until clean.
 
-## 6. Memory
+## 6. Memory & Self-Improvement
 - Record important decisions in `/memories/repo/coupletastic-architecture.md`
 - Update the `_Last updated_` timestamp and append to the Decisions Log
+- Run the Self-Check (see Self-Improvement Protocol) — update this agent file if structure changed
+- If the user corrected an approach, add a preventive rule
 
 ## 7. Ship
 - Stage specific files only
@@ -221,3 +235,35 @@ Use the **Explore** sub-agent for read-only research and the **next-web** sub-ag
 | `npx prisma migrate dev --name x` | New migration |
 | `npx prisma studio` | DB browser |
 | `git stash && git pull --rebase origin master && git stash pop` | Sync before push |
+
+# Self-Improvement Protocol
+
+This agent learns from every session. Follow these rules to keep the agent and its memory current.
+
+## When to Update Memory (`/memories/repo/coupletastic-architecture.md`)
+- **After every schema change** — new models, fields, migrations
+- **After route restructures** — path changes, new pages, moved files
+- **After new architectural patterns** — couple data sharing changes, auth pattern changes, new service patterns
+- **After discovering gotchas** — build issues, runtime surprises, Prisma quirks, Vercel limits
+- Always update the `_Last updated_` date and append to the Decisions Log with date prefix
+
+## When to Update This Agent File (`.github/agents/next-web.agent.md`)
+- **After route/module restructures** — update Directory Structure and Modules table
+- **After new rules emerge from repeated patterns** — if the user corrects the same mistake twice, add a rule
+- **After workflow changes** — new git conventions, new build steps, new deploy process
+- **After adding new modules/features** — update the module table and directory tree
+- Do NOT update for one-off decisions (those go in memory)
+
+## What to Record
+| Where | What |
+|-------|------|
+| Agent file (this file) | Structural facts: paths, module table, rules, directory tree, workflow steps |
+| Repo memory | Decision log, gotchas, schema state, patterns discovered, tech stack versions |
+| Session memory | In-progress task context, temporary research notes (auto-cleared) |
+
+## Self-Check (run mentally after each multi-step task)
+1. Did I change any file paths or create new modules? → Update agent Directory Structure
+2. Did I add a new Prisma model or field? → Update repo memory schema section
+3. Did I discover a bug or gotcha? → Add to repo memory Decisions Log
+4. Did the user correct my approach? → Consider adding a rule to agent file
+5. Did routes move or rename? → Update agent Modules table + repo memory

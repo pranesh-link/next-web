@@ -8,6 +8,8 @@ import {
   getAccounts,
   createAccount,
   getTotalBalance,
+  togglePinAccount,
+  getCoupleUsers,
 } from "@/couple/finance/_actions/accounts";
 import FinanceHeader from "@/couple/_components/layout/FinanceHeader";
 import Modal from "@/couple/_components/shared/Modal";
@@ -17,12 +19,18 @@ import AddIncomeModal from "@/couple/_components/shared/AddIncomeModal";
 
 /* ── Types ──────────────────────────────────────────── */
 
+type CoupleUser = { id: string; name: string | null; email: string };
+
 type Account = {
   id: string;
   name: string;
   type: string;
   balance: number;
   isSalaryAccount: boolean;
+  isEmergencyFund: boolean;
+  isPinned: boolean;
+  userId: string;
+  user: { id: string; name: string | null };
   createdAt: string | Date;
   updatedAt: string | Date;
 };
@@ -442,6 +450,65 @@ const SalaryBadge = styled.span`
   margin-left: 6px;
 `;
 
+const EmergencyBadge = styled.span`
+  font-size: 10px;
+  font-weight: 600;
+  color: #059669;
+  background: rgba(16, 185, 129, 0.15);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+`;
+
+const PinButton = styled.button<{ $pinned: boolean }>`
+  padding: 4px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 14px;
+  opacity: ${(p) => (p.$pinned ? 1 : 0.3)};
+  transition: all 0.15s ${EASING};
+  flex-shrink: 0;
+
+  &:hover {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+`;
+
+const CardFooter = styled.div`
+  padding: 0 20px 16px;
+  display: flex;
+  gap: 8px;
+`;
+
+const AddIncomeBtn = styled.button`
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  background: rgba(251, 191, 36, 0.08);
+  color: #b45309;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ${EASING};
+
+  &:hover {
+    background: rgba(251, 191, 36, 0.15);
+  }
+`;
+
+const OwnerText = styled.div`
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 1px;
+`;
+
+const PinnedCard = styled(AccountCard)`
+  border-color: rgba(59, 130, 246, 0.3);
+`;
+
 /* ── Component ──────────────────────────────────────── */
 
 function AccountsPageContent() {
@@ -454,11 +521,17 @@ function AccountsPageContent() {
   const [showCreate, setShowCreate] = useState(false);
   const [showAddIncome, setShowAddIncome] = useState(false);
 
+  // Couple users for owner selector
+  const [coupleUsers, setCoupleUsers] = useState<CoupleUser[]>([]);
+  const [currentUserId, setCurrentUserId] = useState("");
+
   // Create form
   const [newName, setNewName] = useState("");
   const [newType, setNewType] = useState("SAVINGS_ACCOUNT");
   const [newBalance, setNewBalance] = useState("");
   const [newIsSalary, setNewIsSalary] = useState(false);
+  const [newIsEmergency, setNewIsEmergency] = useState(false);
+  const [newOwnerId, setNewOwnerId] = useState("");
   const [createError, setCreateError] = useState("");
 
   // Notification
@@ -477,14 +550,22 @@ function AccountsPageContent() {
   }, []);
 
   const fetchData = useCallback(async () => {
-    const [accRes, balRes] = await Promise.all([
+    const [accRes, balRes, usersRes] = await Promise.all([
       getAccounts(),
       getTotalBalance(),
+      getCoupleUsers(),
     ]);
     if (accRes.success) setAccounts(accRes.data as Account[]);
     if (balRes.success) setTotalBalance(balRes.data);
+    if (usersRes.success) {
+      setCoupleUsers(usersRes.data as CoupleUser[]);
+      setCurrentUserId(usersRes.currentUserId || "");
+      if (!newOwnerId && usersRes.currentUserId) {
+        setNewOwnerId(usersRes.currentUserId);
+      }
+    }
     setLoading(false);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetchData();
@@ -497,6 +578,17 @@ function AccountsPageContent() {
   }, [searchParams, loading, accounts.length]);
 
   const existingSalaryAccount = accounts.find((a) => a.isSalaryAccount);
+  const emergencyFundCount = accounts.filter((a) => a.isEmergencyFund).length;
+
+  const handlePin = async (e: React.MouseEvent, accountId: string) => {
+    e.stopPropagation();
+    const res = await togglePinAccount(accountId);
+    if (res.success) {
+      await fetchData();
+    } else {
+      notify(res.error, "error");
+    }
+  };
 
   const handleCreate = async () => {
     setSaving(true);
@@ -506,6 +598,8 @@ function AccountsPageContent() {
       type: newType,
       balance: parseFloat(newBalance) || 0,
       isSalaryAccount: newIsSalary,
+      isEmergencyFund: newIsEmergency,
+      ownerId: newOwnerId || currentUserId,
     });
     if (res.success) {
       notify("Account created!", "success");
@@ -514,6 +608,8 @@ function AccountsPageContent() {
       setNewType("SAVINGS_ACCOUNT");
       setNewBalance("");
       setNewIsSalary(false);
+      setNewIsEmergency(false);
+      setNewOwnerId(currentUserId);
       await fetchData();
     } else {
       setCreateError(res.error);
@@ -564,25 +660,54 @@ function AccountsPageContent() {
           />
         ) : (
           <CardGrid>
-            {accounts.map((acc) => (
-              <AccountCard
-                key={acc.id}
-                onClick={() => router.push(`/finance/accounts/${acc.id}`)}
-              >
-                <CardHeader>
-                  <CardIcon>{typeIcon(acc.type)}</CardIcon>
-                  <CardInfo>
-                    <CardName>{acc.name}{acc.isSalaryAccount && <SalaryBadge>Salary</SalaryBadge>}</CardName>
-                    <CardType>{typeLabel(acc.type)}</CardType>
-                  </CardInfo>
-                  <div>
-                    <CardBalance>{formatCurrency(acc.balance)}</CardBalance>
-                    <CardUpdated>on {formatDate(acc.updatedAt)}</CardUpdated>
-                  </div>
-                  <CardChevron>›</CardChevron>
-                </CardHeader>
-              </AccountCard>
-            ))}
+            {accounts.map((acc) => {
+              const CardComponent = acc.isPinned ? PinnedCard : AccountCard;
+              const ownerName = acc.user?.name || "Unknown";
+              const isOwner = acc.userId === currentUserId;
+              return (
+                <CardComponent
+                  key={acc.id}
+                  onClick={() => router.push(`/couple/finance/accounts/${acc.id}`)}
+                >
+                  <CardHeader>
+                    <CardIcon>{typeIcon(acc.type)}</CardIcon>
+                    <CardInfo>
+                      <CardName>
+                        {acc.name}
+                        {acc.isSalaryAccount && <SalaryBadge>Salary</SalaryBadge>}
+                        {acc.isEmergencyFund && <EmergencyBadge>🛡️ Emergency</EmergencyBadge>}
+                      </CardName>
+                      <CardType>{typeLabel(acc.type)}</CardType>
+                      <OwnerText>{isOwner ? "You" : ownerName}</OwnerText>
+                    </CardInfo>
+                    <div>
+                      <CardBalance>{formatCurrency(acc.balance)}</CardBalance>
+                      <CardUpdated>on {formatDate(acc.updatedAt)}</CardUpdated>
+                    </div>
+                    <PinButton
+                      $pinned={acc.isPinned}
+                      onClick={(e) => handlePin(e, acc.id)}
+                      title={acc.isPinned ? "Unpin" : "Pin to top"}
+                    >
+                      📌
+                    </PinButton>
+                    <CardChevron>›</CardChevron>
+                  </CardHeader>
+                  {acc.isSalaryAccount && (
+                    <CardFooter>
+                      <AddIncomeBtn
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowAddIncome(true);
+                        }}
+                      >
+                        💰 Add Income
+                      </AddIncomeBtn>
+                    </CardFooter>
+                  )}
+                </CardComponent>
+              );
+            })}
           </CardGrid>
         )}
       </Content>
@@ -622,6 +747,26 @@ function AccountsPageContent() {
             />
           )}
         </FormGroup>
+        {coupleUsers.length > 1 && (
+          <FormGroup>
+            <Label>Account belongs to</Label>
+            <ReactSelect<SelectOption>
+              options={coupleUsers.map((u) => ({
+                value: u.id,
+                label: u.id === currentUserId ? `${u.name || u.email} (You)` : (u.name || u.email),
+              }))}
+              value={coupleUsers.map((u) => ({
+                value: u.id,
+                label: u.id === currentUserId ? `${u.name || u.email} (You)` : (u.name || u.email),
+              })).find((o) => o.value === newOwnerId)}
+              onChange={(opt) => setNewOwnerId(opt?.value ?? currentUserId)}
+              styles={selectStyles}
+              isSearchable={false}
+              menuPortalTarget={typeof document !== "undefined" ? document.body : null}
+              menuPosition="fixed"
+            />
+          </FormGroup>
+        )}
         <FormGroup>
           <Label>Opening Balance</Label>
           <ModalInput
@@ -645,6 +790,21 @@ function AccountsPageContent() {
             ⚠️ <strong>{existingSalaryAccount.name}</strong> is currently your salary account. Creating this as salary account will replace it.
           </WarningAlert>
         )}
+        <CheckboxRow>
+          <input
+            type="checkbox"
+            id="isEmergency"
+            checked={newIsEmergency}
+            onChange={(e) => setNewIsEmergency(e.target.checked)}
+            disabled={emergencyFundCount >= 2}
+          />
+          <CheckboxLabel htmlFor="isEmergency">Tag as emergency fund?</CheckboxLabel>
+        </CheckboxRow>
+        {emergencyFundCount >= 2 && (
+          <WarningAlert>
+            ⚠️ Maximum 2 emergency fund accounts already tagged.
+          </WarningAlert>
+        )}
         {createError && <ErrorText>{createError}</ErrorText>}
         <ModalActions>
           <ModalButton
@@ -658,7 +818,7 @@ function AccountsPageContent() {
           </ModalButton>
           <ModalButton
             $primary
-            disabled={saving || !newName.trim()}
+            disabled={saving || !newName.trim() || (coupleUsers.length > 1 && !newOwnerId)}
             onClick={handleCreate}
           >
             {saving ? "Creating…" : "Create"}

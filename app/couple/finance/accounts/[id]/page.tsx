@@ -8,8 +8,11 @@ import {
   getAccount,
   updateAccountBalance,
   deleteAccount,
-  getAccountBalanceHistory,
+  getAccountActivity,
   updateAccount,
+  togglePinAccount,
+  setEmergencyFundAccount,
+  unsetEmergencyFundAccount,
 } from "@/couple/finance/_actions/accounts";
 import FinanceHeader from "@/couple/_components/layout/FinanceHeader";
 import LoadingSkeleton from "@/couple/_components/shared/LoadingSkeleton";
@@ -22,17 +25,29 @@ type Account = {
   name: string;
   type: string;
   balance: number;
+  isEmergencyFund: boolean;
+  isPinned: boolean;
+  isSalaryAccount: boolean;
+  userId: string;
+  user: { id: string; name: string | null };
   createdAt: string | Date;
   updatedAt: string | Date;
 };
 
-type HistoryEntry = {
+type ActivityItem = {
   id: string;
-  balance: number;
+  date: string | Date;
+  source: "balance" | "transaction";
+  amount: number;
   change: number;
+  balance: number;
   note: string | null;
-  createdAt: string | Date;
+  description: string | null;
+  category: string | null;
+  type: string | null;
 };
+
+type ActivityFilter = "all" | "balance" | "transaction";
 
 type Notification = { message: string; type: "success" | "error" };
 
@@ -350,12 +365,6 @@ const HistoryChange = styled.span<{ $positive: boolean }>`
   color: ${(p) => (p.$positive ? "#22c55e" : "#ef4444")};
 `;
 
-const HistoryNote = styled.span`
-  font-size: 13px;
-  color: var(--text-muted);
-  margin-left: 8px;
-`;
-
 const HistoryBalance = styled.div`
   font-size: 13px;
   font-weight: 600;
@@ -398,6 +407,96 @@ const LoadMoreButton = styled.button`
     opacity: 0.5;
     cursor: not-allowed;
   }
+`;
+
+/* ── Filter Tabs ── */
+
+const FilterTabs = styled.div`
+  display: flex;
+  gap: 4px;
+  margin-bottom: 14px;
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 3px;
+`;
+
+const FilterTab = styled.button<{ $active: boolean }>`
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: none;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ${EASING};
+  background: ${(p) => (p.$active ? "var(--accent)" : "transparent")};
+  color: ${(p) => (p.$active ? "#fff" : "var(--text-muted)")};
+
+  &:hover:not(:disabled) {
+    background: ${(p) => (p.$active ? "var(--accent)" : "rgba(0,0,0,0.04)")};
+  }
+`;
+
+const SourceBadge = styled.span<{ $source: "balance" | "transaction" }>`
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: ${(p) =>
+    p.$source === "balance"
+      ? "rgba(59, 130, 246, 0.1)"
+      : "rgba(168, 85, 247, 0.1)"};
+  color: ${(p) =>
+    p.$source === "balance" ? "#3b82f6" : "#a855f7"};
+  flex-shrink: 0;
+`;
+
+const EmergencyBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #16a34a;
+  background: rgba(34, 197, 94, 0.1);
+  padding: 3px 8px;
+  border-radius: 6px;
+`;
+
+const HeaderBadges = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+`;
+
+const PinToggle = styled.button`
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ${EASING};
+  color: var(--text-muted);
+
+  &:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+`;
+
+const ActivityDescription = styled.div`
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
 `;
 
 /* ── Delete Confirm ── */
@@ -561,11 +660,12 @@ export default function AccountDetailPage() {
   const [newBalance, setNewBalance] = useState("");
   const [balanceNote, setBalanceNote] = useState("");
 
-  // History with pagination
-  const [historyItems, setHistoryItems] = useState<HistoryEntry[]>([]);
+  // Activity with pagination
+  const [activityItems, setActivityItems] = useState<ActivityItem[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [historyLoading, setHistoryLoading] = useState(false);
+  const [activityLoading, setActivityLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [activityFilter, setActivityFilter] = useState<ActivityFilter>("all");
 
   // Update balance modal
   const [showUpdateBalance, setShowUpdateBalance] = useState(false);
@@ -604,37 +704,37 @@ export default function AccountDetailPage() {
     setLoading(false);
   }, [id]);
 
-  const fetchHistory = useCallback(
+  const fetchActivity = useCallback(
     async (cursor?: string) => {
       if (cursor) {
         setLoadingMore(true);
       } else {
-        setHistoryLoading(true);
+        setActivityLoading(true);
       }
-      const res = await getAccountBalanceHistory(id, cursor);
+      const res = await getAccountActivity(id, cursor);
       if (res.success) {
         const { items, nextCursor: nc } = res.data;
         if (cursor) {
-          setHistoryItems((prev) => [...prev, ...(items as HistoryEntry[])]);
+          setActivityItems((prev) => [...prev, ...(items as ActivityItem[])]);
         } else {
-          setHistoryItems(items as HistoryEntry[]);
+          setActivityItems(items as ActivityItem[]);
         }
         setNextCursor(nc);
       }
-      setHistoryLoading(false);
+      setActivityLoading(false);
       setLoadingMore(false);
     },
     [id],
   );
 
   const refreshAll = useCallback(async () => {
-    await Promise.all([fetchAccount(), fetchHistory()]);
-  }, [fetchAccount, fetchHistory]);
+    await Promise.all([fetchAccount(), fetchActivity()]);
+  }, [fetchAccount, fetchActivity]);
 
   useEffect(() => {
     fetchAccount();
-    fetchHistory();
-  }, [fetchAccount, fetchHistory]);
+    fetchActivity();
+  }, [fetchAccount, fetchActivity]);
 
   const handleUpdateBalance = async () => {
     const parsed = parseFloat(newBalance);
@@ -684,6 +784,33 @@ export default function AccountDetailPage() {
       setSaving(false);
     }
   };
+
+  const handleTogglePin = async () => {
+    const res = await togglePinAccount(id);
+    if (res.success) {
+      notify(account?.isPinned ? "Unpinned" : "Pinned!", "success");
+      await fetchAccount();
+    } else {
+      notify(res.error, "error");
+    }
+  };
+
+  const handleToggleEmergency = async () => {
+    if (!account) return;
+    const res = account.isEmergencyFund
+      ? await unsetEmergencyFundAccount(id)
+      : await setEmergencyFundAccount(id);
+    if (res.success) {
+      notify(account.isEmergencyFund ? "Emergency fund removed" : "Marked as emergency fund!", "success");
+      await fetchAccount();
+    } else {
+      notify(res.error, "error");
+    }
+  };
+
+  const filteredActivity = activityItems.filter(
+    (item) => activityFilter === "all" || item.source === activityFilter
+  );
 
   const openEditModal = () => {
     if (!account) return;
@@ -749,8 +876,16 @@ export default function AccountDetailPage() {
             <AccountMeta>
               <AccountName>{account.name}</AccountName>
               <AccountType>
-                {typeLabel(account.type)} · Created {formatDate(account.createdAt)}
+                {typeLabel(account.type)} · {account.user?.name ?? "You"}
               </AccountType>
+              <HeaderBadges>
+                {account.isEmergencyFund && (
+                  <EmergencyBadge>🛡️ Emergency Fund</EmergencyBadge>
+                )}
+                {account.isPinned && (
+                  <SourceBadge $source="balance">📌 Pinned</SourceBadge>
+                )}
+              </HeaderBadges>
             </AccountMeta>
           </AccountTop>
           <BalanceDisplay>{formatCurrency(account.balance)}</BalanceDisplay>
@@ -758,38 +893,69 @@ export default function AccountDetailPage() {
           <HeaderActions>
             <SmallButton onClick={openEditModal}>Edit</SmallButton>
             <SmallButton $variant="primary" onClick={() => setShowUpdateBalance(true)}>Update Balance</SmallButton>
+            <PinToggle onClick={handleTogglePin}>
+              {account.isPinned ? "📌 Unpin" : "📌 Pin"}
+            </PinToggle>
+            <SmallButton onClick={handleToggleEmergency}>
+              {account.isEmergencyFund ? "🛡️ Remove Emergency" : "🛡️ Emergency Fund"}
+            </SmallButton>
           </HeaderActions>
         </AccountHeader>
 
-        {/* ── Balance History ── */}
+        {/* ── Account Activity ── */}
         <Section>
-          <SectionTitle>Balance History</SectionTitle>
-          {historyLoading ? (
+          <SectionTitle>Account Activity</SectionTitle>
+          <FilterTabs>
+            <FilterTab $active={activityFilter === "all"} onClick={() => setActivityFilter("all")}>
+              All
+            </FilterTab>
+            <FilterTab $active={activityFilter === "balance"} onClick={() => setActivityFilter("balance")}>
+              Balance Updates
+            </FilterTab>
+            <FilterTab $active={activityFilter === "transaction"} onClick={() => setActivityFilter("transaction")}>
+              Transactions
+            </FilterTab>
+          </FilterTabs>
+          {activityLoading ? (
             <EmptyHistory>Loading…</EmptyHistory>
-          ) : historyItems.length === 0 ? (
-            <EmptyHistory>No history yet</EmptyHistory>
+          ) : filteredActivity.length === 0 ? (
+            <EmptyHistory>
+              {activityFilter === "all" ? "No activity yet" : `No ${activityFilter === "balance" ? "balance updates" : "transactions"} yet`}
+            </EmptyHistory>
           ) : (
             <>
               <Timeline>
-                {historyItems.map((h) => (
-                  <HistoryItem key={h.id}>
-                    <HistoryDot $positive={h.change >= 0} />
+                {filteredActivity.map((item) => (
+                  <HistoryItem key={`${item.source}-${item.id}`}>
+                    <HistoryDot $positive={item.change >= 0} />
                     <HistoryInfo>
-                      <HistoryChange $positive={h.change >= 0}>
-                        {h.change >= 0 ? "+" : ""}
-                        {formatCurrency(h.change)}
-                      </HistoryChange>
-                      {h.note && <HistoryNote>{h.note}</HistoryNote>}
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <SourceBadge $source={item.source}>
+                          {item.source === "balance" ? "Balance" : "Txn"}
+                        </SourceBadge>
+                        <HistoryChange $positive={item.change >= 0}>
+                          {item.change >= 0 ? "+" : ""}
+                          {formatCurrency(item.change)}
+                        </HistoryChange>
+                      </div>
+                      {item.note && <ActivityDescription>{item.note}</ActivityDescription>}
+                      {item.description && (
+                        <ActivityDescription>
+                          {item.description}{item.category ? ` · ${item.category}` : ""}
+                        </ActivityDescription>
+                      )}
                     </HistoryInfo>
-                    <HistoryBalance>{formatCurrency(h.balance)}</HistoryBalance>
-                    <HistoryDate>{formatDateTime(h.createdAt)}</HistoryDate>
+                    {item.source === "balance" && item.balance > 0 && (
+                      <HistoryBalance>{formatCurrency(item.balance)}</HistoryBalance>
+                    )}
+                    <HistoryDate>{formatDateTime(item.date)}</HistoryDate>
                   </HistoryItem>
                 ))}
               </Timeline>
               {nextCursor && (
                 <LoadMoreButton
                   disabled={loadingMore}
-                  onClick={() => fetchHistory(nextCursor)}
+                  onClick={() => fetchActivity(nextCursor)}
                 >
                   {loadingMore ? "Loading…" : "Load more"}
                 </LoadMoreButton>
