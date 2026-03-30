@@ -75,6 +75,8 @@ model User {
   loans          Loan[]
   savingsGoals   SavingsGoal[]
   budgetPlans    BudgetPlan[]
+  investments    InvestmentHolding[]
+  deposits       DepositInstrument[]
 
   // Couple relations
   coupleMembers  CoupleMember[]
@@ -156,6 +158,118 @@ model Transaction {
 enum TransactionType {
   INCOME
   EXPENSE
+}
+
+enum InvestmentAssetType {
+  GOLD
+  SILVER
+  STOCK
+  MUTUAL_FUND
+}
+
+enum InvestmentMode {
+  LUMPSUM
+  SIP
+}
+
+enum StockExchange {
+  NSE
+  BSE
+}
+
+enum DepositType {
+  RECURRING_DEPOSIT
+  FIXED_DEPOSIT
+}
+
+enum DepositStatus {
+  ACTIVE
+  MATURED
+}
+
+enum InstallmentStatus {
+  PENDING
+  PAID
+  MISSED
+}
+
+model InvestmentHolding {
+  id              String              @id @default(uuid())
+  userId          String
+  coupleId        String?
+  name            String
+  assetType       InvestmentAssetType
+  mode            InvestmentMode      @default(LUMPSUM)
+  ticker          String?
+  exchange        StockExchange?
+  quantity        Float?
+  quantityGrams   Float?
+  investedAmount  Float
+  currentPrice    Float?
+  currentValue    Float?
+  sipAmount       Float?
+  sipDayOfMonth   Int?
+  startDate       DateTime
+  nextSipDate     DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([assetType])
+  @@index([nextSipDate])
+  @@map("investment_holdings")
+}
+
+model DepositInstrument {
+  id                   String          @id @default(uuid())
+  userId               String
+  coupleId             String?
+  name                 String
+  provider             String?
+  type                 DepositType
+  principalAmount      Float
+  interestRate         Float
+  tenureMonths         Int
+  installmentAmount    Float?
+  paidInstallments     Int             @default(0)
+  totalInstallments    Int?
+  startDate            DateTime
+  maturityDate         DateTime
+  maturityAmount       Float
+  nextInstallmentDate  DateTime?
+  status               DepositStatus   @default(ACTIVE)
+  sourceAccountId      String?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  installments DepositInstallment[]
+
+  @@index([userId])
+  @@index([type])
+  @@index([maturityDate])
+  @@index([nextInstallmentDate])
+  @@index([sourceAccountId])
+  @@map("deposit_instruments")
+}
+
+model DepositInstallment {
+  id         String            @id @default(uuid())
+  depositId  String
+  amount     Float
+  dueDate    DateTime
+  paidDate   DateTime?
+  status     InstallmentStatus @default(PENDING)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  deposit DepositInstrument @relation(fields: [depositId], references: [id], onDelete: Cascade)
+
+  @@index([depositId])
+  @@index([dueDate])
+  @@map("deposit_installments")
 }
 
 model Budget {

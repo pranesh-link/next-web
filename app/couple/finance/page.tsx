@@ -30,7 +30,7 @@ const PageWrapper = styled.div`
 
 const SummaryGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px;
 
   @media (max-width: 1024px) {
@@ -249,7 +249,7 @@ const LoadingWrapper = styled.div`
 
 const LoadingGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px;
 
   @media (max-width: 1024px) {
@@ -316,6 +316,22 @@ const PercentIcon = (
     <line x1="19" y1="5" x2="5" y2="19" />
     <circle cx="6.5" cy="6.5" r="2.5" />
     <circle cx="17.5" cy="17.5" r="2.5" />
+  </svg>
+);
+
+const GemIcon = (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m6 3 6 8 6-8" />
+    <path d="m3 9 9 12 9-12" />
+    <path d="M3 9h18" />
+  </svg>
+);
+
+const VaultIcon = (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="4" width="20" height="16" rx="2" />
+    <circle cx="16" cy="12" r="2" />
+    <path d="M6 12h2" />
   </svg>
 );
 
@@ -391,7 +407,7 @@ export default function DashboardPage() {
         <FinanceHeader title="Dashboard" onRefresh={fetchData} />
         <LoadingWrapper>
           <LoadingGrid>
-            {Array.from({ length: 4 }).map((_, i) => (
+            {Array.from({ length: 6 }).map((_, i) => (
               <LoadingSkeleton key={i} type="card" />
             ))}
           </LoadingGrid>
@@ -424,6 +440,8 @@ export default function DashboardPage() {
     budgetStatus,
     loansSummary,
     goalsWithProgress,
+    investmentsSummary,
+    depositsSummary,
     healthScore,
     monthlyTrends,
     recentTransactions,
@@ -457,6 +475,22 @@ export default function DashboardPage() {
             value={`${savingsRate}%`}
             icon={PercentIcon}
             trend={{ value: savingsRate, isPositive: savingsRate > 0 }}
+          />
+          <SummaryCard
+            title="Investments"
+            value={investmentsSummary.currentValue}
+            icon={GemIcon}
+            trend={{
+              value: investmentsSummary.currentValue - investmentsSummary.totalInvested,
+              isPositive:
+                investmentsSummary.currentValue - investmentsSummary.totalInvested >= 0,
+            }}
+          />
+          <SummaryCard
+            title="Active Deposits"
+            value={depositsSummary.totalPrincipal}
+            icon={VaultIcon}
+            trend={{ value: depositsSummary.activeCount, isPositive: true }}
           />
         </SummaryGrid>
 
