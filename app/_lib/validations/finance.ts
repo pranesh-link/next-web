@@ -115,6 +115,7 @@ export const depositSchema = z.object({
   interestRate: z.number().min(0, "Interest rate cannot be negative").max(40, "Interest rate too high"),
   tenureMonths: z.number().int().positive("Tenure must be at least 1 month").max(600, "Tenure too long"),
   installmentAmount: z.number().positive("Installment must be positive").optional(),
+  installmentFrequency: z.enum(["MONTHLY", "QUARTERLY", "HALF_YEARLY", "YEARLY"]).optional(),
   paidInstallments: z.number().int().min(0).optional().default(0),
   totalInstallments: z.number().int().positive().optional(),
   startDate: z.coerce.date(),
@@ -135,6 +136,13 @@ export const depositSchema = z.object({
         code: z.ZodIssueCode.custom,
         message: "Total installments is required for RD",
         path: ["totalInstallments"],
+      });
+    }
+    if (!data.installmentFrequency) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Installment frequency is required for RD",
+        path: ["installmentFrequency"],
       });
     }
   }
