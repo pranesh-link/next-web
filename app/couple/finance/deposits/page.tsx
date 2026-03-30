@@ -48,6 +48,8 @@ type FormState = {
   nextInstallmentDate: string;
 };
 
+type FieldErrors = Partial<Record<keyof FormState, string[]>>;
+
 const EASING = "cubic-bezier(0.16, 1, 0.3, 1)";
 
 const PageWrapper = styled.div`
@@ -203,6 +205,12 @@ const FormActions = styled.div`
   justify-content: flex-end;
 `;
 
+const ErrorText = styled.p`
+  margin: 8px 0 0;
+  color: var(--danger);
+  font-size: 12px;
+`;
+
 const initialState: FormState = {
   name: "",
   provider: "",
@@ -233,6 +241,8 @@ export default function DepositsPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Deposit | null>(null);
   const [form, setForm] = useState<FormState>(initialState);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   const loadData = useCallback(async () => {
     const res = await getDeposits();
@@ -260,6 +270,8 @@ export default function DepositsPage() {
   const openCreate = () => {
     setEditing(null);
     setForm(initialState);
+    setSubmitError(null);
+    setFieldErrors({});
     setOpen(true);
   };
 
@@ -279,11 +291,15 @@ export default function DepositsPage() {
       maturityAmount: String(item.maturityAmount),
       nextInstallmentDate: item.nextInstallmentDate ? new Date(item.nextInstallmentDate).toISOString().slice(0, 10) : "",
     });
+    setSubmitError(null);
+    setFieldErrors({});
     setOpen(true);
   };
 
   const handleSubmit = async () => {
     setSaving(true);
+    setSubmitError(null);
+    setFieldErrors({});
 
     const payload = {
       name: form.name,
@@ -311,7 +327,23 @@ export default function DepositsPage() {
     if (res.success) {
       setOpen(false);
       await loadData();
+      return;
     }
+
+    const serverFieldErrors = "validationErrors" in res && res.validationErrors
+      ? (res.validationErrors as FieldErrors)
+      : {};
+
+    const fallbackError = "error" in res && typeof res.error === "string"
+      ? res.error
+      : "Failed to save deposit";
+
+    const firstFieldError = Object.values(serverFieldErrors)
+      .flat()
+      .find((message): message is string => Boolean(message));
+
+    setFieldErrors(serverFieldErrors);
+    setSubmitError(firstFieldError ?? fallbackError);
   };
 
   const handleDelete = async (id: string) => {
@@ -424,14 +456,17 @@ export default function DepositsPage() {
       </PageWrapper>
 
       <Modal isOpen={open} onClose={() => setOpen(false)} title={editing ? "Edit Deposit" : "Add Deposit"}>
+        {submitError ? <ErrorText>{submitError}</ErrorText> : null}
         <FormGrid>
           <Field>
             Name
             <Input value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} />
+            {fieldErrors.name?.[0] ? <ErrorText>{fieldErrors.name[0]}</ErrorText> : null}
           </Field>
           <Field>
             Provider
             <Input value={form.provider} onChange={(e) => setForm((p) => ({ ...p, provider: e.target.value }))} />
+            {fieldErrors.provider?.[0] ? <ErrorText>{fieldErrors.provider[0]}</ErrorText> : null}
           </Field>
           <Field>
             Type
@@ -439,30 +474,37 @@ export default function DepositsPage() {
               <option value="FIXED_DEPOSIT">Fixed Deposit</option>
               <option value="RECURRING_DEPOSIT">Recurring Deposit</option>
             </Select>
+            {fieldErrors.type?.[0] ? <ErrorText>{fieldErrors.type[0]}</ErrorText> : null}
           </Field>
           <Field>
             Principal Amount
             <Input type="number" value={form.principalAmount} onChange={(e) => setForm((p) => ({ ...p, principalAmount: e.target.value }))} />
+            {fieldErrors.principalAmount?.[0] ? <ErrorText>{fieldErrors.principalAmount[0]}</ErrorText> : null}
           </Field>
           <Field>
             Interest Rate (%)
             <Input type="number" value={form.interestRate} onChange={(e) => setForm((p) => ({ ...p, interestRate: e.target.value }))} />
+            {fieldErrors.interestRate?.[0] ? <ErrorText>{fieldErrors.interestRate[0]}</ErrorText> : null}
           </Field>
           <Field>
             Tenure (months)
             <Input type="number" value={form.tenureMonths} onChange={(e) => setForm((p) => ({ ...p, tenureMonths: e.target.value }))} />
+            {fieldErrors.tenureMonths?.[0] ? <ErrorText>{fieldErrors.tenureMonths[0]}</ErrorText> : null}
           </Field>
           <Field>
             Start Date
             <Input type="date" value={form.startDate} onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))} />
+            {fieldErrors.startDate?.[0] ? <ErrorText>{fieldErrors.startDate[0]}</ErrorText> : null}
           </Field>
           <Field>
             Maturity Date
             <Input type="date" value={form.maturityDate} onChange={(e) => setForm((p) => ({ ...p, maturityDate: e.target.value }))} />
+            {fieldErrors.maturityDate?.[0] ? <ErrorText>{fieldErrors.maturityDate[0]}</ErrorText> : null}
           </Field>
           <Field>
             Maturity Amount
             <Input type="number" value={form.maturityAmount} onChange={(e) => setForm((p) => ({ ...p, maturityAmount: e.target.value }))} />
+            {fieldErrors.maturityAmount?.[0] ? <ErrorText>{fieldErrors.maturityAmount[0]}</ErrorText> : null}
           </Field>
 
           {form.type === "RECURRING_DEPOSIT" && (
@@ -470,14 +512,17 @@ export default function DepositsPage() {
               <Field>
                 Installment Amount
                 <Input type="number" value={form.installmentAmount} onChange={(e) => setForm((p) => ({ ...p, installmentAmount: e.target.value }))} />
+                {fieldErrors.installmentAmount?.[0] ? <ErrorText>{fieldErrors.installmentAmount[0]}</ErrorText> : null}
               </Field>
               <Field>
                 Total Installments
                 <Input type="number" value={form.totalInstallments} onChange={(e) => setForm((p) => ({ ...p, totalInstallments: e.target.value }))} />
+                {fieldErrors.totalInstallments?.[0] ? <ErrorText>{fieldErrors.totalInstallments[0]}</ErrorText> : null}
               </Field>
               <Field>
                 Next Installment Date
                 <Input type="date" value={form.nextInstallmentDate} onChange={(e) => setForm((p) => ({ ...p, nextInstallmentDate: e.target.value }))} />
+                {fieldErrors.nextInstallmentDate?.[0] ? <ErrorText>{fieldErrors.nextInstallmentDate[0]}</ErrorText> : null}
               </Field>
             </>
           )}
