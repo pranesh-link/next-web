@@ -15,6 +15,37 @@ function parseDate(value: Date | string): Date {
   return value instanceof Date ? value : new Date(value);
 }
 
+function calculateMaturityAmount(input: {
+  type: "RECURRING_DEPOSIT" | "FIXED_DEPOSIT";
+  principalAmount: number;
+  interestRate: number;
+  tenureMonths: number;
+  installmentAmount?: number;
+  totalInstallments?: number;
+}) {
+  const monthlyRate = input.interestRate / 1200;
+
+  if (input.type === "RECURRING_DEPOSIT") {
+    const installment = input.installmentAmount ?? 0;
+    const installments = input.totalInstallments ?? input.tenureMonths;
+
+    if (installment <= 0 || installments <= 0) {
+      return Number(input.principalAmount.toFixed(2));
+    }
+
+    if (monthlyRate === 0) {
+      return Number((installment * installments).toFixed(2));
+    }
+
+    // Future value of monthly annuity due (installment paid at period start).
+    const fv = installment * ((Math.pow(1 + monthlyRate, installments) - 1) / monthlyRate) * (1 + monthlyRate);
+    return Number(fv.toFixed(2));
+  }
+
+  const fv = input.principalAmount * Math.pow(1 + monthlyRate, input.tenureMonths);
+  return Number(fv.toFixed(2));
+}
+
 function formatActionError(error: unknown, fallback: string) {
   if (error instanceof ZodError) {
     const { fieldErrors, formErrors } = error.flatten();
@@ -77,7 +108,6 @@ export async function createDeposit(data: {
   totalInstallments?: number;
   startDate: string | Date;
   maturityDate: string | Date;
-  maturityAmount: number;
   nextInstallmentDate?: string | Date;
   sourceAccountId?: string;
 }) {
@@ -87,6 +117,14 @@ export async function createDeposit(data: {
 
     const validated = depositSchema.parse(data);
     const coupleId = await getCoupleIdForUser(user.id);
+    const maturityAmount = calculateMaturityAmount({
+      type: validated.type,
+      principalAmount: validated.principalAmount,
+      interestRate: validated.interestRate,
+      tenureMonths: validated.tenureMonths,
+      installmentAmount: validated.installmentAmount,
+      totalInstallments: validated.totalInstallments,
+    });
 
     const deposit = await prisma.depositInstrument.create({
       data: {
@@ -102,7 +140,7 @@ export async function createDeposit(data: {
         totalInstallments: validated.totalInstallments,
         startDate: validated.startDate,
         maturityDate: validated.maturityDate,
-        maturityAmount: validated.maturityAmount,
+        maturityAmount,
         nextInstallmentDate: validated.nextInstallmentDate,
         sourceAccountId: validated.sourceAccountId,
         ...(coupleId ? { coupleId } : {}),
@@ -132,7 +170,6 @@ export async function updateDeposit(
     totalInstallments?: number;
     startDate?: string | Date;
     maturityDate?: string | Date;
-    maturityAmount?: number;
     nextInstallmentDate?: string | Date;
   },
 ) {
@@ -160,12 +197,19 @@ export async function updateDeposit(
       totalInstallments: data.totalInstallments ?? (existing.totalInstallments ?? undefined),
       startDate: data.startDate ?? existing.startDate,
       maturityDate: data.maturityDate ?? existing.maturityDate,
-      maturityAmount: data.maturityAmount ?? existing.maturityAmount,
       nextInstallmentDate: data.nextInstallmentDate ?? (existing.nextInstallmentDate ?? undefined),
       sourceAccountId: existing.sourceAccountId ?? undefined,
     };
 
     const validated = depositSchema.parse(merged);
+    const maturityAmount = calculateMaturityAmount({
+      type: validated.type,
+      principalAmount: validated.principalAmount,
+      interestRate: validated.interestRate,
+      tenureMonths: validated.tenureMonths,
+      installmentAmount: validated.installmentAmount,
+      totalInstallments: validated.totalInstallments,
+    });
 
     const status = parseDate(validated.maturityDate) <= new Date() ? "MATURED" : "ACTIVE";
 
@@ -183,7 +227,7 @@ export async function updateDeposit(
         totalInstallments: validated.totalInstallments,
         startDate: validated.startDate,
         maturityDate: validated.maturityDate,
-        maturityAmount: validated.maturityAmount,
+        maturityAmount,
         nextInstallmentDate: validated.nextInstallmentDate,
         status,
       },

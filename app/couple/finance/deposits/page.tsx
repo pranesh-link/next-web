@@ -44,7 +44,6 @@ type FormState = {
   totalInstallments: string;
   startDate: string;
   maturityDate: string;
-  maturityAmount: string;
   nextInstallmentDate: string;
 };
 
@@ -222,7 +221,6 @@ const initialState: FormState = {
   totalInstallments: "",
   startDate: new Date().toISOString().slice(0, 10),
   maturityDate: "",
-  maturityAmount: "",
   nextInstallmentDate: "",
 };
 
@@ -288,7 +286,6 @@ export default function DepositsPage() {
       totalInstallments: item.totalInstallments ? String(item.totalInstallments) : "",
       startDate: new Date(item.startDate).toISOString().slice(0, 10),
       maturityDate: new Date(item.maturityDate).toISOString().slice(0, 10),
-      maturityAmount: String(item.maturityAmount),
       nextInstallmentDate: item.nextInstallmentDate ? new Date(item.nextInstallmentDate).toISOString().slice(0, 10) : "",
     });
     setSubmitError(null);
@@ -312,7 +309,6 @@ export default function DepositsPage() {
       totalInstallments: form.type === "RECURRING_DEPOSIT" ? Number(form.totalInstallments || 0) || undefined : undefined,
       startDate: form.startDate,
       maturityDate: form.maturityDate,
-      maturityAmount: Number(form.maturityAmount),
       nextInstallmentDate:
         form.type === "RECURRING_DEPOSIT" && form.nextInstallmentDate
           ? form.nextInstallmentDate
@@ -501,12 +497,6 @@ export default function DepositsPage() {
             <Input type="date" value={form.maturityDate} onChange={(e) => setForm((p) => ({ ...p, maturityDate: e.target.value }))} />
             {fieldErrors.maturityDate?.[0] ? <ErrorText>{fieldErrors.maturityDate[0]}</ErrorText> : null}
           </Field>
-          <Field>
-            Maturity Amount
-            <Input type="number" value={form.maturityAmount} onChange={(e) => setForm((p) => ({ ...p, maturityAmount: e.target.value }))} />
-            {fieldErrors.maturityAmount?.[0] ? <ErrorText>{fieldErrors.maturityAmount[0]}</ErrorText> : null}
-          </Field>
-
           {form.type === "RECURRING_DEPOSIT" && (
             <>
               <Field>
