@@ -198,17 +198,9 @@ export async function getDeposits() {
         installmentFrequency: deposit.installmentFrequency,
       });
 
-      // Derive paidInstallments: use tracked installment records first,
-      // fall back to expectedInstallmentsTillDate when no manual tracking exists.
-      const paidFromRecords = deposit.installments.filter(
-        (i) => i.status === "PAID",
-      ).length;
-      const paidInstallments =
-        paidFromRecords > 0
-          ? paidFromRecords
-          : deposit.paidInstallments > 0
-            ? deposit.paidInstallments
-            : expectedInstallmentsTillDate;
+      // RD installments are auto-deducted by the bank (like loan EMIs),
+      // so paid count equals expected installments by date.
+      const paidInstallments = expectedInstallmentsTillDate;
 
       return {
         ...deposit,
