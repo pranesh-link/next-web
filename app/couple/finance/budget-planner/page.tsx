@@ -947,7 +947,7 @@ export default function BudgetPlannerPage() {
       const [planResult, prevPlanResult, incomeResult] = await Promise.all([
         getBudgetPlan(month, currentMode),
         getBudgetPlan(prevPeriod, currentMode),
-        getIncome(month, currentMode),
+        getIncome(prevPeriod, currentMode),
       ]);
 
       // Previous month plan
@@ -978,7 +978,7 @@ export default function BudgetPlannerPage() {
         if (incomeResult.success && incomeResult.income > 0) {
           setIncome(incomeResult.income);
           setIncomeHint(
-            `Based on ${formatCurrency(incomeResult.income)} recorded income for ${currentMode === "monthly" ? formatMonthLabel(month) : month}`
+            `Based on ${formatCurrency(incomeResult.income)} income from previous ${currentMode === "monthly" ? "month" : "year"} (${currentMode === "monthly" ? formatMonthLabel(prevPeriod) : prevPeriod})`
           );
         } else {
           setIncome(0);
@@ -1101,6 +1101,12 @@ export default function BudgetPlannerPage() {
     const validItems = lineItems.filter((i) => i.category && i.amount > 0);
     if (validItems.length === 0) {
       notify("Add at least one expense with a category and amount", "error");
+      return;
+    }
+
+    const missingNotes = validItems.some((i) => !i.note?.trim());
+    if (missingNotes) {
+      notify("Please add a note for each expense item", "error");
       return;
     }
 
@@ -1285,7 +1291,7 @@ export default function BudgetPlannerPage() {
               <LineItemGrid>
                 {lineItems.map((item, index) => (
                   <LineItemRow key={index}>
-                    <LineItemField $flex={2}>
+                    <LineItemField $flex={1.2}>
                       <FinanceSelect
                         value={item.category}
                         onChange={(e) =>
@@ -1314,7 +1320,7 @@ export default function BudgetPlannerPage() {
                     <LineItemField>
                       <FinanceInput
                         type="text"
-                        placeholder="Note (optional)"
+                        placeholder="Note (required)"
                         value={item.note || ""}
                         onChange={(e) =>
                           updateLineItem(index, "note", e.target.value)
