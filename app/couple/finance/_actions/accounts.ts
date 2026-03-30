@@ -233,6 +233,46 @@ export async function getTotalBalance() {
   }
 }
 
+export async function getAccountsPageData() {
+  try {
+    const user = await requireAuthForAction();
+    if (!user) return { success: false as const, error: "Not authenticated" };
+
+    const coupleUserIds = await getUserIdsForCouple(user.id);
+
+    const [accounts, totalBalanceResult, coupleUsers] = await Promise.all([
+      prisma.financialAccount.findMany({
+        where: { userId: { in: coupleUserIds } },
+        orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
+        include: { user: { select: { id: true, name: true } } },
+      }),
+      prisma.financialAccount.aggregate({
+        where: { userId: { in: coupleUserIds } },
+        _sum: { balance: true },
+      }),
+      prisma.user.findMany({
+        where: { id: { in: coupleUserIds } },
+        select: { id: true, name: true, email: true },
+      }),
+    ]);
+
+    return {
+      success: true as const,
+      data: {
+        accounts,
+        totalBalance: totalBalanceResult._sum.balance ?? 0,
+        coupleUsers,
+        currentUserId: user.id,
+      },
+    };
+  } catch (error) {
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : "Failed to fetch accounts page data",
+    };
+  }
+}
+
 export async function updateAccountBalance(
   id: string,
   newBalance: number,

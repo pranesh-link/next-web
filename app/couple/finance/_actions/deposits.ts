@@ -177,8 +177,6 @@ export async function getDeposits() {
       },
     });
 
-    await syncDepositReminders(user.id);
-
     const enrichedDeposits = deposits.map((deposit) => {
       if (deposit.type !== "RECURRING_DEPOSIT") {
         return deposit;
