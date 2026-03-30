@@ -207,16 +207,17 @@ const AddButton = styled.button`
 
 const CardGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   animation: ${fadeIn} 0.3s ${EASING};
 
-  @media (max-width: 480px) {
+  @media (max-width: 768px) {
     grid-template-columns: 1fr;
   }
 `;
 
 const AccountCard = styled.div`
+  position: relative;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: 16px;
@@ -233,8 +234,12 @@ const AccountCard = styled.div`
 const CardHeader = styled.div`
   padding: 20px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 14px;
+
+  @media (max-width: 480px) {
+    padding: 16px;
+  }
 `;
 
 const CardIcon = styled.div`
@@ -252,42 +257,73 @@ const CardIcon = styled.div`
 const CardInfo = styled.div`
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: 28px;
+`;
+
+const CardNameRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
 `;
 
 const CardName = styled.div`
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
+  line-height: 1.2;
   color: var(--text);
-  margin-bottom: 2px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
 `;
 
 const CardType = styled.div`
-  font-size: 12px;
+  font-size: 11px;
+  letter-spacing: 0.2px;
   color: var(--text-muted);
+  text-transform: uppercase;
+  opacity: 0.85;
 `;
 
 const CardBalance = styled.div`
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--text);
-  text-align: right;
-  flex-shrink: 0;
+  line-height: 1.2;
+  margin-top: 2px;
+`;
+
+const CardMetaRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+`;
+
+const CardMetaLeft = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 `;
 
 const CardUpdated = styled.div`
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-muted);
-  text-align: right;
-  margin-top: 2px;
+  white-space: nowrap;
+  opacity: 0.72;
 `;
 
 const CardChevron = styled.div`
   color: var(--text-muted);
-  font-size: 16px;
+  font-size: 14px;
   flex-shrink: 0;
+  opacity: 0.55;
 `;
 
 /* ── Modal Form ── */
@@ -441,38 +477,43 @@ const WarningAlert = styled.div`
 `;
 
 const SalaryBadge = styled.span`
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
-  color: #b45309;
-  background: rgba(251, 191, 36, 0.15);
-  padding: 2px 6px;
+  letter-spacing: 0.2px;
+  color: #92400e;
+  background: rgba(251, 191, 36, 0.11);
+  padding: 1px 5px;
   border-radius: 4px;
-  margin-left: 6px;
 `;
 
 const EmergencyBadge = styled.span`
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
-  color: #059669;
-  background: rgba(16, 185, 129, 0.15);
-  padding: 2px 6px;
+  letter-spacing: 0.2px;
+  color: #047857;
+  background: rgba(16, 185, 129, 0.11);
+  padding: 1px 5px;
   border-radius: 4px;
-  margin-left: 6px;
 `;
 
 const PinButton = styled.button<{ $pinned: boolean }>`
-  padding: 4px;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 6px;
+  border-radius: 8px;
   border: none;
-  background: none;
+  background: ${(p) => (p.$pinned ? "rgba(59, 130, 246, 0.14)" : "transparent")};
   cursor: pointer;
-  font-size: 14px;
-  opacity: ${(p) => (p.$pinned ? 1 : 0.3)};
+  font-size: 13px;
+  opacity: ${(p) => (p.$pinned ? 1 : 0.55)};
   transition: all 0.15s ${EASING};
-  flex-shrink: 0;
+  z-index: 2;
 
   &:hover {
     opacity: 1;
-    transform: scale(1.2);
+    transform: scale(1.08);
+    background: rgba(59, 130, 246, 0.14);
   }
 `;
 
@@ -500,9 +541,12 @@ const AddIncomeBtn = styled.button`
 `;
 
 const OwnerText = styled.div`
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-muted);
-  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.78;
 `;
 
 const PinnedCard = styled(AccountCard)`
@@ -576,6 +620,18 @@ function AccountsPageContent() {
       setShowAddIncome(true);
     }
   }, [searchParams, loading, accounts.length]);
+
+  const prefetchAccountDetail = useCallback((accountId: string) => {
+    router.prefetch(`/couple/finance/accounts/${accountId}`);
+  }, [router]);
+
+  useEffect(() => {
+    if (accounts.length === 0) return;
+    // Warm likely next navigations so click transitions feel immediate.
+    accounts.slice(0, 8).forEach((acc) => {
+      prefetchAccountDetail(acc.id);
+    });
+  }, [accounts, prefetchAccountDetail]);
 
   const existingSalaryAccount = accounts.find((a) => a.isSalaryAccount);
   const emergencyFundCount = accounts.filter((a) => a.isEmergencyFund).length;
@@ -667,31 +723,35 @@ function AccountsPageContent() {
               return (
                 <CardComponent
                   key={acc.id}
+                  onMouseEnter={() => prefetchAccountDetail(acc.id)}
+                  onFocus={() => prefetchAccountDetail(acc.id)}
                   onClick={() => router.push(`/couple/finance/accounts/${acc.id}`)}
                 >
+                  <PinButton
+                    $pinned={acc.isPinned}
+                    onClick={(e) => handlePin(e, acc.id)}
+                    title={acc.isPinned ? "Unpin" : "Pin to top"}
+                  >
+                    📌
+                  </PinButton>
                   <CardHeader>
                     <CardIcon>{typeIcon(acc.type)}</CardIcon>
                     <CardInfo>
-                      <CardName>
-                        {acc.name}
+                      <CardNameRow>
+                        <CardName>{acc.name}</CardName>
                         {acc.isSalaryAccount && <SalaryBadge>Salary</SalaryBadge>}
                         {acc.isEmergencyFund && <EmergencyBadge>🛡️ Emergency</EmergencyBadge>}
-                      </CardName>
+                      </CardNameRow>
                       <CardType>{typeLabel(acc.type)}</CardType>
-                      <OwnerText>{isOwner ? "You" : ownerName}</OwnerText>
-                    </CardInfo>
-                    <div>
                       <CardBalance>{formatCurrency(acc.balance)}</CardBalance>
-                      <CardUpdated>on {formatDate(acc.updatedAt)}</CardUpdated>
-                    </div>
-                    <PinButton
-                      $pinned={acc.isPinned}
-                      onClick={(e) => handlePin(e, acc.id)}
-                      title={acc.isPinned ? "Unpin" : "Pin to top"}
-                    >
-                      📌
-                    </PinButton>
-                    <CardChevron>›</CardChevron>
+                      <CardMetaRow>
+                        <CardMetaLeft>
+                          <OwnerText>{isOwner ? "You" : ownerName}</OwnerText>
+                          <CardUpdated>on {formatDate(acc.updatedAt)}</CardUpdated>
+                        </CardMetaLeft>
+                        <CardChevron>›</CardChevron>
+                      </CardMetaRow>
+                    </CardInfo>
                   </CardHeader>
                   {acc.isSalaryAccount && (
                     <CardFooter>
