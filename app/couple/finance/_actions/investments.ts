@@ -5,9 +5,32 @@ import { requireAuthForAction } from "@/_lib/auth-utils";
 import { investmentSchema } from "@/_lib/validations/finance";
 import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
 import { createNotification } from "@/_services/finance/notification-service";
+import { ZodError } from "zod";
 
 function monthKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function formatActionError(error: unknown, fallback: string) {
+  if (error instanceof ZodError) {
+    const { fieldErrors, formErrors } = error.flatten();
+    const normalizedFieldErrors: Record<string, string[]> = {};
+
+    for (const [key, messages] of Object.entries(fieldErrors as Record<string, string[] | undefined>)) {
+      if (messages && messages.length > 0) {
+        normalizedFieldErrors[key] = messages;
+      }
+    }
+
+    return {
+      error: formErrors[0] ?? "Validation failed",
+      validationErrors: normalizedFieldErrors,
+    };
+  }
+
+  return {
+    error: error instanceof Error ? error.message : fallback,
+  };
 }
 
 export async function getInvestments() {
@@ -81,7 +104,7 @@ export async function createInvestment(data: {
   } catch (error) {
     return {
       success: false as const,
-      error: error instanceof Error ? error.message : "Failed to create investment",
+      ...formatActionError(error, "Failed to create investment"),
     };
   }
 }
@@ -160,7 +183,7 @@ export async function updateInvestment(
   } catch (error) {
     return {
       success: false as const,
-      error: error instanceof Error ? error.message : "Failed to update investment",
+      ...formatActionError(error, "Failed to update investment"),
     };
   }
 }

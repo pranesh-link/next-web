@@ -47,6 +47,8 @@ type FormState = {
   nextSipDate: string;
 };
 
+type FieldErrors = Partial<Record<keyof FormState, string[]>>;
+
 const EASING = "cubic-bezier(0.16, 1, 0.3, 1)";
 
 const PageWrapper = styled.div`
@@ -214,6 +216,12 @@ const FormActions = styled.div`
   justify-content: flex-end;
 `;
 
+const ErrorText = styled.p`
+  margin: 8px 0 0;
+  color: var(--danger);
+  font-size: 12px;
+`;
+
 const PrimaryButton = styled.button`
   border: none;
   background: var(--accent);
@@ -255,6 +263,8 @@ export default function InvestmentsPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Investment | null>(null);
   const [form, setForm] = useState<FormState>(initialState);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   const loadData = useCallback(async () => {
     const res = await getInvestments();
@@ -281,6 +291,8 @@ export default function InvestmentsPage() {
   const openCreate = () => {
     setEditing(null);
     setForm(initialState);
+    setSubmitError(null);
+    setFieldErrors({});
     setOpen(true);
   };
 
@@ -301,11 +313,15 @@ export default function InvestmentsPage() {
       startDate: new Date(item.startDate).toISOString().slice(0, 10),
       nextSipDate: item.nextSipDate ? new Date(item.nextSipDate).toISOString().slice(0, 10) : "",
     });
+    setSubmitError(null);
+    setFieldErrors({});
     setOpen(true);
   };
 
   const handleSubmit = async () => {
     setSaving(true);
+    setSubmitError(null);
+    setFieldErrors({});
 
     const payload = {
       name: form.name,
@@ -331,7 +347,23 @@ export default function InvestmentsPage() {
     if (res.success) {
       setOpen(false);
       await loadData();
+      return;
     }
+
+    const serverFieldErrors = "validationErrors" in res && res.validationErrors
+      ? (res.validationErrors as FieldErrors)
+      : {};
+
+    const fallbackError = "error" in res && typeof res.error === "string"
+      ? res.error
+      : "Failed to save investment";
+
+    const firstFieldError = Object.values(serverFieldErrors)
+      .flat()
+      .find((message): message is string => Boolean(message));
+
+    setFieldErrors(serverFieldErrors);
+    setSubmitError(firstFieldError ?? fallbackError);
   };
 
   const handleDelete = async (id: string) => {
@@ -438,10 +470,12 @@ export default function InvestmentsPage() {
       </PageWrapper>
 
       <Modal isOpen={open} onClose={() => setOpen(false)} title={editing ? "Edit Investment" : "Add Investment"}>
+        {submitError ? <ErrorText>{submitError}</ErrorText> : null}
         <FormGrid>
           <Field>
             Name
             <Input value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} />
+            {fieldErrors.name?.[0] ? <ErrorText>{fieldErrors.name[0]}</ErrorText> : null}
           </Field>
           <Field>
             Asset Type
@@ -451,6 +485,7 @@ export default function InvestmentsPage() {
               <option value="GOLD">Gold</option>
               <option value="SILVER">Silver</option>
             </Select>
+            {fieldErrors.assetType?.[0] ? <ErrorText>{fieldErrors.assetType[0]}</ErrorText> : null}
           </Field>
           <Field>
             Mode
@@ -458,10 +493,12 @@ export default function InvestmentsPage() {
               <option value="LUMPSUM">Lumpsum</option>
               <option value="SIP">SIP</option>
             </Select>
+            {fieldErrors.mode?.[0] ? <ErrorText>{fieldErrors.mode[0]}</ErrorText> : null}
           </Field>
           <Field>
             Start Date
             <Input type="date" value={form.startDate} onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))} />
+            {fieldErrors.startDate?.[0] ? <ErrorText>{fieldErrors.startDate[0]}</ErrorText> : null}
           </Field>
 
           {form.assetType === "STOCK" && (
@@ -469,6 +506,7 @@ export default function InvestmentsPage() {
               <Field>
                 Ticker
                 <Input value={form.ticker} onChange={(e) => setForm((p) => ({ ...p, ticker: e.target.value.toUpperCase() }))} />
+                {fieldErrors.ticker?.[0] ? <ErrorText>{fieldErrors.ticker[0]}</ErrorText> : null}
               </Field>
               <Field>
                 Exchange
@@ -476,10 +514,12 @@ export default function InvestmentsPage() {
                   <option value="NSE">NSE</option>
                   <option value="BSE">BSE</option>
                 </Select>
+                {fieldErrors.exchange?.[0] ? <ErrorText>{fieldErrors.exchange[0]}</ErrorText> : null}
               </Field>
               <Field>
                 Quantity
                 <Input type="number" value={form.quantity} onChange={(e) => setForm((p) => ({ ...p, quantity: e.target.value }))} />
+                {fieldErrors.quantity?.[0] ? <ErrorText>{fieldErrors.quantity[0]}</ErrorText> : null}
               </Field>
             </>
           )}
@@ -488,16 +528,19 @@ export default function InvestmentsPage() {
             <Field>
               Weight (grams)
               <Input type="number" value={form.quantityGrams} onChange={(e) => setForm((p) => ({ ...p, quantityGrams: e.target.value }))} />
+              {fieldErrors.quantityGrams?.[0] ? <ErrorText>{fieldErrors.quantityGrams[0]}</ErrorText> : null}
             </Field>
           )}
 
           <Field>
             Invested Amount
             <Input type="number" value={form.investedAmount} onChange={(e) => setForm((p) => ({ ...p, investedAmount: e.target.value }))} />
+            {fieldErrors.investedAmount?.[0] ? <ErrorText>{fieldErrors.investedAmount[0]}</ErrorText> : null}
           </Field>
           <Field>
             Current Value (manual)
             <Input type="number" value={form.currentValue} onChange={(e) => setForm((p) => ({ ...p, currentValue: e.target.value }))} />
+            {fieldErrors.currentValue?.[0] ? <ErrorText>{fieldErrors.currentValue[0]}</ErrorText> : null}
           </Field>
 
           {form.mode === "SIP" && (
@@ -505,14 +548,17 @@ export default function InvestmentsPage() {
               <Field>
                 SIP Amount
                 <Input type="number" value={form.sipAmount} onChange={(e) => setForm((p) => ({ ...p, sipAmount: e.target.value }))} />
+                {fieldErrors.sipAmount?.[0] ? <ErrorText>{fieldErrors.sipAmount[0]}</ErrorText> : null}
               </Field>
               <Field>
                 SIP Day (1-31)
                 <Input type="number" value={form.sipDayOfMonth} onChange={(e) => setForm((p) => ({ ...p, sipDayOfMonth: e.target.value }))} />
+                {fieldErrors.sipDayOfMonth?.[0] ? <ErrorText>{fieldErrors.sipDayOfMonth[0]}</ErrorText> : null}
               </Field>
               <Field>
                 Next SIP Date
                 <Input type="date" value={form.nextSipDate} onChange={(e) => setForm((p) => ({ ...p, nextSipDate: e.target.value }))} />
+                {fieldErrors.nextSipDate?.[0] ? <ErrorText>{fieldErrors.nextSipDate[0]}</ErrorText> : null}
               </Field>
             </>
           )}
