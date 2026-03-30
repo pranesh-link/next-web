@@ -249,13 +249,12 @@ export default function NotificationsPage() {
       setProcessingId(notifId);
       const res = await acceptInviteByToken(token);
       if (res.success) {
-        await markRead(notifId);
-        await refresh();
         router.push("/couple/details");
+        void markRead(notifId);
       }
       setProcessingId(null);
     },
-    [markRead, refresh, router]
+    [markRead, router]
   );
 
   const handleDecline = useCallback(
