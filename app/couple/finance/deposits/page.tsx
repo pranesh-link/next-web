@@ -20,12 +20,15 @@ type Deposit = {
   name: string;
   provider?: string | null;
   type: "RECURRING_DEPOSIT" | "FIXED_DEPOSIT";
+  installmentFrequency?: "MONTHLY" | "QUARTERLY" | "HALF_YEARLY" | "YEARLY" | null;
   principalAmount: number;
   interestRate: number;
   tenureMonths: number;
   installmentAmount?: number | null;
   paidInstallments: number;
   totalInstallments?: number | null;
+  expectedInstallmentsTillDate?: number | null;
+  timeProgressPercentage?: number | null;
   startDate: string | Date;
   maturityDate: string | Date;
   maturityAmount: number;
@@ -37,6 +40,7 @@ type FormState = {
   name: string;
   provider: string;
   type: "RECURRING_DEPOSIT" | "FIXED_DEPOSIT";
+  installmentFrequency: "MONTHLY" | "QUARTERLY" | "HALF_YEARLY" | "YEARLY";
   principalAmount: string;
   interestRate: string;
   tenureMonths: string;
@@ -214,6 +218,7 @@ const initialState: FormState = {
   name: "",
   provider: "",
   type: "FIXED_DEPOSIT",
+  installmentFrequency: "MONTHLY",
   principalAmount: "",
   interestRate: "",
   tenureMonths: "12",
@@ -279,6 +284,7 @@ export default function DepositsPage() {
       name: item.name,
       provider: item.provider ?? "",
       type: item.type,
+      installmentFrequency: item.installmentFrequency ?? "MONTHLY",
       principalAmount: String(item.principalAmount),
       interestRate: String(item.interestRate),
       tenureMonths: String(item.tenureMonths),
@@ -309,10 +315,7 @@ export default function DepositsPage() {
       totalInstallments: form.type === "RECURRING_DEPOSIT" ? Number(form.totalInstallments || 0) || undefined : undefined,
       startDate: form.startDate,
       maturityDate: form.maturityDate,
-      nextInstallmentDate:
-        form.type === "RECURRING_DEPOSIT" && form.nextInstallmentDate
-          ? form.nextInstallmentDate
-          : undefined,
+      ...(form.type === "RECURRING_DEPOSIT" ? { installmentFrequency: form.installmentFrequency } : {}),
     };
 
     const res = editing
@@ -425,9 +428,29 @@ export default function DepositsPage() {
                         <Value>{formatCurrency(item.installmentAmount ?? 0)}</Value>
                       </Row>
                       <Row>
-                        <span>Progress</span>
+                        <span>Paid Progress</span>
                         <Value>
                           {item.paidInstallments}/{item.totalInstallments ?? "-"}
+                        </Value>
+                      </Row>
+                      <Row>
+                        <span>Expected by Date</span>
+                        <Value>{item.expectedInstallmentsTillDate ?? "-"}</Value>
+                      </Row>
+                      <Row>
+                        <span>Time Progress</span>
+                        <Value>
+                          {typeof item.timeProgressPercentage === "number"
+                            ? `${item.timeProgressPercentage.toFixed(1)}%`
+                            : "-"}
+                        </Value>
+                      </Row>
+                      <Row>
+                        <span>Next Installment</span>
+                        <Value>
+                          {item.nextInstallmentDate
+                            ? new Date(item.nextInstallmentDate).toLocaleDateString("en-IN")
+                            : "-"}
                         </Value>
                       </Row>
                     </>
@@ -466,7 +489,22 @@ export default function DepositsPage() {
           </Field>
           <Field>
             Type
-            <Select value={form.type} onChange={(e) => setForm((p) => ({ ...p, type: e.target.value as FormState["type"] }))}>
+            <Select
+              value={form.type}
+              onChange={(e) =>
+                setForm((p) => {
+                  const nextType = e.target.value as FormState["type"];
+                  return {
+                    ...p,
+                    type: nextType,
+                    installmentFrequency:
+                      nextType === "RECURRING_DEPOSIT"
+                        ? p.installmentFrequency || "MONTHLY"
+                        : p.installmentFrequency,
+                  };
+                })
+              }
+            >
               <option value="FIXED_DEPOSIT">Fixed Deposit</option>
               <option value="RECURRING_DEPOSIT">Recurring Deposit</option>
             </Select>
@@ -505,14 +543,27 @@ export default function DepositsPage() {
                 {fieldErrors.installmentAmount?.[0] ? <ErrorText>{fieldErrors.installmentAmount[0]}</ErrorText> : null}
               </Field>
               <Field>
+                Installment Frequency
+                <Select
+                  value={form.installmentFrequency}
+                  onChange={(e) =>
+                    setForm((p) => ({
+                      ...p,
+                      installmentFrequency: e.target.value as FormState["installmentFrequency"],
+                    }))
+                  }
+                >
+                  <option value="MONTHLY">Monthly</option>
+                  <option value="QUARTERLY">Quarterly</option>
+                  <option value="HALF_YEARLY">Half-yearly</option>
+                  <option value="YEARLY">Yearly</option>
+                </Select>
+                {fieldErrors.installmentFrequency?.[0] ? <ErrorText>{fieldErrors.installmentFrequency[0]}</ErrorText> : null}
+              </Field>
+              <Field>
                 Total Installments
                 <Input type="number" value={form.totalInstallments} onChange={(e) => setForm((p) => ({ ...p, totalInstallments: e.target.value }))} />
                 {fieldErrors.totalInstallments?.[0] ? <ErrorText>{fieldErrors.totalInstallments[0]}</ErrorText> : null}
-              </Field>
-              <Field>
-                Next Installment Date
-                <Input type="date" value={form.nextInstallmentDate} onChange={(e) => setForm((p) => ({ ...p, nextInstallmentDate: e.target.value }))} />
-                {fieldErrors.nextInstallmentDate?.[0] ? <ErrorText>{fieldErrors.nextInstallmentDate[0]}</ErrorText> : null}
               </Field>
             </>
           )}

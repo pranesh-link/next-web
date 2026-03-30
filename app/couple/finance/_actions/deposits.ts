@@ -15,6 +15,98 @@ function parseDate(value: Date | string): Date {
   return value instanceof Date ? value : new Date(value);
 }
 
+type InstallmentFrequency = "MONTHLY" | "QUARTERLY" | "HALF_YEARLY" | "YEARLY";
+
+const FREQUENCY_MONTHS: Record<InstallmentFrequency, number> = {
+  MONTHLY: 1,
+  QUARTERLY: 3,
+  HALF_YEARLY: 6,
+  YEARLY: 12,
+};
+
+function toStartOfDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function getFrequencyMonths(frequency: InstallmentFrequency | null | undefined): number {
+  return FREQUENCY_MONTHS[frequency ?? "MONTHLY"];
+}
+
+function addMonthsWithDayClamp(baseDate: Date, monthsToAdd: number, targetDayOfMonth: number): Date {
+  const source = parseDate(baseDate);
+  const targetYear = source.getFullYear();
+  const targetMonth = source.getMonth() + monthsToAdd;
+  const lastDayOfTargetMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+  const day = Math.min(targetDayOfMonth, lastDayOfTargetMonth);
+
+  return new Date(targetYear, targetMonth, day);
+}
+
+function getScheduledInstallmentDate(
+  startDate: Date,
+  installmentNumber: number,
+  frequency: InstallmentFrequency,
+): Date {
+  const normalizedStartDate = toStartOfDay(parseDate(startDate));
+  const monthsToAdd = (installmentNumber - 1) * getFrequencyMonths(frequency);
+  return addMonthsWithDayClamp(normalizedStartDate, monthsToAdd, normalizedStartDate.getDate());
+}
+
+function getNextScheduledInstallmentDate(input: {
+  startDate: Date;
+  totalInstallments?: number | null;
+  installmentFrequency?: InstallmentFrequency | null;
+  asOfDate?: Date;
+}): Date | null {
+  const totalInstallments = input.totalInstallments ?? 0;
+
+  if (totalInstallments <= 0) {
+    return null;
+  }
+
+  const frequency = input.installmentFrequency ?? "MONTHLY";
+  const asOfDate = toStartOfDay(input.asOfDate ?? new Date());
+
+  for (let installmentNumber = 1; installmentNumber <= totalInstallments; installmentNumber += 1) {
+    const dueDate = getScheduledInstallmentDate(input.startDate, installmentNumber, frequency);
+    if (dueDate >= asOfDate) {
+      return dueDate;
+    }
+  }
+
+  return null;
+}
+
+function getExpectedInstallmentsTillDate(input: {
+  startDate: Date;
+  totalInstallments?: number | null;
+  installmentFrequency?: InstallmentFrequency | null;
+  asOfDate?: Date;
+}): number {
+  const totalInstallments = input.totalInstallments ?? 0;
+
+  if (totalInstallments <= 0) {
+    return 0;
+  }
+
+  const frequency = input.installmentFrequency ?? "MONTHLY";
+  const asOfDate = toStartOfDay(input.asOfDate ?? new Date());
+
+  let expected = 0;
+
+  for (let installmentNumber = 1; installmentNumber <= totalInstallments; installmentNumber += 1) {
+    const dueDate = getScheduledInstallmentDate(input.startDate, installmentNumber, frequency);
+    if (dueDate <= asOfDate) {
+      expected = installmentNumber;
+      continue;
+    }
+
+    break;
+  }
+
+  return Math.min(expected, totalInstallments);
+}
+
 function calculateMaturityAmount(input: {
   type: "RECURRING_DEPOSIT" | "FIXED_DEPOSIT";
   principalAmount: number;
@@ -87,7 +179,35 @@ export async function getDeposits() {
 
     await syncDepositReminders(user.id);
 
-    return { success: true as const, data: deposits };
+    const enrichedDeposits = deposits.map((deposit) => {
+      if (deposit.type !== "RECURRING_DEPOSIT") {
+        return deposit;
+      }
+
+      const expectedInstallmentsTillDate = getExpectedInstallmentsTillDate({
+        startDate: deposit.startDate,
+        totalInstallments: deposit.totalInstallments,
+        installmentFrequency: deposit.installmentFrequency,
+      });
+      const totalInstallments = deposit.totalInstallments ?? 0;
+      const timeProgressPercentage = totalInstallments > 0
+        ? Number(((expectedInstallmentsTillDate / totalInstallments) * 100).toFixed(2))
+        : 0;
+      const nextInstallmentDate = getNextScheduledInstallmentDate({
+        startDate: deposit.startDate,
+        totalInstallments: deposit.totalInstallments,
+        installmentFrequency: deposit.installmentFrequency,
+      });
+
+      return {
+        ...deposit,
+        nextInstallmentDate,
+        expectedInstallmentsTillDate,
+        timeProgressPercentage,
+      };
+    });
+
+    return { success: true as const, data: enrichedDeposits };
   } catch (error) {
     return {
       success: false as const,
@@ -104,6 +224,7 @@ export async function createDeposit(data: {
   interestRate: number;
   tenureMonths: number;
   installmentAmount?: number;
+  installmentFrequency?: InstallmentFrequency;
   paidInstallments?: number;
   totalInstallments?: number;
   startDate: string | Date;
@@ -125,6 +246,13 @@ export async function createDeposit(data: {
       installmentAmount: validated.installmentAmount,
       totalInstallments: validated.totalInstallments,
     });
+    const nextInstallmentDate = validated.type === "RECURRING_DEPOSIT"
+      ? getNextScheduledInstallmentDate({
+          startDate: validated.startDate,
+          totalInstallments: validated.totalInstallments,
+          installmentFrequency: validated.installmentFrequency,
+        })
+      : validated.nextInstallmentDate;
 
     const deposit = await prisma.depositInstrument.create({
       data: {
@@ -136,12 +264,13 @@ export async function createDeposit(data: {
         interestRate: validated.interestRate,
         tenureMonths: validated.tenureMonths,
         installmentAmount: validated.installmentAmount,
+        installmentFrequency: validated.installmentFrequency,
         paidInstallments: validated.paidInstallments,
         totalInstallments: validated.totalInstallments,
         startDate: validated.startDate,
         maturityDate: validated.maturityDate,
         maturityAmount,
-        nextInstallmentDate: validated.nextInstallmentDate,
+        nextInstallmentDate,
         sourceAccountId: validated.sourceAccountId,
         ...(coupleId ? { coupleId } : {}),
       },
@@ -166,6 +295,7 @@ export async function updateDeposit(
     interestRate?: number;
     tenureMonths?: number;
     installmentAmount?: number;
+    installmentFrequency?: InstallmentFrequency;
     paidInstallments?: number;
     totalInstallments?: number;
     startDate?: string | Date;
@@ -193,6 +323,7 @@ export async function updateDeposit(
       interestRate: data.interestRate ?? existing.interestRate,
       tenureMonths: data.tenureMonths ?? existing.tenureMonths,
       installmentAmount: data.installmentAmount ?? (existing.installmentAmount ?? undefined),
+      installmentFrequency: data.installmentFrequency ?? existing.installmentFrequency,
       paidInstallments: data.paidInstallments ?? existing.paidInstallments,
       totalInstallments: data.totalInstallments ?? (existing.totalInstallments ?? undefined),
       startDate: data.startDate ?? existing.startDate,
@@ -210,6 +341,13 @@ export async function updateDeposit(
       installmentAmount: validated.installmentAmount,
       totalInstallments: validated.totalInstallments,
     });
+    const nextInstallmentDate = validated.type === "RECURRING_DEPOSIT"
+      ? getNextScheduledInstallmentDate({
+          startDate: validated.startDate,
+          totalInstallments: validated.totalInstallments,
+          installmentFrequency: validated.installmentFrequency,
+        })
+      : validated.nextInstallmentDate;
 
     const status = parseDate(validated.maturityDate) <= new Date() ? "MATURED" : "ACTIVE";
 
@@ -223,12 +361,13 @@ export async function updateDeposit(
         interestRate: validated.interestRate,
         tenureMonths: validated.tenureMonths,
         installmentAmount: validated.installmentAmount,
+        installmentFrequency: validated.installmentFrequency,
         paidInstallments: validated.paidInstallments,
         totalInstallments: validated.totalInstallments,
         startDate: validated.startDate,
         maturityDate: validated.maturityDate,
         maturityAmount,
-        nextInstallmentDate: validated.nextInstallmentDate,
+        nextInstallmentDate,
         status,
       },
     });
@@ -302,17 +441,30 @@ export async function addDepositInstallment(data: {
       });
 
       if (deposit.type === "RECURRING_DEPOSIT" && validated.status === "PAID") {
+        const nextInstallmentDate = getNextScheduledInstallmentDate({
+          startDate: deposit.startDate,
+          totalInstallments: deposit.totalInstallments,
+          installmentFrequency: deposit.installmentFrequency,
+        });
+
         await tx.depositInstrument.update({
           where: { id: deposit.id },
           data: {
             paidInstallments: { increment: 1 },
-            nextInstallmentDate: deposit.nextInstallmentDate
-              ? new Date(
-                  deposit.nextInstallmentDate.getFullYear(),
-                  deposit.nextInstallmentDate.getMonth() + 1,
-                  deposit.nextInstallmentDate.getDate(),
-                )
-              : undefined,
+            nextInstallmentDate,
+          },
+        });
+      } else if (deposit.type === "RECURRING_DEPOSIT") {
+        const nextInstallmentDate = getNextScheduledInstallmentDate({
+          startDate: deposit.startDate,
+          totalInstallments: deposit.totalInstallments,
+          installmentFrequency: deposit.installmentFrequency,
+        });
+
+        await tx.depositInstrument.update({
+          where: { id: deposit.id },
+          data: {
+            nextInstallmentDate,
           },
         });
       }
@@ -410,6 +562,7 @@ export async function migrateLegacyDepositAccounts() {
           interestRate: rate,
           tenureMonths: 12,
           installmentAmount: account.type === "RECURRING_DEPOSIT" ? Math.max(1, Math.round(account.balance / 12)) : null,
+          installmentFrequency: "MONTHLY",
           paidInstallments: account.type === "RECURRING_DEPOSIT" ? 12 : 0,
           totalInstallments: account.type === "RECURRING_DEPOSIT" ? 12 : null,
           startDate,
@@ -434,7 +587,8 @@ export async function migrateLegacyDepositAccounts() {
 
 export async function syncDepositReminders(userId: string) {
   const coupleUserIds = await getUserIdsForCouple(userId);
-  const now = new Date();
+  const now = toStartOfDay(new Date());
+  const sevenDaysFromNow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7);
 
   const [maturing, pendingRd] = await Promise.all([
     prisma.depositInstrument.findMany({
@@ -450,7 +604,7 @@ export async function syncDepositReminders(userId: string) {
         userId: { in: coupleUserIds },
         type: "RECURRING_DEPOSIT",
         status: "ACTIVE",
-        nextInstallmentDate: { not: null, lte: now },
+        nextInstallmentDate: { not: null, gte: now, lte: sevenDaysFromNow },
       },
       select: { id: true },
     }),

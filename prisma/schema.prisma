@@ -187,6 +187,13 @@ enum DepositStatus {
   MATURED
 }
 
+enum DepositInstallmentFrequency {
+  MONTHLY
+  QUARTERLY
+  HALF_YEARLY
+  YEARLY
+}
+
 enum InstallmentStatus {
   PENDING
   PAID
@@ -233,6 +240,7 @@ model DepositInstrument {
   interestRate         Float
   tenureMonths         Int
   installmentAmount    Float?
+  installmentFrequency DepositInstallmentFrequency @default(MONTHLY)
   paidInstallments     Int             @default(0)
   totalInstallments    Int?
   startDate            DateTime
