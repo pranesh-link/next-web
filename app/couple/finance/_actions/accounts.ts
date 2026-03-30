@@ -7,6 +7,7 @@ import { accountSchema } from "@/_lib/validations/finance";
 import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
 import { recordBalanceChange, getHistoryForAccount } from "@/_services/finance/balance-history-service";
 import { getCoupleMembers } from "@/_services/finance/couple-service";
+import { invalidateAfterAccountChange } from "@/_lib/cache";
 
 export async function getAccounts() {
   try {
@@ -133,6 +134,7 @@ export async function createAccount(
       );
     }
 
+    invalidateAfterAccountChange();
     return { success: true as const, data: account };
   } catch (error) {
     return {
@@ -177,6 +179,7 @@ export async function updateAccount(
       },
     });
 
+    invalidateAfterAccountChange();
     return { success: true as const, data: account };
   } catch (error) {
     return {
@@ -203,6 +206,7 @@ export async function deleteAccount(id: string) {
 
     await prisma.financialAccount.delete({ where: { id } });
 
+    invalidateAfterAccountChange();
     return { success: true as const, data: { id } };
   } catch (error) {
     return {
@@ -315,6 +319,7 @@ export async function updateAccountBalance(
       }),
     ]);
 
+    invalidateAfterAccountChange();
     return { success: true as const, data: account };
   } catch (error) {
     return {
@@ -376,6 +381,7 @@ export async function setSalaryAccount(accountId: string) {
       });
     });
 
+    invalidateAfterAccountChange();
     return { success: true as const, data: updatedAccount };
   } catch (error) {
     return {
@@ -405,6 +411,7 @@ export async function togglePinAccount(accountId: string) {
       data: { isPinned: !existing.isPinned },
     });
 
+    invalidateAfterAccountChange();
     return { success: true as const, data: account };
   } catch (error) {
     return {
@@ -445,6 +452,7 @@ export async function setEmergencyFundAccount(accountId: string) {
       data: { isEmergencyFund: true },
     });
 
+    invalidateAfterAccountChange();
     return { success: true as const, data: account };
   } catch (error) {
     return {
@@ -474,6 +482,7 @@ export async function unsetEmergencyFundAccount(accountId: string) {
       data: { isEmergencyFund: false },
     });
 
+    invalidateAfterAccountChange();
     return { success: true as const, data: account };
   } catch (error) {
     return {

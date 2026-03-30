@@ -6,6 +6,7 @@ import { investmentSchema } from "@/_lib/validations/finance";
 import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
 import { createNotification } from "@/_services/finance/notification-service";
 import { ZodError } from "zod";
+import { invalidateAfterInvestmentChange } from "@/_lib/cache";
 
 function monthKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
@@ -98,6 +99,7 @@ export async function createInvestment(data: {
       },
     });
 
+    invalidateAfterInvestmentChange();
     return { success: true as const, data: holding };
   } catch (error) {
     return {
@@ -177,6 +179,7 @@ export async function updateInvestment(
       },
     });
 
+    invalidateAfterInvestmentChange();
     return { success: true as const, data: updated };
   } catch (error) {
     return {
@@ -201,6 +204,7 @@ export async function deleteInvestment(id: string) {
 
     await prisma.investmentHolding.delete({ where: { id } });
 
+    invalidateAfterInvestmentChange();
     return { success: true as const, data: { id } };
   } catch (error) {
     return {

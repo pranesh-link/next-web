@@ -5,20 +5,17 @@ import { requireAuthForAction } from "@/_lib/auth-utils";
 import { budgetSchema } from "@/_lib/validations/finance";
 import type { Budget } from "@prisma/client";
 import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
+import { unstable_cache } from "next/cache";
+import { CACHE_TAGS, invalidateAfterBudgetChange } from "@/_lib/cache";
 
 function currentMonth(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
-export async function getBudgets(month?: string) {
-  try {
-    const user = await requireAuthForAction();
-    if (!user) return { success: false as const, error: "Not authenticated" };
-    const targetMonth = month ?? currentMonth();
+const fetchBudgetsWithSpending = unstable_cache(
+  async (coupleUserIds: string[], targetMonth: string) => {
     const [year, m] = targetMonth.split("-").map(Number);
-
-    const coupleUserIds = await getUserIdsForCouple(user.id);
 
     const budgetsPromise = prisma.budget.findMany({
       where: { userId: { in: coupleUserIds }, month: targetMonth },
@@ -44,9 +41,24 @@ export async function getBudgets(month?: string) {
       spentByCategory.map((s: { category: string; _sum: { amount: number | null } }) => [s.category, s._sum.amount ?? 0]),
     );
 
+    return { budgets, spentMap: Object.fromEntries(spentMap) };
+  },
+  ["budgets-with-spending"],
+  { revalidate: 30, tags: [CACHE_TAGS.FINANCE_BUDGETS] },
+);
+
+export async function getBudgets(month?: string) {
+  try {
+    const user = await requireAuthForAction();
+    if (!user) return { success: false as const, error: "Not authenticated" };
+    const targetMonth = month ?? currentMonth();
+
+    const coupleUserIds = await getUserIdsForCouple(user.id);
+    const { budgets, spentMap } = await fetchBudgetsWithSpending(coupleUserIds, targetMonth);
+
     const data = budgets.map((budget) => ({
       ...budget,
-      spent: spentMap.get(budget.category) ?? 0,
+      spent: spentMap[budget.category] ?? 0,
     }));
 
     return { success: true as const, data };
@@ -89,6 +101,8 @@ export async function createBudget(data: {
       },
     });
 
+    invalidateAfterBudgetChange();
+
     return { success: true as const, data: budget };
   } catch (error) {
     return {
@@ -120,6 +134,8 @@ export async function updateBudget(id: string, data: { limit?: number }) {
       data: { limit: data.limit ?? existing.limit },
     });
 
+    invalidateAfterBudgetChange();
+
     return { success: true as const, data: budget };
   } catch (error) {
     return {
@@ -144,6 +160,8 @@ export async function deleteBudget(id: string) {
 
     await prisma.budget.delete({ where: { id } });
 
+    invalidateAfterBudgetChange();
+
     return { success: true as const, data: { id } };
   } catch (error) {
     return {
@@ -158,35 +176,12 @@ export async function getBudgetStatus(month?: string) {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
     const targetMonth = month ?? currentMonth();
-    const [year, m] = targetMonth.split("-").map(Number);
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
-
-    const budgetsPromise = prisma.budget.findMany({
-      where: { userId: { in: coupleUserIds }, month: targetMonth },
-    });
-    const spentPromise = prisma.transaction.groupBy({
-      by: ["category"] as const,
-      where: {
-        userId: { in: coupleUserIds },
-        type: "EXPENSE" as const,
-        date: {
-          gte: new Date(year, m - 1, 1),
-          lt: new Date(year, m, 1),
-        },
-      },
-      _sum: { amount: true },
-    });
-
-    const budgets: Budget[] = await budgetsPromise;
-    const spentByCategory = await spentPromise;
-
-    const spentMap = new Map<string, number>(
-      spentByCategory.map((s: { category: string; _sum: { amount: number | null } }) => [s.category, s._sum.amount ?? 0]),
-    );
+    const { budgets, spentMap } = await fetchBudgetsWithSpending(coupleUserIds, targetMonth);
 
     const data = budgets.map((budget) => {
-      const spent = spentMap.get(budget.category) ?? 0;
+      const spent = spentMap[budget.category] ?? 0;
       const remaining = budget.limit - spent;
       return {
         budget,

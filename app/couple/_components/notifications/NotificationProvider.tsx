@@ -34,7 +34,7 @@ interface NotificationContextValue {
 
 const NotificationContext = createContext<NotificationContextValue | null>(null);
 
-const POLL_INTERVAL = 60_000;
+const POLL_INTERVAL = 120_000;
 
 export function NotificationProvider({
   children,

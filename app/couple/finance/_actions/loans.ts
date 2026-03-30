@@ -12,6 +12,7 @@ import {
 } from "@/_services/finance";
 import type { LoanData } from "@/_services/finance";
 import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
+import { invalidateAfterLoanChange } from "@/_lib/cache";
 
 export async function getLoans() {
   try {
@@ -136,6 +137,7 @@ export async function createLoan(data: {
       },
     });
 
+    invalidateAfterLoanChange();
     return { success: true as const, data: loan };
   } catch (error) {
     return {
@@ -213,6 +215,7 @@ export async function updateLoan(
       },
     });
 
+    invalidateAfterLoanChange();
     return { success: true as const, data: loan };
   } catch (error) {
     return {
@@ -237,6 +240,7 @@ export async function deleteLoan(id: string) {
 
     await prisma.loan.delete({ where: { id } });
 
+    invalidateAfterLoanChange();
     return { success: true as const, data: { id } };
   } catch (error) {
     return {
@@ -420,6 +424,7 @@ export async function addPrepayment(
       },
     });
 
+    invalidateAfterLoanChange();
     return { success: true as const };
   } catch (error) {
     return {
@@ -467,6 +472,7 @@ export async function removePrepayment(loanId: string, index: number) {
       },
     });
 
+    invalidateAfterLoanChange();
     return { success: true as const };
   } catch (error) {
     return {

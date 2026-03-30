@@ -4,6 +4,7 @@ import prisma from "@/_lib/prisma";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { transactionSchema } from "@/_lib/validations/finance";
 import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
+import { invalidateAfterTransactionChange } from "@/_lib/cache";
 
 type TransactionQueryParams = {
   month?: string;
@@ -180,6 +181,7 @@ export async function createTransaction(data: {
       }),
     ]);
 
+    invalidateAfterTransactionChange();
     return { success: true as const, data: transaction };
   } catch (error) {
     return {
@@ -274,6 +276,7 @@ export async function updateTransaction(
       return updated;
     });
 
+    invalidateAfterTransactionChange();
     return { success: true as const, data: transaction };
   } catch (error) {
     return {
@@ -308,6 +311,7 @@ export async function deleteTransaction(id: string) {
       }),
     ]);
 
+    invalidateAfterTransactionChange();
     return { success: true as const, data: { id } };
   } catch (error) {
     return {

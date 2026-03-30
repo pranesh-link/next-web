@@ -1,5 +1,7 @@
 import prisma from '@/_lib/prisma';
+import { unstable_cache } from 'next/cache';
 import { createNotification } from '@/_services/finance/notification-service';
+import { CACHE_TAGS } from '@/_lib/cache';
 
 export async function createCouple(userId: string, name?: string) {
   const couple = await prisma.couple.create({
@@ -120,26 +122,41 @@ export async function getCoupleMembers(coupleId: string) {
   });
 }
 
+const getCoupleUserIdsCached = unstable_cache(
+  async (userId: string) => {
+    const membership = await prisma.coupleMember.findFirst({
+      where: { userId },
+      include: { couple: { include: { members: true } } },
+    });
+    if (!membership) return [userId];
+    return membership.couple.members.map((m) => m.userId);
+  },
+  ["couple-user-ids"],
+  { revalidate: 300, tags: [CACHE_TAGS.COUPLE_MEMBERS] },
+);
+
 export async function getUserIdsForCouple(
   userId: string
 ): Promise<string[]> {
-  const membership = await prisma.coupleMember.findFirst({
-    where: { userId },
-    include: { couple: { include: { members: true } } },
-  });
-
-  if (!membership) return [userId];
-  return membership.couple.members.map((m) => m.userId);
+  return getCoupleUserIdsCached(userId);
 }
+
+const getCoupleIdCached = unstable_cache(
+  async (userId: string) => {
+    const membership = await prisma.coupleMember.findFirst({
+      where: { userId },
+      select: { coupleId: true },
+    });
+    return membership?.coupleId ?? null;
+  },
+  ["couple-id-for-user"],
+  { revalidate: 300, tags: [CACHE_TAGS.COUPLE_MEMBERS] },
+);
 
 export async function getCoupleIdForUser(
   userId: string
 ): Promise<string | null> {
-  const membership = await prisma.coupleMember.findFirst({
-    where: { userId },
-    select: { coupleId: true },
-  });
-  return membership?.coupleId ?? null;
+  return getCoupleIdCached(userId);
 }
 
 export async function cancelInvite(inviteId: string, userId: string) {

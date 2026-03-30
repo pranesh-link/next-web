@@ -4,6 +4,7 @@ import prisma from "@/_lib/prisma";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { goalSchema } from "@/_lib/validations/finance";
 import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
+import { invalidateAfterGoalChange } from "@/_lib/cache";
 
 export async function getGoals() {
   try {
@@ -72,6 +73,7 @@ export async function createGoal(data: {
       },
     });
 
+    invalidateAfterGoalChange();
     return { success: true as const, data: goal };
   } catch (error) {
     return {
@@ -121,6 +123,7 @@ export async function updateGoal(
       },
     });
 
+    invalidateAfterGoalChange();
     return { success: true as const, data: goal };
   } catch (error) {
     return {
@@ -145,6 +148,7 @@ export async function deleteGoal(id: string) {
 
     await prisma.savingsGoal.delete({ where: { id } });
 
+    invalidateAfterGoalChange();
     return { success: true as const, data: { id } };
   } catch (error) {
     return {
@@ -185,6 +189,7 @@ export async function contributeToGoal(id: string, amount: number) {
       data: { currentAmount: newAmount },
     });
 
+    invalidateAfterGoalChange();
     return { success: true as const, data: goal };
   } catch (error) {
     return {
