@@ -23,6 +23,7 @@ type SavedPlan = {
   mode: string;
   income: number;
   lineItems: unknown;
+  paidItems: unknown;
   coupleId: string | null;
   createdAt: Date;
   updatedAt: Date;
