@@ -1251,7 +1251,8 @@ export default function BudgetPlannerPage() {
     }
 
     const validItems = lineItems.filter((i) => i.category && i.amount > 0);
-    if (validItems.length === 0) {
+    const validPaidItems = paidItems.filter((i) => i.category && i.amount > 0);
+    if (validItems.length === 0 && validPaidItems.length === 0) {
       notify("Add at least one expense with a category and amount", "error");
       return;
     }
