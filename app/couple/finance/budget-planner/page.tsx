@@ -621,6 +621,132 @@ const SuggestionText = styled.p`
   line-height: 1.5;
 `;
 
+/* ── Paid Section ── */
+
+const PaidSectionCard = styled(SectionCard)`
+  border-left: 4px solid #22c55e;
+`;
+
+const PaidItemRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  animation: ${fadeIn} 0.3s ${EASING};
+
+  &:last-of-type {
+    border-bottom: none;
+  }
+
+  @media (max-width: 768px) {
+    flex-wrap: wrap;
+  }
+`;
+
+const PaidItemInfo = styled.div`
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+`;
+
+const PaidCategory = styled.span`
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+`;
+
+const PaidNote = styled.span`
+  font-size: 13px;
+  color: var(--text-muted);
+`;
+
+const PaidAmount = styled.span`
+  font-size: 15px;
+  font-weight: 700;
+  color: #22c55e;
+  white-space: nowrap;
+`;
+
+const UndoButton = styled.button`
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ${EASING};
+  white-space: nowrap;
+
+  &:hover {
+    background: rgba(239, 68, 68, 0.05);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: var(--danger);
+  }
+`;
+
+const MarkPaidButton = styled.button`
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  flex-shrink: 0;
+  transition: all 0.2s ${EASING};
+
+  &:hover:not(:disabled) {
+    background: rgba(34, 197, 94, 0.1);
+    border-color: rgba(34, 197, 94, 0.3);
+    color: #22c55e;
+  }
+
+  &:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+`;
+
+const SectionTitleRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+`;
+
+const SuggestionsButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ${EASING};
+
+  &:hover {
+    background: var(--surface-hover);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+`;
+
 /* ── Comparison ── */
 
 const ComparisonGrid = styled.div`
@@ -921,6 +1047,8 @@ export default function BudgetPlannerPage() {
 
   const [showOverwriteModal, setShowOverwriteModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showSuggestionsModal, setShowSuggestionsModal] = useState(false);
+  const [paidItems, setPaidItems] = useState<LineItem[]>([]);
 
   const [notification, setNotification] = useState<Notification | null>(null);
   const [notifLeaving, setNotifLeaving] = useState(false);
@@ -999,7 +1127,8 @@ export default function BudgetPlannerPage() {
   /* ── Computed values ── */
 
   const totalExpenses = lineItems.reduce((sum, item) => sum + (item.amount || 0), 0);
-  const remaining = income - totalExpenses;
+  const totalPaid = paidItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+  const remaining = income - totalExpenses - totalPaid;
   const savingsRate = income > 0 ? (remaining / income) * 100 : 0;
 
   const hasExpenseData = lineItems.some((i) => i.category && i.amount > 0);
@@ -1047,6 +1176,19 @@ export default function BudgetPlannerPage() {
     setLineItems((prev) => [...prev, { category: "", amount: 0 }]);
   }
 
+  function markAsPaid(index: number) {
+    const item = lineItems[index];
+    if (!item.category || !item.amount) return;
+    setPaidItems((prev) => [...prev, item]);
+    removeLineItem(index);
+  }
+
+  function undoPaid(index: number) {
+    const item = paidItems[index];
+    setPaidItems((prev) => prev.filter((_, i) => i !== index));
+    setLineItems((prev) => [...prev, item]);
+  }
+
   async function importEMIs() {
     const result = await getActiveLoans();
     if (!result.success || !result.data) {
@@ -1088,6 +1230,7 @@ export default function BudgetPlannerPage() {
     setIncome(0);
     setIncomeHint("");
     setLineItems([{ category: "", amount: 0 }]);
+    setPaidItems([]);
   }
 
   /* ── Save / Delete ── */
@@ -1285,9 +1428,59 @@ export default function BudgetPlannerPage() {
               {incomeHint && <IncomeHint>{incomeHint}</IncomeHint>}
             </SectionCard>
 
-            {/* ── Section 2: Expenses ── */}
+            {/* ── Section 2: Summary ── */}
+            {income > 0 && (
+              <SectionCard>
+                <SectionTitleRow>
+                  <SectionTitle style={{ margin: 0 }}>Summary</SectionTitle>
+                  {suggestions.length > 0 && (
+                    <SuggestionsButton onClick={() => setShowSuggestionsModal(true)}>
+                      💡 Smart Suggestions ({suggestions.length})
+                    </SuggestionsButton>
+                  )}
+                </SectionTitleRow>
+                <SummaryGrid>
+                  <MetricCard>
+                    <MetricLabel>{mode === "monthly" ? "Last Credited Income" : "Annual Income"}</MetricLabel>
+                    <MetricValue>{formatCurrency(income)}</MetricValue>
+                  </MetricCard>
+                  <MetricCard>
+                    <MetricLabel>Total Estimated Expenses</MetricLabel>
+                    <MetricValue>{formatCurrency(totalExpenses)}</MetricValue>
+                  </MetricCard>
+                  <MetricCard>
+                    <MetricLabel>Total Paid Expenses</MetricLabel>
+                    <MetricValue $color="#22c55e">{formatCurrency(totalPaid)}</MetricValue>
+                  </MetricCard>
+                  <MetricCard>
+                    <MetricLabel>Remaining Balance</MetricLabel>
+                    <MetricValue
+                      $color={remaining >= 0 ? "#22c55e" : "#ef4444"}
+                    >
+                      {formatCurrency(remaining)}
+                    </MetricValue>
+                  </MetricCard>
+                  <MetricCard>
+                    <MetricLabel>Savings Rate</MetricLabel>
+                    <MetricValue
+                      $color={
+                        savingsRate > 30
+                          ? "#22c55e"
+                          : savingsRate >= 15
+                            ? "#f59e0b"
+                            : "#ef4444"
+                      }
+                    >
+                      {savingsRate.toFixed(1)}%
+                    </MetricValue>
+                  </MetricCard>
+                </SummaryGrid>
+              </SectionCard>
+            )}
+
+            {/* ── Section 3: Estimated Expenses ── */}
             <SectionCard>
-              <SectionTitle>Expected Expenses</SectionTitle>
+              <SectionTitle>Estimated Expenses</SectionTitle>
               <LineItemGrid>
                 {lineItems.map((item, index) => (
                   <LineItemRow key={index}>
@@ -1327,6 +1520,13 @@ export default function BudgetPlannerPage() {
                         }
                       />
                     </LineItemField>
+                    <MarkPaidButton
+                      onClick={() => markAsPaid(index)}
+                      disabled={!item.category || !item.amount}
+                      title="Mark as paid"
+                    >
+                      ✓
+                    </MarkPaidButton>
                     <RemoveButton
                       onClick={() => removeLineItem(index)}
                       title="Remove"
@@ -1343,64 +1543,30 @@ export default function BudgetPlannerPage() {
               </ExpenseActions>
 
               <TotalRow>
-                <span>Total Expected Expenses</span>
+                <span>Total Estimated Expenses</span>
                 <span>{formatCurrency(totalExpenses)}</span>
               </TotalRow>
             </SectionCard>
 
-            {/* ── Section 3: Summary ── */}
-            {income > 0 && (
-              <SectionCard>
-                <SectionTitle>Summary</SectionTitle>
-                <SummaryGrid>
-                  <MetricCard>
-                    <MetricLabel>{mode === "monthly" ? "Last Credited Income" : "Annual Income"}</MetricLabel>
-                    <MetricValue>{formatCurrency(income)}</MetricValue>
-                  </MetricCard>
-                  <MetricCard>
-                    <MetricLabel>Total Expected Expenses</MetricLabel>
-                    <MetricValue>{formatCurrency(totalExpenses)}</MetricValue>
-                  </MetricCard>
-                  <MetricCard>
-                    <MetricLabel>Remaining Balance</MetricLabel>
-                    <MetricValue
-                      $color={remaining >= 0 ? "#22c55e" : "#ef4444"}
-                    >
-                      {formatCurrency(remaining)}
-                    </MetricValue>
-                  </MetricCard>
-                  <MetricCard>
-                    <MetricLabel>Savings Rate</MetricLabel>
-                    <MetricValue
-                      $color={
-                        savingsRate > 30
-                          ? "#22c55e"
-                          : savingsRate >= 15
-                            ? "#f59e0b"
-                            : "#ef4444"
-                      }
-                    >
-                      {savingsRate.toFixed(1)}%
-                    </MetricValue>
-                  </MetricCard>
-                </SummaryGrid>
-              </SectionCard>
-            )}
-
-            {/* ── Section 4: Smart Suggestions ── */}
-            {suggestions.length > 0 && (
-              <SectionCard>
-                <SectionTitle>Smart Suggestions</SectionTitle>
-                {suggestions.map((s, i) => (
-                  <SuggestionCard
-                    key={i}
-                    $accentColor={SUGGESTION_COLORS[s.type] || "#3b82f6"}
-                  >
-                    <SuggestionIcon>{s.icon}</SuggestionIcon>
-                    <SuggestionText>{s.text}</SuggestionText>
-                  </SuggestionCard>
+            {/* ── Section 4: Paid Expenses ── */}
+            {paidItems.length > 0 && (
+              <PaidSectionCard>
+                <SectionTitle>Paid Expenses</SectionTitle>
+                {paidItems.map((item, index) => (
+                  <PaidItemRow key={index}>
+                    <PaidItemInfo>
+                      <PaidCategory>{item.category}</PaidCategory>
+                      {item.note && <PaidNote>— {item.note}</PaidNote>}
+                    </PaidItemInfo>
+                    <PaidAmount>{formatCurrency(item.amount)}</PaidAmount>
+                    <UndoButton onClick={() => undoPaid(index)}>↩ Undo</UndoButton>
+                  </PaidItemRow>
                 ))}
-              </SectionCard>
+                <TotalRow>
+                  <span>Total Paid Expenses</span>
+                  <span style={{ color: "#22c55e" }}>{formatCurrency(totalPaid)}</span>
+                </TotalRow>
+              </PaidSectionCard>
             )}
 
             {/* ── Section 5: Previous Month Comparison ── */}
@@ -1606,6 +1772,24 @@ export default function BudgetPlannerPage() {
             </ConfirmButton>
           </ConfirmActions>
         </ConfirmBody>
+      </Modal>
+
+      {/* ── Smart Suggestions Modal ── */}
+      <Modal
+        isOpen={showSuggestionsModal}
+        onClose={() => setShowSuggestionsModal(false)}
+        title="Smart Suggestions"
+        size="md"
+      >
+        {suggestions.map((s, i) => (
+          <SuggestionCard
+            key={i}
+            $accentColor={SUGGESTION_COLORS[s.type] || "#3b82f6"}
+          >
+            <SuggestionIcon>{s.icon}</SuggestionIcon>
+            <SuggestionText>{s.text}</SuggestionText>
+          </SuggestionCard>
+        ))}
       </Modal>
     </>
   );
