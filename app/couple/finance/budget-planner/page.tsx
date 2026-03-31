@@ -1097,10 +1097,18 @@ export default function BudgetPlannerPage() {
             note?: string;
           }>
         );
+        setPaidItems(
+          (plan.paidItems as Array<{
+            category: string;
+            amount: number;
+            note?: string;
+          }>) ?? []
+        );
         setIncomeHint("");
       } else {
         setSavedPlan(null);
         setLineItems([{ category: "", amount: 0 }]);
+        setPaidItems([]);
 
         // Auto-fill income from transactions
         if (incomeResult.success && incomeResult.income > 0) {
@@ -1275,6 +1283,13 @@ export default function BudgetPlannerPage() {
         amount: i.amount,
         ...(i.note ? { note: i.note } : {}),
       })),
+      paidItems: paidItems
+        .filter((i) => i.category && i.amount > 0)
+        .map((i) => ({
+          category: i.category,
+          amount: i.amount,
+          ...(i.note ? { note: i.note } : {}),
+        })),
     });
 
     setSubmitting(false);

@@ -86,6 +86,7 @@ export async function saveBudgetPlan(input: {
   income: number;
   mode: "monthly" | "yearly";
   lineItems: Array<{ category: string; amount: number; note?: string }>;
+  paidItems?: Array<{ category: string; amount: number; note?: string }>;
 }) {
   try {
     const user = await requireAuthForAction();
@@ -105,6 +106,7 @@ export async function saveBudgetPlan(input: {
       update: {
         income: validated.income,
         lineItems: validated.lineItems,
+        paidItems: validated.paidItems ?? [],
         mode: validated.mode,
         ...(coupleId ? { coupleId } : {}),
       },
@@ -114,6 +116,7 @@ export async function saveBudgetPlan(input: {
         income: validated.income,
         mode: validated.mode,
         lineItems: validated.lineItems,
+        paidItems: validated.paidItems ?? [],
         ...(coupleId ? { coupleId } : {}),
       },
     });
