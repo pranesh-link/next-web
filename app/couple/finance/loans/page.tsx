@@ -1242,14 +1242,14 @@ export default function LoansPage() {
 
     if (result.success) {
       notify(editTarget ? "Loan updated" : "Loan added", "success");
+      const loanId = (editTarget?.id ?? result.data?.id) as string;
       setShowModal(false);
       setEditTarget(null);
 
       // Phase 2: if raw schedule text is available, skip the first fetchLoans here —
       // loadFullSchedule will call fetchLoans after saving the schedule (single fetch, no duplicate).
-      if (pendingScheduleParams?.rawScheduleText && result.data?.id) {
+      if (pendingScheduleParams?.rawScheduleText && loanId) {
         const { rawScheduleText } = pendingScheduleParams;
-        const loanId = result.data.id as string;
         setPendingScheduleParams(null);
         setPendingSchedule({ loanId, rawScheduleText });
         loadFullSchedule(loanId, rawScheduleText);

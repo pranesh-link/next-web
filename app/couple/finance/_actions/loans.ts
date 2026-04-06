@@ -176,6 +176,13 @@ export async function updateLoan(
       return { success: false as const, error: "Loan not found" };
     }
 
+    // Merge prepayments: keep existing manual entries, replace scanned ones
+    let mergedPrepayments = (existing.prepayments as { date: string; amount: number; balanceAfter?: number; source?: string }[] | null) ?? [];
+    if (data.prepayments) {
+      const manualEntries = mergedPrepayments.filter((p) => p.source !== "scanned");
+      mergedPrepayments = [...manualEntries, ...data.prepayments];
+    }
+
     const merged = {
       name: data.name ?? existing.name,
       loanProvider: data.loanProvider ?? (existing.loanProvider ?? undefined),
@@ -187,7 +194,7 @@ export async function updateLoan(
       emiAmount: data.emiAmount ?? existing.emiAmount,
       startDate: data.startDate ?? existing.startDate,
       remainingBalance: data.remainingBalance ?? existing.remainingBalance,
-      prepayments: data.prepayments ?? (existing.prepayments as { date: string; amount: number; balanceAfter?: number }[] | null) ?? undefined,
+      prepayments: mergedPrepayments.length > 0 ? mergedPrepayments : undefined,
       schedule: data.schedule ?? (existing.schedule as { month: number; date: string; emi: number; principal: number; interest: number; balance: number }[] | null) ?? undefined,
     };
 
