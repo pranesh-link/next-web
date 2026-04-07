@@ -29,7 +29,7 @@ export default function CurrencyDisplay({
   const formatted = new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency,
-    maximumFractionDigits: 0,
+    maximumFractionDigits: 2,
   }).format(Math.abs(amount));
 
   const display = amount < 0 ? `-${formatted}` : formatted;

@@ -91,6 +91,7 @@ model FinancialAccount {
   id              String   @id @default(uuid())
   userId          String
   name            String
+  nickname        String?
   type            AccountType
   balance         Float    @default(0)
   isSalaryAccount Boolean  @default(false)

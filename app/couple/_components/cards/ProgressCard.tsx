@@ -19,7 +19,7 @@ function formatAmount(value: number, unit: string): string {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
-      maximumFractionDigits: 0,
+      maximumFractionDigits: 2,
     }).format(value);
   }
   return `${unit}${value.toLocaleString("en-IN")}`;
