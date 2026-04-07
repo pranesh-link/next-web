@@ -1,13 +1,41 @@
 "use server";
 
 import prisma from "@/_lib/prisma";
-import { AccountType } from "@prisma/client";
+import { AccountType, BalanceChangeReason } from "@prisma/client";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { accountSchema } from "@/_lib/validations/finance";
 import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
 import { recordBalanceChange, getHistoryForAccount } from "@/_services/finance/balance-history-service";
 import { getCoupleMembers } from "@/_services/finance/couple-service";
 import { invalidateAfterAccountChange } from "@/_lib/cache";
+
+async function logOverallBalanceChange(
+  coupleUserIds: string[],
+  userId: string,
+  coupleId: string | null,
+  accountId: string | null,
+  accountName: string,
+  reason: BalanceChangeReason,
+  change: number,
+) {
+  const totalResult = await prisma.financialAccount.aggregate({
+    where: { userId: { in: coupleUserIds } },
+    _sum: { balance: true },
+  });
+  const totalBalance = totalResult._sum.balance ?? 0;
+
+  await prisma.overallBalanceLog.create({
+    data: {
+      coupleId: coupleId || null,
+      userId,
+      accountId,
+      accountName,
+      reason,
+      change,
+      totalBalance,
+    },
+  });
+}
 
 export async function getAccounts() {
   try {
@@ -136,6 +164,11 @@ export async function createAccount(
       );
     }
 
+    await logOverallBalanceChange(
+      coupleUserIds, ownerId, coupleId, account.id,
+      validated.name, "ACCOUNT_ADDED", validated.balance,
+    );
+
     invalidateAfterAccountChange();
     return { success: true as const, data: account };
   } catch (error) {
@@ -208,7 +241,16 @@ export async function deleteAccount(id: string) {
       return { success: false as const, error: "Account not found" };
     }
 
+    const deletedName = existing.name;
+    const deletedBalance = existing.balance;
+
     await prisma.financialAccount.delete({ where: { id } });
+
+    const coupleId = await getCoupleIdForUser(user.id);
+    await logOverallBalanceChange(
+      coupleUserIds, user.id, coupleId, null,
+      deletedName, "ACCOUNT_REMOVED", -deletedBalance,
+    );
 
     invalidateAfterAccountChange();
     return { success: true as const, data: { id } };
@@ -322,6 +364,11 @@ export async function updateAccountBalance(
         },
       }),
     ]);
+
+    await logOverallBalanceChange(
+      coupleUserIds, user.id, coupleId, id,
+      existing.name, "BALANCE_UPDATED", newBalance - existing.balance,
+    );
 
     invalidateAfterAccountChange();
     return { success: true as const, data: account };
@@ -644,6 +691,37 @@ export async function getAccountActivity(accountId: string, cursor?: string) {
     return {
       success: false as const,
       error: error instanceof Error ? error.message : "Failed to fetch account activity",
+    };
+  }
+}
+
+export async function getOverallBalanceHistory(cursor?: string) {
+  try {
+    const user = await requireAuthForAction();
+    if (!user) return { success: false as const, error: "Not authenticated" };
+
+    const coupleUserIds = await getUserIdsForCouple(user.id);
+    const coupleId = await getCoupleIdForUser(user.id);
+
+    const pageSize = 20;
+    const logs = await prisma.overallBalanceLog.findMany({
+      where: coupleId
+        ? { coupleId }
+        : { userId: { in: coupleUserIds } },
+      orderBy: { createdAt: "desc" },
+      take: pageSize + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    });
+
+    const hasMore = logs.length > pageSize;
+    const items = hasMore ? logs.slice(0, pageSize) : logs;
+    const nextCursor = hasMore ? items[items.length - 1].id : null;
+
+    return { success: true as const, data: { items, nextCursor } };
+  } catch (error) {
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : "Failed to fetch balance history",
     };
   }
 }

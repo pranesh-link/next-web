@@ -8,6 +8,9 @@ import {
   createAccount,
   togglePinAccount,
   getAccountsPageData,
+  updateAccount,
+  updateAccountBalance,
+  getOverallBalanceHistory,
 } from "@/couple/finance/_actions/accounts";
 import FinanceHeader from "@/couple/_components/layout/FinanceHeader";
 import Modal from "@/couple/_components/shared/Modal";
@@ -35,6 +38,15 @@ type Account = {
 };
 
 type Notification = { message: string; type: "success" | "error" };
+
+type BalanceLogItem = {
+  id: string;
+  accountName: string;
+  reason: "ACCOUNT_ADDED" | "ACCOUNT_REMOVED" | "BALANCE_UPDATED";
+  change: number;
+  totalBalance: number;
+  createdAt: string | Date;
+};
 
 /* ── Helpers ────────────────────────────────────────── */
 
@@ -562,6 +574,162 @@ const PinnedCard = styled(AccountCard)`
   border-color: rgba(59, 130, 246, 0.3);
 `;
 
+/* ── Balance History Section ── */
+
+const HistorySection = styled.div`
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  margin-bottom: 24px;
+  overflow: hidden;
+`;
+
+const HistoryToggle = styled.button`
+  width: 100%;
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: color 0.15s ${EASING};
+
+  &:hover { color: var(--text); }
+
+  @media (max-width: 480px) {
+    padding: 14px 16px;
+  }
+`;
+
+const HistoryList = styled.div`
+  padding: 0 24px 16px;
+  display: flex;
+  flex-direction: column;
+
+  @media (max-width: 480px) {
+    padding: 0 16px 12px;
+  }
+`;
+
+const HistoryItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  &:last-child { border-bottom: none; }
+
+  @media (max-width: 480px) {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+`;
+
+const HistoryDot = styled.div<{ $positive: boolean }>`
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: ${(p) => (p.$positive ? "#22c55e" : "#ef4444")};
+  flex-shrink: 0;
+`;
+
+const HistoryInfo = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const HistoryReason = styled.span<{ $reason: string }>`
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-right: 6px;
+  background: ${(p) =>
+    p.$reason === "ACCOUNT_ADDED" ? "rgba(34,197,94,0.1)" :
+    p.$reason === "ACCOUNT_REMOVED" ? "rgba(239,68,68,0.1)" :
+    "rgba(59,130,246,0.1)"};
+  color: ${(p) =>
+    p.$reason === "ACCOUNT_ADDED" ? "#16a34a" :
+    p.$reason === "ACCOUNT_REMOVED" ? "#ef4444" :
+    "#3b82f6"};
+`;
+
+const HistoryChange = styled.span<{ $positive: boolean }>`
+  font-size: 13px;
+  font-weight: 600;
+  color: ${(p) => (p.$positive ? "#22c55e" : "#ef4444")};
+`;
+
+const HistoryTotal = styled.div`
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  flex-shrink: 0;
+`;
+
+const HistoryDate = styled.div`
+  font-size: 11px;
+  color: var(--text-muted);
+`;
+
+const HistoryAccountName = styled.span`
+  font-size: 12px;
+  color: var(--text-muted);
+`;
+
+const LoadMoreBtn = styled.button`
+  width: 100%;
+  padding: 10px;
+  border: none;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 8px;
+  margin-top: 8px;
+  transition: all 0.15s ${EASING};
+  &:hover { color: var(--accent); }
+`;
+
+/* ── Card Quick Actions ── */
+
+const CardActions = styled.div`
+  padding: 0 20px 16px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+`;
+
+const CardActionBtn = styled.button`
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ${EASING};
+
+  &:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+`;
+
 /* ── Component ──────────────────────────────────────── */
 
 function AccountsPageContent() {
@@ -587,6 +755,19 @@ function AccountsPageContent() {
   const [newIsEmergency, setNewIsEmergency] = useState(false);
   const [newOwnerId, setNewOwnerId] = useState("");
   const [createError, setCreateError] = useState("");
+
+  // Balance history
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyItems, setHistoryItems] = useState<BalanceLogItem[]>([]);
+  const [historyCursor, setHistoryCursor] = useState<string | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  // Quick edit modals
+  const [editNicknameTarget, setEditNicknameTarget] = useState<Account | null>(null);
+  const [editNicknameValue, setEditNicknameValue] = useState("");
+  const [updateBalanceTarget, setUpdateBalanceTarget] = useState<Account | null>(null);
+  const [updateBalanceValue, setUpdateBalanceValue] = useState("");
+  const [updateBalanceNote, setUpdateBalanceNote] = useState("");
 
   // Notification
   const [notification, setNotification] = useState<Notification | null>(null);
@@ -682,6 +863,70 @@ function AccountsPageContent() {
     setSaving(false);
   };
 
+  const fetchHistory = useCallback(async (cursor?: string) => {
+    setHistoryLoading(true);
+    const res = await getOverallBalanceHistory(cursor);
+    if (res.success) {
+      if (cursor) {
+        setHistoryItems((prev) => [...prev, ...res.data.items as BalanceLogItem[]]);
+      } else {
+        setHistoryItems(res.data.items as BalanceLogItem[]);
+      }
+      setHistoryCursor(res.data.nextCursor);
+    }
+    setHistoryLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (showHistory && historyItems.length === 0) fetchHistory();
+  }, [showHistory, historyItems.length, fetchHistory]);
+
+  const handleQuickNickname = async () => {
+    if (!editNicknameTarget) return;
+    setSaving(true);
+    const res = await updateAccount(editNicknameTarget.id, {
+      nickname: editNicknameValue.trim() || undefined,
+    });
+    if (res.success) {
+      notify("Nickname updated!", "success");
+      setEditNicknameTarget(null);
+      await fetchData();
+    } else {
+      notify(res.error, "error");
+    }
+    setSaving(false);
+  };
+
+  const handleQuickBalance = async () => {
+    if (!updateBalanceTarget) return;
+    const parsed = parseFloat(updateBalanceValue);
+    if (isNaN(parsed)) { notify("Enter a valid balance", "error"); return; }
+    setSaving(true);
+    const res = await updateAccountBalance(
+      updateBalanceTarget.id, parsed, updateBalanceNote.trim() || undefined,
+    );
+    if (res.success) {
+      notify("Balance updated!", "success");
+      setUpdateBalanceTarget(null);
+      setUpdateBalanceValue("");
+      setUpdateBalanceNote("");
+      setHistoryItems([]);
+      await fetchData();
+    } else {
+      notify(res.error, "error");
+    }
+    setSaving(false);
+  };
+
+  function reasonLabel(r: string): string {
+    switch (r) {
+      case "ACCOUNT_ADDED": return "Added";
+      case "ACCOUNT_REMOVED": return "Removed";
+      case "BALANCE_UPDATED": return "Updated";
+      default: return r;
+    }
+  }
+
   if (loading) {
     return (
       <PageWrapper>
@@ -715,6 +960,56 @@ function AccountsPageContent() {
             setNewIsSalary(!existingSalaryAccount);
           }}>+ Add Account</AddButton>
         </TotalBar>
+
+        {/* ── Overall Balance History ── */}
+        <HistorySection>
+          <HistoryToggle onClick={() => setShowHistory(!showHistory)}>
+            Balance History
+            <span>{showHistory ? "▲" : "▼"}</span>
+          </HistoryToggle>
+          {showHistory && (
+            <HistoryList>
+              {historyLoading && historyItems.length === 0 ? (
+                <HistoryDate style={{ textAlign: "center", padding: 16 }}>Loading…</HistoryDate>
+              ) : historyItems.length === 0 ? (
+                <HistoryDate style={{ textAlign: "center", padding: 16 }}>No history yet</HistoryDate>
+              ) : (
+                <>
+                  {historyItems.map((item) => (
+                    <HistoryItem key={item.id}>
+                      <HistoryDot $positive={item.change >= 0} />
+                      <HistoryInfo>
+                        <div>
+                          <HistoryReason $reason={item.reason}>
+                            {reasonLabel(item.reason)}
+                          </HistoryReason>
+                          <HistoryChange $positive={item.change >= 0}>
+                            {item.change >= 0 ? "+" : ""}{formatCurrency(item.change)}
+                          </HistoryChange>
+                        </div>
+                        <HistoryAccountName>{item.accountName}</HistoryAccountName>
+                      </HistoryInfo>
+                      <HistoryTotal>{formatCurrency(item.totalBalance)}</HistoryTotal>
+                      <HistoryDate>
+                        {new Date(item.createdAt).toLocaleDateString("en-IN", {
+                          day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+                        })}
+                      </HistoryDate>
+                    </HistoryItem>
+                  ))}
+                  {historyCursor && (
+                    <LoadMoreBtn
+                      disabled={historyLoading}
+                      onClick={() => fetchHistory(historyCursor)}
+                    >
+                      {historyLoading ? "Loading…" : "Load more"}
+                    </LoadMoreBtn>
+                  )}
+                </>
+              )}
+            </HistoryList>
+          )}
+        </HistorySection>
 
         {/* ── Account Cards ── */}
         {accounts.length === 0 ? (
@@ -763,8 +1058,8 @@ function AccountsPageContent() {
                       </CardMetaRow>
                     </CardInfo>
                   </CardHeader>
-                  {acc.isSalaryAccount && (
-                    <CardFooter>
+                  <CardActions>
+                    {acc.isSalaryAccount && (
                       <AddIncomeBtn
                         onClick={(e) => {
                           e.stopPropagation();
@@ -773,8 +1068,23 @@ function AccountsPageContent() {
                       >
                         💰 Add Income
                       </AddIncomeBtn>
-                    </CardFooter>
-                  )}
+                    )}
+                    <CardActionBtn onClick={(e) => {
+                      e.stopPropagation();
+                      setEditNicknameTarget(acc);
+                      setEditNicknameValue(acc.nickname || "");
+                    }}>
+                      ✏️ Nickname
+                    </CardActionBtn>
+                    <CardActionBtn onClick={(e) => {
+                      e.stopPropagation();
+                      setUpdateBalanceTarget(acc);
+                      setUpdateBalanceValue(String(acc.balance));
+                      setUpdateBalanceNote("");
+                    }}>
+                      💰 Balance
+                    </CardActionBtn>
+                  </CardActions>
                 </CardComponent>
               );
             })}
@@ -916,6 +1226,70 @@ function AccountsPageContent() {
           notify("Income recorded!", "success");
         }}
       />
+
+      {/* ── Quick Nickname Modal ── */}
+      <Modal
+        isOpen={!!editNicknameTarget}
+        onClose={() => setEditNicknameTarget(null)}
+        title={`Nickname · ${editNicknameTarget?.name || ""}`}
+        size="sm"
+      >
+        <FormGroup>
+          <Label>Nickname</Label>
+          <ModalInput
+            placeholder="e.g. Main, Joint"
+            value={editNicknameValue}
+            onChange={(e) => setEditNicknameValue(e.target.value)}
+            maxLength={50}
+          />
+        </FormGroup>
+        <ModalActions>
+          <ModalButton onClick={() => setEditNicknameTarget(null)}>Cancel</ModalButton>
+          <ModalButton $primary disabled={saving} onClick={handleQuickNickname}>
+            {saving ? "Saving…" : "Save"}
+          </ModalButton>
+        </ModalActions>
+      </Modal>
+
+      {/* ── Quick Balance Update Modal ── */}
+      <Modal
+        isOpen={!!updateBalanceTarget}
+        onClose={() => {
+          setUpdateBalanceTarget(null);
+          setUpdateBalanceValue("");
+          setUpdateBalanceNote("");
+        }}
+        title={`Update Balance · ${updateBalanceTarget?.name || ""}`}
+        size="sm"
+      >
+        <FormGroup>
+          <Label>New Balance</Label>
+          <ModalInput
+            type="number"
+            placeholder="Enter new balance"
+            value={updateBalanceValue}
+            onChange={(e) => setUpdateBalanceValue(e.target.value)}
+          />
+        </FormGroup>
+        <FormGroup>
+          <Label>Note (optional)</Label>
+          <ModalInput
+            placeholder="e.g. Salary credited"
+            value={updateBalanceNote}
+            onChange={(e) => setUpdateBalanceNote(e.target.value)}
+          />
+        </FormGroup>
+        <ModalActions>
+          <ModalButton onClick={() => {
+            setUpdateBalanceTarget(null);
+            setUpdateBalanceValue("");
+            setUpdateBalanceNote("");
+          }}>Cancel</ModalButton>
+          <ModalButton $primary disabled={saving || !updateBalanceValue} onClick={handleQuickBalance}>
+            {saving ? "Saving…" : "Update"}
+          </ModalButton>
+        </ModalActions>
+      </Modal>
     </PageWrapper>
   );
 }

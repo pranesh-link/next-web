@@ -134,6 +134,28 @@ enum AccountType {
   FIXED_DEPOSIT
 }
 
+enum BalanceChangeReason {
+  ACCOUNT_ADDED
+  ACCOUNT_REMOVED
+  BALANCE_UPDATED
+}
+
+model OverallBalanceLog {
+  id           String              @id @default(uuid())
+  coupleId     String?
+  userId       String
+  accountId    String?
+  accountName  String
+  reason       BalanceChangeReason
+  change       Float
+  totalBalance Float
+  createdAt    DateTime            @default(now())
+
+  @@index([coupleId])
+  @@index([userId])
+  @@map("overall_balance_log")
+}
+
 model Transaction {
   id          String          @id @default(uuid())
   userId      String
