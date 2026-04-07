@@ -538,12 +538,6 @@ const PinButton = styled.button<{ $pinned: boolean }>`
   }
 `;
 
-const CardFooter = styled.div`
-  padding: 0 20px 16px;
-  display: flex;
-  gap: 8px;
-`;
-
 const AddIncomeBtn = styled.button`
   padding: 6px 12px;
   border-radius: 8px;
