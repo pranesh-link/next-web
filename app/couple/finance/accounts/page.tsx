@@ -22,6 +22,7 @@ type CoupleUser = { id: string; name: string | null; email: string };
 type Account = {
   id: string;
   name: string;
+  nickname: string | null;
   type: string;
   balance: number;
   isSalaryAccount: boolean;
@@ -43,7 +44,7 @@ function formatCurrency(v: number): string {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
-    maximumFractionDigits: 0,
+    maximumFractionDigits: 2,
   }).format(v);
 }
 
@@ -494,6 +495,16 @@ const EmergencyBadge = styled.span`
   border-radius: 4px;
 `;
 
+const NicknameBadge = styled.span`
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: #6366f1;
+  background: rgba(99, 102, 241, 0.11);
+  padding: 1px 5px;
+  border-radius: 4px;
+`;
+
 const PinButton = styled.button<{ $pinned: boolean }>`
   position: absolute;
   top: 10px;
@@ -569,6 +580,7 @@ function AccountsPageContent() {
 
   // Create form
   const [newName, setNewName] = useState("");
+  const [newNickname, setNewNickname] = useState("");
   const [newType, setNewType] = useState("SAVINGS_ACCOUNT");
   const [newBalance, setNewBalance] = useState("");
   const [newIsSalary, setNewIsSalary] = useState(false);
@@ -646,6 +658,7 @@ function AccountsPageContent() {
     setCreateError("");
     const res = await createAccount({
       name: newName.trim(),
+      nickname: newNickname.trim() || undefined,
       type: newType,
       balance: parseFloat(newBalance) || 0,
       isSalaryAccount: newIsSalary,
@@ -656,6 +669,7 @@ function AccountsPageContent() {
       notify("Account created!", "success");
       setShowCreate(false);
       setNewName("");
+      setNewNickname("");
       setNewType("SAVINGS_ACCOUNT");
       setNewBalance("");
       setNewIsSalary(false);
@@ -734,6 +748,7 @@ function AccountsPageContent() {
                     <CardInfo>
                       <CardNameRow>
                         <CardName>{acc.name}</CardName>
+                        {acc.nickname && <NicknameBadge>{acc.nickname}</NicknameBadge>}
                         {acc.isSalaryAccount && <SalaryBadge>Salary</SalaryBadge>}
                         {acc.isEmergencyFund && <EmergencyBadge>🛡️ Emergency</EmergencyBadge>}
                       </CardNameRow>
@@ -784,6 +799,15 @@ function AccountsPageContent() {
             placeholder="e.g. HDFC Savings"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
+          />
+        </FormGroup>
+        <FormGroup>
+          <Label>Nickname (optional)</Label>
+          <ModalInput
+            placeholder="e.g. Main, Joint"
+            value={newNickname}
+            onChange={(e) => setNewNickname(e.target.value)}
+            maxLength={50}
           />
         </FormGroup>
         <FormGroup>

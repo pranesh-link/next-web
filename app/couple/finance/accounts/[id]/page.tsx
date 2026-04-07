@@ -23,6 +23,7 @@ import Modal from "@/couple/_components/shared/Modal";
 type Account = {
   id: string;
   name: string;
+  nickname: string | null;
   type: string;
   balance: number;
   isEmergencyFund: boolean;
@@ -59,7 +60,7 @@ function formatCurrency(v: number): string {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
-    maximumFractionDigits: 0,
+    maximumFractionDigits: 2,
   }).format(v);
 }
 
@@ -467,6 +468,18 @@ const EmergencyBadge = styled.span`
   border-radius: 6px;
 `;
 
+const NicknameBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6366f1;
+  background: rgba(99, 102, 241, 0.1);
+  padding: 3px 8px;
+  border-radius: 6px;
+`;
+
 const HeaderBadges = styled.div`
   display: flex;
   align-items: center;
@@ -674,6 +687,7 @@ export default function AccountDetailPage() {
   const [showEdit, setShowEdit] = useState(false);
   const [editName, setEditName] = useState("");
   const [editType, setEditType] = useState("");
+  const [editNickname, setEditNickname] = useState("");
   const [editError, setEditError] = useState("");
 
   // Delete confirmation
@@ -761,6 +775,7 @@ export default function AccountDetailPage() {
     setEditError("");
     const res = await updateAccount(id, {
       name: editName.trim(),
+      nickname: editNickname.trim() || undefined,
       type: editType,
     });
     if (res.success) {
@@ -815,6 +830,7 @@ export default function AccountDetailPage() {
   const openEditModal = () => {
     if (!account) return;
     setEditName(account.name);
+    setEditNickname(account.nickname || "");
     setEditType(account.type);
     setEditError("");
     setShowEdit(true);
@@ -879,6 +895,9 @@ export default function AccountDetailPage() {
                 {typeLabel(account.type)} · {account.user?.name ?? "You"}
               </AccountType>
               <HeaderBadges>
+                {account.nickname && (
+                  <NicknameBadge>{account.nickname}</NicknameBadge>
+                )}
                 {account.isEmergencyFund && (
                   <EmergencyBadge>🛡️ Emergency Fund</EmergencyBadge>
                 )}
@@ -1058,6 +1077,15 @@ export default function AccountDetailPage() {
             placeholder="e.g. HDFC Savings"
             value={editName}
             onChange={(e) => setEditName(e.target.value)}
+          />
+        </FormGroup>
+        <FormGroup>
+          <Label>Nickname (optional)</Label>
+          <ModalInput
+            placeholder="e.g. Main, Joint"
+            value={editNickname}
+            onChange={(e) => setEditNickname(e.target.value)}
+            maxLength={50}
           />
         </FormGroup>
         <FormGroup>

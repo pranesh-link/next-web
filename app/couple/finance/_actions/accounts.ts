@@ -57,7 +57,7 @@ export async function getAccount(id: string) {
 }
 
 export async function createAccount(
-  formData: FormData | { name: string; type: string; balance: number; isSalaryAccount?: boolean; isEmergencyFund?: boolean; ownerId?: string },
+  formData: FormData | { name: string; nickname?: string; type: string; balance: number; isSalaryAccount?: boolean; isEmergencyFund?: boolean; ownerId?: string },
 ) {
   try {
     const user = await requireAuthForAction();
@@ -67,6 +67,7 @@ export async function createAccount(
       formData instanceof FormData
         ? {
             name: formData.get("name") as string,
+            nickname: (formData.get("nickname") as string) || undefined,
             type: formData.get("type") as string,
             balance: Number(formData.get("balance")),
           }
@@ -119,6 +120,7 @@ export async function createAccount(
         data: {
           userId: ownerId,
           name: validated.name,
+          nickname: validated.nickname || null,
           type: validated.type as AccountType,
           balance: validated.balance,
           isSalaryAccount,
@@ -146,7 +148,7 @@ export async function createAccount(
 
 export async function updateAccount(
   id: string,
-  data: { name?: string; type?: string; balance?: number },
+  data: { name?: string; nickname?: string; type?: string; balance?: number },
 ) {
   try {
     const user = await requireAuthForAction();
@@ -164,6 +166,7 @@ export async function updateAccount(
 
     const merged = {
       name: data.name ?? existing.name,
+      nickname: data.nickname !== undefined ? data.nickname : existing.nickname,
       type: data.type ?? existing.type,
       balance: data.balance ?? existing.balance,
     };
@@ -174,6 +177,7 @@ export async function updateAccount(
       where: { id },
       data: {
         name: validated.name,
+        nickname: validated.nickname || null,
         type: validated.type as AccountType,
         balance: validated.balance,
       },

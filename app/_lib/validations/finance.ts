@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const accountSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
+  nickname: z.string().max(50).optional(),
   type: z.enum(["SAVINGS_ACCOUNT", "CREDIT_ACCOUNT", "CREDIT_CARD", "RECURRING_DEPOSIT", "FIXED_DEPOSIT"]),
   balance: z.number(),
 });
