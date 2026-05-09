@@ -596,8 +596,8 @@ const SummaryGrid = styled.div`
 const MetricCard = styled.div`
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 20px;
+  border-radius: 14px;
+  padding: 14px 16px;
   transition: all 0.3s ${EASING};
 
   &:hover {
@@ -608,23 +608,23 @@ const MetricCard = styled.div`
 `;
 
 const MetricLabel = styled.p`
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 1.5px;
+  letter-spacing: 1.2px;
   color: var(--text-muted);
-  margin: 0 0 8px 0;
+  margin: 0 0 6px 0;
 `;
 
 const MetricValue = styled.p<{ $color?: string }>`
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 800;
   color: ${(p) => p.$color ?? "var(--text)"};
   margin: 0;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.3px;
 
   @media (max-width: 480px) {
-    font-size: 18px;
+    font-size: 15px;
   }
 `;
 
@@ -758,51 +758,72 @@ const ComparisonGrid = styled.div`
 const ComparisonCard = styled.div`
   background: var(--bg-elevated);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: 10px;
+  padding: 12px 14px;
 `;
 
 const ComparisonLabel = styled.p`
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.8px;
   color: var(--text-muted);
-  margin: 0 0 8px 0;
+  margin: 0 0 6px 0;
 `;
 
 const ComparisonValues = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
 `;
 
 const ComparisonFrom = styled.span`
-  font-size: 14px;
+  font-size: 12px;
   color: var(--text-muted);
   text-decoration: line-through;
 `;
 
 const ComparisonArrow = styled.span`
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-muted);
 `;
 
 const ComparisonTo = styled.span`
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--text);
 `;
 
 const DeltaIndicator = styled.span<{ $positive: boolean }>`
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   color: ${(p) => (p.$positive ? "#22c55e" : "#ef4444")};
   background: ${(p) =>
     p.$positive ? "rgba(34, 197, 94, 0.1)" : "rgba(239, 68, 68, 0.1)"};
-  padding: 2px 8px;
+  padding: 2px 7px;
   border-radius: 6px;
+`;
+
+const InsightBanner = styled.div<{ $positive: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  background: ${(p) =>
+    p.$positive ? "rgba(34, 197, 94, 0.12)" : "rgba(239, 68, 68, 0.12)"};
+  border: 1px solid
+    ${(p) =>
+      p.$positive ? "rgba(34, 197, 94, 0.4)" : "rgba(239, 68, 68, 0.4)"};
+  color: ${(p) => (p.$positive ? "#15803d" : "#b91c1c")};
+
+  @media (prefers-color-scheme: dark) {
+    color: ${(p) => (p.$positive ? "#86efac" : "#fca5a5")};
+  }
 `;
 
 const CategoryDiffGrid = styled.div`
@@ -1819,6 +1840,19 @@ export default function BudgetPlannerPage() {
               </SectionTitle>
               {prevPlan && income > 0 && hasExpenseData ? (
                 <>
+                  {totalExpenses !== prevTotalExpenses && (
+                    <InsightBanner $positive={totalExpenses < prevTotalExpenses}>
+                      {totalExpenses < prevTotalExpenses ? "✅" : "⚠️"}{" "}
+                      Total expenses{" "}
+                      {totalExpenses < prevTotalExpenses ? "decreased" : "increased"}{" "}
+                      compared to last {mode === "monthly" ? "month" : "year"}
+                      {" · "}
+                      {Math.abs(
+                        deltaPercent(prevTotalExpenses, totalExpenses)
+                      ).toFixed(1)}
+                      %
+                    </InsightBanner>
+                  )}
                   <ComparisonGrid>
                     <ComparisonCard>
                       <ComparisonLabel>Income</ComparisonLabel>
@@ -1921,11 +1955,6 @@ export default function BudgetPlannerPage() {
                           </CategoryDiffItem>
                         ))}
                       </CategoryDiffGrid>
-                      {totalExpenses < prevTotalExpenses && (
-                        <MutedText style={{ color: "#22c55e", fontWeight: 600 }}>
-                          ✅ Total expenses decreased compared to last month!
-                        </MutedText>
-                      )}
                     </>
                   )}
                 </>
