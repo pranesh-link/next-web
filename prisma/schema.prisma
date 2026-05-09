@@ -75,6 +75,7 @@ model User {
   loans          Loan[]
   savingsGoals   SavingsGoal[]
   budgetPlans    BudgetPlan[]
+  budgetPlansLastUpdated BudgetPlan[] @relation("BudgetPlanLastUpdatedBy")
   investments    InvestmentHolding[]
   deposits       DepositInstrument[]
 
@@ -405,19 +406,25 @@ model CoupleInvite {
 
 model BudgetPlan {
   id           String   @id @default(uuid())
-  userId       String
+  userId       String   // original creator
   monthAndYear String   @map("month_and_year") // "2026-04" or "2026" format
   mode         String   @default("monthly") // "monthly" | "yearly"
   income       Float
   lineItems    Json     // [{category: string, amount: number, note?: string, paid: boolean}]
   coupleId     String?
+  lastUpdatedById String? @map("last_updated_by_id")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastUpdatedBy User? @relation("BudgetPlanLastUpdatedBy", fields: [lastUpdatedById], references: [id], onDelete: SetNull)
 
-  @@unique([userId, monthAndYear, mode])
+  // Note: previous unique constraint [userId, monthAndYear, mode] is dropped in
+  // migration 20260509180000_budget_plan_couple_shared and replaced with two
+  // partial unique indexes (couple-scoped vs solo-user) created via raw SQL.
   @@index([userId])
+  @@index([coupleId])
+  @@index([lastUpdatedById])
   @@map("budget_plans")
 }
 

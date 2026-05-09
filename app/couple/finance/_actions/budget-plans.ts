@@ -67,10 +67,18 @@ export async function getBudgetPlan(monthAndYear: string, mode: "monthly" | "yea
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
 
-    const coupleUserIds = await getUserIdsForCouple(user.id);
+    const coupleId = await getCoupleIdForUser(user.id);
 
+    // Couple-shared lookup: prefer coupleId match (single shared row),
+    // fall back to solo lookup by current user.
     const plan = await prisma.budgetPlan.findFirst({
-      where: { userId: { in: coupleUserIds }, monthAndYear, mode },
+      where: coupleId
+        ? { coupleId, monthAndYear, mode }
+        : { userId: user.id, coupleId: null, monthAndYear, mode },
+      include: {
+        lastUpdatedBy: { select: { id: true, name: true, email: true } },
+      },
+      orderBy: { updatedAt: "desc" },
     });
 
     return { success: true as const, data: plan };
@@ -99,29 +107,44 @@ export async function saveBudgetPlan(input: {
     const validated = budgetPlanSchema.parse(input);
     const coupleId = await getCoupleIdForUser(user.id);
 
-    const plan = await prisma.budgetPlan.upsert({
-      where: {
-        userId_monthAndYear_mode: {
-          userId: user.id,
-          monthAndYear: validated.monthAndYear,
-          mode: validated.mode,
-        },
-      },
-      update: {
-        income: validated.income,
-        lineItems: validated.lineItems,
-        mode: validated.mode,
-        ...(coupleId ? { coupleId } : {}),
-      },
-      create: {
-        userId: user.id,
-        monthAndYear: validated.monthAndYear,
-        income: validated.income,
-        mode: validated.mode,
-        lineItems: validated.lineItems,
-        ...(coupleId ? { coupleId } : {}),
-      },
+    // Find any existing couple-wide row first so either partner updates the
+    // same record instead of creating a parallel one.
+    const existing = await prisma.budgetPlan.findFirst({
+      where: coupleId
+        ? { coupleId, monthAndYear: validated.monthAndYear, mode: validated.mode }
+        : { userId: user.id, coupleId: null, monthAndYear: validated.monthAndYear, mode: validated.mode },
+      orderBy: { updatedAt: "desc" },
+      select: { id: true },
     });
+
+    const plan = existing
+      ? await prisma.budgetPlan.update({
+          where: { id: existing.id },
+          data: {
+            income: validated.income,
+            lineItems: validated.lineItems,
+            mode: validated.mode,
+            lastUpdatedById: user.id,
+            ...(coupleId ? { coupleId } : {}),
+          },
+          include: {
+            lastUpdatedBy: { select: { id: true, name: true, email: true } },
+          },
+        })
+      : await prisma.budgetPlan.create({
+          data: {
+            userId: user.id,
+            monthAndYear: validated.monthAndYear,
+            income: validated.income,
+            mode: validated.mode,
+            lineItems: validated.lineItems,
+            lastUpdatedById: user.id,
+            ...(coupleId ? { coupleId } : {}),
+          },
+          include: {
+            lastUpdatedBy: { select: { id: true, name: true, email: true } },
+          },
+        });
 
     revalidatePath("/couple/finance/budget-planner");
     return { success: true as const, data: plan };
