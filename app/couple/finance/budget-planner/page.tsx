@@ -820,10 +820,6 @@ const InsightBanner = styled.div<{ $positive: boolean }>`
     ${(p) =>
       p.$positive ? "rgba(34, 197, 94, 0.4)" : "rgba(239, 68, 68, 0.4)"};
   color: ${(p) => (p.$positive ? "#15803d" : "#b91c1c")};
-
-  @media (prefers-color-scheme: dark) {
-    color: ${(p) => (p.$positive ? "#86efac" : "#fca5a5")};
-  }
 `;
 
 const CategoryDiffGrid = styled.div`

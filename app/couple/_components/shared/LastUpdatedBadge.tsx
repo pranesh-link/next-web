@@ -71,17 +71,6 @@ const Pill = styled.span`
     font-weight: 700;
   }
 
-  @media (prefers-color-scheme: dark) {
-    background: rgba(34, 197, 94, 0.18);
-    border-color: rgba(34, 197, 94, 0.45);
-    color: #86efac;
-
-    strong {
-      color: #86efac;
-      font-style: italic;
-    }
-  }
-
   @media (max-width: 480px) {
     display: inline-flex;
     margin-left: 0;
