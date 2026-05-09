@@ -390,23 +390,13 @@ const MonthInput = styled.input`
   }
 `;
 
-const SavedBadge = styled.span`
-  background: rgba(34, 197, 94, 0.15);
-  color: #22c55e;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 4px 10px;
-  border-radius: 20px;
-  letter-spacing: 0.3px;
-`;
-
 const LastUpdatedBadge = styled.span`
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(99, 102, 241, 0.12);
-  border: 1px solid rgba(99, 102, 241, 0.35);
-  color: #4f46e5;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  color: #15803d;
   font-size: 13px;
   font-weight: 600;
   padding: 5px 12px;
@@ -415,17 +405,17 @@ const LastUpdatedBadge = styled.span`
   white-space: nowrap;
 
   strong {
-    color: #312e81;
+    color: #14532d;
     font-weight: 700;
   }
 
   @media (prefers-color-scheme: dark) {
-    background: rgba(129, 140, 248, 0.18);
-    border-color: rgba(129, 140, 248, 0.45);
-    color: #c7d2fe;
+    background: rgba(34, 197, 94, 0.18);
+    border-color: rgba(34, 197, 94, 0.45);
+    color: #86efac;
 
     strong {
-      color: #e0e7ff;
+      color: #dcfce7;
     }
   }
 
@@ -1663,21 +1653,16 @@ export default function BudgetPlannerPage() {
           )}
 
           {savedPlan && (
-            <>
-              <SavedBadge>Saved ✓</SavedBadge>
-              {savedPlan.lastUpdatedBy && (
-                <LastUpdatedBadge title={`Last updated ${formatRelativeTime(savedPlan.updatedAt)}`}>
-                  ✏️ Updated by{" "}
-                  <strong>
-                    {savedPlan.lastUpdatedBy.name?.trim() ||
-                      savedPlan.lastUpdatedBy.email?.split("@")[0] ||
-                      "Partner"}
-                  </strong>
-                  {" · "}
-                  {formatRelativeTime(savedPlan.updatedAt)}
-                </LastUpdatedBadge>
-              )}
-            </>
+            <LastUpdatedBadge title={`Last updated ${formatRelativeTime(savedPlan.updatedAt)}`}>
+              ✓ Last updated by{" "}
+              <strong>
+                {savedPlan.lastUpdatedBy?.name?.trim() ||
+                  savedPlan.lastUpdatedBy?.email?.split("@")[0] ||
+                  "Partner"}
+              </strong>
+              {" · "}
+              {formatRelativeTime(savedPlan.updatedAt)}
+            </LastUpdatedBadge>
           )}
         </MonthSelector>
 
