@@ -26,6 +26,7 @@ type SavedPlan = {
   coupleId: string | null;
   createdAt: Date;
   updatedAt: Date;
+  lastUpdatedBy?: { id: string; name: string | null; email: string | null } | null;
 };
 
 type Notification = {
@@ -85,6 +86,22 @@ function getCurrentYear(): string {
 
 function formatYearLabel(year: string): string {
   return year;
+}
+
+function formatRelativeTime(date: Date | string): string {
+  const then = typeof date === "string" ? new Date(date) : date;
+  const seconds = Math.floor((Date.now() - then.getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} min${minutes === 1 ? "" : "s"} ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hr${hours === 1 ? "" : "s"} ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days} day${days === 1 ? "" : "s"} ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months} mo ago`;
+  const years = Math.floor(days / 365);
+  return `${years} yr${years === 1 ? "" : "s"} ago`;
 }
 
 function shiftYear(year: string, delta: number): string {
@@ -351,6 +368,20 @@ const SavedBadge = styled.span`
   padding: 4px 10px;
   border-radius: 20px;
   letter-spacing: 0.3px;
+`;
+
+const LastUpdatedBadge = styled.span`
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-left: 8px;
+  white-space: nowrap;
+
+  @media (max-width: 480px) {
+    display: block;
+    margin-left: 0;
+    margin-top: 4px;
+  }
 `;
 
 /* ── Section Cards ── */
@@ -943,14 +974,6 @@ const ConfirmText = styled.p`
   line-height: 1.6;
 `;
 
-const OverwriteWarning = styled.p`
-  font-size: 13px;
-  color: var(--text-muted);
-  margin: 0 0 20px 0;
-  line-height: 1.5;
-  font-style: italic;
-`;
-
 const ConfirmActions = styled.div`
   display: flex;
   gap: 12px;
@@ -1013,7 +1036,6 @@ export default function BudgetPlannerPage() {
   const [savedPlan, setSavedPlan] = useState<SavedPlan | null>(null);
   const [prevPlan, setPrevPlan] = useState<SavedPlan | null>(null);
 
-  const [showOverwriteModal, setShowOverwriteModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showSuggestionsModal, setShowSuggestionsModal] = useState(false);
 
@@ -1232,17 +1254,11 @@ export default function BudgetPlannerPage() {
       return;
     }
 
-    if (savedPlan) {
-      setShowOverwriteModal(true);
-      return;
-    }
-
     await doSave();
   }
 
   async function doSave() {
     setSubmitting(true);
-    setShowOverwriteModal(false);
 
     const validItems = lineItems.filter((i) => i.category && i.amount > 0);
     const result = await saveBudgetPlan({
@@ -1394,7 +1410,18 @@ export default function BudgetPlannerPage() {
             />
           )}
 
-          {savedPlan && <SavedBadge>Saved ✓</SavedBadge>}
+          {savedPlan && (
+            <>
+              <SavedBadge>Saved ✓</SavedBadge>
+              {savedPlan.lastUpdatedBy && (
+                <LastUpdatedBadge>
+                  Last updated by {savedPlan.lastUpdatedBy.name?.trim() || savedPlan.lastUpdatedBy.email?.split("@")[0] || "Partner"}
+                  {" · "}
+                  {formatRelativeTime(savedPlan.updatedAt)}
+                </LastUpdatedBadge>
+              )}
+            </>
+          )}
         </MonthSelector>
 
         {loading ? (
@@ -1730,34 +1757,6 @@ export default function BudgetPlannerPage() {
         )}
       </PageWrapper>
 
-      {/* ── Overwrite Confirmation Modal ── */}
-      <Modal
-        isOpen={showOverwriteModal}
-        onClose={() => setShowOverwriteModal(false)}
-        title="Overwrite Existing Plan?"
-      >
-        <ConfirmBody>
-          <OverwriteWarning>
-            A budget plan already exists for {mode === "monthly" ? formatMonthLabel(monthAndYear) : monthAndYear}.
-            Saving will overwrite it. Continue?
-          </OverwriteWarning>
-          <ConfirmActions>
-            <ConfirmButton
-              $variant="cancel"
-              onClick={() => setShowOverwriteModal(false)}
-            >
-              Cancel
-            </ConfirmButton>
-            <ConfirmButton
-              $variant="primary"
-              onClick={doSave}
-              disabled={submitting}
-            >
-              {submitting ? "Saving…" : "Overwrite"}
-            </ConfirmButton>
-          </ConfirmActions>
-        </ConfirmBody>
-      </Modal>
 
       {/* ── Delete Confirmation Modal ── */}
       <Modal
