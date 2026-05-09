@@ -66,7 +66,7 @@ const Pill = styled.span`
   white-space: nowrap;
 
   strong {
-    color: green;
+    color: green !important;
     font-style: italic;
     font-weight: 700;
   }
