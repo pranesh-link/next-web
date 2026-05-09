@@ -68,7 +68,7 @@ export const budgetPlanSchema = z.object({
   mode: z.enum(["monthly", "yearly"]),
   income: z.number().positive("Income must be positive"),
   lineItems: z.array(budgetLineItem).min(1, "At least one expense item is required"),
-});
+}).strict();
 
 export const investmentSchema = z.object({
   name: z.string().min(1, "Name is required").max(120, "Name too long"),

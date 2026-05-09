@@ -11,6 +11,19 @@ const withPWA = withPWAInit({
   // runtimeCaching,
   scope: "/",
   disable: process.env.NEXT_PUBLIC_DISABLE_PWA === "true",
+  // Do not cache page navigations from the SW — Next.js handles routing/data freshness.
+  // This prevents stale page chrome (and therefore stale client JS) from being served
+  // after a deploy, which has caused data-loss bugs (old client → silently dropped fields).
+  cacheOnFrontEndNav: false,
+  aggressiveFrontEndNavCaching: false,
+  workboxOptions: {
+    // Don't precache HTML documents; only static assets.
+    exclude: [
+      /\.map$/,
+      /^manifest.*\.js$/,
+      /\/couple\/finance\//,
+    ],
+  },
   fallbacks: {
     document: "/offline",
   },
@@ -65,6 +78,23 @@ const nextConfig = {
   // Headers for caching
   async headers() {
     return [
+      {
+        source: '/couple/finance/budget-planner/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          },
+          {
+            key: 'Pragma',
+            value: 'no-cache',
+          },
+          {
+            key: 'Expires',
+            value: '0',
+          },
+        ],
+      },
       {
         source: '/:all*(svg|jpg|jpeg|png|gif|webp|avif|ico|css|js)',
         headers: [
