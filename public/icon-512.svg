@@ -1,25 +1,27 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
-  <!-- Background with subtle gradient -->
+  <!-- Background with rounded corners -->
+  <rect width="512" height="512" rx="80" fill="#1a1a1a"/>
+  
+  <!-- Letter P with modern geometric design -->
+  <path d="M 160 128 L 160 384 L 192 384 L 192 272 L 288 272 C 336 272 368 240 368 200 C 368 160 336 128 288 128 Z M 192 160 L 288 160 C 316 160 336 180 336 200 C 336 220 316 240 288 240 L 192 240 Z" fill="#00ff88" stroke="#00ff88" stroke-width="4"/>
+  
+  <!-- Accent dot -->
+  <circle cx="400" cy="144" r="24" fill="#00ff88"/>
+  
+  <!-- Subtle grid pattern overlay for depth -->
   <defs>
-    <linearGradient id="bgGrad512" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#1f1f1f;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#0a0a0a;stop-opacity:1" />
-    </linearGradient>
-    <linearGradient id="letterGrad512" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#00ff88;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#00d9ff;stop-opacity:1" />
-    </linearGradient>
+    <pattern id="grid512" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M 32 0 L 0 0 0 32" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+    </pattern>
   </defs>
+  <rect width="512" height="512" fill="url(#grid512)" rx="80"/>
   
-  <!-- Rounded square background with safe zone for maskable -->
-  <rect width="512" height="512" rx="112" fill="url(#bgGrad512)"/>
-  
-  <!-- Modern geometric P with refined proportions -->
-  <path d="M 144 112 L 144 400 L 188 400 L 188 276 L 296 276 C 348 276 384 244 384 192 C 384 140 348 112 296 112 Z M 188 152 L 296 152 C 324 152 344 169.6 344 192 C 344 214.4 324 236 296 236 L 188 236 Z" 
-        fill="url(#letterGrad512)" 
-        stroke="none"/>
-  
-  <!-- Accent elements -->
-  <circle cx="384" cy="128" r="20" fill="#00ff88" opacity="0.8"/>
-  <circle cx="384" cy="128" r="32" fill="none" stroke="#00ff88" stroke-width="4" opacity="0.3"/>
+  <!-- Subtle gradient overlay for modern look -->
+  <defs>
+    <radialGradient id="shine" cx="30%" cy="30%">
+      <stop offset="0%" style="stop-color:rgba(255,255,255,0.1);stop-opacity:1" />
+      <stop offset="100%" style="stop-color:rgba(255,255,255,0);stop-opacity:1" />
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#shine)" rx="80"/>
 </svg>

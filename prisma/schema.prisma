@@ -409,8 +409,7 @@ model BudgetPlan {
   monthAndYear String   @map("month_and_year") // "2026-04" or "2026" format
   mode         String   @default("monthly") // "monthly" | "yearly"
   income       Float
-  lineItems    Json     // [{category: string, amount: number, note?: string}]
-  paidItems    Json?    // [{category: string, amount: number, note?: string}]
+  lineItems    Json     // [{category: string, amount: number, note?: string, paid: boolean}]
   coupleId     String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
