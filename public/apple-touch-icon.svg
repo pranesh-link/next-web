@@ -1,25 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" fill="none">
-  <!-- Background with subtle gradient -->
+  <!-- Apple touch icon with no rounded corners (Apple applies them) -->
+  <rect width="180" height="180" fill="#1a1a1a"/>
+  
+  <!-- Letter P with modern geometric design -->
+  <path d="M 56 45 L 56 135 L 67.5 135 L 67.5 95.625 L 101.25 95.625 C 118.125 95.625 129.375 84.375 129.375 70.3125 C 129.375 56.25 118.125 45 101.25 45 Z M 67.5 56.25 L 101.25 56.25 C 111.09 56.25 118.125 63.28 118.125 70.3125 C 118.125 77.34 111.09 84.375 101.25 84.375 L 67.5 84.375 Z" fill="#00ff88" stroke="#00ff88" stroke-width="1.4"/>
+  
+  <!-- Accent dot -->
+  <circle cx="140.625" cy="50.625" r="8.4375" fill="#00ff88"/>
+  
+  <!-- Subtle grid pattern -->
   <defs>
-    <linearGradient id="bgGradApple" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#1f1f1f;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#0a0a0a;stop-opacity:1" />
-    </linearGradient>
-    <linearGradient id="letterGradApple" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#00ff88;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#00d9ff;stop-opacity:1" />
-    </linearGradient>
+    <pattern id="gridApple" width="15" height="15" patternUnits="userSpaceOnUse">
+      <path d="M 15 0 L 0 0 0 15" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="0.5"/>
+    </pattern>
   </defs>
-  
-  <!-- Rounded square background -->
-  <rect width="180" height="180" rx="40" fill="url(#bgGradApple)"/>
-  
-  <!-- Modern geometric P with refined proportions -->
-  <path d="M 50.625 39.375 L 50.625 140.625 L 66.09375 140.625 L 66.09375 97.03125 L 104.0625 97.03125 C 122.34375 97.03125 135 85.546875 135 67.5 C 135 49.453125 122.34375 39.375 104.0625 39.375 Z M 66.09375 53.4375 L 104.0625 53.4375 C 113.90625 53.4375 120.9375 59.625 120.9375 67.5 C 120.9375 75.375 113.90625 82.96875 104.0625 82.96875 L 66.09375 82.96875 Z" 
-        fill="url(#letterGradApple)" 
-        stroke="none"/>
-  
-  <!-- Accent elements -->
-  <circle cx="135" cy="45" r="7" fill="#00ff88" opacity="0.8"/>
-  <circle cx="135" cy="45" r="11.25" fill="none" stroke="#00ff88" stroke-width="1.4" opacity="0.3"/>
+  <rect width="180" height="180" fill="url(#gridApple)"/>
 </svg>

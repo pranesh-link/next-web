@@ -1,25 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <!-- Background with subtle gradient feel -->
-  <defs>
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#1f1f1f;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#0a0a0a;stop-opacity:1" />
-    </linearGradient>
-    <linearGradient id="letterGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#00ff88;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#00d9ff;stop-opacity:1" />
-    </linearGradient>
-  </defs>
+  <!-- Background -->
+  <rect width="64" height="64" rx="12" fill="#1a1a1a"/>
   
-  <!-- Rounded square background -->
-  <rect width="64" height="64" rx="14" fill="url(#bgGrad)"/>
+  <!-- Letter P with modern geometric design -->
+  <path d="M 20 16 L 20 48 L 24 48 L 24 34 L 36 34 C 42 34 46 30 46 25 C 46 20 42 16 36 16 Z M 24 20 L 36 20 C 39.5 20 42 22.5 42 25 C 42 27.5 39.5 30 36 30 L 24 30 Z" fill="#00ff88" stroke="#00ff88" stroke-width="0.5"/>
   
-  <!-- Modern geometric P with refined proportions -->
-  <path d="M 18 14 L 18 50 L 23.5 50 L 23.5 34.5 L 37 34.5 C 43.5 34.5 48 30.5 48 24 C 48 17.5 43.5 14 37 14 Z M 23.5 19 L 37 19 C 40.5 19 43 21.2 43 24 C 43 26.8 40.5 29.5 37 29.5 L 23.5 29.5 Z" 
-        fill="url(#letterGrad)" 
-        stroke="none"/>
-  
-  <!-- Accent elements for depth -->
-  <circle cx="48" cy="16" r="2.5" fill="#00ff88" opacity="0.8"/>
-  <circle cx="48" cy="16" r="4" fill="none" stroke="#00ff88" stroke-width="0.5" opacity="0.3"/>
+  <!-- Accent dot -->
+  <circle cx="50" cy="18" r="3" fill="#00ff88"/>
 </svg>

@@ -60,18 +60,15 @@ const budgetLineItem = z.object({
   category: z.string().min(1, "Category is required"),
   amount: z.number().positive("Amount must be positive"),
   note: z.string().min(1, "Note is required"),
+  paid: z.boolean().optional().default(false),
 });
 
 export const budgetPlanSchema = z.object({
   monthAndYear: z.string().regex(/^\d{4}(-\d{2})?$/, "Must be in YYYY-MM or YYYY format"),
   mode: z.enum(["monthly", "yearly"]),
   income: z.number().positive("Income must be positive"),
-  lineItems: z.array(budgetLineItem),
-  paidItems: z.array(budgetLineItem).optional(),
-}).refine(
-  (data) => (data.lineItems.length > 0 || (data.paidItems?.length ?? 0) > 0),
-  { message: "At least one expense item is required", path: ["lineItems"] },
-);
+  lineItems: z.array(budgetLineItem).min(1, "At least one expense item is required"),
+});
 
 export const investmentSchema = z.object({
   name: z.string().min(1, "Name is required").max(120, "Name too long"),

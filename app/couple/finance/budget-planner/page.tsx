@@ -15,7 +15,7 @@ import LoadingSkeleton from "@/couple/_components/shared/LoadingSkeleton";
 
 /* ── Types ──────────────────────────────────────────── */
 
-type LineItem = { category: string; amount: number; note?: string };
+type LineItem = { category: string; amount: number; note?: string; paid?: boolean };
 
 type SavedPlan = {
   id: string;
@@ -23,7 +23,6 @@ type SavedPlan = {
   mode: string;
   income: number;
   lineItems: unknown;
-  paidItems: unknown;
   coupleId: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -460,12 +459,24 @@ const LineItemGrid = styled.div`
   gap: 18px;
 `;
 
-const LineItemRow = styled.div`
+const LineItemRow = styled.div<{ $paid?: boolean }>`
   display: flex;
   align-items: center;
   gap: 10px;
   animation: ${fadeIn} 0.3s ${EASING};
   min-width: 0;
+  opacity: ${(p) => (p.$paid ? 0.85 : 1)};
+
+  ${(p) =>
+    p.$paid &&
+    `
+    & input, & select {
+      background: rgba(34, 197, 94, 0.05) !important;
+      border-color: rgba(34, 197, 94, 0.25) !important;
+      cursor: not-allowed !important;
+      color: var(--text-muted) !important;
+    }
+  `}
 
   @media (max-width: 768px) {
     flex-wrap: wrap;
@@ -626,50 +637,6 @@ const SuggestionText = styled.p`
 
 const PaidSectionCard = styled(SectionCard)`
   border-left: 4px solid #22c55e;
-`;
-
-const PaidItemRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
-  animation: ${fadeIn} 0.3s ${EASING};
-
-  &:last-of-type {
-    border-bottom: none;
-  }
-
-  @media (max-width: 768px) {
-    flex-wrap: wrap;
-  }
-`;
-
-const PaidItemInfo = styled.div`
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-`;
-
-const PaidCategory = styled.span`
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text);
-`;
-
-const PaidNote = styled.span`
-  font-size: 13px;
-  color: var(--text-muted);
-`;
-
-const PaidAmount = styled.span`
-  font-size: 15px;
-  font-weight: 700;
-  color: #22c55e;
-  white-space: nowrap;
 `;
 
 const UndoButton = styled.button`
@@ -1040,7 +1007,7 @@ export default function BudgetPlannerPage() {
   const [income, setIncome] = useState(0);
   const [incomeHint, setIncomeHint] = useState("");
   const [lineItems, setLineItems] = useState<LineItem[]>([
-    { category: "", amount: 0 },
+    { category: "", amount: 0, paid: false },
   ]);
 
   const [savedPlan, setSavedPlan] = useState<SavedPlan | null>(null);
@@ -1049,7 +1016,6 @@ export default function BudgetPlannerPage() {
   const [showOverwriteModal, setShowOverwriteModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showSuggestionsModal, setShowSuggestionsModal] = useState(false);
-  const [paidItems, setPaidItems] = useState<LineItem[]>([]);
 
   const [notification, setNotification] = useState<Notification | null>(null);
   const [notifLeaving, setNotifLeaving] = useState(false);
@@ -1092,24 +1058,17 @@ export default function BudgetPlannerPage() {
         setSavedPlan(plan);
         setIncome(plan.income);
         setLineItems(
-          plan.lineItems as Array<{
+          (plan.lineItems as Array<{
             category: string;
             amount: number;
             note?: string;
-          }>
-        );
-        setPaidItems(
-          (plan.paidItems as Array<{
-            category: string;
-            amount: number;
-            note?: string;
-          }>) ?? []
+            paid?: boolean;
+          }>).map((i) => ({ ...i, paid: i.paid ?? false }))
         );
         setIncomeHint("");
       } else {
         setSavedPlan(null);
-        setLineItems([{ category: "", amount: 0 }]);
-        setPaidItems([]);
+        setLineItems([{ category: "", amount: 0, paid: false }]);
 
         // Auto-fill income from transactions
         if (incomeResult.success && incomeResult.income > 0) {
@@ -1135,10 +1094,16 @@ export default function BudgetPlannerPage() {
 
   /* ── Computed values ── */
 
+  // Estimated total = sum of ALL line items (paid or not). Paid is a flag, not a deduction.
   const totalExpenses = lineItems.reduce((sum, item) => sum + (item.amount || 0), 0);
-  const totalPaid = paidItems.reduce((sum, item) => sum + (item.amount || 0), 0);
-  const remaining = income - totalExpenses - totalPaid;
+  const totalPaid = lineItems
+    .filter((i) => i.paid)
+    .reduce((sum, item) => sum + (item.amount || 0), 0);
+  const remaining = income - totalExpenses;
   const savingsRate = income > 0 ? (remaining / income) * 100 : 0;
+
+  const estimatedItems = lineItems.filter((i) => !i.paid);
+  const paidItems = lineItems.filter((i) => i.paid);
 
   const hasExpenseData = lineItems.some((i) => i.category && i.amount > 0);
   const suggestions =
@@ -1177,25 +1142,24 @@ export default function BudgetPlannerPage() {
   function removeLineItem(index: number) {
     setLineItems((prev) => {
       const filtered = prev.filter((_, i) => i !== index);
-      return filtered.length > 0 ? filtered : [{ category: "", amount: 0 }];
+      return filtered.length > 0 ? filtered : [{ category: "", amount: 0, paid: false }];
     });
   }
 
   function addLineItem() {
-    setLineItems((prev) => [...prev, { category: "", amount: 0 }]);
+    setLineItems((prev) => [...prev, { category: "", amount: 0, paid: false }]);
   }
 
   function markAsPaid(index: number) {
-    const item = lineItems[index];
-    if (!item.category || !item.amount) return;
-    setPaidItems((prev) => [...prev, item]);
-    removeLineItem(index);
+    setLineItems((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, paid: true } : item))
+    );
   }
 
   function undoPaid(index: number) {
-    const item = paidItems[index];
-    setPaidItems((prev) => prev.filter((_, i) => i !== index));
-    setLineItems((prev) => [...prev, item]);
+    setLineItems((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, paid: false } : item))
+    );
   }
 
   async function importEMIs() {
@@ -1221,6 +1185,7 @@ export default function BudgetPlannerPage() {
           ? (loan.nextEmiAmount ?? loan.emiAmount) * 12
           : (loan.nextEmiAmount ?? loan.emiAmount),
         note: loan.name,
+        paid: false,
       }));
 
     if (newItems.length === 0) {
@@ -1238,8 +1203,7 @@ export default function BudgetPlannerPage() {
   function resetForm() {
     setIncome(0);
     setIncomeHint("");
-    setLineItems([{ category: "", amount: 0 }]);
-    setPaidItems([]);
+    setLineItems([{ category: "", amount: 0, paid: false }]);
   }
 
   /* ── Save / Delete ── */
@@ -1251,8 +1215,7 @@ export default function BudgetPlannerPage() {
     }
 
     const validItems = lineItems.filter((i) => i.category && i.amount > 0);
-    const validPaidItems = paidItems.filter((i) => i.category && i.amount > 0);
-    if (validItems.length === 0 && validPaidItems.length === 0) {
+    if (validItems.length === 0) {
       notify("Add at least one expense with a category and amount", "error");
       return;
     }
@@ -1283,15 +1246,9 @@ export default function BudgetPlannerPage() {
       lineItems: validItems.map((i) => ({
         category: i.category,
         amount: i.amount,
+        paid: i.paid ?? false,
         ...(i.note ? { note: i.note } : {}),
       })),
-      paidItems: paidItems
-        .filter((i) => i.category && i.amount > 0)
-        .map((i) => ({
-          category: i.category,
-          amount: i.amount,
-          ...(i.note ? { note: i.note } : {}),
-        })),
     });
 
     setSubmitting(false);
@@ -1499,59 +1456,61 @@ export default function BudgetPlannerPage() {
             <SectionCard>
               <SectionTitle>Estimated Expenses</SectionTitle>
               <LineItemGrid>
-                {lineItems.map((item, index) => (
-                  <LineItemRow key={index}>
-                    <LineItemField $flex={1.2}>
-                      <FinanceSelect
-                        value={item.category}
-                        onChange={(e) =>
-                          updateLineItem(index, "category", e.target.value)
-                        }
+                {lineItems.map((item, index) =>
+                  item.paid ? null : (
+                    <LineItemRow key={index}>
+                      <LineItemField $flex={1.2}>
+                        <FinanceSelect
+                          value={item.category}
+                          onChange={(e) =>
+                            updateLineItem(index, "category", e.target.value)
+                          }
+                        >
+                          <option value="">Select Category</option>
+                          {CATEGORIES.map((cat) => (
+                            <option key={cat} value={cat}>
+                              {cat}
+                            </option>
+                          ))}
+                        </FinanceSelect>
+                      </LineItemField>
+                      <LineItemField>
+                        <FinanceInput
+                          type="number"
+                          min={0}
+                          placeholder="Amount"
+                          value={item.amount || ""}
+                          onChange={(e) =>
+                            updateLineItem(index, "amount", Number(e.target.value))
+                          }
+                        />
+                      </LineItemField>
+                      <LineItemField>
+                        <FinanceInput
+                          type="text"
+                          placeholder="Note (required)"
+                          value={item.note || ""}
+                          onChange={(e) =>
+                            updateLineItem(index, "note", e.target.value)
+                          }
+                        />
+                      </LineItemField>
+                      <MarkPaidButton
+                        onClick={() => markAsPaid(index)}
+                        disabled={!item.category || !item.amount}
+                        title="Mark as paid"
                       >
-                        <option value="">Select Category</option>
-                        {CATEGORIES.map((cat) => (
-                          <option key={cat} value={cat}>
-                            {cat}
-                          </option>
-                        ))}
-                      </FinanceSelect>
-                    </LineItemField>
-                    <LineItemField>
-                      <FinanceInput
-                        type="number"
-                        min={0}
-                        placeholder="Amount"
-                        value={item.amount || ""}
-                        onChange={(e) =>
-                          updateLineItem(index, "amount", Number(e.target.value))
-                        }
-                      />
-                    </LineItemField>
-                    <LineItemField>
-                      <FinanceInput
-                        type="text"
-                        placeholder="Note (required)"
-                        value={item.note || ""}
-                        onChange={(e) =>
-                          updateLineItem(index, "note", e.target.value)
-                        }
-                      />
-                    </LineItemField>
-                    <MarkPaidButton
-                      onClick={() => markAsPaid(index)}
-                      disabled={!item.category || !item.amount}
-                      title="Mark as paid"
-                    >
-                      ✓
-                    </MarkPaidButton>
-                    <RemoveButton
-                      onClick={() => removeLineItem(index)}
-                      title="Remove"
-                    >
-                      ✕
-                    </RemoveButton>
-                  </LineItemRow>
-                ))}
+                        ✓
+                      </MarkPaidButton>
+                      <RemoveButton
+                        onClick={() => removeLineItem(index)}
+                        title="Remove"
+                      >
+                        ✕
+                      </RemoveButton>
+                    </LineItemRow>
+                  )
+                )}
               </LineItemGrid>
 
               <ExpenseActions>
@@ -1569,16 +1528,38 @@ export default function BudgetPlannerPage() {
             {paidItems.length > 0 && (
               <PaidSectionCard>
                 <SectionTitle>Paid Expenses</SectionTitle>
-                {paidItems.map((item, index) => (
-                  <PaidItemRow key={index}>
-                    <PaidItemInfo>
-                      <PaidCategory>{item.category}</PaidCategory>
-                      {item.note && <PaidNote>— {item.note}</PaidNote>}
-                    </PaidItemInfo>
-                    <PaidAmount>{formatCurrency(item.amount)}</PaidAmount>
-                    <UndoButton onClick={() => undoPaid(index)}>↩ Undo</UndoButton>
-                  </PaidItemRow>
-                ))}
+                <LineItemGrid>
+                  {lineItems.map((item, index) =>
+                    item.paid ? (
+                      <LineItemRow key={index} $paid>
+                        <LineItemField $flex={1.2}>
+                          <FinanceSelect value={item.category} disabled readOnly>
+                            <option value={item.category}>{item.category}</option>
+                          </FinanceSelect>
+                        </LineItemField>
+                        <LineItemField>
+                          <FinanceInput
+                            type="number"
+                            value={item.amount || ""}
+                            disabled
+                            readOnly
+                          />
+                        </LineItemField>
+                        <LineItemField>
+                          <FinanceInput
+                            type="text"
+                            value={item.note || ""}
+                            disabled
+                            readOnly
+                          />
+                        </LineItemField>
+                        <UndoButton onClick={() => undoPaid(index)} title="Undo paid">
+                          ↩ Undo
+                        </UndoButton>
+                      </LineItemRow>
+                    ) : null
+                  )}
+                </LineItemGrid>
                 <TotalRow>
                   <span>Total Paid Expenses</span>
                   <span style={{ color: "#22c55e" }}>{formatCurrency(totalPaid)}</span>
