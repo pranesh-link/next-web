@@ -1045,6 +1045,13 @@ export default function BudgetPlannerPage() {
         getIncome(prevPeriod, currentMode),
       ]);
 
+      // Stale-bundle guard: if a deploy invalidated server-action IDs the
+      // result will be undefined — surface a reload hint instead of crashing.
+      if (!planResult || !prevPlanResult || !incomeResult) {
+        notify("App was updated. Please reload the page.", "error");
+        return;
+      }
+
       // Previous month plan
       if (prevPlanResult.success && prevPlanResult.data) {
         setPrevPlan(prevPlanResult.data);
@@ -1252,6 +1259,11 @@ export default function BudgetPlannerPage() {
 
     setSubmitting(false);
 
+    if (!result) {
+      notify("App was updated. Please reload (Cmd+Shift+R).", "error");
+      return;
+    }
+
     if (result.success) {
       notify("Budget plan saved!", "success");
       await fetchData(monthAndYear, mode);
@@ -1267,6 +1279,11 @@ export default function BudgetPlannerPage() {
 
     const result = await deleteBudgetPlan(savedPlan.id);
     setSubmitting(false);
+
+    if (!result) {
+      notify("App was updated. Please reload (Cmd+Shift+R).", "error");
+      return;
+    }
 
     if (result.success) {
       notify("Budget plan deleted", "success");

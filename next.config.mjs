@@ -11,12 +11,18 @@ const withPWA = withPWAInit({
   // runtimeCaching,
   scope: "/",
   disable: process.env.NEXT_PUBLIC_DISABLE_PWA === "true",
+  // Bump cacheId on every release that ships SW changes; abandons all old caches
+  // belonging to prior cacheIds when the new SW activates.
+  cacheId: `cpl-${packageJson.version}`,
   // Do not cache page navigations from the SW — Next.js handles routing/data freshness.
   // This prevents stale page chrome (and therefore stale client JS) from being served
   // after a deploy, which has caused data-loss bugs (old client → silently dropped fields).
   cacheOnFrontEndNav: false,
   aggressiveFrontEndNavCaching: false,
   workboxOptions: {
+    // Take control of all open clients the moment the new SW activates so users
+    // don't keep running stale chunks until the next full reload.
+    clientsClaim: true,
     // Don't precache HTML documents; only static assets.
     exclude: [
       /\.map$/,
