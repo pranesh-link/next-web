@@ -1,5 +1,7 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+import { unstable_noStore as noStore } from "next/cache";
 import prisma from "@/_lib/prisma";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { budgetPlanSchema } from "@/_lib/validations/finance";
@@ -9,6 +11,7 @@ import {
 } from "@/_services/finance/couple-service";
 
 export async function getIncome(monthAndYear: string, mode: "monthly" | "yearly") {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -59,6 +62,7 @@ export async function getIncome(monthAndYear: string, mode: "monthly" | "yearly"
 }
 
 export async function getBudgetPlan(monthAndYear: string, mode: "monthly" | "yearly") {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -87,6 +91,7 @@ export async function saveBudgetPlan(input: {
   mode: "monthly" | "yearly";
   lineItems: Array<{ category: string; amount: number; note?: string; paid?: boolean }>;
 }) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -118,6 +123,7 @@ export async function saveBudgetPlan(input: {
       },
     });
 
+    revalidatePath("/couple/finance/budget-planner");
     return { success: true as const, data: plan };
   } catch (error) {
     return {
@@ -131,6 +137,7 @@ export async function saveBudgetPlan(input: {
 }
 
 export async function deleteBudgetPlan(id: string) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -147,6 +154,7 @@ export async function deleteBudgetPlan(id: string) {
 
     await prisma.budgetPlan.delete({ where: { id } });
 
+    revalidatePath("/couple/finance/budget-planner");
     return { success: true as const };
   } catch (error) {
     return {
