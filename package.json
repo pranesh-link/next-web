@@ -1,6 +1,6 @@
 {
   "name": "next-web",
-  "version": "2.134.0",
+  "version": "2.135.0",
   "private": true,
   "scripts": {
     "postinstall": "prisma generate",
