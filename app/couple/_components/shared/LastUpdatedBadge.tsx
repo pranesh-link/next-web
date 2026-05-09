@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import styled from "styled-components";
 
 export type LastUpdatedBadgeProps = {
@@ -58,7 +57,7 @@ const Pill = styled.span`
   gap: 6px;
   background: rgba(34, 197, 94, 0.12);
   border: 1px solid rgba(34, 197, 94, 0.4);
-  color: green;
+  color: green !important;
   font-size: 13px;
   font-weight: 600;
   padding: 5px 12px;
