@@ -108,6 +108,36 @@ function shiftYear(year: string, delta: number): string {
   return String(Number(year) + delta);
 }
 
+/* ── Import-from-previous classification ── */
+
+type ImportClassification =
+  | { kind: "duplicate" }
+  | { kind: "similar"; existingAmount: number }
+  | { kind: "new" };
+
+type PrevItemRow = LineItem & { _idx: number; _class: ImportClassification };
+
+function importKey(item: { category: string; note?: string }): string {
+  const note = item.note?.trim().toLowerCase();
+  if (note) return `note:${note}`;
+  return `cat:${item.category.trim().toLowerCase()}`;
+}
+
+function classifyPrevItem(
+  prev: LineItem,
+  currentItems: LineItem[],
+): ImportClassification {
+  const key = importKey(prev);
+  let similar: { existingAmount: number } | null = null;
+  for (const cur of currentItems) {
+    if (importKey(cur) !== key) continue;
+    if (cur.amount === prev.amount) return { kind: "duplicate" };
+    if (!similar) similar = { existingAmount: cur.amount };
+  }
+  if (similar) return { kind: "similar", existingAmount: similar.existingAmount };
+  return { kind: "new" };
+}
+
 function formatCurrency(n: number): string {
   return "₹" + n.toLocaleString("en-IN", { maximumFractionDigits: 2 });
 }
@@ -371,16 +401,39 @@ const SavedBadge = styled.span`
 `;
 
 const LastUpdatedBadge = styled.span`
-  font-size: 11px;
-  color: var(--text-muted);
-  font-style: italic;
-  margin-left: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  color: #4f46e5;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 20px;
+  letter-spacing: 0.2px;
   white-space: nowrap;
 
+  strong {
+    color: #312e81;
+    font-weight: 700;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    background: rgba(129, 140, 248, 0.18);
+    border-color: rgba(129, 140, 248, 0.45);
+    color: #c7d2fe;
+
+    strong {
+      color: #e0e7ff;
+    }
+  }
+
   @media (max-width: 480px) {
-    display: block;
+    display: inline-flex;
     margin-left: 0;
     margin-top: 4px;
+    font-size: 12px;
   }
 `;
 
@@ -1018,6 +1071,134 @@ const ConfirmButton = styled.button<{ $variant: "danger" | "cancel" | "primary" 
   }
 `;
 
+/* ── Import-Prev Modal styles ── */
+
+const ImportToolbar = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+`;
+
+const ImportLinkButton = styled.button`
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-family: inherit;
+
+  &:hover { background: rgba(99, 102, 241, 0.08); }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+`;
+
+const ImportListWrapper = styled.div`
+  max-height: 50vh;
+  overflow-y: auto;
+  margin: 0 -8px 16px;
+  padding: 0 8px;
+`;
+
+const ImportRow = styled.label<{ $disabled?: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  margin-bottom: 8px;
+  cursor: ${(p) => (p.$disabled ? "not-allowed" : "pointer")};
+  opacity: ${(p) => (p.$disabled ? 0.65 : 1)};
+  transition: background 0.15s ${EASING};
+
+  &:hover {
+    background: ${(p) => (p.$disabled ? "transparent" : "rgba(99, 102, 241, 0.06)")};
+  }
+
+  input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent);
+    cursor: inherit;
+    flex-shrink: 0;
+  }
+`;
+
+const ImportRowMain = styled.div`
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+`;
+
+const ImportRowLine1 = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+
+  span.amount {
+    color: var(--accent);
+  }
+`;
+
+const ImportRowNote = styled.div`
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const ImportRowBadges = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+`;
+
+const ImportRowBadge = styled.span<{ $variant: "duplicate" | "similar" | "paid" }>`
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 12px;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+
+  background: ${(p) =>
+    p.$variant === "duplicate"
+      ? "rgba(239, 68, 68, 0.12)"
+      : p.$variant === "similar"
+        ? "rgba(245, 158, 11, 0.15)"
+        : "rgba(34, 197, 94, 0.15)"};
+  color: ${(p) =>
+    p.$variant === "duplicate"
+      ? "#ef4444"
+      : p.$variant === "similar"
+        ? "#d97706"
+        : "#22c55e"};
+`;
+
+const ImportEmpty = styled.div`
+  text-align: center;
+  padding: 24px 12px;
+  color: var(--text-muted);
+  font-size: 14px;
+`;
+
 /* ── Component ──────────────────────────────────────── */
 
 export default function BudgetPlannerPage() {
@@ -1038,6 +1219,9 @@ export default function BudgetPlannerPage() {
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showSuggestionsModal, setShowSuggestionsModal] = useState(false);
+  const [showImportPrevModal, setShowImportPrevModal] = useState(false);
+  const [importRows, setImportRows] = useState<PrevItemRow[]>([]);
+  const [importSelection, setImportSelection] = useState<Set<number>>(new Set());
 
   const [notification, setNotification] = useState<Notification | null>(null);
   const [notifLeaving, setNotifLeaving] = useState(false);
@@ -1228,6 +1412,74 @@ export default function BudgetPlannerPage() {
     notify(`Imported ${newItems.length} loan EMI(s)`, "success");
   }
 
+  /* ── Import from previous period ── */
+
+  function openImportPrevModal() {
+    if (!prevPlan) return;
+    const prevItems = prevPlan.lineItems as LineItem[];
+    if (!Array.isArray(prevItems) || prevItems.length === 0) {
+      notify(`No items in previous ${mode === "monthly" ? "month" : "year"} to import`, "error");
+      return;
+    }
+    const rows: PrevItemRow[] = prevItems.map((item, idx) => ({
+      ...item,
+      _idx: idx,
+      _class: classifyPrevItem(item, lineItems),
+    }));
+    setImportRows(rows);
+    setImportSelection(new Set());
+    setShowImportPrevModal(true);
+  }
+
+  function toggleImportRow(idx: number) {
+    const row = importRows.find((r) => r._idx === idx);
+    if (!row || row._class.kind === "duplicate") return;
+    setImportSelection((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  }
+
+  function selectAllImportRows() {
+    const next = new Set<number>();
+    for (const row of importRows) {
+      if (row._class.kind !== "duplicate") next.add(row._idx);
+    }
+    setImportSelection(next);
+  }
+
+  function selectNoneImportRows() {
+    setImportSelection(new Set());
+  }
+
+  function confirmImportPrev() {
+    const picked = importRows
+      .filter((r) => importSelection.has(r._idx) && r._class.kind !== "duplicate")
+      .map((r) => ({
+        category: r.category,
+        amount: r.amount,
+        paid: false,
+        ...(r.note ? { note: r.note } : {}),
+      }));
+
+    if (picked.length === 0) {
+      setShowImportPrevModal(false);
+      return;
+    }
+
+    setLineItems((prev) => {
+      const cleaned = prev.filter((i) => i.category !== "" || i.amount > 0);
+      return cleaned.length > 0 ? [...cleaned, ...picked] : picked;
+    });
+    setShowImportPrevModal(false);
+    notify(
+      `Imported ${picked.length} expense${picked.length === 1 ? "" : "s"} from last ${mode === "monthly" ? "month" : "year"}`,
+      "success"
+    );
+  }
+
   function resetForm() {
     setIncome(0);
     setIncomeHint("");
@@ -1414,8 +1666,13 @@ export default function BudgetPlannerPage() {
             <>
               <SavedBadge>Saved ✓</SavedBadge>
               {savedPlan.lastUpdatedBy && (
-                <LastUpdatedBadge>
-                  Last updated by {savedPlan.lastUpdatedBy.name?.trim() || savedPlan.lastUpdatedBy.email?.split("@")[0] || "Partner"}
+                <LastUpdatedBadge title={`Last updated ${formatRelativeTime(savedPlan.updatedAt)}`}>
+                  ✏️ Updated by{" "}
+                  <strong>
+                    {savedPlan.lastUpdatedBy.name?.trim() ||
+                      savedPlan.lastUpdatedBy.email?.split("@")[0] ||
+                      "Partner"}
+                  </strong>
                   {" · "}
                   {formatRelativeTime(savedPlan.updatedAt)}
                 </LastUpdatedBadge>
@@ -1559,6 +1816,17 @@ export default function BudgetPlannerPage() {
               <ExpenseActions>
                 <AddButton onClick={addLineItem}>+ Add Expense</AddButton>
                 <AddButton onClick={importEMIs}>📥 Import existing loan EMIs</AddButton>
+                <AddButton
+                  onClick={openImportPrevModal}
+                  disabled={!prevPlan || prevLineItems.length === 0}
+                  title={
+                    !prevPlan || prevLineItems.length === 0
+                      ? `No previous ${mode === "monthly" ? "month" : "year"} plan to import from`
+                      : undefined
+                  }
+                >
+                  📋 Import from last {mode === "monthly" ? "month" : "year"}
+                </AddButton>
               </ExpenseActions>
 
               <TotalRow>
@@ -1782,6 +2050,85 @@ export default function BudgetPlannerPage() {
               disabled={submitting}
             >
               {submitting ? "Deleting…" : "Delete"}
+            </ConfirmButton>
+          </ConfirmActions>
+        </ConfirmBody>
+      </Modal>
+
+      {/* ── Import-From-Previous Modal ── */}
+      <Modal
+        isOpen={showImportPrevModal}
+        onClose={() => setShowImportPrevModal(false)}
+        title={`Import from last ${mode === "monthly" ? "month" : "year"}`}
+        size="md"
+      >
+        <ConfirmBody>
+          <ImportToolbar>
+            <span>
+              {importSelection.size} of {importRows.filter((r) => r._class.kind !== "duplicate").length} selectable
+            </span>
+            <div>
+              <ImportLinkButton
+                onClick={selectAllImportRows}
+                disabled={importRows.every((r) => r._class.kind === "duplicate")}
+              >
+                Select all
+              </ImportLinkButton>
+              <ImportLinkButton onClick={selectNoneImportRows} disabled={importSelection.size === 0}>
+                Select none
+              </ImportLinkButton>
+            </div>
+          </ImportToolbar>
+
+          {importRows.length === 0 ? (
+            <ImportEmpty>No items to import.</ImportEmpty>
+          ) : (
+            <ImportListWrapper>
+              {importRows.map((row) => {
+                const isDup = row._class.kind === "duplicate";
+                const isChecked = importSelection.has(row._idx);
+                return (
+                  <ImportRow key={row._idx} $disabled={isDup}>
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      disabled={isDup}
+                      onChange={() => toggleImportRow(row._idx)}
+                    />
+                    <ImportRowMain>
+                      <ImportRowLine1>
+                        <span>{row.category || "Uncategorised"}</span>
+                        <span className="amount">{formatCurrency(row.amount)}</span>
+                      </ImportRowLine1>
+                      {row.note && <ImportRowNote>{row.note}</ImportRowNote>}
+                    </ImportRowMain>
+                    <ImportRowBadges>
+                      {row._class.kind === "duplicate" && (
+                        <ImportRowBadge $variant="duplicate">Already added</ImportRowBadge>
+                      )}
+                      {row._class.kind === "similar" && (
+                        <ImportRowBadge $variant="similar">
+                          Similar exists ({formatCurrency(row._class.existingAmount)})
+                        </ImportRowBadge>
+                      )}
+                      {row.paid && <ImportRowBadge $variant="paid">Paid last period</ImportRowBadge>}
+                    </ImportRowBadges>
+                  </ImportRow>
+                );
+              })}
+            </ImportListWrapper>
+          )}
+
+          <ConfirmActions>
+            <ConfirmButton $variant="cancel" onClick={() => setShowImportPrevModal(false)}>
+              Cancel
+            </ConfirmButton>
+            <ConfirmButton
+              $variant="primary"
+              onClick={confirmImportPrev}
+              disabled={importSelection.size === 0}
+            >
+              Import {importSelection.size > 0 ? importSelection.size : ""}
             </ConfirmButton>
           </ConfirmActions>
         </ConfirmBody>
