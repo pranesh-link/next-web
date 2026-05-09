@@ -9,9 +9,11 @@ import {
   deleteBudgetPlan,
   getActiveLoans,
 } from "@/couple/finance/_actions/budget-plans";
+import { useSession } from "next-auth/react";
 import FinanceHeader from "@/couple/_components/layout/FinanceHeader";
 import Modal from "@/couple/_components/shared/Modal";
 import LoadingSkeleton from "@/couple/_components/shared/LoadingSkeleton";
+import LastUpdatedBadge from "@/couple/_components/shared/LastUpdatedBadge";
 
 /* ── Types ──────────────────────────────────────────── */
 
@@ -86,22 +88,6 @@ function getCurrentYear(): string {
 
 function formatYearLabel(year: string): string {
   return year;
-}
-
-function formatRelativeTime(date: Date | string): string {
-  const then = typeof date === "string" ? new Date(date) : date;
-  const seconds = Math.floor((Date.now() - then.getTime()) / 1000);
-  if (seconds < 60) return "just now";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} min${minutes === 1 ? "" : "s"} ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} hr${hours === 1 ? "" : "s"} ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days} day${days === 1 ? "" : "s"} ago`;
-  const months = Math.floor(days / 30);
-  if (months < 12) return `${months} mo ago`;
-  const years = Math.floor(days / 365);
-  return `${years} yr${years === 1 ? "" : "s"} ago`;
 }
 
 function shiftYear(year: string, delta: number): string {
@@ -387,45 +373,6 @@ const MonthInput = styled.input`
 
   &::-webkit-calendar-picker-indicator {
     filter: invert(1);
-  }
-`;
-
-const LastUpdatedBadge = styled.span`
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(34, 197, 94, 0.12);
-  border: 1px solid rgba(34, 197, 94, 0.4);
-  color: green;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 5px 12px;
-  border-radius: 20px;
-  letter-spacing: 0.2px;
-  white-space: nowrap;
-
-  strong {
-    color: green;
-    font-style: italic;
-    font-weight: 700;
-  }
-
-  @media (prefers-color-scheme: dark) {
-    background: rgba(34, 197, 94, 0.18);
-    border-color: rgba(34, 197, 94, 0.45);
-    color: #86efac;
-
-    strong {
-      color: #86efac;
-      font-style: italic;
-    }
-  }
-
-  @media (max-width: 480px) {
-    display: inline-flex;
-    margin-left: 0;
-    margin-top: 4px;
-    font-size: 12px;
   }
 `;
 
@@ -1194,6 +1141,9 @@ const ImportEmpty = styled.div`
 /* ── Component ──────────────────────────────────────── */
 
 export default function BudgetPlannerPage() {
+  const { data: session } = useSession();
+  const currentUserId = (session?.user as { id?: string } | undefined)?.id ?? null;
+
   /* State */
   const [monthAndYear, setMonthAndYear] = useState(getCurrentMonth);
   const [mode, setMode] = useState<"monthly" | "yearly">("monthly");
@@ -1655,16 +1605,13 @@ export default function BudgetPlannerPage() {
           )}
 
           {savedPlan && (
-            <LastUpdatedBadge title={`Last updated ${formatRelativeTime(savedPlan.updatedAt)}`}>
-              ✓ Last updated by{" "}
-              <strong>
-                {savedPlan.lastUpdatedBy?.name?.trim() ||
-                  savedPlan.lastUpdatedBy?.email?.split("@")[0] ||
-                  "Partner"}
-              </strong>
-              {" · "}
-              {formatRelativeTime(savedPlan.updatedAt)}
-            </LastUpdatedBadge>
+            <LastUpdatedBadge
+              name={savedPlan.lastUpdatedBy?.name}
+              email={savedPlan.lastUpdatedBy?.email}
+              userId={savedPlan.lastUpdatedBy?.id}
+              currentUserId={currentUserId}
+              updatedAt={savedPlan.updatedAt}
+            />
           )}
         </MonthSelector>
 
