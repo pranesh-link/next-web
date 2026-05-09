@@ -552,7 +552,7 @@ export default function DashboardClient({
           <Section>
             <SectionHeader>Recent Transactions</SectionHeader>
             <TransactionTable
-              transactions={recentTransactions.map((tx: any) => ({
+              transactions={recentTransactions.map((tx: DashboardData["recentTransactions"][number]) => ({
                 id: tx.id,
                 amount: tx.amount,
                 type: tx.type as "INCOME" | "EXPENSE",

@@ -1,5 +1,7 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+import { unstable_noStore as noStore } from "next/cache";
 import prisma from "@/_lib/prisma";
 import { AccountType, BalanceChangeReason } from "@prisma/client";
 import { requireAuthForAction } from "@/_lib/auth-utils";
@@ -38,6 +40,7 @@ async function logOverallBalanceChange(
 }
 
 export async function getAccounts() {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -60,6 +63,7 @@ export async function getAccounts() {
 }
 
 export async function getAccount(id: string) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -87,6 +91,7 @@ export async function getAccount(id: string) {
 export async function createAccount(
   formData: FormData | { name: string; nickname?: string; type: string; balance: number; isSalaryAccount?: boolean; isEmergencyFund?: boolean; ownerId?: string },
 ) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -170,6 +175,8 @@ export async function createAccount(
     );
 
     invalidateAfterAccountChange();
+    revalidatePath("/couple/finance");
+    revalidatePath("/couple/finance/accounts");
     return { success: true as const, data: account };
   } catch (error) {
     return {
@@ -183,6 +190,7 @@ export async function updateAccount(
   id: string,
   data: { name?: string; nickname?: string; type?: string; balance?: number },
 ) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -217,6 +225,8 @@ export async function updateAccount(
     });
 
     invalidateAfterAccountChange();
+    revalidatePath("/couple/finance");
+    revalidatePath("/couple/finance/accounts");
     return { success: true as const, data: account };
   } catch (error) {
     return {
@@ -227,6 +237,7 @@ export async function updateAccount(
 }
 
 export async function deleteAccount(id: string) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -253,6 +264,8 @@ export async function deleteAccount(id: string) {
     );
 
     invalidateAfterAccountChange();
+    revalidatePath("/couple/finance");
+    revalidatePath("/couple/finance/accounts");
     return { success: true as const, data: { id } };
   } catch (error) {
     return {
@@ -263,6 +276,7 @@ export async function deleteAccount(id: string) {
 }
 
 export async function getTotalBalance() {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -284,6 +298,7 @@ export async function getTotalBalance() {
 }
 
 export async function getAccountsPageData() {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -328,6 +343,7 @@ export async function updateAccountBalance(
   newBalance: number,
   note?: string,
 ) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -371,6 +387,8 @@ export async function updateAccountBalance(
     );
 
     invalidateAfterAccountChange();
+    revalidatePath("/couple/finance");
+    revalidatePath("/couple/finance/accounts");
     return { success: true as const, data: account };
   } catch (error) {
     return {
@@ -381,6 +399,7 @@ export async function updateAccountBalance(
 }
 
 export async function getAccountBalanceHistory(accountId: string, cursor?: string) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -406,6 +425,7 @@ export async function getAccountBalanceHistory(accountId: string, cursor?: strin
 }
 
 export async function setSalaryAccount(accountId: string) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -433,6 +453,8 @@ export async function setSalaryAccount(accountId: string) {
     });
 
     invalidateAfterAccountChange();
+    revalidatePath("/couple/finance");
+    revalidatePath("/couple/finance/accounts");
     return { success: true as const, data: updatedAccount };
   } catch (error) {
     return {
@@ -443,6 +465,7 @@ export async function setSalaryAccount(accountId: string) {
 }
 
 export async function togglePinAccount(accountId: string) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -463,6 +486,8 @@ export async function togglePinAccount(accountId: string) {
     });
 
     invalidateAfterAccountChange();
+    revalidatePath("/couple/finance");
+    revalidatePath("/couple/finance/accounts");
     return { success: true as const, data: account };
   } catch (error) {
     return {
@@ -473,6 +498,7 @@ export async function togglePinAccount(accountId: string) {
 }
 
 export async function setEmergencyFundAccount(accountId: string) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -504,6 +530,8 @@ export async function setEmergencyFundAccount(accountId: string) {
     });
 
     invalidateAfterAccountChange();
+    revalidatePath("/couple/finance");
+    revalidatePath("/couple/finance/accounts");
     return { success: true as const, data: account };
   } catch (error) {
     return {
@@ -514,6 +542,7 @@ export async function setEmergencyFundAccount(accountId: string) {
 }
 
 export async function unsetEmergencyFundAccount(accountId: string) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -534,6 +563,8 @@ export async function unsetEmergencyFundAccount(accountId: string) {
     });
 
     invalidateAfterAccountChange();
+    revalidatePath("/couple/finance");
+    revalidatePath("/couple/finance/accounts");
     return { success: true as const, data: account };
   } catch (error) {
     return {
@@ -544,6 +575,7 @@ export async function unsetEmergencyFundAccount(accountId: string) {
 }
 
 export async function getCoupleUsers() {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -576,6 +608,7 @@ export async function getCoupleUsers() {
 }
 
 export async function getAccountActivity(accountId: string, cursor?: string) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -696,6 +729,7 @@ export async function getAccountActivity(accountId: string, cursor?: string) {
 }
 
 export async function getOverallBalanceHistory(cursor?: string) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };

@@ -17,7 +17,23 @@ import LastUpdatedBadge from "@/couple/_components/shared/LastUpdatedBadge";
 
 /* ── Types ──────────────────────────────────────────── */
 
-type LineItem = { category: string; amount: number; note?: string; paid?: boolean };
+type LineItem = { id: string; category: string; amount: number; note?: string; paid?: boolean };
+
+function newLineItem(partial: Omit<Partial<LineItem>, "id"> = {}): LineItem {
+  return {
+    id: crypto.randomUUID(),
+    category: "",
+    amount: 0,
+    paid: false,
+    ...partial,
+  };
+}
+
+function withIds(
+  items: Array<Omit<LineItem, "id"> & { id?: string }>
+): LineItem[] {
+  return items.map((i) => ({ ...i, id: i.id ?? crypto.randomUUID() }));
+}
 
 type SavedPlan = {
   id: string;
@@ -1241,9 +1257,7 @@ export default function BudgetPlannerPage() {
 
   const [income, setIncome] = useState(0);
   const [incomeHint, setIncomeHint] = useState("");
-  const [lineItems, setLineItems] = useState<LineItem[]>([
-    { category: "", amount: 0, paid: false },
-  ]);
+  const [lineItems, setLineItems] = useState<LineItem[]>([newLineItem()]);
 
   const [savedPlan, setSavedPlan] = useState<SavedPlan | null>(null);
   const [prevPlan, setPrevPlan] = useState<SavedPlan | null>(null);
@@ -1302,17 +1316,19 @@ export default function BudgetPlannerPage() {
         setSavedPlan(plan);
         setIncome(plan.income);
         setLineItems(
-          (plan.lineItems as Array<{
-            category: string;
-            amount: number;
-            note?: string;
-            paid?: boolean;
-          }>).map((i) => ({ ...i, paid: i.paid ?? false }))
+          withIds(
+            (plan.lineItems as Array<{
+              category: string;
+              amount: number;
+              note?: string;
+              paid?: boolean;
+            }>).map((i) => ({ ...i, paid: i.paid ?? false }))
+          )
         );
         setIncomeHint("");
       } else {
         setSavedPlan(null);
-        setLineItems([{ category: "", amount: 0, paid: false }]);
+        setLineItems([newLineItem()]);
 
         // Auto-fill income from transactions
         if (incomeResult.success && incomeResult.income > 0) {
@@ -1356,7 +1372,7 @@ export default function BudgetPlannerPage() {
 
   /* Previous month computations */
   const prevLineItems = prevPlan
-    ? (prevPlan.lineItems as LineItem[])
+    ? withIds(prevPlan.lineItems as Array<Omit<LineItem, "id"> & { id?: string }>)
     : [];
   const prevTotalExpenses = prevLineItems.reduce(
     (sum, i) => sum + (i.amount || 0),
@@ -1385,12 +1401,12 @@ export default function BudgetPlannerPage() {
   function removeLineItem(index: number) {
     setLineItems((prev) => {
       const filtered = prev.filter((_, i) => i !== index);
-      return filtered.length > 0 ? filtered : [{ category: "", amount: 0, paid: false }];
+      return filtered.length > 0 ? filtered : [newLineItem()];
     });
   }
 
   function addLineItem() {
-    setLineItems((prev) => [...prev, { category: "", amount: 0, paid: false }]);
+    setLineItems((prev) => [...prev, newLineItem()]);
   }
 
   function markAsPaid(index: number) {
@@ -1422,14 +1438,17 @@ export default function BudgetPlannerPage() {
 
     const newItems = result.data
       .filter((loan) => !existingEMINotes.has(loan.name))
-      .map((loan: { name: string; emiAmount: number; nextEmiAmount?: number }) => ({
-        category: "EMI",
-        amount: mode === "yearly"
-          ? (loan.nextEmiAmount ?? loan.emiAmount) * 12
-          : (loan.nextEmiAmount ?? loan.emiAmount),
-        note: loan.name,
-        paid: false,
-      }));
+      .map((loan: { name: string; emiAmount: number; nextEmiAmount?: number }) =>
+        newLineItem({
+          category: "EMI",
+          amount:
+            mode === "yearly"
+              ? (loan.nextEmiAmount ?? loan.emiAmount) * 12
+              : (loan.nextEmiAmount ?? loan.emiAmount),
+          note: loan.name,
+          paid: false,
+        })
+      );
 
     if (newItems.length === 0) {
       notify("All loan EMIs already imported", "info" as "success");
@@ -1447,7 +1466,9 @@ export default function BudgetPlannerPage() {
 
   function openImportPrevModal() {
     if (!prevPlan) return;
-    const prevItems = prevPlan.lineItems as LineItem[];
+    const prevItems = withIds(
+      prevPlan.lineItems as Array<Omit<LineItem, "id"> & { id?: string }>
+    );
     if (!Array.isArray(prevItems) || prevItems.length === 0) {
       notify(`No items in previous ${mode === "monthly" ? "month" : "year"} to import`, "error");
       return;
@@ -1488,12 +1509,14 @@ export default function BudgetPlannerPage() {
   function confirmImportPrev() {
     const picked = importRows
       .filter((r) => importSelection.has(r._idx) && r._class.kind !== "duplicate")
-      .map((r) => ({
-        category: r.category,
-        amount: r.amount,
-        paid: false,
-        ...(r.note ? { note: r.note } : {}),
-      }));
+      .map((r) =>
+        newLineItem({
+          category: r.category,
+          amount: r.amount,
+          paid: false,
+          ...(r.note ? { note: r.note } : {}),
+        })
+      );
 
     if (picked.length === 0) {
       setShowImportPrevModal(false);
@@ -1514,7 +1537,7 @@ export default function BudgetPlannerPage() {
   function resetForm() {
     setIncome(0);
     setIncomeHint("");
-    setLineItems([{ category: "", amount: 0, paid: false }]);
+    setLineItems([newLineItem()]);
   }
 
   /* ── Save / Delete ── */
@@ -1815,7 +1838,7 @@ export default function BudgetPlannerPage() {
               <LineItemGrid>
                 {lineItems.map((item, index) =>
                   item.paid ? null : (
-                    <LineItemRow key={index}>
+                    <LineItemRow key={item.id}>
                       <LineItemField $flex={1.2}>
                         <FinanceSelect
                           value={item.category}
@@ -1899,7 +1922,7 @@ export default function BudgetPlannerPage() {
                 <LineItemGrid>
                   {lineItems.map((item, index) =>
                     item.paid ? (
-                      <LineItemRow key={index} $paid>
+                      <LineItemRow key={item.id} $paid>
                         <LineItemField $flex={1.2}>
                           <FinanceSelect value={item.category} disabled onChange={() => {}}>
                             <option value={item.category}>{item.category}</option>

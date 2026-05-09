@@ -1,5 +1,7 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+import { unstable_noStore as noStore } from "next/cache";
 import prisma from "@/_lib/prisma";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { loanSchema } from "@/_lib/validations/finance";
@@ -15,6 +17,7 @@ import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/cou
 import { invalidateAfterLoanChange } from "@/_lib/cache";
 
 export async function getLoans() {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -36,6 +39,7 @@ export async function getLoans() {
 }
 
 export async function getLoan(id: string) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -71,6 +75,7 @@ export async function createLoan(data: {
   prepayments?: { date: string; amount: number; balanceAfter?: number }[];
   schedule?: { month: number; date: string; emi: number; principal: number; interest: number; balance: number }[];
 }) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -138,6 +143,9 @@ export async function createLoan(data: {
     });
 
     invalidateAfterLoanChange();
+    revalidatePath("/couple/finance");
+    revalidatePath("/couple/finance/loans");
+    revalidatePath("/couple/finance/budget-planner");
     return { success: true as const, data: loan };
   } catch (error) {
     return {
@@ -164,6 +172,7 @@ export async function updateLoan(
     schedule?: { month: number; date: string; emi: number; principal: number; interest: number; balance: number }[];
   },
 ) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -223,6 +232,9 @@ export async function updateLoan(
     });
 
     invalidateAfterLoanChange();
+    revalidatePath("/couple/finance");
+    revalidatePath("/couple/finance/loans");
+    revalidatePath("/couple/finance/budget-planner");
     return { success: true as const, data: loan };
   } catch (error) {
     return {
@@ -233,6 +245,7 @@ export async function updateLoan(
 }
 
 export async function deleteLoan(id: string) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -248,6 +261,9 @@ export async function deleteLoan(id: string) {
     await prisma.loan.delete({ where: { id } });
 
     invalidateAfterLoanChange();
+    revalidatePath("/couple/finance");
+    revalidatePath("/couple/finance/loans");
+    revalidatePath("/couple/finance/budget-planner");
     return { success: true as const, data: { id } };
   } catch (error) {
     return {
@@ -285,6 +301,7 @@ export async function simulateLoanPrepayment(
   id: string,
   prepaymentAmount: number,
 ) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -313,6 +330,7 @@ export async function simulateLoanPrepayment(
 }
 
 export async function getLoanInsightsAction(id: string) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -338,6 +356,7 @@ export async function getLoanInsightsAction(id: string) {
 }
 
 export async function getLoanSchedule(id: string) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -374,6 +393,7 @@ export async function addPrepayment(
   loanId: string,
   data: { date: string; amount: number },
 ) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -432,6 +452,9 @@ export async function addPrepayment(
     });
 
     invalidateAfterLoanChange();
+    revalidatePath("/couple/finance");
+    revalidatePath("/couple/finance/loans");
+    revalidatePath("/couple/finance/budget-planner");
     return { success: true as const };
   } catch (error) {
     return {
@@ -442,6 +465,7 @@ export async function addPrepayment(
 }
 
 export async function removePrepayment(loanId: string, index: number) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -480,6 +504,9 @@ export async function removePrepayment(loanId: string, index: number) {
     });
 
     invalidateAfterLoanChange();
+    revalidatePath("/couple/finance");
+    revalidatePath("/couple/finance/loans");
+    revalidatePath("/couple/finance/budget-planner");
     return { success: true as const };
   } catch (error) {
     return {
