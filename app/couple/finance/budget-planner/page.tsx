@@ -1102,7 +1102,6 @@ export default function BudgetPlannerPage() {
   const remaining = income - totalExpenses;
   const savingsRate = income > 0 ? (remaining / income) * 100 : 0;
 
-  const estimatedItems = lineItems.filter((i) => !i.paid);
   const paidItems = lineItems.filter((i) => i.paid);
 
   const hasExpenseData = lineItems.some((i) => i.category && i.amount > 0);
@@ -1533,7 +1532,7 @@ export default function BudgetPlannerPage() {
                     item.paid ? (
                       <LineItemRow key={index} $paid>
                         <LineItemField $flex={1.2}>
-                          <FinanceSelect value={item.category} disabled readOnly>
+                          <FinanceSelect value={item.category} disabled onChange={() => {}}>
                             <option value={item.category}>{item.category}</option>
                           </FinanceSelect>
                         </LineItemField>
