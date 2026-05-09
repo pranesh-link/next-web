@@ -5,7 +5,7 @@ import { requireAuthForAction } from "@/_lib/auth-utils";
 import { budgetSchema } from "@/_lib/validations/finance";
 import type { Budget } from "@prisma/client";
 import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
-import { unstable_cache } from "next/cache";
+import { unstable_cache, revalidatePath, revalidateTag, unstable_noStore as noStore } from "next/cache";
 import { CACHE_TAGS, invalidateAfterBudgetChange } from "@/_lib/cache";
 
 function currentMonth(): string {
@@ -48,6 +48,7 @@ const fetchBudgetsWithSpending = unstable_cache(
 );
 
 export async function getBudgets(month?: string) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -75,6 +76,7 @@ export async function createBudget(data: {
   limit: number;
   month: string;
 }) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -102,6 +104,9 @@ export async function createBudget(data: {
     });
 
     invalidateAfterBudgetChange();
+    revalidateTag(CACHE_TAGS.FINANCE_BUDGETS);
+    revalidatePath("/couple/finance");
+    revalidatePath("/couple/finance/budgets");
 
     return { success: true as const, data: budget };
   } catch (error) {
@@ -113,6 +118,7 @@ export async function createBudget(data: {
 }
 
 export async function updateBudget(id: string, data: { limit?: number }) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -135,6 +141,9 @@ export async function updateBudget(id: string, data: { limit?: number }) {
     });
 
     invalidateAfterBudgetChange();
+    revalidateTag(CACHE_TAGS.FINANCE_BUDGETS);
+    revalidatePath("/couple/finance");
+    revalidatePath("/couple/finance/budgets");
 
     return { success: true as const, data: budget };
   } catch (error) {
@@ -146,6 +155,7 @@ export async function updateBudget(id: string, data: { limit?: number }) {
 }
 
 export async function deleteBudget(id: string) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -161,6 +171,9 @@ export async function deleteBudget(id: string) {
     await prisma.budget.delete({ where: { id } });
 
     invalidateAfterBudgetChange();
+    revalidateTag(CACHE_TAGS.FINANCE_BUDGETS);
+    revalidatePath("/couple/finance");
+    revalidatePath("/couple/finance/budgets");
 
     return { success: true as const, data: { id } };
   } catch (error) {
@@ -172,6 +185,7 @@ export async function deleteBudget(id: string) {
 }
 
 export async function getBudgetStatus(month?: string) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };

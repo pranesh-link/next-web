@@ -1,5 +1,8 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+import { unstable_noStore as noStore } from "next/cache";
+import { Prisma } from "@prisma/client";
 import prisma from "@/_lib/prisma";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { transactionSchema } from "@/_lib/validations/finance";
@@ -65,6 +68,7 @@ export async function getTransactions(params?: {
   accountId?: string;
   limit?: number;
 }) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -82,6 +86,7 @@ export async function getTransactions(params?: {
 }
 
 export async function getTransactionsPageData(params?: TransactionQueryParams) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -109,6 +114,7 @@ export async function getTransactionsPageData(params?: TransactionQueryParams) {
 }
 
 export async function getTransaction(id: string) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -141,6 +147,7 @@ export async function createTransaction(data: {
   description?: string;
   date: string | Date;
 }) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -182,6 +189,9 @@ export async function createTransaction(data: {
     ]);
 
     invalidateAfterTransactionChange();
+    revalidatePath("/couple/finance");
+    revalidatePath("/couple/finance/transactions");
+    revalidatePath("/couple/finance/budget-planner");
     return { success: true as const, data: transaction };
   } catch (error) {
     return {
@@ -202,6 +212,7 @@ export async function updateTransaction(
     date?: string | Date;
   },
 ) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -244,7 +255,7 @@ export async function updateTransaction(
     const newAdjustment =
       validated.type === "INCOME" ? validated.amount : -validated.amount;
 
-    const transaction = await prisma.$transaction(async (tx: any) => {
+    const transaction = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const updated = await tx.transaction.update({
         where: { id },
         data: {
@@ -277,6 +288,9 @@ export async function updateTransaction(
     });
 
     invalidateAfterTransactionChange();
+    revalidatePath("/couple/finance");
+    revalidatePath("/couple/finance/transactions");
+    revalidatePath("/couple/finance/budget-planner");
     return { success: true as const, data: transaction };
   } catch (error) {
     return {
@@ -287,6 +301,7 @@ export async function updateTransaction(
 }
 
 export async function deleteTransaction(id: string) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -312,6 +327,9 @@ export async function deleteTransaction(id: string) {
     ]);
 
     invalidateAfterTransactionChange();
+    revalidatePath("/couple/finance");
+    revalidatePath("/couple/finance/transactions");
+    revalidatePath("/couple/finance/budget-planner");
     return { success: true as const, data: { id } };
   } catch (error) {
     return {
@@ -322,6 +340,7 @@ export async function deleteTransaction(id: string) {
 }
 
 export async function getTransactionsByMonth(month: string) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -351,6 +370,7 @@ export async function getTransactionsByMonth(month: string) {
 }
 
 export async function getCategoryAggregation(month?: string) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };

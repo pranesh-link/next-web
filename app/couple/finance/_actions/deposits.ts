@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath, unstable_noStore as noStore } from "next/cache";
 import prisma from "@/_lib/prisma";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { depositSchema, depositInstallmentSchema } from "@/_lib/validations/finance";
@@ -162,6 +163,7 @@ function formatActionError(error: unknown, fallback: string) {
 }
 
 export async function getDeposits() {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -236,6 +238,7 @@ export async function createDeposit(data: {
   nextInstallmentDate?: string | Date;
   sourceAccountId?: string;
 }) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -281,6 +284,8 @@ export async function createDeposit(data: {
     });
 
     invalidateAfterDepositChange();
+    revalidatePath("/couple/finance");
+    revalidatePath("/couple/finance/deposits");
     return { success: true as const, data: deposit };
   } catch (error) {
     return {
@@ -308,6 +313,7 @@ export async function updateDeposit(
     nextInstallmentDate?: string | Date;
   },
 ) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -378,6 +384,8 @@ export async function updateDeposit(
     });
 
     invalidateAfterDepositChange();
+    revalidatePath("/couple/finance");
+    revalidatePath("/couple/finance/deposits");
     return { success: true as const, data: updated };
   } catch (error) {
     return {
@@ -388,6 +396,7 @@ export async function updateDeposit(
 }
 
 export async function deleteDeposit(id: string) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -403,6 +412,8 @@ export async function deleteDeposit(id: string) {
     await prisma.depositInstrument.delete({ where: { id } });
 
     invalidateAfterDepositChange();
+    revalidatePath("/couple/finance");
+    revalidatePath("/couple/finance/deposits");
     return { success: true as const, data: { id } };
   } catch (error) {
     return {
@@ -419,6 +430,7 @@ export async function addDepositInstallment(data: {
   paidDate?: string | Date;
   status?: "PENDING" | "PAID" | "MISSED";
 }) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -480,6 +492,8 @@ export async function addDepositInstallment(data: {
     });
 
     invalidateAfterDepositChange();
+    revalidatePath("/couple/finance");
+    revalidatePath("/couple/finance/deposits");
     return { success: true as const, data: installment };
   } catch (error) {
     return {
@@ -490,6 +504,7 @@ export async function addDepositInstallment(data: {
 }
 
 export async function getDepositsSummary() {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -527,6 +542,7 @@ export async function getDepositsSummary() {
 }
 
 export async function migrateLegacyDepositAccounts() {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -584,6 +600,12 @@ export async function migrateLegacyDepositAccounts() {
       created += 1;
     }
 
+    if (created > 0) {
+      invalidateAfterDepositChange();
+      revalidatePath("/couple/finance");
+      revalidatePath("/couple/finance/deposits");
+    }
+
     return { success: true as const, data: { created, scanned: legacyAccounts.length } };
   } catch (error) {
     return {
@@ -594,6 +616,7 @@ export async function migrateLegacyDepositAccounts() {
 }
 
 export async function syncDepositReminders(userId: string) {
+  noStore();
   const coupleUserIds = await getUserIdsForCouple(userId);
   const now = toStartOfDay(new Date());
   const sevenDaysFromNow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7);

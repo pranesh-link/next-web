@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath, unstable_noStore as noStore } from "next/cache";
 import prisma from "@/_lib/prisma";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { investmentSchema } from "@/_lib/validations/finance";
@@ -35,6 +36,7 @@ function formatActionError(error: unknown, fallback: string) {
 }
 
 export async function getInvestments() {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -71,6 +73,7 @@ export async function createInvestment(data: {
   startDate: string | Date;
   nextSipDate?: string | Date;
 }) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -100,6 +103,8 @@ export async function createInvestment(data: {
     });
 
     invalidateAfterInvestmentChange();
+    revalidatePath("/couple/finance");
+    revalidatePath("/couple/finance/investments");
     return { success: true as const, data: holding };
   } catch (error) {
     return {
@@ -128,6 +133,7 @@ export async function updateInvestment(
     nextSipDate?: string | Date;
   },
 ) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -180,6 +186,8 @@ export async function updateInvestment(
     });
 
     invalidateAfterInvestmentChange();
+    revalidatePath("/couple/finance");
+    revalidatePath("/couple/finance/investments");
     return { success: true as const, data: updated };
   } catch (error) {
     return {
@@ -190,6 +198,7 @@ export async function updateInvestment(
 }
 
 export async function deleteInvestment(id: string) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -205,6 +214,8 @@ export async function deleteInvestment(id: string) {
     await prisma.investmentHolding.delete({ where: { id } });
 
     invalidateAfterInvestmentChange();
+    revalidatePath("/couple/finance");
+    revalidatePath("/couple/finance/investments");
     return { success: true as const, data: { id } };
   } catch (error) {
     return {
@@ -215,6 +226,7 @@ export async function deleteInvestment(id: string) {
 }
 
 export async function getInvestmentsSummary() {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -255,6 +267,7 @@ export async function getInvestmentsSummary() {
 }
 
 export async function syncInvestmentReminders(userId: string) {
+  noStore();
   const coupleUserIds = await getUserIdsForCouple(userId);
   const today = new Date();
 

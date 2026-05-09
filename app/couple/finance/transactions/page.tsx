@@ -387,7 +387,7 @@ export default function TransactionsPage() {
     const result = await getTransactionsPageData(params);
     if (result.success) {
       setTransactions(
-        result.data.transactions.map((t: any) => ({
+        result.data.transactions.map((t) => ({
           ...t,
           type: t.type as "INCOME" | "EXPENSE",
           description: t.description ?? "",
