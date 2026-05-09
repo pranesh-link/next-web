@@ -17,6 +17,7 @@ import Modal from "@/couple/_components/shared/Modal";
 import EmptyState from "@/couple/_components/shared/EmptyState";
 import LoadingSkeleton from "@/couple/_components/shared/LoadingSkeleton";
 import AddIncomeModal from "@/couple/_components/shared/AddIncomeModal";
+import LastUpdatedBadge from "@/couple/_components/shared/LastUpdatedBadge";
 
 /* ── Types ──────────────────────────────────────────── */
 
@@ -58,14 +59,6 @@ function formatCurrency(v: number): string {
     currency: "INR",
     maximumFractionDigits: 2,
   }).format(v);
-}
-
-function formatDate(d: string | Date): string {
-  return new Date(d).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
 }
 
 function typeIcon(type: string): string {
@@ -323,13 +316,6 @@ const CardMetaLeft = styled.div`
   min-width: 0;
 `;
 
-const CardUpdated = styled.div`
-  font-size: 10px;
-  color: var(--text-muted);
-  white-space: nowrap;
-  opacity: 0.72;
-`;
-
 const CardChevron = styled.div`
   color: var(--text-muted);
   font-size: 14px;
@@ -553,15 +539,6 @@ const AddIncomeBtn = styled.button`
   &:hover {
     background: rgba(251, 191, 36, 0.15);
   }
-`;
-
-const OwnerText = styled.div`
-  font-size: 10px;
-  color: var(--text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  opacity: 0.78;
 `;
 
 const PinnedCard = styled(AccountCard)`
@@ -1017,8 +994,6 @@ function AccountsPageContent() {
           <CardGrid>
             {accounts.map((acc) => {
               const CardComponent = acc.isPinned ? PinnedCard : AccountCard;
-              const ownerName = acc.user?.name || "Unknown";
-              const isOwner = acc.userId === currentUserId;
               return (
                 <CardComponent
                   key={acc.id}
@@ -1046,8 +1021,12 @@ function AccountsPageContent() {
                       <CardBalance>{formatCurrency(acc.balance)}</CardBalance>
                       <CardMetaRow>
                         <CardMetaLeft>
-                          <OwnerText>{isOwner ? "You" : ownerName}</OwnerText>
-                          <CardUpdated>on {formatDate(acc.updatedAt)}</CardUpdated>
+                          <LastUpdatedBadge
+                            name={acc.user?.name}
+                            userId={acc.userId}
+                            currentUserId={currentUserId}
+                            updatedAt={acc.updatedAt}
+                          />
                         </CardMetaLeft>
                         <CardChevron>›</CardChevron>
                       </CardMetaRow>
