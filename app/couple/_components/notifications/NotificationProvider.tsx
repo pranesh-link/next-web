@@ -58,10 +58,13 @@ export function NotificationProvider({
     fetchingRef.current = true;
     try {
       const snapshotRes = await getMyNotificationsSnapshot();
-      if (snapshotRes.success) {
+      // Guard against stale server-action IDs (deploy mismatch) returning undefined
+      if (snapshotRes && snapshotRes.success) {
         setNotifications(snapshotRes.data?.notifications ?? []);
         setUnreadCount(snapshotRes.data?.unreadCount ?? 0);
       }
+    } catch {
+      // Swallow stale-action errors so the polling loop keeps running
     } finally {
       fetchingRef.current = false;
     }
@@ -73,12 +76,17 @@ export function NotificationProvider({
     // Backfill sync only once per session
     if (!syncedRef.current) {
       syncedRef.current = true;
-      syncNotifications().then(async (syncRes) => {
-        if (syncRes.success && syncRes.data?.incomeReminder?.unread) {
-          setIncomePopup({ month: syncRes.data.incomeReminder.month });
-        }
-        await refresh();
-      });
+      syncNotifications()
+        .then(async (syncRes) => {
+          if (syncRes && syncRes.success && syncRes.data?.incomeReminder?.unread) {
+            setIncomePopup({ month: syncRes.data.incomeReminder.month });
+          }
+          await refresh();
+        })
+        .catch(() => {
+          // Stale server-action ID — fall back to plain refresh
+          refresh();
+        });
     } else {
       refresh();
     }
