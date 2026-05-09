@@ -319,6 +319,94 @@ const MonthSelector = styled.div`
   flex-wrap: wrap;
 `;
 
+const TopIncomeGroup = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+
+  label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  input {
+    width: 130px;
+    border: none;
+    background: transparent;
+    padding: 6px 4px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    font-family: inherit;
+    outline: none;
+
+    &::placeholder {
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    @media (max-width: 480px) {
+      width: 100px;
+    }
+  }
+`;
+
+const TopActionGroup = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+`;
+
+const IconActionButton = styled.button<{ $variant?: "primary" | "neutral" | "danger" }>`
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid
+    ${(p) =>
+      p.$variant === "primary"
+        ? "var(--accent)"
+        : p.$variant === "danger"
+          ? "rgba(239, 68, 68, 0.4)"
+          : "var(--border)"};
+  background: ${(p) =>
+    p.$variant === "primary"
+      ? "var(--accent)"
+      : p.$variant === "danger"
+        ? "rgba(239, 68, 68, 0.08)"
+        : "var(--surface)"};
+  color: ${(p) =>
+    p.$variant === "primary"
+      ? "#fff"
+      : p.$variant === "danger"
+        ? "var(--danger)"
+        : "var(--text)"};
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ${EASING};
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
 const MonthArrowButton = styled.button`
   width: 36px;
   height: 36px;
@@ -399,15 +487,6 @@ const SectionTitle = styled.h2`
   letter-spacing: -0.3px;
 `;
 
-/* ── Income ── */
-
-const IncomeRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-`;
-
 const FinanceInput = styled.input`
   background: #ffffff;
   border: 1px solid #d1d5db;
@@ -458,13 +537,6 @@ const FinanceSelect = styled.select`
     border-color: var(--accent);
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
   }
-`;
-
-const InputLabel = styled.label`
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text);
-  white-space: nowrap;
 `;
 
 const IncomeHint = styled.p`
@@ -1630,28 +1702,62 @@ export default function BudgetPlannerPage() {
               updatedAt={savedPlan.updatedAt}
             />
           )}
+
+          <TopIncomeGroup>
+            <label htmlFor="top-income">
+              {mode === "monthly" ? "Last Credited" : "Annual Income"}
+            </label>
+            <span aria-hidden>₹</span>
+            <input
+              id="top-income"
+              type="number"
+              min={0}
+              placeholder={mode === "monthly" ? "0" : "0"}
+              value={income || ""}
+              onChange={(e) => setIncome(Number(e.target.value))}
+            />
+          </TopIncomeGroup>
+
+          <TopActionGroup>
+            <IconActionButton
+              $variant="primary"
+              onClick={handleSave}
+              disabled={submitting}
+              title={submitting ? "Saving…" : "Save Plan"}
+              aria-label="Save Plan"
+            >
+              {submitting ? "⋯" : "💾"}
+            </IconActionButton>
+            <IconActionButton
+              onClick={resetForm}
+              title="Reset"
+              aria-label="Reset"
+            >
+              ↻
+            </IconActionButton>
+            {savedPlan && (
+              <IconActionButton
+                $variant="danger"
+                onClick={() => setShowDeleteModal(true)}
+                disabled={submitting}
+                title="Delete Plan"
+                aria-label="Delete Plan"
+              >
+                🗑
+              </IconActionButton>
+            )}
+          </TopActionGroup>
         </MonthSelector>
 
         {loading ? (
           <LoadingSkeleton type="card" count={3} />
         ) : (
           <>
-            {/* ── Section 1: Income ── */}
-            <SectionCard>
-              <SectionTitle>{mode === "monthly" ? "Last Credited Income" : "Annual Income"}</SectionTitle>
-              <IncomeRow>
-                <InputLabel htmlFor="income">₹</InputLabel>
-                <FinanceInput
-                  id="income"
-                  type="number"
-                  min={0}
-                  placeholder={mode === "monthly" ? "Enter last credited income" : "Enter annual income"}
-                  value={income || ""}
-                  onChange={(e) => setIncome(Number(e.target.value))}
-                />
-              </IncomeRow>
-              {incomeHint && <IncomeHint>{incomeHint}</IncomeHint>}
-            </SectionCard>
+            {incomeHint && (
+              <SectionCard>
+                <IncomeHint>{incomeHint}</IncomeHint>
+              </SectionCard>
+            )}
 
             {/* ── Section 2: Summary ── */}
             {income > 0 && (
