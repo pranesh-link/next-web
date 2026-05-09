@@ -396,7 +396,7 @@ const LastUpdatedBadge = styled.span`
   gap: 6px;
   background: rgba(34, 197, 94, 0.12);
   border: 1px solid rgba(34, 197, 94, 0.4);
-  color: #15803d;
+  color: green;
   font-size: 13px;
   font-weight: 600;
   padding: 5px 12px;
