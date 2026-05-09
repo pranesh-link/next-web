@@ -405,7 +405,8 @@ const LastUpdatedBadge = styled.span`
   white-space: nowrap;
 
   strong {
-    color: #14532d;
+    color: green;
+    font-style: italic;
     font-weight: 700;
   }
 
@@ -415,7 +416,8 @@ const LastUpdatedBadge = styled.span`
     color: #86efac;
 
     strong {
-      color: #dcfce7;
+      color: #86efac;
+      font-style: italic;
     }
   }
 
