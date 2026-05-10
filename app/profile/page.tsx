@@ -14,14 +14,8 @@ import { useContext, useMemo, useRef, useState } from "react";
 const DynamicProfileC = dynamic(() => import("@/_components/profile/Profile"), {
   ssr: false,
   loading: () => (
-    <div style={{
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-    }}>
-      <div style={{ color: 'white', fontSize: '1.2rem' }}>Loading...</div>
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#667eea] to-[#764ba2]">
+      <div className="text-white text-[1.2rem]">Loading...</div>
     </div>
   ),
 });
@@ -65,7 +59,6 @@ export default function ProfilePage() {
     return isMock ? mockProfileData : profileData;
   }, [isMock, profileData]);
 
-  // TODO handle viewport change
   const mobileDetect = useMobileDetect();
 
   return (

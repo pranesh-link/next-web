@@ -9,6 +9,7 @@ import {
   Tooltip,
   type PieLabelRenderProps,
 } from 'recharts';
+import { formatCurrency } from '@/_lib/formatters';
 import {
   FinanceCard,
   FinanceCardHeader,
@@ -148,14 +149,6 @@ const TooltipValue = styled.span`
   font-weight: 600;
   color: var(--text);
 `;
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 2,
-  }).format(value);
-}
 
 function renderCustomLabel(props: PieLabelRenderProps) {
   const { cx, cy, midAngle, innerRadius, outerRadius, percent } = props as {

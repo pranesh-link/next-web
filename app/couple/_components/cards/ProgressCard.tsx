@@ -2,6 +2,7 @@
 
 import React from "react";
 import styled from "styled-components";
+import { EASING } from "@/couple/_constants/theme";
 
 interface ProgressCardProps {
   title: string;
@@ -11,8 +12,6 @@ interface ProgressCardProps {
   color?: string;
   deadline?: string;
 }
-
-const EASING = "cubic-bezier(0.16, 1, 0.3, 1)";
 
 function formatAmount(value: number, unit: string): string {
   if (unit === "\u20b9" || unit === "INR") {

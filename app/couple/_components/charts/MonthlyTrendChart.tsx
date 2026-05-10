@@ -11,6 +11,7 @@ import {
   Line,
   ComposedChart,
 } from 'recharts';
+import { formatCurrency } from '@/_lib/formatters';
 import {
   FinanceCard,
   FinanceCardHeader,
@@ -123,14 +124,6 @@ const SERIES_COLORS: Record<string, string> = {
   expenses: '#ef4444',
   savings: '#3b82f6',
 };
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 2,
-  }).format(value);
-}
 
 function formatYAxis(value: number): string {
   if (value >= 100000) return `₹${(value / 100000).toFixed(1)}L`;

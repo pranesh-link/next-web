@@ -13,7 +13,13 @@ const shimmer = keyframes`
   100% { background-position: -200% 0; }
 `;
 
-const Bone = styled.div<{ $width?: string; $height?: string; $radius?: string }>`
+const Bone = styled.div<{
+  $width?: string;
+  $height?: string;
+  $radius?: string;
+  $mb?: string;
+  $ml?: string;
+}>`
   background: linear-gradient(
     90deg,
     var(--surface) 25%,
@@ -25,6 +31,8 @@ const Bone = styled.div<{ $width?: string; $height?: string; $radius?: string }>
   border-radius: ${(p) => p.$radius ?? '6px'};
   width: ${(p) => p.$width ?? '100%'};
   height: ${(p) => p.$height ?? '14px'};
+  ${(p) => (p.$mb ? `margin-bottom: ${p.$mb};` : '')}
+  ${(p) => (p.$ml ? `margin-left: ${p.$ml};` : '')}
 `;
 
 const CardWrapper = styled.div`
@@ -113,8 +121,8 @@ const BAR_HEIGHTS = [45, 70, 55, 85, 40, 65, 75];
 function CardSkeleton() {
   return (
     <CardWrapper>
-      <Bone $width="96px" $height="12px" style={{ marginBottom: 12 }} />
-      <Bone $width="128px" $height="28px" style={{ marginBottom: 8 }} />
+      <Bone $width="96px" $height="12px" $mb="12px" />
+      <Bone $width="128px" $height="28px" $mb="8px" />
       <Bone $width="80px" $height="12px" />
     </CardWrapper>
   );
@@ -127,14 +135,14 @@ function TableSkeleton() {
         <Bone $width="64px" $height="12px" />
         <Bone $width="128px" $height="12px" />
         <Bone $width="80px" $height="12px" />
-        <Bone $width="64px" $height="12px" style={{ marginLeft: 'auto' }} />
+        <Bone $width="64px" $height="12px" $ml="auto" />
       </TableHeader>
       {Array.from({ length: 5 }).map((_, i) => (
         <TableRow key={i}>
           <Bone $width="80px" $height="14px" />
           <Bone $width="160px" $height="14px" />
           <Bone $width="64px" $height="20px" $radius="12px" />
-          <Bone $width="80px" $height="14px" style={{ marginLeft: 'auto' }} />
+          <Bone $width="80px" $height="14px" $ml="auto" />
         </TableRow>
       ))}
     </TableWrapper>
@@ -144,7 +152,7 @@ function TableSkeleton() {
 function ChartSkeleton() {
   return (
     <CardWrapper>
-      <Bone $width="128px" $height="16px" style={{ marginBottom: 16 }} />
+      <Bone $width="128px" $height="16px" $mb="16px" />
       <ChartBarContainer>
         {BAR_HEIGHTS.map((h, i) => (
           <BarCol key={i}>
@@ -162,7 +170,7 @@ function FormSkeleton() {
     <CardWrapper>
       {Array.from({ length: 4 }).map((_, i) => (
         <FormGroup key={i}>
-          <Bone $width="80px" $height="12px" style={{ marginBottom: 6 }} />
+          <Bone $width="80px" $height="12px" $mb="6px" />
           <Bone $height="40px" $radius="8px" />
         </FormGroup>
       ))}

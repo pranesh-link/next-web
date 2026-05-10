@@ -7,6 +7,12 @@ import { BMIChart, BMIRangeInfo } from "@/tools/bmi-calculator/Elements";
 import classNames from "classnames";
 import { useContext, useMemo } from "react";
 import GaugeChart from "react-gauge-chart";
+import styled from "styled-components";
+
+const GaugeWrap = styled.div`
+  max-height: 250px;
+  max-width: 500px;
+`;
 
 interface IBMIResultProps {
   weightSuggestConfig: IWeightSuggestConfig;
@@ -80,23 +86,24 @@ const BMIResult = (props: IBMIResultProps) => {
         $alignItems="center"
         className="bmi-result-wrap"
       >
-        <GaugeChart
-          id="gauge-chart5"
-          nrOfLevels={100}
-          arcsLength={[0.2, 0.2, 0.2, 0.2, 0.2]}
-          colors={["#3498db", "#3f9c35", "#ffba00", "#ee4b2b", "#ff0000"]}
-          percent={bmiRangePercent}
-          arcWidth={0.3}
-          textColor="#000"
-          needleColor="rgba(128,128,128,0.4)"
-          needleBaseColor="#ccc"
-          animDelay={0}
-          formatTextValue={() => `${bmi}`}
-          arcPadding={0}
-          cornerRadius={0}
-          className="range-gauge"
-          style={{ maxHeight: "250px", maxWidth: "500px" }}
-        />
+        <GaugeWrap>
+          <GaugeChart
+            id="gauge-chart5"
+            nrOfLevels={100}
+            arcsLength={[0.2, 0.2, 0.2, 0.2, 0.2]}
+            colors={["#3498db", "#3f9c35", "#ffba00", "#ee4b2b", "#ff0000"]}
+            percent={bmiRangePercent}
+            arcWidth={0.3}
+            textColor="#000"
+            needleColor="rgba(128,128,128,0.4)"
+            needleBaseColor="#ccc"
+            animDelay={0}
+            formatTextValue={() => `${bmi}`}
+            arcPadding={0}
+            cornerRadius={0}
+            className="range-gauge"
+          />
+        </GaugeWrap>
 
         <BMIChart $gridTemplateRows="1fr 1fr 1fr">
           {bmiRanges.map((item) => {

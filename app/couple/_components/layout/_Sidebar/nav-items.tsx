@@ -1,0 +1,170 @@
+import type { ReactNode } from "react";
+
+/** A single sidebar nav entry. */
+export interface NavItem {
+  /** Display label. */
+  label: string;
+  /** Destination href. */
+  href: string;
+  /** SVG path nodes for the 24x24 icon. */
+  iconPath: ReactNode;
+}
+
+/** Couple-context navigation items (root `/couple` routes). */
+export const coupleNavItems: NavItem[] = [
+  {
+    label: "Home",
+    href: "/couple",
+    iconPath: (
+      <>
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+        <polyline points="9 22 9 12 15 12 15 22" />
+      </>
+    ),
+  },
+  {
+    label: "Finance",
+    href: "/couple/finance",
+    iconPath: (
+      <>
+        <line x1="12" y1="1" x2="12" y2="23" />
+        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+      </>
+    ),
+  },
+  {
+    label: "Partner",
+    href: "/couple/details",
+    iconPath: (
+      <>
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </>
+    ),
+  },
+  {
+    label: "Notifications",
+    href: "/couple/notifications",
+    iconPath: (
+      <>
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+      </>
+    ),
+  },
+];
+
+/** Finance-context navigation items (`/couple/finance/*` routes). */
+export const financeNavItems: NavItem[] = [
+  {
+    label: "← Home",
+    href: "/couple",
+    iconPath: (
+      <>
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+        <polyline points="9 22 9 12 15 12 15 22" />
+      </>
+    ),
+  },
+  {
+    label: "Dashboard",
+    href: "/couple/finance",
+    iconPath: (
+      <>
+        <rect x="3" y="3" width="7" height="7" />
+        <rect x="14" y="3" width="7" height="7" />
+        <rect x="14" y="14" width="7" height="7" />
+        <rect x="3" y="14" width="7" height="7" />
+      </>
+    ),
+  },
+  {
+    label: "Accounts",
+    href: "/couple/finance/accounts",
+    iconPath: (
+      <>
+        <rect x="2" y="5" width="20" height="14" rx="2" />
+        <path d="M2 10h20" />
+      </>
+    ),
+  },
+  {
+    label: "Transactions",
+    href: "/couple/finance/transactions",
+    iconPath: (
+      <>
+        <polyline points="17 1 21 5 17 9" />
+        <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+        <polyline points="7 23 3 19 7 15" />
+        <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+      </>
+    ),
+  },
+  {
+    label: "Budgets",
+    href: "/couple/finance/budgets",
+    iconPath: (
+      <>
+        <path d="M21.21 15.89A10 10 0 1 1 8 2.83" />
+        <path d="M22 12A10 10 0 0 0 12 2v10z" />
+      </>
+    ),
+  },
+  {
+    label: "Planner",
+    href: "/couple/finance/budget-planner",
+    iconPath: (
+      <>
+        <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+        <rect x="9" y="3" width="6" height="4" rx="1" />
+        <path d="M9 14l2 2 4-4" />
+      </>
+    ),
+  },
+  {
+    label: "Investments",
+    href: "/couple/finance/investments",
+    iconPath: (
+      <>
+        <path d="m6 3 6 8 6-8" />
+        <path d="m3 9 9 12 9-12" />
+        <path d="M3 9h18" />
+      </>
+    ),
+  },
+  {
+    label: "Deposits",
+    href: "/couple/finance/deposits",
+    iconPath: (
+      <>
+        <rect x="2" y="4" width="20" height="16" rx="2" />
+        <circle cx="16" cy="12" r="2" />
+        <path d="M6 12h2" />
+      </>
+    ),
+  },
+  {
+    label: "Loans",
+    href: "/couple/finance/loans",
+    iconPath: (
+      <>
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+        <path d="M3 9h18" />
+        <path d="M9 21V9" />
+      </>
+    ),
+  },
+  {
+    label: "Goals",
+    href: "/couple/finance/goals",
+    iconPath: (
+      <>
+        <circle cx="12" cy="12" r="10" />
+        <circle cx="12" cy="12" r="6" />
+        <circle cx="12" cy="12" r="2" />
+      </>
+    ),
+  },
+];
