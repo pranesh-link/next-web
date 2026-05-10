@@ -61,8 +61,7 @@ function metric(overrides: Partial<Record<string, unknown>> = {}) {
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } as any;
+  } as unknown as Awaited<ReturnType<typeof import("@/_services/lifestyle/body-metric-service").listMetricsForSubject>>[number];
 }
 
 const PROFILE_SELF = {
@@ -76,8 +75,7 @@ const PROFILE_SELF = {
   sex: null,
   createdAt: new Date(),
   updatedAt: new Date(),
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-} as any;
+} as unknown as Awaited<ReturnType<typeof import("@/_services/lifestyle/body-metric-service").getProfileForSubject>>;
 
 const PROFILE_PARTNER = { ...PROFILE_SELF, id: "p2", subjectId: PARTNER_ID };
 
