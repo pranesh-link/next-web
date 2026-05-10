@@ -25,6 +25,7 @@ import BMITrendChart from "./_components/BMITrendChart";
 import MetricsTable from "./_components/MetricsTable";
 import SuggestionsPanel from "./_components/SuggestionsPanel";
 import EmptyState from "./_components/EmptyState";
+import LoadingSkeleton from "@/couple/_components/shared/LoadingSkeleton";
 
 /** Coerce an unknown Decimal/number to a finite JS number (0 fallback). */
 function toNum(value: unknown): number {
@@ -141,7 +142,11 @@ export default function WellnessPage() {
           </Row>
         )}
 
-        {page.metrics.length === 0 && !page.loading ? (
+        {page.loading ? (
+          <FullSection>
+            <LoadingSkeleton type="card" count={2} />
+          </FullSection>
+        ) : page.metrics.length === 0 ? (
           <>
             <FullSection>
               <EmptyState onLog={scrollToForm} />
