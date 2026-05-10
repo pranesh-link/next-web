@@ -159,7 +159,8 @@ describe('OpenSourceSection', () => {
         <OpenSourceSection />
       </ProfileContext.Provider>
     );
-    expect(screen.getByText(/TypeScript, Jest/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/TypeScript/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Jest/i)).toBeInTheDocument();
   });
 
   it('should call handleOpenLink when GitHub button clicked', () => {

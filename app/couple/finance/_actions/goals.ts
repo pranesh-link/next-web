@@ -1,5 +1,7 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+import { unstable_noStore as noStore } from "next/cache";
 import prisma from "@/_lib/prisma";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { goalSchema } from "@/_lib/validations/finance";
@@ -7,6 +9,7 @@ import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/cou
 import { invalidateAfterGoalChange } from "@/_lib/cache";
 
 export async function getGoals() {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -28,6 +31,7 @@ export async function getGoals() {
 }
 
 export async function getGoal(id: string) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -55,6 +59,7 @@ export async function createGoal(data: {
   currentAmount?: number;
   deadline?: string | Date;
 }) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -74,6 +79,8 @@ export async function createGoal(data: {
     });
 
     invalidateAfterGoalChange();
+    revalidatePath("/couple/finance");
+    revalidatePath("/couple/finance/goals");
     return { success: true as const, data: goal };
   } catch (error) {
     return {
@@ -92,6 +99,7 @@ export async function updateGoal(
     deadline?: string | Date;
   },
 ) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -124,6 +132,8 @@ export async function updateGoal(
     });
 
     invalidateAfterGoalChange();
+    revalidatePath("/couple/finance");
+    revalidatePath("/couple/finance/goals");
     return { success: true as const, data: goal };
   } catch (error) {
     return {
@@ -134,6 +144,7 @@ export async function updateGoal(
 }
 
 export async function deleteGoal(id: string) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -149,6 +160,8 @@ export async function deleteGoal(id: string) {
     await prisma.savingsGoal.delete({ where: { id } });
 
     invalidateAfterGoalChange();
+    revalidatePath("/couple/finance");
+    revalidatePath("/couple/finance/goals");
     return { success: true as const, data: { id } };
   } catch (error) {
     return {
@@ -159,6 +172,7 @@ export async function deleteGoal(id: string) {
 }
 
 export async function contributeToGoal(id: string, amount: number) {
+  noStore();
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -190,6 +204,8 @@ export async function contributeToGoal(id: string, amount: number) {
     });
 
     invalidateAfterGoalChange();
+    revalidatePath("/couple/finance");
+    revalidatePath("/couple/finance/goals");
     return { success: true as const, data: goal };
   } catch (error) {
     return {

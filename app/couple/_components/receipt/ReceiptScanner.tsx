@@ -1,345 +1,46 @@
 "use client";
 
-import { useState, useRef } from "react";
-import styled, { keyframes } from "styled-components";
+import { useRef, useState } from "react";
+import { scanReceiptAction } from "@/couple/finance/_actions/receipt-scan";
+import { ReceiptResultView } from "./_ReceiptScanner/ResultView";
+import {
+  ButtonRow,
+  CancelButton,
+  DropZone,
+  ErrorText,
+  HiddenInput,
+  OptionButton,
+  OptionHint,
+  OptionIcon,
+  OptionLabel,
+  PreviewImage,
+  ScanButton,
+  ScanningOverlay,
+  ScanningText,
+  Spinner,
+  UploadHint,
+  UploadOptions,
+  Wrapper,
+} from "./_ReceiptScanner/styled";
+import { type ScannedReceipt, compressImage } from "./_ReceiptScanner/utils";
 
-const EASING = "cubic-bezier(0.16, 1, 0.3, 1)";
+export type { ScannedReceipt } from "./_ReceiptScanner/utils";
 
-/* ── Types ── */
-
-export type ScannedReceipt = {
-  storeName?: string;
-  totalAmount?: number;
-  date?: string | null;
-  category?: string;
-  description?: string;
-  items?: { name: string; amount: number }[];
-  confidence?: number;
-};
-
+/** Props for {@link ReceiptScanner}. */
 interface ReceiptScannerProps {
+  /** Called with the parsed result when the user clicks "Use This Data". */
   onScanComplete: (data: ScannedReceipt) => void;
+  /** Called when the user cancels the scan flow. */
   onClose: () => void;
+  /** Optional callback notified whenever a scan starts or finishes. */
   onScanningChange?: (scanning: boolean) => void;
 }
 
-/* ── Keyframes ── */
-
-const pulse = keyframes`
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
-`;
-
-const spin = keyframes`
-  to { transform: rotate(360deg); }
-`;
-
-const fadeIn = keyframes`
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-`;
-
-/* ── Styled Components ── */
-
-const Wrapper = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-`;
-
-const DropZone = styled.label<{ $dragging?: boolean; $hasImage?: boolean }>`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  min-height: ${(p) => (p.$hasImage ? "auto" : "200px")};
-  border: 2px dashed
-    ${(p) =>
-      p.$dragging
-        ? "var(--accent)"
-        : p.$hasImage
-          ? "rgba(34, 197, 94, 0.4)"
-          : "var(--border)"};
-  border-radius: 12px;
-  background: ${(p) =>
-    p.$dragging
-      ? "rgba(59, 130, 246, 0.08)"
-      : p.$hasImage
-        ? "rgba(34, 197, 94, 0.04)"
-        : "var(--surface)"};
-  cursor: pointer;
-  transition: all 0.2s ${EASING};
-  overflow: hidden;
-  position: relative;
-
-  &:hover {
-    border-color: var(--accent);
-    background: rgba(59, 130, 246, 0.04);
-  }
-`;
-
-const HiddenInput = styled.input`
-  position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
-`;
-
-const UploadOptions = styled.div`
-  display: flex;
-  gap: 16px;
-  width: 100%;
-  padding: 8px 16px;
-
-  @media (max-width: 480px) {
-    flex-direction: column;
-    gap: 12px;
-  }
-`;
-
-const OptionButton = styled.button`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 24px 16px;
-  background: var(--surface);
-  border: 1.5px dashed var(--border);
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.2s ${EASING};
-  font-family: inherit;
-
-  &:hover {
-    border-color: var(--accent);
-    background: rgba(59, 130, 246, 0.04);
-  }
-`;
-
-const OptionIcon = styled.span`
-  font-size: 32px;
-`;
-
-const OptionLabel = styled.span`
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text);
-`;
-
-const OptionHint = styled.span`
-  font-size: 12px;
-  color: var(--text-muted);
-`;
-
-const UploadHint = styled.p`
-  font-size: 12px;
-  color: var(--text-muted);
-  text-align: center;
-  margin: 0;
-`;
-
-const PreviewImage = styled.img`
-  max-width: 100%;
-  max-height: 300px;
-  border-radius: 8px;
-  object-fit: contain;
-`;
-
-const ButtonRow = styled.div`
-  display: flex;
-  gap: 12px;
-  position: sticky;
-  bottom: -28px;
-  margin: 0 -28px -28px;
-  padding: 16px 28px;
-  background: #ffffff;
-  border-top: 1px solid #e5e7eb;
-  z-index: 1;
-`;
-
-const ScanButton = styled.button`
-  flex: 1;
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 10px;
-  padding: 12px 24px;
-  font-size: 14px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.2s ${EASING};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-
-  &:hover:not(:disabled) {
-    filter: brightness(1.1);
-    transform: translateY(-1px);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-`;
-
-const CancelButton = styled.button`
-  background: var(--surface);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 12px 24px;
-  font-size: 14px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.2s ${EASING};
-
-  &:hover {
-    background: var(--surface-hover);
-  }
-
-  &:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-`;
-
-const Spinner = styled.div`
-  width: 18px;
-  height: 18px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: ${spin} 0.6s linear infinite;
-`;
-
-const ScanningOverlay = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 32px;
-  animation: ${pulse} 1.5s ease-in-out infinite;
-`;
-
-const ScanningText = styled.p`
-  font-size: 14px;
-  color: var(--accent-light);
-  font-weight: 500;
-  margin: 0;
-`;
-
-const ResultCard = styled.div`
-  background: rgba(34, 197, 94, 0.06);
-  border: 1px solid rgba(34, 197, 94, 0.2);
-  border-radius: 12px;
-  padding: 20px;
-  animation: ${fadeIn} 0.3s ${EASING};
-`;
-
-const ResultTitle = styled.p`
-  font-size: 13px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--success);
-  margin: 0 0 12px 0;
-`;
-
-const ResultRow = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 0;
-
-  & + & {
-    border-top: 1px solid rgba(34, 197, 94, 0.1);
-  }
-`;
-
-const ResultLabel = styled.span`
-  font-size: 13px;
-  color: var(--text-dim);
-`;
-
-const ResultValue = styled.span`
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text);
-`;
-
-const ErrorText = styled.p`
-  font-size: 14px;
-  color: var(--danger);
-  text-align: center;
-  margin: 0;
-`;
-
-const ConfidenceBadge = styled.span<{ $level: "high" | "medium" | "low" }>`
-  font-size: 11px;
-  font-weight: 600;
-  padding: 3px 8px;
-  border-radius: 12px;
-  background: ${(p) =>
-    p.$level === "high"
-      ? "rgba(34, 197, 94, 0.15)"
-      : p.$level === "medium"
-        ? "rgba(245, 158, 11, 0.15)"
-        : "rgba(239, 68, 68, 0.15)"};
-  color: ${(p) =>
-    p.$level === "high"
-      ? "var(--success)"
-      : p.$level === "medium"
-        ? "var(--warning)"
-        : "var(--danger)"};
-`;
-
-/* ── Component ── */
-
-/** Compress image client-side to max 1500px and JPEG 80% before uploading */
-function compressImage(file: File, maxDim = 1500, quality = 0.8): Promise<File> {
-  return new Promise((resolve) => {
-    // Skip non-rasterizable or already small files
-    if (!file.type.startsWith("image/") || file.size < 200_000) {
-      resolve(file);
-      return;
-    }
-    const img = new Image();
-    img.onload = () => {
-      let { width, height } = img;
-      if (width <= maxDim && height <= maxDim && file.size < 500_000) {
-        resolve(file);
-        return;
-      }
-      const scale = Math.min(maxDim / width, maxDim / height, 1);
-      width = Math.round(width * scale);
-      height = Math.round(height * scale);
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
-      canvas.toBlob(
-        (blob) => {
-          if (blob && blob.size < file.size) {
-            resolve(new File([blob], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" }));
-          } else {
-            resolve(file);
-          }
-        },
-        "image/jpeg",
-        quality
-      );
-    };
-    img.onerror = () => resolve(file);
-    img.src = URL.createObjectURL(file);
-  });
-}
-
+/**
+ * Modal-friendly receipt scanner: take photo or upload, then OCR via server action.
+ *
+ * @param props - See {@link ReceiptScannerProps}.
+ */
 export default function ReceiptScanner({
   onScanComplete,
   onClose,
@@ -348,7 +49,10 @@ export default function ReceiptScanner({
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [scanning, setScanning_] = useState(false);
-  const setScanning = (v: boolean) => { setScanning_(v); onScanningChange?.(v); };
+  const setScanning = (v: boolean) => {
+    setScanning_(v);
+    onScanningChange?.(v);
+  };
   const [result, setResult] = useState<ScannedReceipt | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -383,20 +87,19 @@ export default function ReceiptScanner({
       const formData = new FormData();
       formData.append("receipt", compressed);
 
-      const res = await fetch("/api/finance/scan-receipt", {
-        method: "POST",
-        body: formData,
-      });
+      const data = await scanReceiptAction(formData);
 
-      const data = await res.json();
-
-      if (!res.ok || data.error) {
+      if (!data.success) {
         setError(data.error || "Failed to scan receipt");
         setScanning(false);
         return;
       }
 
-      setResult(data.data);
+      setResult({
+        ...data.data,
+        storeName: data.data.storeName ?? undefined,
+        totalAmount: data.data.totalAmount ?? undefined,
+      });
     } catch {
       setError("Failed to scan receipt. Please try again.");
     } finally {
@@ -408,14 +111,6 @@ export default function ReceiptScanner({
     if (result) {
       onScanComplete(result);
     }
-  }
-
-  function getConfidenceLevel(
-    c: number
-  ): "high" | "medium" | "low" {
-    if (c >= 75) return "high";
-    if (c >= 50) return "medium";
-    return "low";
   }
 
   return (
@@ -447,7 +142,10 @@ export default function ReceiptScanner({
             <DropZone
               $dragging={dragging}
               $hasImage
-              onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragging(true);
+              }}
               onDragLeave={() => setDragging(false)}
               onDrop={handleDrop}
               onClick={() => uploadRef.current?.click()}
@@ -457,7 +155,10 @@ export default function ReceiptScanner({
           ) : (
             <>
               <UploadOptions>
-                <OptionButton type="button" onClick={() => cameraRef.current?.click()}>
+                <OptionButton
+                  type="button"
+                  onClick={() => cameraRef.current?.click()}
+                >
                   <OptionIcon>📸</OptionIcon>
                   <OptionLabel>Take Photo</OptionLabel>
                   <OptionHint>Use your camera</OptionHint>
@@ -465,17 +166,29 @@ export default function ReceiptScanner({
                 <OptionButton
                   type="button"
                   onClick={() => uploadRef.current?.click()}
-                  onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragging(true);
+                  }}
                   onDragLeave={() => setDragging(false)}
                   onDrop={handleDrop}
-                  style={dragging ? { borderColor: "var(--accent)", background: "rgba(59, 130, 246, 0.08)" } : undefined}
+                  style={
+                    dragging
+                      ? {
+                          borderColor: "var(--accent)",
+                          background: "rgba(59, 130, 246, 0.08)",
+                        }
+                      : undefined
+                  }
                 >
                   <OptionIcon>📁</OptionIcon>
                   <OptionLabel>Upload Image</OptionLabel>
                   <OptionHint>From gallery or files</OptionHint>
                 </OptionButton>
               </UploadOptions>
-              <UploadHint>Supports JPG, PNG, WebP, HEIC/HEIF up to 10MB</UploadHint>
+              <UploadHint>
+                Supports JPG, PNG, WebP, HEIC/HEIF up to 10MB
+              </UploadHint>
             </>
           )}
         </>
@@ -490,55 +203,7 @@ export default function ReceiptScanner({
 
       {error && <ErrorText>{error}</ErrorText>}
 
-      {result && (
-        <ResultCard>
-          <ResultTitle>
-            Scanned Result
-            {result.confidence != null && (
-              <>
-                {" "}
-                <ConfidenceBadge
-                  $level={getConfidenceLevel(result.confidence)}
-                >
-                  {result.confidence}% confidence
-                </ConfidenceBadge>
-              </>
-            )}
-          </ResultTitle>
-          {result.storeName && (
-            <ResultRow>
-              <ResultLabel>Store</ResultLabel>
-              <ResultValue>{result.storeName}</ResultValue>
-            </ResultRow>
-          )}
-          {result.totalAmount != null && (
-            <ResultRow>
-              <ResultLabel>Amount</ResultLabel>
-              <ResultValue>
-                ₹{result.totalAmount.toLocaleString("en-IN")}
-              </ResultValue>
-            </ResultRow>
-          )}
-          {result.date && (
-            <ResultRow>
-              <ResultLabel>Date</ResultLabel>
-              <ResultValue>{result.date}</ResultValue>
-            </ResultRow>
-          )}
-          {result.category && (
-            <ResultRow>
-              <ResultLabel>Category</ResultLabel>
-              <ResultValue>{result.category}</ResultValue>
-            </ResultRow>
-          )}
-          {result.description && (
-            <ResultRow>
-              <ResultLabel>Description</ResultLabel>
-              <ResultValue>{result.description}</ResultValue>
-            </ResultRow>
-          )}
-        </ResultCard>
-      )}
+      {result && <ReceiptResultView result={result} />}
 
       <ButtonRow>
         {!result ? (

@@ -57,28 +57,3 @@ export async function cacheDel(...keys: string[]): Promise<void> {
   }
 }
 
-/**
- * Delete all keys matching a glob pattern (e.g., "finance:dashboard:*").
- * No-op if Redis is not configured.
- */
-export async function cacheInvalidatePattern(
-  pattern: string,
-): Promise<void> {
-  if (!redis) return;
-  try {
-    let cursor = "0";
-    do {
-      const result = await redis.scan(Number(cursor), {
-        match: pattern,
-        count: 100,
-      });
-      cursor = String(result[0]);
-      const keys = result[1] as string[];
-      if (keys.length > 0) {
-        await redis.del(...keys);
-      }
-    } while (cursor !== "0");
-  } catch {
-    // Silently fail
-  }
-}

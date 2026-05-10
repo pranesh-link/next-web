@@ -59,7 +59,6 @@ function calculateTenureForBalance(
 export function simulatePrepayment(
   loan: LoanData,
   prepaymentAmount: number,
-  reduceEMI: boolean = false,
 ): PrepaymentSimulation {
   const { principal, interestRate, tenureMonths, emiAmount, remainingBalance } = loan;
 
@@ -83,14 +82,6 @@ export function simulatePrepayment(
   if (newBalance === 0) {
     newTenure = 0;
     newTotalInterest = 0;
-  } else if (reduceEMI) {
-    const newEMI = calculateEMI(newBalance, interestRate, currentRemainingMonths);
-    newTenure = currentRemainingMonths;
-    newTotalInterest = calculateRemainingInterest(
-      newEMI,
-      currentRemainingMonths,
-      newBalance,
-    );
   } else {
     newTenure = calculateTenureForBalance(newBalance, emiAmount, interestRate);
     newTotalInterest = calculateRemainingInterest(emiAmount, newTenure, newBalance);
@@ -170,32 +161,6 @@ export function generateAmortizationSchedule(
   }
 
   return schedule;
-}
-
-export function getNextEmi(
-  schedule: AmortizationEntry[],
-  today: Date = new Date(),
-): AmortizationEntry | null {
-  const todayStart = new Date(today);
-  todayStart.setHours(0, 0, 0, 0);
-
-  for (const entry of schedule) {
-    const entryDate = new Date(entry.date);
-    entryDate.setHours(0, 0, 0, 0);
-    if (entryDate.getTime() >= todayStart.getTime()) return entry;
-  }
-
-  return null;
-}
-
-export function hasVaryingEmi(schedule: AmortizationEntry[]): boolean {
-  if (schedule.length < 2) return false;
-
-  // Exclude final row (often a smaller closing EMI)
-  const rows = schedule.length > 2 ? schedule.slice(0, -1) : schedule;
-  const firstEmi = rows[0].emi;
-
-  return rows.some((row) => Math.abs(row.emi - firstEmi) > 1);
 }
 
 export function getEarlyClosureScenarios(

@@ -14,10 +14,6 @@ export const CACHE_TAGS = {
 } as const;
 
 // ─── Revalidation Helpers ────────────────────────────────────
-export function invalidateFinanceDashboard() {
-  revalidateTag(CACHE_TAGS.FINANCE_DASHBOARD);
-}
-
 export function invalidateAfterAccountChange() {
   revalidateTag(CACHE_TAGS.FINANCE_ACCOUNTS);
   revalidateTag(CACHE_TAGS.FINANCE_DASHBOARD);

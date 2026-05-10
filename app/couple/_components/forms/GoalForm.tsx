@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { z } from "zod";
-import styled, { keyframes } from "styled-components";
 import {
   FinanceButton,
   FinanceButtonOutline,
@@ -10,112 +8,23 @@ import {
   FinanceLabel,
   FinanceErrorText,
 } from "@/couple/_components/theme/styled-primitives";
+import {
+  ActionRow,
+  FieldGroup,
+  FormWrapper,
+  OptionalHint,
+  Spinner,
+} from "./GoalForm.styled";
+import { goalSchema, type GoalData, type GoalFormProps } from "./_GoalForm/types";
+import ProgressPreview from "./_GoalForm/ProgressPreview";
 
-const goalSchema = z.object({
-  name: z.string().min(1, "Goal name is required").max(100),
-  targetAmount: z.number().positive("Target amount must be positive"),
-  currentAmount: z.number().min(0, "Current amount cannot be negative"),
-  deadline: z.string().optional(),
-});
-
-type GoalData = z.infer<typeof goalSchema>;
-
-interface GoalFormProps {
-  initialData?: Partial<GoalData>;
-  onSubmit: (data: GoalData) => Promise<void>;
-  onCancel?: () => void;
-  isLoading?: boolean;
-}
-
-/* ── Styled Components ── */
-
-const FormWrapper = styled.form`
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 20px;
-
-  @media screen and (max-width: 480px) {
-    gap: 16px;
-  }
-`;
-
-const FieldGroup = styled.div``;
-
-const ProgressBox = styled.div`
-  background: #f8fafc;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 16px;
-`;
-
-const ProgressHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-`;
-
-const ProgressLabel = styled.span`
-  font-size: 12px;
-  color: #64748b;
-`;
-
-const ProgressPct = styled.span`
-  font-size: 13px;
-  font-weight: 600;
-  color: #3b82f6;
-`;
-
-const ProgressTrack = styled.div`
-  height: 4px;
-  width: 100%;
-  background: #e5e7eb;
-  border-radius: 2px;
-  overflow: hidden;
-`;
-
-const fillAnim = keyframes`
-  from { width: 0%; }
-`;
-
-const ProgressFill = styled.div<{ $pct: number }>`
-  height: 100%;
-  width: ${(p) => p.$pct}%;
-  background: linear-gradient(90deg, #3b82f6, #06b6d4);
-  border-radius: 2px;
-  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  animation: ${fillAnim} 0.6s ease-out;
-`;
-
-const RemainingText = styled.p`
-  font-size: 12px;
-  color: #94a3b8;
-  margin: 8px 0 0;
-`;
-
-const OptionalHint = styled.span`
-  color: #94a3b8;
-`;
-
-const ActionRow = styled.div`
-  display: flex;
-  gap: 12px;
-  padding-top: 4px;
-`;
-
-const spin = keyframes`
-  to { transform: rotate(360deg); }
-`;
-
-const Spinner = styled.svg`
-  width: 16px;
-  height: 16px;
-  margin-right: 8px;
-  animation: ${spin} 0.7s linear infinite;
-`;
-
-/* ── Component ── */
-
+/**
+ * Controlled form for creating or editing a savings goal.
+ *
+ * @param props - See {@link GoalFormProps}.
+ * @returns A styled-components form. Calls `onSubmit` with validated data on success.
+ * @remarks Client component. Mobile-first responsive. Empty `deadline` is normalised to `undefined` before validation.
+ */
 export default function GoalForm({
   initialData,
   onSubmit,
@@ -159,14 +68,6 @@ export default function GoalForm({
     }
     await onSubmit(result.data);
   }
-
-  const percentage =
-    form.targetAmount > 0
-      ? Math.min(
-          Math.round((form.currentAmount / form.targetAmount) * 100),
-          100,
-        )
-      : 0;
 
   return (
     <FormWrapper onSubmit={handleSubmit}>
@@ -226,23 +127,10 @@ export default function GoalForm({
 
       {/* Progress Preview */}
       {form.targetAmount > 0 && (
-        <ProgressBox>
-          <ProgressHeader>
-            <ProgressLabel>Progress</ProgressLabel>
-            <ProgressPct>{percentage}%</ProgressPct>
-          </ProgressHeader>
-          <ProgressTrack>
-            <ProgressFill $pct={percentage} />
-          </ProgressTrack>
-          <RemainingText>
-            {new Intl.NumberFormat("en-IN", {
-              style: "currency",
-              currency: "INR",
-              maximumFractionDigits: 2,
-            }).format(form.targetAmount - form.currentAmount)}{" "}
-            remaining
-          </RemainingText>
-        </ProgressBox>
+        <ProgressPreview
+          targetAmount={form.targetAmount}
+          currentAmount={form.currentAmount}
+        />
       )}
 
       {/* Deadline */}

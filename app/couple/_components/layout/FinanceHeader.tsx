@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import styled, { keyframes, css } from "styled-components";
+import { EASING } from "@/couple/_constants/theme";
 
 interface FinanceHeaderProps {
   title: string;
@@ -11,8 +12,6 @@ interface FinanceHeaderProps {
   };
   onRefresh?: () => Promise<void>;
 }
-
-const EASING = "cubic-bezier(0.16, 1, 0.3, 1)";
 
 const spin = keyframes`
   from { transform: rotate(0deg); }

@@ -6,6 +6,34 @@ import { AppContext } from "@/_store/app/context";
 import { ProfileLayoutContext } from "@/_store/profile/layout/context";
 import dynamic from "next/dynamic";
 import { useContext, useRef } from "react";
+import styled from "styled-components";
+
+const FullscreenGradient = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+`;
+
+const LoadingText = styled.div`
+  color: white;
+  font-size: 1.5rem;
+  font-weight: 600;
+  animation: pulse 2s ease-in-out infinite;
+`;
+
+const ErrorMessage = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 1.2rem;
+  padding: 20px;
+  text-align: center;
+`;
 
 /**
  * Profile 2.0 Page
@@ -37,26 +65,9 @@ const DynamicProfile2 = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: "100vh",
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-        }}
-      >
-        <div
-          style={{
-            color: "white",
-            fontSize: "1.5rem",
-            fontWeight: "600",
-            animation: "pulse 2s ease-in-out infinite",
-          }}
-        >
-          Loading Profile 2.0...
-        </div>
-      </div>
+      <FullscreenGradient>
+        <LoadingText>Loading Profile 2.0...</LoadingText>
+      </FullscreenGradient>
     ),
   }
 );
@@ -91,19 +102,9 @@ export default function Profile2Page() {
   // Error handling
   if (hasError) {
     return (
-      <div style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        minHeight: "100vh",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-        color: "white",
-        fontSize: "1.2rem",
-        padding: "20px",
-        textAlign: "center"
-      }}>
+      <ErrorMessage>
         Failed to load profile data. Please try again later.
-      </div>
+      </ErrorMessage>
     );
   }
 

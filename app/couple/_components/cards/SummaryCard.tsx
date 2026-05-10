@@ -2,6 +2,8 @@
 
 import React from "react";
 import styled from "styled-components";
+import { EASING } from "@/couple/_constants/theme";
+import { formatCurrency as formatCurrencyShared } from "@/_lib/formatters";
 
 interface TrendData {
   value: number;
@@ -14,18 +16,17 @@ interface SummaryCardProps {
   subtitle?: string;
   icon?: React.ReactNode;
   trend?: TrendData;
-  className?: string;
 }
 
-const EASING = "cubic-bezier(0.16, 1, 0.3, 1)";
-
+/**
+ * Format a card value: pass strings through unchanged; format numbers as INR.
+ *
+ * @param value - Pre-formatted display string or raw numeric amount.
+ * @returns The string to render inside the card.
+ */
 function formatCurrency(value: string | number): string {
   if (typeof value === "string") return value;
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 2,
-  }).format(value);
+  return formatCurrencyShared(value);
 }
 
 const Card = styled.div`
@@ -134,12 +135,11 @@ export default function SummaryCard({
   subtitle,
   icon,
   trend,
-  className,
 }: SummaryCardProps) {
   const displayValue = typeof value === "number" ? formatCurrency(value) : value;
 
   return (
-    <Card className={className}>
+    <Card>
       <CardInner>
         <Content>
           <CardTitle>{title}</CardTitle>

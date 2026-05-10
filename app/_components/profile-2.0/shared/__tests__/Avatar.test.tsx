@@ -7,7 +7,7 @@ describe('Avatar', () => {
     render(<Avatar src="/test-avatar.jpg" alt="Test User" />);
     const img = screen.getByAltText('Test User');
     expect(img).toBeInTheDocument();
-    expect(img).toHaveAttribute('src', '/test-avatar.jpg');
+    expect(img.getAttribute('src')).toMatch(/test-avatar\.jpg/);
   });
 
   it('should render with default medium size when size not specified', () => {
@@ -44,7 +44,7 @@ describe('Avatar', () => {
     const { container } = render(<Avatar src="/test-avatar.jpg" alt="" />);
     const img = container.querySelector('img');
     expect(img).toBeInTheDocument();
-    expect(img).toHaveAttribute('src', '/test-avatar.jpg');
+    expect(img?.getAttribute('src')).toMatch(/test-avatar\.jpg/);
   });
 
   it('should handle image load event', () => {

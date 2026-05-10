@@ -1,198 +1,34 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { z } from "zod";
-import styled, { keyframes } from "styled-components";
 import {
-  FinanceButton,
-  FinanceButtonOutline,
   FinanceInput,
   FinanceLabel,
   FinanceErrorText,
 } from "@/couple/_components/theme/styled-primitives";
 import LoanScheduleScanner from "@/couple/_components/loan/LoanScheduleScanner";
 import type { ScannedLoanData } from "@/couple/_components/loan/LoanScheduleScanner";
+import {
+  AccountNumberBadge,
+  FieldGroup,
+  FormWrapper,
+  ImportPdfButton,
+  ScannerWrapper,
+  TwoColGrid,
+} from "./LoanForm.styled";
+import { loanSchema, type LoanData, type LoanFormProps } from "./_LoanForm/types";
+import { calculateEMI } from "./_LoanForm/utils";
+import EmiSection from "./_LoanForm/EmiSection";
+import SubmitActions from "./_LoanForm/SubmitActions";
 
-const loanSchema = z.object({
-  name: z.string().min(1, "Loan name is required").max(100),
-  loanProvider: z.string().optional(),
-  loanAccountNumber: z.string().optional(),
-  principalAmount: z.number().positive("Principal must be positive"),
-  interestRate: z
-    .number()
-    .min(0, "Interest rate cannot be negative")
-    .max(100, "Interest rate too high"),
-  tenureMonths: z.number().int().positive("Tenure must be at least 1 month"),
-  emiAmount: z.number().min(0, "EMI cannot be negative"),
-  startDate: z.string().min(1, "Start date is required"),
-  remainingBalance: z
-    .number()
-    .min(0, "Remaining balance cannot be negative"),
-});
-
-type LoanData = z.infer<typeof loanSchema>;
-
-interface LoanFormProps {
-  initialData?: Partial<LoanData & { loanProvider?: string | null; loanAccountNumber?: string | null }>;
-  onSubmit: (data: LoanData) => Promise<void>;
-  onCancel?: () => void;
-  isLoading?: boolean;
-}
-
-function calculateEMI(
-  principal: number,
-  annualRate: number,
-  tenureMonths: number,
-): number {
-  if (principal <= 0 || tenureMonths <= 0) return 0;
-  if (annualRate === 0) return principal / tenureMonths;
-  const monthlyRate = annualRate / 12 / 100;
-  const emi =
-    (principal * monthlyRate * Math.pow(1 + monthlyRate, tenureMonths)) /
-    (Math.pow(1 + monthlyRate, tenureMonths) - 1);
-  return Math.round(emi * 100) / 100;
-}
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
-/* ── Styled Components ── */
-
-const FormWrapper = styled.form`
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 20px;
-
-  @media screen and (max-width: 480px) {
-    gap: 16px;
-  }
-`;
-
-const FieldGroup = styled.div``;
-
-const TwoColGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-
-  @media screen and (max-width: 480px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const EmiRow = styled.div`
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-`;
-
-const EmiInputWrap = styled.div`
-  flex: 1;
-`;
-
-const CalcButton = styled(FinanceButtonOutline)`
-  flex-shrink: 0;
-  white-space: nowrap;
-  align-self: flex-end;
-`;
-
-const SummaryBox = styled.div`
-  background: #f8fafc;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 16px;
-`;
-
-const SummaryRow = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-
-  & + & {
-    margin-top: 8px;
-  }
-`;
-
-const SummaryLabel = styled.span`
-  font-size: 13px;
-  color: #64748b;
-`;
-
-const SummaryValue = styled.span<{ $danger?: boolean }>`
-  font-size: 14px;
-  font-weight: 600;
-  color: ${(p) => (p.$danger ? "#dc2626" : "#1e293b")};
-`;
-
-const ActionRow = styled.div`
-  display: flex;
-  gap: 12px;
-  padding-top: 4px;
-`;
-
-const ImportPdfButton = styled.button`
-  width: 100%;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(139, 92, 246, 0.08));
-  border: 1px dashed rgba(59, 130, 246, 0.3);
-  color: var(--accent-light, #60a5fa);
-  border-radius: 10px;
-  padding: 12px 16px;
-  font-size: 14px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-
-  &:hover {
-    border-color: rgba(59, 130, 246, 0.5);
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(139, 92, 246, 0.12));
-  }
-`;
-
-const AccountNumberBadge = styled.div`
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(59, 130, 246, 0.08);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  border-radius: 8px;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--accent-light, #60a5fa);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.3px;
-`;
-
-const ScannerWrapper = styled.div`
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  border-radius: 12px;
-  padding: 16px;
-  background: rgba(59, 130, 246, 0.03);
-`;
-
-const spin = keyframes`
-  to { transform: rotate(360deg); }
-`;
-
-const Spinner = styled.svg`
-  width: 16px;
-  height: 16px;
-  margin-right: 8px;
-  animation: ${spin} 0.7s linear infinite;
-`;
-
-/* ── Component ── */
-
+/**
+ * Controlled form for creating or editing a loan, with optional PDF schedule import.
+ *
+ * @param props - See {@link LoanFormProps}.
+ * @returns A styled-components form. Calls `onSubmit` with validated data on success.
+ * @remarks Client component. Mobile-first responsive. Supports importing loan
+ * details from a repayment-schedule PDF via {@link LoanScheduleScanner}.
+ */
 export default function LoanForm({
   initialData,
   onSubmit,
@@ -218,20 +54,27 @@ export default function LoanForm({
   const [showScanner, setShowScanner] = useState(false);
 
   const handleScanComplete = useCallback((data: ScannedLoanData) => {
-    setForm({
-      name: data.loanName || form.name || "",
-      loanProvider: data.loanProvider ?? form.loanProvider ?? undefined,
-      loanAccountNumber: data.loanAccountNumber ?? form.loanAccountNumber ?? undefined,
-      principalAmount: data.principal || form.principalAmount || 0,
-      interestRate: data.interestRate || form.interestRate || 0,
-      tenureMonths: data.tenureMonths || form.tenureMonths || 0,
-      emiAmount: data.emiAmount || form.emiAmount || 0,
-      startDate: data.startDate || form.startDate || new Date().toISOString().split("T")[0],
-      remainingBalance: data.remainingBalance || data.principal || form.remainingBalance || 0,
-    });
+    setForm((prev) => ({
+      name: data.loanName || prev.name || "",
+      loanProvider: data.loanProvider ?? prev.loanProvider ?? undefined,
+      loanAccountNumber:
+        data.loanAccountNumber ?? prev.loanAccountNumber ?? undefined,
+      principalAmount: data.principal || prev.principalAmount || 0,
+      interestRate: data.interestRate || prev.interestRate || 0,
+      tenureMonths: data.tenureMonths || prev.tenureMonths || 0,
+      emiAmount: data.emiAmount || prev.emiAmount || 0,
+      startDate:
+        data.startDate ||
+        prev.startDate ||
+        new Date().toISOString().split("T")[0],
+      remainingBalance:
+        data.remainingBalance ||
+        data.principal ||
+        prev.remainingBalance ||
+        0,
+    }));
     setShowScanner(false);
     setErrors({});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function updateField<K extends keyof LoanData>(
@@ -250,9 +93,6 @@ export default function LoanForm({
     );
     setForm((prev) => ({ ...prev, emiAmount: emi }));
   }, [form.principalAmount, form.interestRate, form.tenureMonths]);
-
-  const totalPayable = form.emiAmount * form.tenureMonths;
-  const totalInterest = totalPayable - form.principalAmount;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -281,7 +121,10 @@ export default function LoanForm({
         </ScannerWrapper>
       ) : (
         <ImportPdfButton type="button" onClick={() => setShowScanner(true)}>
-          📄 {initialData ? "Update from Repayment Schedule PDF" : "Import from Repayment Schedule PDF"}
+          📄{" "}
+          {initialData
+            ? "Update from Repayment Schedule PDF"
+            : "Import from Repayment Schedule PDF"}
         </ImportPdfButton>
       )}
 
@@ -378,56 +221,16 @@ export default function LoanForm({
         </FieldGroup>
       </TwoColGrid>
 
-      {/* EMI Amount + Calculate */}
-      <FieldGroup>
-        <FinanceLabel htmlFor="loan-emi">EMI Amount (₹)</FinanceLabel>
-        <EmiRow>
-          <EmiInputWrap>
-            <FinanceInput
-              id="loan-emi"
-              type="number"
-              min="0"
-              step="1"
-              value={form.emiAmount || ""}
-              onChange={(e) =>
-                updateField("emiAmount", parseFloat(e.target.value) || 0)
-              }
-              placeholder="0"
-              disabled={isLoading}
-            />
-          </EmiInputWrap>
-          <CalcButton
-            type="button"
-            onClick={handleCalculateEMI}
-            disabled={
-              isLoading ||
-              form.principalAmount <= 0 ||
-              form.tenureMonths <= 0
-            }
-          >
-            Calculate EMI
-          </CalcButton>
-        </EmiRow>
-        {errors.emiAmount && (
-          <FinanceErrorText>{errors.emiAmount}</FinanceErrorText>
-        )}
-      </FieldGroup>
-
-      {/* EMI Summary */}
-      {form.emiAmount > 0 && form.tenureMonths > 0 && (
-        <SummaryBox>
-          <SummaryRow>
-            <SummaryLabel>Total Payable</SummaryLabel>
-            <SummaryValue>{formatCurrency(totalPayable)}</SummaryValue>
-          </SummaryRow>
-          <SummaryRow>
-            <SummaryLabel>Total Interest</SummaryLabel>
-            <SummaryValue $danger={totalInterest > 0}>
-              {formatCurrency(Math.max(totalInterest, 0))}
-            </SummaryValue>
-          </SummaryRow>
-        </SummaryBox>
-      )}
+      {/* EMI Amount + Calculate + Summary */}
+      <EmiSection
+        emiAmount={form.emiAmount}
+        tenureMonths={form.tenureMonths}
+        principalAmount={form.principalAmount}
+        emiError={errors.emiAmount}
+        isLoading={isLoading}
+        onChangeEmi={(v) => updateField("emiAmount", v)}
+        onCalculate={handleCalculateEMI}
+      />
 
       {/* Start Date */}
       <FieldGroup>
@@ -470,45 +273,7 @@ export default function LoanForm({
       </FieldGroup>
 
       {/* Actions */}
-      <ActionRow>
-        <FinanceButton type="submit" disabled={isLoading}>
-          {isLoading ? (
-            <>
-              <Spinner
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  opacity="0.25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  opacity="0.75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                />
-              </Spinner>
-              Saving…
-            </>
-          ) : (
-            "Save Loan"
-          )}
-        </FinanceButton>
-        {onCancel && (
-          <FinanceButtonOutline
-            type="button"
-            onClick={onCancel}
-            disabled={isLoading}
-          >
-            Cancel
-          </FinanceButtonOutline>
-        )}
-      </ActionRow>
+      <SubmitActions isLoading={isLoading} onCancel={onCancel} />
     </FormWrapper>
   );
 }
