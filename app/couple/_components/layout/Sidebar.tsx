@@ -4,7 +4,11 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useCallback, useState } from "react";
 import { useFinanceTheme } from "@/couple/_components/theme/FinanceThemeProvider";
-import { coupleNavItems, financeNavItems } from "./_Sidebar/nav-items";
+import {
+  coupleNavItems,
+  financeNavItems,
+  lifestyleNavItems,
+} from "./_Sidebar/nav-items";
 import { SignOutModal } from "./_Sidebar/SignOutModal";
 import {
   Avatar,
@@ -49,8 +53,9 @@ interface SidebarProps {
 /**
  * Coupletastic-wide sidebar with context-aware navigation.
  *
- * Switches between the couple-level nav (`/couple` routes) and the finance-level
- * nav (`/couple/finance/*` routes) based on the current pathname.
+ * Switches between the couple-level nav (`/couple` routes), the finance-level
+ * nav (`/couple/finance/*` routes), and the lifestyle-level nav
+ * (`/couple/lifestyle/*` routes) based on the current pathname.
  *
  * @param props - See {@link SidebarProps}.
  */
@@ -62,12 +67,18 @@ export default function Sidebar({ user }: SidebarProps) {
   const [signingOut, setSigningOut] = useState(false);
 
   const isFinanceRoute = pathname.startsWith("/couple/finance");
-  const navItems = isFinanceRoute ? financeNavItems : coupleNavItems;
+  const isLifestyleRoute = pathname.startsWith("/couple/lifestyle");
+  const navItems = isLifestyleRoute
+    ? lifestyleNavItems
+    : isFinanceRoute
+      ? financeNavItems
+      : coupleNavItems;
 
   const isActive = useCallback(
     (href: string) => {
       if (href === "/couple") return pathname === "/couple";
       if (href === "/couple/finance") return pathname === "/couple/finance";
+      if (href === "/couple/lifestyle") return pathname === "/couple/lifestyle";
       return pathname.startsWith(href);
     },
     [pathname],

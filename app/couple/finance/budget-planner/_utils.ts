@@ -57,12 +57,7 @@ export const CATEGORIES = [
   "Other",
 ] as const;
 
-export const SUGGESTION_COLORS: Record<string, string> = {
-  warning: "#f59e0b",
-  info: "#3b82f6",
-  success: "#22c55e",
-  danger: "#ef4444",
-};
+export { SUGGESTION_COLORS } from "@/couple/_constants/suggestion-colors";
 
 /* ── Line item factories ────────────────────────────── */
 
