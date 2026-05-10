@@ -16,7 +16,16 @@ export interface LogEntryInput {
   note?: string;
 }
 
-/** Props for {@link LogEntryForm}. */
+/**
+ * Props for {@link LogEntryForm}.
+ *
+ * @param defaults - Default values for height/weight inputs. Use `0` to render empty.
+ * @param onSubmit - Async submit handler. Called only when validation passes.
+ * @param saving - Disables the submit button and shows a saving label.
+ * @param heightLocked - When true, the height input is disabled (height is one-time). Defaults to `defaults.heightInCm > 0`.
+ * @param existingDates - ISO date strings (YYYY-MM-DD) of already-logged entries, used to prevent duplicates.
+ * @param onDuplicate - Called when the user tries to submit a date that already has an entry. Parent handles the toast.
+ */
 export interface Props {
   /** Default values for height/weight inputs. Use `0` to render empty. */
   defaults: { heightInCm: number; weightInKg: number };
@@ -24,6 +33,12 @@ export interface Props {
   onSubmit: (input: LogEntryInput) => Promise<void>;
   /** Disables the submit button and shows a saving label. */
   saving: boolean;
+  /** When true, the height input is disabled. Defaults to `defaults.heightInCm > 0`. */
+  heightLocked?: boolean;
+  /** ISO date strings (YYYY-MM-DD) of already-logged entries. */
+  existingDates?: string[];
+  /** Called when a duplicate date is detected. Parent handles the toast. */
+  onDuplicate?: () => void;
 }
 
 const Grid = styled.form`
@@ -77,6 +92,22 @@ const Actions = styled.div`
   justify-content: flex-end;
 `;
 
+const Note = styled.span`
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+`;
+
+const UnlockButton = styled.button`
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+  margin-left: 4px;
+`;
+
 function todayIso() {
   const d = new Date();
   const yyyy = d.getFullYear();
@@ -88,11 +119,20 @@ function todayIso() {
 /**
  * Form to log a single body-metric entry (date, weight, height, note).
  * Performs inline validation: weight 20–500 kg, height 50–300 cm.
+ * Resets weight, note, and date after a successful save; height is retained.
+ * Prevents duplicate entries for the same date via `existingDates` / `onDuplicate`.
  *
  * @param props - See {@link Props}.
  * @returns A card containing the entry form.
  */
-export default function LogEntryForm({ defaults, onSubmit, saving }: Props) {
+export default function LogEntryForm({
+  defaults,
+  onSubmit,
+  saving,
+  heightLocked: heightLockedProp,
+  existingDates,
+  onDuplicate,
+}: Props) {
   const [date, setDate] = useState<string>(todayIso());
   const [weight, setWeight] = useState<string>(
     defaults.weightInKg ? String(defaults.weightInKg) : "",
@@ -103,9 +143,19 @@ export default function LogEntryForm({ defaults, onSubmit, saving }: Props) {
   const [note, setNote] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
 
+  const isHeightLocked = heightLockedProp ?? defaults.heightInCm > 0;
+  const [heightUnlocked, setHeightUnlocked] = useState(false);
+  const heightDisabled = isHeightLocked && !heightUnlocked;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    if (existingDates?.includes(date)) {
+      onDuplicate?.();
+      return;
+    }
+
     const w = Number(weight);
     const h = Number(height);
     if (!Number.isFinite(w) || w < 20 || w > 500) {
@@ -127,6 +177,10 @@ export default function LogEntryForm({ defaults, onSubmit, saving }: Props) {
       heightInCm: h,
       note: note.trim() ? note.trim() : undefined,
     });
+
+    setWeight("");
+    setNote("");
+    setDate(todayIso());
   }
 
   return (
@@ -155,7 +209,18 @@ export default function LogEntryForm({ defaults, onSubmit, saving }: Props) {
           />
         </Field>
         <Field>
-          <Label>Height (cm)</Label>
+          <Label>
+            Height (cm)
+            {heightDisabled && (
+              <UnlockButton
+                type="button"
+                onClick={() => setHeightUnlocked(true)}
+                aria-label="Edit height"
+              >
+                ✎
+              </UnlockButton>
+            )}
+          </Label>
           <Input
             type="number"
             step="0.1"
@@ -164,7 +229,9 @@ export default function LogEntryForm({ defaults, onSubmit, saving }: Props) {
             onChange={(e) => setHeight(e.target.value)}
             placeholder="e.g. 175"
             required
+            disabled={heightDisabled}
           />
+          {heightDisabled && <Note>Height is set once across entries</Note>}
         </Field>
         <Field>
           <Label>Note (optional)</Label>

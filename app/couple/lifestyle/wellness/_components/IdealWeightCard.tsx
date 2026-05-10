@@ -1,7 +1,15 @@
 "use client";
 
 import React from "react";
-import { Card, SectionTitle, Subtle } from "@/couple/lifestyle/wellness/_styled";
+import styled from "styled-components";
+import { Card, SectionTitle } from "@/couple/lifestyle/wellness/_styled";
+
+const BodyText = styled.p`
+  margin: 0;
+  font-size: 13px;
+  color: var(--text);
+  opacity: 0.75;
+`;
 
 /** Props for {@link IdealWeightCard}. */
 export interface Props {
@@ -28,6 +36,7 @@ function gapLine(currentWeight: number, healthyMinKg: number, healthyMaxKg: numb
 /**
  * Card showing the healthy weight window for the current height plus
  * an actionable gap message. Optionally displays a user-defined target.
+ * Uses mild-black body text for readability.
  *
  * @param props - See {@link Props}.
  * @returns A card with ideal-weight guidance.
@@ -41,14 +50,14 @@ export default function IdealWeightCard({
   return (
     <Card>
       <SectionTitle>Ideal weight</SectionTitle>
-      <Subtle>
+      <BodyText>
         Healthy: {healthyMinKg.toFixed(1)} – {healthyMaxKg.toFixed(1)} kg
-      </Subtle>
-      <Subtle>{gapLine(currentWeight, healthyMinKg, healthyMaxKg)}</Subtle>
+      </BodyText>
+      <BodyText>{gapLine(currentWeight, healthyMinKg, healthyMaxKg)}</BodyText>
       {target != null ? (
-        <Subtle>
+        <BodyText>
           Target: {target.toFixed(1)} kg ({(currentWeight - target).toFixed(1)} kg to go)
-        </Subtle>
+        </BodyText>
       ) : null}
     </Card>
   );
