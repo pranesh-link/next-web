@@ -55,46 +55,32 @@ export interface UseWellnessPageReturn {
   suggestions: WellnessSuggestion[];
   saving: boolean;
   notification: WellnessNotification | null;
+  /** Programmatically surface a toast notification. */
+  showNotification: (n: WellnessNotification) => void;
   clearNotification: () => void;
+  /** The signed-in user's id (from subjects). */
+  currentUserId: string | null;
   saveMetric: (input: SaveMetricInput) => Promise<void>;
+  /** Edit only the weight of an existing metric (keeps date + height). */
+  editMetricWeight: (metricId: string, newWeight: number) => Promise<void>;
   removeMetric: (id: string) => Promise<void>;
   updateProfile: (patch: UpdateProfilePatch) => Promise<void>;
   refresh: () => Promise<void>;
 }
 
-/**
- * Coerce an unknown value (Prisma `Decimal` or number) to a JS number.
- *
- * @param value - Raw value pulled from a Prisma row.
- * @returns Numeric representation, or `0` when the value is not finite.
- */
+/** Coerce an unknown value (Prisma Decimal or number) to a JS number. */
 function toNumber(value: unknown): number {
   if (value == null) return 0;
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
 }
 
-/**
- * Extract a readable error message from an unknown thrown value.
- *
- * @param err - The caught value.
- * @param fallback - Message returned when `err` is not an `Error`.
- * @returns A safe string suitable for the notification banner.
- */
+/** Extract a readable error message from an unknown thrown value. */
 function errorMessage(err: unknown, fallback: string): string {
   return err instanceof Error && err.message ? err.message : fallback;
 }
 
-/**
- * Data + mutations hook backing the wellness tracker page.
- *
- * Loads subjects on mount, keeps a single `selectedSubjectId` in state,
- * and re-fetches metrics + profile in parallel whenever the selection
- * changes. Mutations refresh the active subject's data and surface a
- * toast notification on success or failure.
- *
- * @returns Wellness page state, derived insights, and mutation handlers.
- */
+/** Data + mutations hook backing the wellness tracker page. */
 export function useWellnessPage(): UseWellnessPageReturn {
   const [subjects, setSubjects] = useState<CoupleSubject[]>([]);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
@@ -106,6 +92,7 @@ export function useWellnessPage(): UseWellnessPageReturn {
   const [notification, setNotification] = useState<WellnessNotification | null>(null);
 
   const clearNotification = useCallback(() => setNotification(null), []);
+  const showNotification = useCallback((n: WellnessNotification) => setNotification(n), []);
 
   const fetchSubjectData = useCallback(async (subjectId: string) => {
     // Independent fetches — a failure on one (e.g. profile) must not
@@ -239,6 +226,35 @@ export function useWellnessPage(): UseWellnessPageReturn {
     [selectedSubjectId],
   );
 
+  const editMetricWeight = useCallback(
+    async (metricId: string, newWeight: number) => {
+      if (!selectedSubjectId) return;
+      const target = metrics.find((m) => m.id === metricId);
+      if (!target) return;
+      setSaving(true);
+      try {
+        await upsertBodyMetricAction({
+          subjectId: target.subjectId,
+          measuredOn: new Date(target.measuredOn),
+          weightInKg: newWeight,
+          heightInCm: Number(target.heightInCm),
+        });
+        await fetchSubjectData(selectedSubjectId);
+        setNotification({ type: "success", message: "Weight updated" });
+      } catch (err) {
+        setNotification({ type: "error", message: errorMessage(err, "Update failed") });
+      } finally {
+        setSaving(false);
+      }
+    },
+    [selectedSubjectId, metrics, fetchSubjectData],
+  );
+
+  const currentUserId = useMemo(
+    () => subjects.find((s) => s.isSelf)?.id ?? null,
+    [subjects],
+  );
+
   const selectSubject = useCallback((id: string) => {
     setSelectedSubjectId(id);
   }, []);
@@ -255,8 +271,11 @@ export function useWellnessPage(): UseWellnessPageReturn {
     suggestions,
     saving,
     notification,
+    showNotification,
     clearNotification,
+    currentUserId,
     saveMetric,
+    editMetricWeight,
     removeMetric,
     updateProfile,
     refresh,

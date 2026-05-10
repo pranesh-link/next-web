@@ -28,6 +28,14 @@ export const Grid2Col = styled.div`
   }
 `;
 
+/** Vertical stack of cards with uniform spacing between children. */
+export const CardStack = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+`;
+
 /** Full-width section block; vertical spacing is provided by {@link PageWrapper} gap. */
 export const FullSection = styled.section`
   min-width: 0;

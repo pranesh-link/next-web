@@ -41,6 +41,30 @@ export const BAND_COLORS: Record<BandKey, string> = BMI_BANDS.reduce(
   {} as Record<BandKey, string>,
 );
 
+/** Descriptive insight text shown when a BMI band pill is tapped. */
+export const BAND_INSIGHTS: Record<BandKey, { title: string; description: string; recommendation: string }> = {
+  underweight: {
+    title: "Underweight (BMI < 18.5)",
+    description: "A BMI below 18.5 may indicate insufficient nutrition, which can weaken immunity, reduce bone density, and affect energy levels.",
+    recommendation: "Focus on nutrient-dense meals, consider consulting a dietitian, and incorporate strength training to build lean mass.",
+  },
+  healthy: {
+    title: "Healthy (BMI 18.5–24.9)",
+    description: "A BMI in this range is associated with the lowest risk of weight-related health issues. Maintain your current lifestyle habits.",
+    recommendation: "Keep up balanced nutrition, regular physical activity, and adequate sleep to stay in this range.",
+  },
+  overweight: {
+    title: "Overweight (BMI 25–29.9)",
+    description: "A BMI between 25 and 29.9 increases risk of cardiovascular disease, type 2 diabetes, and joint problems.",
+    recommendation: "Aim for a modest calorie deficit, increase daily movement, and reduce processed food intake to trend toward the healthy range.",
+  },
+  obese: {
+    title: "Obese (BMI ≥ 30)",
+    description: "A BMI of 30 or above significantly raises risk for heart disease, stroke, diabetes, and certain cancers.",
+    recommendation: "Consult a healthcare professional for a personalised plan. Small, consistent changes to diet and activity yield the best long-term results.",
+  },
+};
+
 /**
  * Re-export of the default wellness rule thresholds so consumers can
  * import all wellness constants from a single module.

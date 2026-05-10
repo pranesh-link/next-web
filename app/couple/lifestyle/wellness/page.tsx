@@ -1,18 +1,17 @@
 "use client";
 
 import FinanceHeader from "@/couple/_components/layout/FinanceHeader";
+import LastUpdatedBadge from "@/couple/_components/shared/LastUpdatedBadge";
 import type { BodyMetricRow } from "@/_services/lifestyle/body-metric-service";
 import { BMI_BANDS } from "./_constants";
 import {
-  Card,
+  CardStack,
   FullSection,
   Grid2Col,
   PageWrapper,
   Row,
-  SectionTitle,
   Subtle,
 } from "./_styled";
-import { useBmiCalculator } from "./_hooks/use-bmi-calculator";
 import { useWellnessPage } from "./_hooks/use-wellness-page";
 import SubjectSwitcher from "./_components/SubjectSwitcher";
 import LogEntryForm from "./_components/LogEntryForm";
@@ -23,7 +22,6 @@ import BMIRangeLegend from "./_components/BMIRangeLegend";
 import WeightTrendChart from "./_components/WeightTrendChart";
 import BMITrendChart from "./_components/BMITrendChart";
 import MetricsTable from "./_components/MetricsTable";
-import SuggestionsPanel from "./_components/SuggestionsPanel";
 import EmptyState from "./_components/EmptyState";
 import LoadingSkeleton from "@/couple/_components/shared/LoadingSkeleton";
 
@@ -90,7 +88,6 @@ function deriveLatest(
  */
 export default function WellnessPage() {
   const page = useWellnessPage();
-  const calc = useBmiCalculator();
 
   const selectedSubject =
     page.subjects.find((s) => s.id === page.selectedSubjectId) ?? null;
@@ -105,13 +102,29 @@ export default function WellnessPage() {
     weightInKg: latest.currentWeight,
   };
 
+  /** ISO date strings of existing entries for duplicate detection. */
+  const existingDates = page.metrics.map((m) => {
+    const d = new Date(m.measuredOn);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  });
+
   const scrollToForm = () => {
-    if (typeof document === "undefined") return;
     document.getElementById("wellness-log-form")?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // The calculator state is exposed for future inline previews/forms.
-  void calc;
+  const scrollToHistory = () => {
+    document.getElementById("wellness-history")?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleDuplicate = () => {
+    page.showNotification({
+      type: "error",
+      message: "An entry for this date already exists. Edit it from the History section below.",
+    });
+    setTimeout(() => scrollToHistory(), 150);
+  };
+
+  const lastMetric = page.metrics[0] ?? null;
 
   return (
     <>
@@ -120,16 +133,14 @@ export default function WellnessPage() {
         {subtitle && <Subtle>{subtitle}</Subtle>}
 
         {page.notification && (
-          <Card
+          <Subtle
             role="status"
-            onClick={page.clearNotification}
             aria-live="polite"
+            onClick={page.clearNotification}
           >
-            <SectionTitle>
-              {page.notification.type === "success" ? "Success" : "Error"}
-            </SectionTitle>
-            <Subtle>{page.notification.message}</Subtle>
-          </Card>
+            {page.notification.type === "error" ? "⚠ " : "✓ "}
+            {page.notification.message}
+          </Subtle>
         )}
 
         {page.subjects.length > 1 && (
@@ -142,6 +153,15 @@ export default function WellnessPage() {
           </Row>
         )}
 
+        {lastMetric && (
+          <LastUpdatedBadge
+            userId={lastMetric.userId}
+            currentUserId={page.currentUserId}
+            name={selectedSubject?.name}
+            updatedAt={lastMetric.updatedAt}
+          />
+        )}
+
         {page.loading ? (
           <FullSection>
             <LoadingSkeleton type="card" count={2} />
@@ -152,31 +172,32 @@ export default function WellnessPage() {
               <EmptyState onLog={scrollToForm} />
             </FullSection>
             <FullSection>
-              <Card id="wellness-log-form">
-                <LogEntryForm
-                  defaults={formDefaults}
-                  onSubmit={page.saveMetric}
-                  saving={page.saving}
-                />
-              </Card>
+              <LogEntryForm
+                defaults={formDefaults}
+                onSubmit={page.saveMetric}
+                saving={page.saving}
+              />
             </FullSection>
           </>
         ) : (
           <>
             <Grid2Col>
-              <Card>
+              <CardStack>
                 <CurrentBMICard
                   bmi={latest.currentBmi}
                   band={latest.currentBand}
                   deltaWeek={page.trend.deltaWeek}
+                  suggestions={page.suggestions}
                 />
                 <BMIGauge bmi={latest.currentBmi} bands={BMI_BANDS} />
-              </Card>
-              <Card id="wellness-log-form">
+              </CardStack>
+              <CardStack id="wellness-log-form">
                 <LogEntryForm
                   defaults={formDefaults}
                   onSubmit={page.saveMetric}
                   saving={page.saving}
+                  existingDates={existingDates}
+                  onDuplicate={handleDuplicate}
                 />
                 <IdealWeightCard
                   currentWeight={latest.currentWeight}
@@ -188,7 +209,7 @@ export default function WellnessPage() {
                   healthyMinKg={latest.healthyMinKg}
                   healthyMaxKg={latest.healthyMaxKg}
                 />
-              </Card>
+              </CardStack>
             </Grid2Col>
 
             <FullSection>
@@ -207,13 +228,10 @@ export default function WellnessPage() {
             </FullSection>
 
             <FullSection>
-              <SuggestionsPanel suggestions={page.suggestions} />
-            </FullSection>
-
-            <FullSection>
               <MetricsTable
                 metrics={page.metrics}
                 onDelete={page.removeMetric}
+                onEdit={page.editMetricWeight}
                 loading={page.loading}
               />
             </FullSection>

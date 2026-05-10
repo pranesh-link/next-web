@@ -1,13 +1,30 @@
 "use client";
 
 import React, { useState } from "react";
-import styled from "styled-components";
 import { Card, SectionTitle, Subtle, Button, GhostButton } from "@/couple/lifestyle/wellness/_styled";
 import Modal from "@/couple/_components/shared/Modal";
 import { formatDate } from "@/_lib/formatters";
 import { getBMI, categoryFromBmi } from "@/_services/lifestyle/bmi";
 import { BMI_BANDS } from "@/couple/lifestyle/wellness/_constants";
 import type { BodyMetricRow } from "@/_services/lifestyle/body-metric-service";
+import {
+  DesktopWrap,
+  MobileWrap,
+  Table,
+  RowCard,
+  Cell,
+  FullCell,
+  Pill,
+  IconButton,
+  EditButton,
+  ModalActions,
+  DangerButton,
+  ScrollContainer,
+  ActionGroup,
+  EditInput,
+  FormRow,
+  FormLabel,
+} from "./_MetricsTable-styled";
 
 /** Props for {@link MetricsTable}. */
 export interface Props {
@@ -15,121 +32,43 @@ export interface Props {
   metrics: BodyMetricRow[];
   /** Called when the user confirms deletion of a row. */
   onDelete: (id: string) => void;
+  /** Called when the user saves an edited weight. Only rows from today/yesterday are editable. */
+  onEdit: (id: string, newWeight: number) => Promise<void>;
   /** When true, disables interactive controls. */
   loading?: boolean;
 }
 
-const DesktopWrap = styled.div`
-  display: block;
-  overflow-x: auto;
-
-  @media (max-width: 768px) {
-    display: none;
-  }
-`;
-
-const MobileWrap = styled.div`
-  display: none;
-  flex-direction: column;
-  gap: 10px;
-
-  @media (max-width: 768px) {
-    display: flex;
-  }
-`;
-
-const Table = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-  color: var(--text);
-
-  th,
-  td {
-    padding: 10px 12px;
-    text-align: left;
-    border-bottom: 1px solid var(--border);
-  }
-
-  th {
-    font-weight: 600;
-    color: var(--text-muted);
-    background: var(--surface);
-  }
-`;
-
-const RowCard = styled.div`
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 12px;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 6px 12px;
-  font-size: 13px;
-  color: var(--text);
-`;
-
-const Cell = styled.span`
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-`;
-
-const FullCell = styled.span`
-  grid-column: 1 / -1;
-  color: var(--text-muted);
-  font-size: 12px;
-`;
-
-const Pill = styled.span<{ $bg: string }>`
-  background: ${(p) => p.$bg};
-  color: #ffffff;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
-`;
-
-const IconButton = styled.button`
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--danger);
-  border-radius: 8px;
-  padding: 4px 8px;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 600;
-
-  &:hover:not(:disabled) {
-    background: var(--surface);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-`;
-
-const ModalActions = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 16px;
-`;
-
-const DangerButton = styled(Button)`
-  background: var(--danger);
-`;
-
 interface RowVm {
   id: string;
   date: string;
+  measuredOn: Date | string;
   weight: number;
   height: number;
   bmi: number;
   category: { label: string; color: string };
   note: string;
+  editable: boolean;
+  deletable: boolean;
+}
+
+/** Returns true if `measuredOn` is today or yesterday in local time. */
+function isEditable(date: Date | string): boolean {
+  const d = new Date(date);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const measured = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  return measured >= yesterday;
+}
+
+/** Returns true if `measuredOn` is within the last 7 days (local time). */
+function isDeletable(date: Date | string): boolean {
+  const d = new Date(date);
+  const now = new Date();
+  const sevenDaysAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+  const measured = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  return measured >= sevenDaysAgo;
 }
 
 function bandFor(key: string) {
@@ -146,27 +85,33 @@ function toVm(m: BodyMetricRow): RowVm {
   return {
     id: m.id,
     date: formatDate(m.measuredOn),
+    measuredOn: m.measuredOn,
     weight,
     height,
     bmi: Number(bmi.toFixed(1)),
     category: { label: band.label, color: band.color },
     note: m.note ?? "",
+    editable: isEditable(m.measuredOn),
+    deletable: isDeletable(m.measuredOn),
   };
 }
 
 /**
- * Tabular history of body-metric entries with a confirm-delete modal.
+ * Tabular history of body-metric entries with edit and delete modals.
  * Renders a desktop `<table>` and a mobile card list, swapping via CSS.
+ * Edit is restricted to today/yesterday entries; delete to entries ≤ 7 days old.
+ * The history section scrolls vertically with a 400 px max-height.
  *
  * @param props - See {@link Props}.
  * @returns A card containing the entry history.
  */
-export default function MetricsTable({ metrics, onDelete, loading }: Props) {
+export default function MetricsTable({ metrics, onDelete, onEdit, loading }: Props) {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [editingRow, setEditingRow] = useState<{ id: string; weight: string; date: string } | null>(null);
 
   if (metrics.length === 0) {
     return (
-      <Card>
+      <Card id="wellness-history">
         <SectionTitle>History</SectionTitle>
         <Subtle>No entries yet.</Subtle>
       </Card>
@@ -182,76 +127,96 @@ export default function MetricsTable({ metrics, onDelete, loading }: Props) {
     setPendingDeleteId(null);
   }
 
+  async function handleSaveEdit() {
+    if (!editingRow) return;
+    const newWeight = parseFloat(editingRow.weight);
+    if (isNaN(newWeight) || newWeight <= 0) return;
+    await onEdit(editingRow.id, newWeight);
+    setEditingRow(null);
+  }
+
+  function renderActions(r: RowVm) {
+    if (!r.editable && !r.deletable) return "—";
+    return (
+      <ActionGroup>
+        {r.editable && (
+          <EditButton
+            type="button"
+            aria-label={`Edit entry from ${r.date}`}
+            disabled={loading}
+            onClick={() => setEditingRow({ id: r.id, weight: r.weight.toFixed(1), date: r.date })}
+          >
+            Edit
+          </EditButton>
+        )}
+        {r.deletable && (
+          <IconButton
+            type="button"
+            aria-label={`Delete entry from ${r.date}`}
+            disabled={loading}
+            onClick={() => setPendingDeleteId(r.id)}
+          >
+            Delete
+          </IconButton>
+        )}
+      </ActionGroup>
+    );
+  }
+
   return (
-    <Card>
+    <Card id="wellness-history">
       <SectionTitle>History</SectionTitle>
 
-      <DesktopWrap>
-        <Table>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Weight (kg)</th>
-              <th>Height (cm)</th>
-              <th>BMI</th>
-              <th>Category</th>
-              <th>Note</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} data-testid="metrics-row">
-                <td>{r.date}</td>
-                <td>{r.weight.toFixed(1)}</td>
-                <td>{r.height.toFixed(1)}</td>
-                <td>{r.bmi.toFixed(1)}</td>
-                <td>
-                  <Pill $bg={r.category.color}>{r.category.label}</Pill>
-                </td>
-                <td>{r.note}</td>
-                <td>
-                  <IconButton
-                    type="button"
-                    aria-label={`Delete entry from ${r.date}`}
-                    disabled={loading}
-                    onClick={() => setPendingDeleteId(r.id)}
-                  >
-                    Delete
-                  </IconButton>
-                </td>
+      <ScrollContainer>
+        <DesktopWrap>
+          <Table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Weight (kg)</th>
+                <th>Height (cm)</th>
+                <th>BMI</th>
+                <th>Category</th>
+                <th>Note</th>
+                <th>Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </Table>
-      </DesktopWrap>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id} data-testid="metrics-row">
+                  <td>{r.date}</td>
+                  <td>{r.weight.toFixed(1)}</td>
+                  <td>{r.height.toFixed(1)}</td>
+                  <td>{r.bmi.toFixed(1)}</td>
+                  <td>
+                    <Pill $bg={r.category.color}>{r.category.label}</Pill>
+                  </td>
+                  <td>{r.note}</td>
+                  <td>{renderActions(r)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </DesktopWrap>
 
-      <MobileWrap>
-        {rows.map((r) => (
-          <RowCard key={r.id} data-testid="metrics-mobile-row">
-            <Cell>
-              <strong>{r.date}</strong>
-            </Cell>
-            <Cell>
-              <Pill $bg={r.category.color}>{r.category.label}</Pill>
-            </Cell>
-            <Cell>Weight: {r.weight.toFixed(1)} kg</Cell>
-            <Cell>BMI: {r.bmi.toFixed(1)}</Cell>
-            <Cell>Height: {r.height.toFixed(1)} cm</Cell>
-            <Cell>
-              <IconButton
-                type="button"
-                aria-label={`Delete entry from ${r.date}`}
-                disabled={loading}
-                onClick={() => setPendingDeleteId(r.id)}
-              >
-                Delete
-              </IconButton>
-            </Cell>
-            {r.note ? <FullCell>{r.note}</FullCell> : null}
-          </RowCard>
-        ))}
-      </MobileWrap>
+        <MobileWrap>
+          {rows.map((r) => (
+            <RowCard key={r.id} data-testid="metrics-mobile-row">
+              <Cell>
+                <strong>{r.date}</strong>
+              </Cell>
+              <Cell>
+                <Pill $bg={r.category.color}>{r.category.label}</Pill>
+              </Cell>
+              <Cell>Weight: {r.weight.toFixed(1)} kg</Cell>
+              <Cell>BMI: {r.bmi.toFixed(1)}</Cell>
+              <Cell>Height: {r.height.toFixed(1)} cm</Cell>
+              <Cell>{renderActions(r)}</Cell>
+              {r.note ? <FullCell>{r.note}</FullCell> : null}
+            </RowCard>
+          ))}
+        </MobileWrap>
+      </ScrollContainer>
 
       <Modal
         isOpen={pendingDeleteId !== null}
@@ -267,6 +232,37 @@ export default function MetricsTable({ metrics, onDelete, loading }: Props) {
           <DangerButton type="button" onClick={confirmDelete}>
             Delete
           </DangerButton>
+        </ModalActions>
+      </Modal>
+
+      <Modal
+        isOpen={editingRow !== null}
+        onClose={() => setEditingRow(null)}
+        title="Edit weight"
+        size="sm"
+      >
+        <FormRow>
+          <FormLabel>Date</FormLabel>
+          <span>{editingRow?.date}</span>
+        </FormRow>
+        <FormRow>
+          <FormLabel>Weight (kg)</FormLabel>
+          <EditInput
+            type="number"
+            step="0.1"
+            value={editingRow?.weight ?? ""}
+            onChange={(e) =>
+              setEditingRow((prev) => (prev ? { ...prev, weight: e.target.value } : null))
+            }
+          />
+        </FormRow>
+        <ModalActions>
+          <GhostButton type="button" onClick={() => setEditingRow(null)}>
+            Cancel
+          </GhostButton>
+          <Button type="button" onClick={handleSaveEdit}>
+            Save
+          </Button>
         </ModalActions>
       </Modal>
     </Card>
