@@ -17,8 +17,6 @@ export type LastUpdatedBadgeProps = {
   prefix?: string;
   /** Show the leading check mark. Defaults to true. */
   showCheck?: boolean;
-  /** Optional className for layout overrides. */
-  className?: string;
 };
 
 function formatRelativeTime(date: Date | string): string {
@@ -87,12 +85,11 @@ export default function LastUpdatedBadge({
   updatedAt,
   prefix = "Last updated by",
   showCheck = true,
-  className,
 }: LastUpdatedBadgeProps) {
   const displayName = resolveDisplayName(name, email, userId, currentUserId);
   const relative = formatRelativeTime(updatedAt);
   return (
-    <Pill className={className} title={`Last updated ${relative}`}>
+    <Pill title={`Last updated ${relative}`}>
       {showCheck ? "✓ " : ""}
       {prefix}{" "}
       <strong>{displayName}</strong>

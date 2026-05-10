@@ -14,22 +14,8 @@ const DynamicProfile3 = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: "100vh",
-          background: "#0a0a0a",
-        }}
-      >
-        <div
-          style={{
-            color: "#a1a1aa",
-            fontSize: "1.2rem",
-            fontWeight: "500",
-          }}
-        >
+      <div className="flex items-center justify-center min-h-screen bg-[#0a0a0a]">
+        <div className="text-[#a1a1aa] text-[1.2rem] font-medium">
           Loading...
         </div>
       </div>
@@ -62,19 +48,7 @@ export default function HomePage() {
 
   if (hasError) {
     return (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: "100vh",
-          background: "#0a0a0a",
-          color: "#a1a1aa",
-          fontSize: "1.2rem",
-          padding: "20px",
-          textAlign: "center",
-        }}
-      >
+      <div className="flex items-center justify-center min-h-screen bg-[#0a0a0a] text-[#a1a1aa] text-[1.2rem] p-5 text-center">
         Failed to load profile data. Please try again later.
       </div>
     );

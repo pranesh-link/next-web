@@ -1,7 +1,11 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import BMICalculator from "@/_components/bmi-calculator/BMICalculator";
-
-export default function BMICalculatorPage() {
-  return <BMICalculator />;
+/**
+ * Legacy BMI calculator route. Permanently moved to the Coupletastic
+ * Lifestyle module. Redirects to the new wellness tracker.
+ *
+ * @returns Never — issues a server-side redirect.
+ */
+export default function LegacyBmiCalculatorPage(): never {
+  redirect("/couple/lifestyle/wellness");
 }

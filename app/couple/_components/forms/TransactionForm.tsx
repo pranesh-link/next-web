@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { z } from "zod";
-import styled, { keyframes } from "styled-components";
 import {
   FinanceButton,
   FinanceButtonOutline,
@@ -11,153 +9,28 @@ import {
   FinanceLabel,
   FinanceErrorText,
 } from "@/couple/_components/theme/styled-primitives";
+import {
+  ActionRow,
+  FieldGroup,
+  FormWrapper,
+  Spinner,
+  StyledTextarea,
+} from "./TransactionForm.styled";
+import {
+  CATEGORIES,
+  transactionSchema,
+  type TransactionData,
+  type TransactionFormProps,
+} from "./_TransactionForm/types";
+import TypeRadioGroup from "./_TransactionForm/TypeRadioGroup";
 
-const CATEGORIES = [
-  "Food",
-  "Rent",
-  "Transport",
-  "Shopping",
-  "Entertainment",
-  "Health",
-  "Education",
-  "Salary",
-  "Freelance",
-  "Investment",
-  "EMI",
-  "Utilities",
-  "Other",
-] as const;
-
-const transactionSchema = z.object({
-  accountId: z.string().min(1, "Account is required"),
-  amount: z.number().positive("Amount must be positive"),
-  type: z.enum(["INCOME", "EXPENSE"]),
-  category: z.string().min(1, "Category is required"),
-  description: z.string().min(1, "Description is required").max(200),
-  date: z.string().min(1, "Date is required"),
-});
-
-type TransactionData = z.infer<typeof transactionSchema>;
-
-interface Account {
-  id: string;
-  name: string;
-}
-
-interface TransactionFormProps {
-  accounts: Account[];
-  initialData?: Partial<TransactionData>;
-  onSubmit: (data: TransactionData) => Promise<void>;
-  onCancel?: () => void;
-  isLoading?: boolean;
-}
-
-/* ── Styled Components ── */
-
-const FormWrapper = styled.form`
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 20px;
-
-  @media screen and (max-width: 480px) {
-    gap: 16px;
-  }
-`;
-
-const FieldGroup = styled.div``;
-
-const RadioGroup = styled.div`
-  display: flex;
-  gap: 16px;
-  margin-top: 4px;
-`;
-
-const RadioLabel = styled.label<{ $variant?: "income" | "expense" }>`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  color: ${(p) =>
-    p.$variant === "income"
-      ? "#16a34a"
-      : p.$variant === "expense"
-        ? "#dc2626"
-        : "#64748b"};
-`;
-
-const RadioCircle = styled.span<{ $checked?: boolean; $color?: string }>`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: 2px solid
-    ${(p) => (p.$checked ? p.$color || "#3b82f6" : "#d1d5db")};
-  transition: border-color 0.2s ease, background 0.2s ease;
-
-  &::after {
-    content: "";
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: ${(p) =>
-      p.$checked ? p.$color || "#3b82f6" : "transparent"};
-    transition: background 0.2s ease;
-  }
-`;
-
-const HiddenRadio = styled.input`
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-`;
-
-const StyledTextarea = styled.textarea`
-  background: #ffffff;
-  border: 1px solid #d1d5db;
-  color: #1e293b;
-  border-radius: 10px;
-  padding: 10px 14px;
-  font-size: 14px;
-  width: 100%;
-  font-family: inherit;
-  min-height: 80px;
-  resize: vertical;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-
-  &:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
-  }
-
-  &::placeholder {
-    color: #9ca3af;
-  }
-`;
-
-const ActionRow = styled.div`
-  display: flex;
-  gap: 12px;
-  padding-top: 4px;
-`;
-
-const spin = keyframes`
-  to { transform: rotate(360deg); }
-`;
-
-const Spinner = styled.svg`
-  width: 16px;
-  height: 16px;
-  margin-right: 8px;
-  animation: ${spin} 0.7s linear infinite;
-`;
-
-/* ── Component ── */
-
+/**
+ * Controlled form for creating or editing a financial transaction.
+ *
+ * @param props - See {@link TransactionFormProps}.
+ * @returns A styled-components form. Calls `onSubmit` with validated data on success.
+ * @remarks Client component. Mobile-first responsive.
+ */
 export default function TransactionForm({
   accounts,
   initialData,
@@ -227,29 +100,11 @@ export default function TransactionForm({
       {/* Type */}
       <FieldGroup>
         <FinanceLabel as="span">Type</FinanceLabel>
-        <RadioGroup>
-          {(["INCOME", "EXPENSE"] as const).map((t) => {
-            const isIncome = t === "INCOME";
-            const color = isIncome ? "#16a34a" : "#dc2626";
-            return (
-              <RadioLabel
-                key={t}
-                $variant={isIncome ? "income" : "expense"}
-              >
-                <HiddenRadio
-                  type="radio"
-                  name="txnType"
-                  value={t}
-                  checked={form.type === t}
-                  onChange={() => updateField("type", t)}
-                  disabled={isLoading}
-                />
-                <RadioCircle $checked={form.type === t} $color={color} />
-                {isIncome ? "Income" : "Expense"}
-              </RadioLabel>
-            );
-          })}
-        </RadioGroup>
+        <TypeRadioGroup
+          value={form.type}
+          onChange={(t) => updateField("type", t)}
+          disabled={isLoading}
+        />
         {errors.type && <FinanceErrorText>{errors.type}</FinanceErrorText>}
       </FieldGroup>
 

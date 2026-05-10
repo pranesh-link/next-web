@@ -70,12 +70,6 @@ export interface IConfigData {
   appConfig: IAppConfig;
 }
 
-export type BMICalculatorFields = "heightInCm" | "weightInKg";
-
-export type BMICalculatorFormData = {
-  [key in BMICalculatorFields]: string;
-};
-
 type BMIRangeLabels =
   | "underWeight"
   | "healthyWeight"

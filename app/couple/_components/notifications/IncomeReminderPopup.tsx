@@ -4,8 +4,8 @@ import React, { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import styled, { keyframes } from "styled-components";
 import { useNotifications } from "./NotificationProvider";
+import { EASING } from "@/couple/_constants/theme";
 
-const EASING = "cubic-bezier(0.16, 1, 0.3, 1)";
 const AUTO_DISMISS_MS = 10_000;
 
 const slideIn = keyframes`

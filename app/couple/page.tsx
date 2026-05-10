@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import styled from "styled-components";
-
-const EASING = "cubic-bezier(0.16, 1, 0.3, 1)";
+import { EASING } from "@/couple/_constants/theme";
 
 /* ── Styled Components ── */
 
@@ -107,6 +106,10 @@ const ComingSoonBadge = styled.span`
   letter-spacing: 0.5px;
 `;
 
+const PlainLink = styled(Link)`
+  text-decoration: none;
+`;
+
 /* ── Component ── */
 
 const modules = [
@@ -149,17 +152,13 @@ export default function CoupleDashboard() {
         <ModulesGrid>
           {modules.map((mod) =>
             mod.active ? (
-              <Link
-                key={mod.name}
-                href={mod.href!}
-                style={{ textDecoration: "none" }}
-              >
+              <PlainLink key={mod.name} href={mod.href!}>
                 <ModuleCard $active>
                   <ModuleIcon>{mod.icon}</ModuleIcon>
                   <ModuleName>{mod.name}</ModuleName>
                   <ModuleDesc>{mod.desc}</ModuleDesc>
                 </ModuleCard>
-              </Link>
+              </PlainLink>
             ) : (
               <ModuleCard key={mod.name}>
                 <ComingSoonBadge>Coming Soon</ComingSoonBadge>

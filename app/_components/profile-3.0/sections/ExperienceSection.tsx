@@ -1,270 +1,46 @@
 "use client";
 import React, { useContext, useState } from "react";
-import styled from "styled-components";
 import { ProfileContext } from "@/_store/profile/page/context";
-import { DarkCard } from "../shared/Card";
 import { DarkProjectModal } from "../shared/ProjectModal";
 import { useScrollReveal } from "@/_hooks/use-scroll-reveal";
+import {
+  CompanyHeader,
+  CompanyInfo,
+  CompanyName,
+  Designation,
+  Duration,
+  ExpandArrow,
+  ExpandToggle,
+  ExperienceCard,
+  ProjectBadge,
+  ProjectBadges,
+  ProjectsTitle,
+  Responsibilities,
+  ScrollAnchor,
+  SectionContainer,
+  SectionTitle,
+  Timeline,
+  TimelineItem,
+} from "./ExperienceSection.styled";
 
-const SectionContainer = styled.section`
-  max-width: 1000px;
-  width: 100%;
-  margin: 0 auto;
-  padding: 80px 24px;
-  box-sizing: border-box;
-  position: relative;
+/**
+ * A project entry shown in the experience timeline.
+ */
+type ProjectEntry = {
+  /** Project title used as badge label and modal heading. */
+  title: string;
+  /** HTML/markdown description rendered inside the modal. */
+  description: string;
+  /** Optional comma-separated tech stack summary. */
+  softwareTech?: string;
+};
 
-  @media screen and (max-width: 768px) {
-    padding: 60px 20px;
-  }
-
-  @media screen and (max-width: 480px) {
-    padding: 40px 16px;
-  }
-`;
-
-const ScrollAnchor = styled.div`
-  position: absolute;
-  top: -84px;
-  left: 0;
-  height: 1px;
-  width: 1px;
-  pointer-events: none;
-`;
-
-const SectionTitle = styled.h2`
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--accent);
-  text-transform: uppercase;
-  letter-spacing: 3px;
-  margin: 0 0 48px 0;
-  text-align: center;
-
-  @media screen and (max-width: 768px) {
-    margin-bottom: 36px;
-  }
-`;
-
-const Timeline = styled.div`
-  position: relative;
-  padding-left: 32px;
-
-  &::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background: linear-gradient(
-      180deg,
-      var(--accent) 0%,
-      #22d3ee 50%,
-      rgba(34, 211, 238, 0.2) 100%
-    );
-    border-radius: 1px;
-  }
-
-  @media screen and (max-width: 768px) {
-    padding-left: 24px;
-  }
-
-  @media screen and (max-width: 480px) {
-    padding-left: 16px;
-  }
-`;
-
-const TimelineItem = styled.div<{ $visible: boolean; $index?: number }>`
-  position: relative;
-  margin-bottom: 24px;
-  opacity: ${(props) => (props.$visible ? 1 : 0)};
-  transform: translateY(${(props) => (props.$visible ? "0" : "40px")}) scale(${(props) => (props.$visible ? 1 : 0.97)});
-  filter: blur(${(props) => (props.$visible ? "0px" : "6px")});
-  transition: opacity 1s cubic-bezier(0.16, 1, 0.3, 1) ${(props) => (props.$index || 0) * 0.15}s,
-    transform 1.2s cubic-bezier(0.16, 1, 0.3, 1) ${(props) => (props.$index || 0) * 0.15}s,
-    filter 0.8s cubic-bezier(0.16, 1, 0.3, 1) ${(props) => (props.$index || 0) * 0.15}s;
-  will-change: opacity, transform, filter;
-
-  &::before {
-    content: "";
-    position: absolute;
-    left: -39px;
-    top: 28px;
-    width: 12px;
-    height: 12px;
-    background: var(--bg);
-    border: 2px solid var(--accent);
-    border-radius: 50%;
-    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
-  }
-
-  @media screen and (max-width: 768px) {
-    &::before {
-      left: -30px;
-      width: 10px;
-      height: 10px;
-    }
-  }
-
-  @media screen and (max-width: 480px) {
-    &::before {
-      left: -22px;
-      width: 8px;
-      height: 8px;
-    }
-  }
-`;
-
-const ExperienceCard = styled(DarkCard)`
-  margin: 0;
-`;
-
-const CompanyHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-  gap: 12px;
-
-  @media screen and (max-width: 768px) {
-    flex-direction: column;
-    gap: 8px;
-  }
-`;
-
-const CompanyInfo = styled.div`
-  flex: 1;
-`;
-
-const CompanyName = styled.h3`
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--text);
-  margin: 0 0 4px 0;
-
-  @media screen and (max-width: 768px) {
-    font-size: 18px;
-  }
-`;
-
-const Designation = styled.p`
-  font-size: 16px;
-  font-weight: 500;
-  color: var(--text-dim);
-  margin: 0;
-
-  @media screen and (max-width: 768px) {
-    font-size: 14px;
-  }
-`;
-
-const Duration = styled.div`
-  font-size: 13px;
-  color: var(--text-muted);
-  font-weight: 500;
-  background: var(--surface);
-  border: 1px solid var(--surface-hover);
-  padding: 6px 12px;
-  border-radius: 6px;
-  white-space: nowrap;
-`;
-
-const Responsibilities = styled.div<{ $expanded: boolean }>`
-  font-size: 15px;
-  line-height: 1.7;
-  color: var(--text-dim);
-  margin: 0 0 8px 0;
-  max-height: ${(props) => (props.$expanded ? "2000px" : "4.2em")};
-  overflow: hidden;
-  position: relative;
-  transition: max-height 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-
-  ${(props) =>
-    !props.$expanded &&
-    `
-    mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
-    -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
-  `}
-
-  p { margin: 0 0 12px 0; }
-  ul, ol { margin: 8px 0; padding-left: 24px; }
-  li { margin: 4px 0; }
-  strong { color: var(--text); font-weight: 600; }
-
-  @media screen and (max-width: 768px) {
-    font-size: 14px;
-  }
-`;
-
-const ExpandToggle = styled.button`
-  background: none;
-  border: none;
-  color: var(--accent-light);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  padding: 4px 0;
-  margin-bottom: 16px;
-  font-family: inherit;
-  transition: color 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-
-  &:hover {
-    color: var(--accent-lighter);
-  }
-`;
-
-const ExpandArrow = styled.span<{ $expanded: boolean }>`
-  display: inline-block;
-  transition: transform 0.3s ease;
-  transform: rotate(${(props) => (props.$expanded ? "180deg" : "0deg")});
-  font-size: 10px;
-`;
-
-const ProjectsTitle = styled.h4`
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-muted);
-  margin: 0 0 12px 0;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-`;
-
-const ProjectBadges = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-`;
-
-const ProjectBadge = styled.button`
-  background: rgba(59, 130, 246, 0.08);
-  color: var(--accent-light);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  border-radius: 20px;
-  padding: 8px 16px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  font-family: inherit;
-
-  &:hover {
-    background: rgba(59, 130, 246, 0.15);
-    border-color: rgba(59, 130, 246, 0.4);
-    color: #a5b4fc;
-    transform: translateY(-1px);
-  }
-
-  @media screen and (max-width: 768px) {
-    font-size: 12px;
-    padding: 6px 12px;
-  }
-`;
-
+/**
+ * Dark-themed professional experience timeline used in profile-3.0.
+ *
+ * @returns The experience section element with expandable cards and
+ *   scroll-reveal animations.
+ */
 export const DarkExperienceSection: React.FC = () => {
   const {
     data: {
@@ -273,11 +49,9 @@ export const DarkExperienceSection: React.FC = () => {
   } = useContext(ProfileContext);
   const { ref, isVisible } = useScrollReveal({ threshold: 0.05 });
 
-  const [selectedProject, setSelectedProject] = useState<{
-    title: string;
-    description: string;
-    softwareTech?: string;
-  } | null>(null);
+  const [selectedProject, setSelectedProject] = useState<ProjectEntry | null>(
+    null
+  );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
 
@@ -290,11 +64,7 @@ export const DarkExperienceSection: React.FC = () => {
     });
   };
 
-  const handleProjectClick = (project: {
-    title: string;
-    description: string;
-    softwareTech?: string;
-  }) => {
+  const handleProjectClick = (project: ProjectEntry) => {
     setSelectedProject(project);
     setIsModalOpen(true);
   };

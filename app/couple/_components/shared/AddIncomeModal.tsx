@@ -1,187 +1,64 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import styled from "styled-components";
-import ReactSelect, { StylesConfig } from "react-select";
+import ReactSelect from "react-select";
 import Modal from "@/couple/_components/shared/Modal";
 import { createTransaction } from "@/couple/finance/_actions/transactions";
 import { setSalaryAccount } from "@/couple/finance/_actions/accounts";
+import {
+  type SelectOption,
+  getDefaultDescription,
+  getTodayString,
+  selectStyles,
+} from "./_AddIncomeModal/utils";
+import {
+  Checkbox,
+  CheckboxLabel,
+  CheckboxRow,
+  EmptyMessage,
+  ErrorText,
+  FormGroup,
+  Label,
+  ModalActions,
+  ModalButton,
+  ModalInput,
+  WarningAlert,
+} from "./_AddIncomeModal/styled";
 
+/** Account row passed to {@link AddIncomeModal}. */
+interface AccountOption {
+  /** Account id. */
+  id: string;
+  /** Display name. */
+  name: string;
+  /** Account type (e.g. `SAVINGS`). */
+  type: string;
+  /** Current balance. */
+  balance: number;
+  /** Whether this account is currently flagged as the salary account. */
+  isSalaryAccount: boolean;
+}
+
+/** Props for {@link AddIncomeModal}. */
 interface AddIncomeModalProps {
+  /** Whether the modal is open. */
   isOpen: boolean;
+  /** Called when the user dismisses the modal. */
   onClose: () => void;
-  accounts: Array<{
-    id: string;
-    name: string;
-    type: string;
-    balance: number;
-    isSalaryAccount: boolean;
-  }>;
+  /** Accounts available for crediting income to. */
+  accounts: AccountOption[];
+  /** Optional month label used to seed the default description. */
   month?: string;
+  /** Called after a successful income transaction is created. */
   onSuccess: () => void;
 }
 
-function getDefaultDescription(month?: string): string {
-  let targetDate: Date;
-  if (month) {
-    targetDate = new Date(Date.parse(month + " 1"));
-  } else {
-    const now = new Date();
-    targetDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  }
-  const short = targetDate.toLocaleString("en-US", {
-    month: "short",
-    year: "numeric",
-  });
-  return `Salary for month ${short}`;
-}
-
-function getTodayString(): string {
-  const d = new Date();
-  return d.toISOString().split("T")[0];
-}
-
-const FormGroup = styled.div`
-  margin-bottom: 16px;
-`;
-
-const Label = styled.label`
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-  margin-bottom: 6px;
-`;
-
-type SelectOption = { value: string; label: string };
-
-const selectStyles: StylesConfig<SelectOption, false> = {
-  control: (base, state) => ({
-    ...base,
-    borderRadius: 8,
-    border: `1px solid ${state.isFocused ? "#3b82f6" : "rgba(0,0,0,0.10)"}`,
-    background: "#f8fafc",
-    fontFamily: "inherit",
-    fontSize: 14,
-    boxShadow: "none",
-    minHeight: 42,
-    cursor: "pointer",
-    "&:hover": { borderColor: "#3b82f6" },
-  }),
-  singleValue: (base) => ({ ...base, color: "#1a1a2e" }),
-  menu: (base) => ({
-    ...base,
-    background: "#ffffff",
-    border: "1px solid rgba(0,0,0,0.10)",
-    borderRadius: 8,
-    zIndex: 9999,
-    boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-  }),
-  option: (base, state) => ({
-    ...base,
-    fontSize: 14,
-    cursor: "pointer",
-    background: state.isSelected
-      ? "#3b82f6"
-      : state.isFocused
-        ? "rgba(0,0,0,0.03)"
-        : "transparent",
-    color: state.isSelected ? "#fff" : "#1a1a2e",
-    "&:active": { background: "rgba(0,0,0,0.03)" },
-  }),
-  indicatorSeparator: () => ({ display: "none" }),
-  dropdownIndicator: (base) => ({ ...base, color: "#94a3b8", padding: "0 8px" }),
-  placeholder: (base) => ({ ...base, color: "#94a3b8" }),
-  input: (base) => ({ ...base, color: "#1a1a2e" }),
-  menuPortal: (base) => ({ ...base, zIndex: 9999 }),
-};
-
-const ModalInput = styled.input`
-  width: 100%;
-  padding: 10px 14px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
-  font-family: inherit;
-  font-size: 14px;
-  box-sizing: border-box;
-  &:focus {
-    outline: none;
-    border-color: var(--accent);
-  }
-`;
-
-const ModalActions = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 20px;
-`;
-
-const ModalButton = styled.button<{ $primary?: boolean }>`
-  padding: 10px 16px;
-  border-radius: 8px;
-  border: none;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-  background: ${(p) => (p.$primary ? "var(--accent)" : "var(--surface)")};
-  color: ${(p) => (p.$primary ? "#ffffff" : "var(--text)")};
-  &:hover:not(:disabled) {
-    filter: brightness(1.1);
-  }
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-`;
-
-const ErrorText = styled.p`
-  color: #ef4444;
-  font-size: 13px;
-  margin: 8px 0 0;
-`;
-
-const CheckboxRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-`;
-
-const Checkbox = styled.input`
-  width: 16px;
-  height: 16px;
-  accent-color: var(--accent);
-  cursor: pointer;
-`;
-
-const CheckboxLabel = styled.label`
-  font-size: 13px;
-  color: var(--text);
-  cursor: pointer;
-`;
-
-const WarningAlert = styled.div`
-  background: rgba(251, 191, 36, 0.12);
-  border: 1px solid rgba(251, 191, 36, 0.3);
-  color: #b45309;
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-size: 13px;
-  margin-top: 8px;
-`;
-
-const EmptyMessage = styled.p`
-  color: var(--text-muted);
-  font-size: 14px;
-  text-align: center;
-  padding: 20px 0;
-`;
-
+/**
+ * Modal form for recording an income (salary) transaction against an account.
+ *
+ * @param props - See {@link AddIncomeModalProps}.
+ * @remarks Calls `createTransaction` and optionally `setSalaryAccount` server actions.
+ */
 export default function AddIncomeModal({
   isOpen,
   onClose,
@@ -195,9 +72,7 @@ export default function AddIncomeModal({
   const [accountId, setAccountId] = useState(defaultAccountId);
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(getTodayString());
-  const [description, setDescription] = useState(
-    getDefaultDescription(month)
-  );
+  const [description, setDescription] = useState(getDefaultDescription(month));
   const [setAsSalary, setSetAsSalary] = useState(!salaryAccount);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -245,9 +120,7 @@ export default function AddIncomeModal({
       onSuccess();
       onClose();
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to record income"
-      );
+      setError(err instanceof Error ? err.message : "Failed to record income");
     } finally {
       setSubmitting(false);
     }
@@ -256,9 +129,7 @@ export default function AddIncomeModal({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Add Income" size="sm">
       {accounts.length === 0 ? (
-        <EmptyMessage>
-          Create an account first to record income.
-        </EmptyMessage>
+        <EmptyMessage>Create an account first to record income.</EmptyMessage>
       ) : (
         <form onSubmit={handleSubmit}>
           <FormGroup>
@@ -266,7 +137,8 @@ export default function AddIncomeModal({
             <ReactSelect<SelectOption>
               options={accounts.map((acct) => ({
                 value: acct.id,
-                label: acct.name + (acct.isSalaryAccount ? " (Salary Account)" : ""),
+                label:
+                  acct.name + (acct.isSalaryAccount ? " (Salary Account)" : ""),
               }))}
               value={
                 accountId
@@ -274,7 +146,8 @@ export default function AddIncomeModal({
                       value: accountId,
                       label:
                         (accounts.find((a) => a.id === accountId)?.name ?? "") +
-                        (accounts.find((a) => a.id === accountId)?.isSalaryAccount
+                        (accounts.find((a) => a.id === accountId)
+                          ?.isSalaryAccount
                           ? " (Salary Account)"
                           : ""),
                     }
@@ -295,7 +168,9 @@ export default function AddIncomeModal({
               styles={selectStyles}
               isSearchable={false}
               placeholder="Select account..."
-              menuPortalTarget={typeof document !== "undefined" ? document.body : null}
+              menuPortalTarget={
+                typeof document !== "undefined" ? document.body : null
+              }
               menuPosition="fixed"
             />
           </FormGroup>

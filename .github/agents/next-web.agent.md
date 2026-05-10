@@ -99,6 +99,156 @@ prisma/
 4. **Pull before push** — `git pull --rebase origin master` before pushing
 5. **Auth-guard everything** — server actions use `auth()`, v1 API routes use `authenticateRequest()`
 6. **Update memory** — after significant decisions, update `/memories/repo/coupletastic-architecture.md`
+7. **300-line cap** — every `.ts` / `.tsx` / `.js` / `.jsx` file must be ≤ 300 lines (see File Size Limit below)
+8. **Document new + touched code** — every exported symbol must have JSDoc/TSDoc (see Documentation Standard below)
+9. **No inline styles** — never use the `style={{ ... }}` prop on JSX elements (see No Inline Styles below)
+10. **No duplicated code** — extract repeated logic into shared helpers (see DRY / No Duplication below)
+11. **KISS** — keep code simple; reject over-engineering (see KISS Principle below)
+12. **Tests are mandatory** — every new feature/fix ships with tests (see Testing Standard below)
+
+## DRY / No Duplication
+- **Rule**: if the same expression, calculation, formatter, regex, or block of logic appears in **2 or more places**, extract it into a shared helper. No copy-paste.
+- **Where helpers go**:
+  - Finance-specific business logic (couple-aware queries, financial math, schedule parsing) → `app/_services/finance/<area>.ts`
+  - Generic UI/data formatters (currency, dates, percentages, type icons/labels) → `app/_utils/finance/format.ts` (create if missing) or the closest existing `_utils.ts`
+  - Module-local helpers used across files in one feature folder → `<feature>/_utils.ts` in that folder
+  - React hooks reused in 2+ components → `app/_hooks/<useThing>.ts` (global) or `<feature>/_hooks/<useThing>.ts` (local)
+  - Styled-component atoms reused across files → `_styled.ts` in the nearest shared folder
+- **Banned patterns**:
+  - Two files defining their own `formatCurrency`, `typeIcon`, `typeLabel`, `EASING`, etc. — must be one source of truth.
+  - Two server actions repeating the same Zod schema — extract to a `<area>-helpers.ts`.
+  - Two components inlining the same `useEffect` cleanup or the same `useState` + setter pattern — extract a hook.
+  - Identical SQL/Prisma query bodies in 2+ actions — extract a service function.
+- **When you touch a file**: if you spot duplication during your edit, refactor it as part of the same change set (same PR/commit). Do NOT leave a TODO; do not "fix later".
+- **When you create a new file**: before writing a helper, search the workspace (`grep_search` / `semantic_search`) for an existing implementation. Reuse first; create only if nothing exists.
+- **Tolerable exceptions** (do NOT extract):
+  - Trivial 1–2 line snippets where extraction would HURT readability (e.g. a single `Number(x).toFixed(2)`).
+  - Test fixtures and mocks (each test owns its setup).
+  - Generated code (`prisma/migrations/**`, `next-env.d.ts`).
+- **Verification when auditing**: search for repeated function names, repeated Zod schemas, repeated literal strings (color hexes, easing curves, regex patterns), and repeated 3+ line blocks. Consolidate into one canonical helper, then update all call sites.
+
+## KISS Principle (Keep It Simple, Stupid)
+- **Default to the simplest solution that works.** Don't add abstractions until you need them at least twice.
+- **Banned patterns**:
+  - **Premature abstraction**: factories, generic wrappers, dependency injection containers, or "framework" code introduced for a single use case.
+  - **Speculative options**: function parameters / config flags that have no current caller (`enabled`, `mode`, `variant`) — add them when the second use case appears.
+  - **Indirection layers**: `BaseFooFactory → FooBuilder → ConcreteFoo` when a single function works.
+  - **Custom reactive systems**: re-implementing observable patterns, event emitters, or pub-sub when React state + props suffice.
+  - **Manual generic types**: complex `<T extends ...>` gymnastics when a discriminated union or two specific overloads are clearer.
+  - **Cleverness for compactness**: golf-style one-liners, dense ternary chains, regex when a `switch` statement is clearer.
+  - **Unused exports / dead code**: every `export` must have a real consumer.
+- **Preferred patterns**:
+  - One named function over an anonymous IIFE chain.
+  - Inline a helper used in only one file (don't promote it until the second consumer appears).
+  - Early `return` over nested `if/else`.
+  - `switch` or lookup objects over long ternary chains.
+  - Plain `useState` + `useEffect` over custom hooks-of-hooks for one-shot logic.
+  - Server Components when no interactivity is needed (don't reach for `"use client"` reflexively).
+- **When you spot complexity during an edit**: refactor it as part of the same change set if the simplification is local and obvious. If it requires touching 3+ unrelated files, leave a note in the commit body and proceed with the original task.
+- **Exception**: shared utilities used in 2+ places ALREADY justify extraction (per DRY rule above). KISS does NOT override DRY — they reinforce each other.
+
+## Testing Standard (mandatory)
+- **Every new feature, bug fix, or refactor MUST ship with tests.** Untested code does not get committed.
+- **What to test**:
+  - **Server actions** (`app/couple/finance/_actions/**`): Jest unit tests covering the happy path + 1 auth-failure path + 1 validation-failure path. Mock Prisma with a thin in-memory shim or `vitest-mock-extended`-style mocks.
+  - **Pure helpers** (`app/_lib/**`, `app/_utils/**`, `app/_services/finance/**`): Jest unit tests covering all branches.
+  - **React components**: React Testing Library tests covering render + 1 user interaction. Snapshot tests are NOT acceptable as the only test.
+  - **Custom hooks** (`app/_hooks/**`, `<feature>/_hooks/**`): RTL `renderHook` tests covering initial state + at least one state transition.
+  - **API route handlers** (`app/api/**`): Jest tests using `next/server` `NextRequest` mocks; cover happy path + auth-failure path.
+- **What NOT to test**:
+  - Trivial barrel files (only re-exports).
+  - Pure styled-components (`*.styled.ts`).
+  - Auto-generated code (`prisma/migrations/**`, `next-env.d.ts`).
+- **Test location**: co-located in `__tests__/` next to the file under test (e.g. `app/_lib/__tests__/formatters.test.ts` for `app/_lib/formatters.ts`). Filename pattern: `<source>.test.ts` or `<source>.test.tsx`.
+- **Coverage target**: aim for ≥ 80% line coverage on touched files. Run `npm test -- --coverage` to check.
+- **When you fix a bug**: add a failing test FIRST that reproduces the bug, then fix until the test passes (red → green).
+- **When you refactor**: existing tests must still pass without modification; if you must change a test, justify it in the commit message.
+- **Test style**:
+  - Use `describe` + `it` blocks. Test names start with "should …".
+  - One assertion target per `it` block (multiple `expect`s allowed if they verify the same behavior).
+  - Use `beforeEach` for setup; avoid shared mutable state between tests.
+  - Mock external services (Prisma, Auth.js, Gemini, fetch) at the module boundary — never at the global level.
+- **Pre-commit verification**: run `npm test` (or the focused subset for touched files) and confirm all green before committing.
+
+## No Inline Styles
+- **Rule**: if the same expression, calculation, formatter, regex, or block of logic appears in **2 or more places**, extract it into a shared helper. No copy-paste.
+- **Where helpers go**:
+  - Finance-specific business logic (couple-aware queries, financial math, schedule parsing) → `app/_services/finance/<area>.ts`
+  - Generic UI/data formatters (currency, dates, percentages, type icons/labels) → `app/_utils/finance/format.ts` (create if missing) or the closest existing `_utils.ts`
+  - Module-local helpers used across files in one feature folder → `<feature>/_utils.ts` in that folder
+  - React hooks reused in 2+ components → `app/_hooks/<useThing>.ts` (global) or `<feature>/_hooks/<useThing>.ts` (local)
+  - Styled-component atoms reused across files → `_styled.ts` in the nearest shared folder
+- **Banned patterns**:
+  - Two files defining their own `formatCurrency`, `typeIcon`, `typeLabel`, `EASING`, etc. — must be one source of truth.
+  - Two server actions repeating the same Zod schema — extract to a `<area>-helpers.ts`.
+  - Two components inlining the same `useEffect` cleanup or the same `useState` + setter pattern — extract a hook.
+  - Identical SQL/Prisma query bodies in 2+ actions — extract a service function.
+- **When you touch a file**: if you spot duplication during your edit, refactor it as part of the same change set (same PR/commit). Do NOT leave a TODO; do not "fix later".
+- **When you create a new file**: before writing a helper, search the workspace (`grep_search` / `semantic_search`) for an existing implementation. Reuse first; create only if nothing exists.
+- **Tolerable exceptions** (do NOT extract):
+  - Trivial 1–2 line snippets where extraction would HURT readability (e.g. a single `Number(x).toFixed(2)`).
+  - Test fixtures and mocks (each test owns its setup).
+  - Generated code (`prisma/migrations/**`, `next-env.d.ts`).
+- **Verification when auditing**: search for repeated function names, repeated Zod schemas, repeated literal strings (color hexes, easing curves, regex patterns), and repeated 3+ line blocks. Consolidate into one canonical helper, then update all call sites.
+
+## No Inline Styles
+- **Banned**: `<div style={{ color: "red", marginTop: 8 }}>` and any other JSX `style={{}}` prop usage.
+- **Why**: bypasses the styling system, defeats theming via CSS variables, breaks SSR class hashing, and scatters style logic across markup.
+- **Fix per module**:
+  - Finance / couple / styled-components modules → extend the existing styled component, create a new styled component, or use `$transient` props for dynamic values (e.g. `$active`, `$variant`, `$progress`).
+  - Legacy profile / admin (SCSS + Tailwind) → use Tailwind utility classes or add a class in the relevant `.scss` file.
+- **Dynamic CSS variables**: when you need a runtime CSS custom property (e.g. `--index` for staggered animation), define a styled component that accepts a transient prop and sets the variable in its template literal:
+  ```tsx
+  const Item = styled.div<{ $index: number }>`--index: ${(p) => p.$index};`;
+  ```
+- **Allowed exceptions** (rare):
+  - SVG runtime attributes that have no CSS equivalent (e.g. `style={{ strokeDashoffset: progress }}` when the value comes from JS animation state). Prefer styled-components with transient props first.
+  - Third-party library escape hatches that REQUIRE the `style` prop (document with a `// inline-style: <reason>` comment).
+- **Verification**: `grep -rn "style={{" app/` should return only the documented exceptions.
+
+## File Size Limit (300 lines, hard cap)
+- **Hard limit**: any source file (`.ts`, `.tsx`, `.js`, `.jsx`) > 300 lines must be split before commit. Blank lines and comments count.
+- **When you create a new file**: design it to stay <300 lines from the start.
+- **When you edit an existing file**: if the file is already >300 lines OR your edit pushes it past 300, split it as part of the same change set.
+- **Allowed exceptions** (require explicit justification in the commit message):
+  - Auto-generated files: `prisma/migrations/**`, `next-env.d.ts`, `public/sw.js`, `public/workbox-*.js`
+  - Single-source-of-truth schemas: `prisma/schema.prisma`
+  - Test files: `**/__tests__/**`, `**/*.test.ts`, `**/*.test.tsx`
+- **Split strategy** (preferred order):
+  1. Move all `styled.X` blocks → co-located `_styled.ts` (or split into `_styled-<area>.ts` if itself >300)
+  2. Extract logical UI sections (modals, cards, list rows, headers, filter bars) → `_components/<Name>.tsx`
+  3. Extract reused helpers → `_utils.ts`
+  4. Extract reused hooks → `_hooks/<useThing>.ts`
+  5. Extract types → `_types.ts` if shared, otherwise inline
+- **Verification**: after a split, run `wc -l` on every touched file; nothing may exceed 300 lines.
+
+## Documentation Standard (JSDoc/TSDoc)
+- **Every exported symbol** (component, hook, function, server action, route handler, type, constant) must have a TSDoc block above it.
+- **Internal (non-exported) helpers**: document only if non-obvious. Trivial one-liners may skip docs.
+- **Required sections per symbol**:
+  - One-line summary (imperative, ends with period)
+  - `@param` for each parameter (skip for destructured props if the prop type itself is documented)
+  - `@returns` for non-void returns
+  - `@throws` if it can throw a typed error
+  - `@example` for public APIs that benefit from one (server actions, hooks)
+- **React component props**: document the `Props` type/interface — each field gets a `/** ... */` line. Do not duplicate prop docs in the component's TSDoc.
+- **Server actions**: TSDoc must state the auth guard (`@remarks Auth: requires session`) and any `revalidatePath` calls.
+- **Route handlers**: TSDoc must state HTTP method + auth strategy (e.g. `@remarks POST · auth: JWT via authenticateRequest`).
+- **When you touch an existing file**: add docs to any undocumented exported symbol in that file as part of the same change. Do NOT touch unrelated files just to add docs.
+- **Style**: TSDoc comments (`/** ... */`), not line comments. No emojis. Reference types with `{@link Foo}` when helpful.
+
+### Example
+```ts
+/**
+ * Create a new transaction for the signed-in user (couple-aware).
+ *
+ * @param input - Transaction payload (validated with Zod).
+ * @returns The created transaction row.
+ * @throws {AuthError} when the session is missing or invalid.
+ * @remarks Auth: requires session. Revalidates `/couple/finance/transactions`.
+ */
+export async function createTransactionAction(input: CreateTxInput) { ... }
+```
 
 ## Finance Module (styled-components)
 - Use `styled-components` only — no Tailwind, no plain CSS, no CSS modules

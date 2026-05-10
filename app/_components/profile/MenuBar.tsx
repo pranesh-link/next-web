@@ -112,7 +112,7 @@ const MenuBar = (props: IMenuBarProps) => {
         scrolled: isScrolled && !props.isMobileMenu
       })}
     >
-      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}>
+      <div className="menubar-row">
         {!props.isMobileMenu && (
           <MenuButton onClick={goToHome} className="home">
             <LazyLoadedImage
