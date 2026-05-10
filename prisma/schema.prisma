@@ -88,7 +88,7 @@ model User {
   // Lifestyle / Wellness relations
   bodyMetricsCreated  BodyMetric[]  @relation("BodyMetricCreator")
   bodyMetricsSubject  BodyMetric[]  @relation("BodyMetricSubject")
-  bodyProfileCreated  BodyProfile?  @relation("BodyProfileCreator")
+  bodyProfileCreated  BodyProfile[] @relation("BodyProfileCreator")
   bodyProfileSubject  BodyProfile?  @relation("BodyProfileSubject")
 
   @@map("users")
@@ -398,7 +398,7 @@ model BodyMetric {
 
 model BodyProfile {
   id                String    @id @default(uuid())
-  userId            String    @unique
+  userId            String
   subjectId         String    @unique @map("subject_id")
   coupleId          String?   @map("couple_id")
   defaultHeightInCm Decimal?  @map("default_height_in_cm") @db.Decimal(5, 2)
@@ -411,6 +411,7 @@ model BodyProfile {
   user    User @relation("BodyProfileCreator", fields: [userId], references: [id], onDelete: Cascade)
   subject User @relation("BodyProfileSubject", fields: [subjectId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@index([coupleId])
   @@map("body_profiles")
 }

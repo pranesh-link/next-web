@@ -241,4 +241,20 @@ describe("useWellnessPage", () => {
     act(() => result.current.clearNotification());
     expect(result.current.notification).toBeNull();
   });
+
+  it("should not bleed previous subject's metrics when partner profile fetch fails", async () => {
+    const { result } = renderHook(() => useWellnessPage());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.metrics).toHaveLength(1);
+
+    // Partner: metrics empty, profile rejects.
+    mockedListMetrics.mockResolvedValueOnce([]);
+    mockedGetProfile.mockRejectedValueOnce(new Error("forbidden"));
+
+    act(() => result.current.selectSubject(PARTNER_ID));
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.metrics).toHaveLength(0);
+    expect(result.current.profile).toBeNull();
+  });
 });

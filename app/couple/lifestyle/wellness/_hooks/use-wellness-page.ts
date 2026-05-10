@@ -108,12 +108,15 @@ export function useWellnessPage(): UseWellnessPageReturn {
   const clearNotification = useCallback(() => setNotification(null), []);
 
   const fetchSubjectData = useCallback(async (subjectId: string) => {
-    const [m, p] = await Promise.all([
+    // Independent fetches — a failure on one (e.g. profile) must not
+    // discard the other and must not leave stale data from a prior subject.
+    const [metricsRes, profileRes] = await Promise.allSettled([
       listBodyMetricsAction({ subjectId }),
       getBodyProfileAction(subjectId),
     ]);
-    setMetrics(m);
-    setProfile(p);
+    setMetrics(metricsRes.status === "fulfilled" ? metricsRes.value : []);
+    setProfile(profileRes.status === "fulfilled" ? profileRes.value : null);
+    if (metricsRes.status === "rejected") throw metricsRes.reason;
   }, []);
 
   // Initial load: subjects + default selection.
@@ -143,6 +146,10 @@ export function useWellnessPage(): UseWellnessPageReturn {
   useEffect(() => {
     if (!selectedSubjectId) return;
     let cancelled = false;
+    // Clear stale data immediately so a failed fetch can never bleed
+    // the previous subject's metrics/profile into the new tab.
+    setMetrics([]);
+    setProfile(null);
     (async () => {
       setLoading(true);
       setError(null);
