@@ -142,9 +142,20 @@ export default function WellnessPage() {
         )}
 
         {page.metrics.length === 0 && !page.loading ? (
-          <FullSection>
-            <EmptyState onLog={scrollToForm} />
-          </FullSection>
+          <>
+            <FullSection>
+              <EmptyState onLog={scrollToForm} />
+            </FullSection>
+            <FullSection>
+              <Card id="wellness-log-form">
+                <LogEntryForm
+                  defaults={formDefaults}
+                  onSubmit={page.saveMetric}
+                  saving={page.saving}
+                />
+              </Card>
+            </FullSection>
+          </>
         ) : (
           <>
             <Grid2Col>
