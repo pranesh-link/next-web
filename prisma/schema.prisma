@@ -85,6 +85,12 @@ model User {
   // Notification relations
   notifications  Notification[]
 
+  // Lifestyle / Wellness relations
+  bodyMetricsCreated  BodyMetric[]  @relation("BodyMetricCreator")
+  bodyMetricsSubject  BodyMetric[]  @relation("BodyMetricSubject")
+  bodyProfileCreated  BodyProfile?  @relation("BodyProfileCreator")
+  bodyProfileSubject  BodyProfile?  @relation("BodyProfileSubject")
+
   @@map("users")
 }
 
@@ -363,6 +369,50 @@ model SavingsGoal {
 
   @@index([userId])
   @@map("savings_goals")
+}
+
+// ─── Lifestyle / Wellness Models ────────────────────────────
+
+model BodyMetric {
+  id           String   @id @default(uuid())
+  userId       String
+  subjectId    String   @map("subject_id")
+  coupleId     String?  @map("couple_id")
+  measuredOn   DateTime @map("measured_on") @db.Date
+  weightInKg   Decimal  @map("weight_in_kg") @db.Decimal(5, 2)
+  heightInCm   Decimal  @map("height_in_cm") @db.Decimal(5, 2)
+  bmi          Decimal  @db.Decimal(4, 2)
+  bmiCategory  String   @map("bmi_category")
+  note         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user    User @relation("BodyMetricCreator", fields: [userId], references: [id], onDelete: Cascade)
+  subject User @relation("BodyMetricSubject", fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([subjectId, measuredOn])
+  @@index([coupleId, measuredOn])
+  @@index([subjectId, measuredOn])
+  @@map("body_metrics")
+}
+
+model BodyProfile {
+  id                String    @id @default(uuid())
+  userId            String    @unique
+  subjectId         String    @unique @map("subject_id")
+  coupleId          String?   @map("couple_id")
+  defaultHeightInCm Decimal?  @map("default_height_in_cm") @db.Decimal(5, 2)
+  targetWeightInKg  Decimal?  @map("target_weight_in_kg") @db.Decimal(5, 2)
+  birthDate         DateTime? @map("birth_date") @db.Date
+  sex               String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  user    User @relation("BodyProfileCreator", fields: [userId], references: [id], onDelete: Cascade)
+  subject User @relation("BodyProfileSubject", fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@index([coupleId])
+  @@map("body_profiles")
 }
 
 // ─── Couple Models ──────────────────────────────────────────

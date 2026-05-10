@@ -6,13 +6,11 @@ export const ROUTES: Record<string, string> = {
   ROUTE_HOME: "/",
   ROUTE_PROFILE: "/profile",
   ROUTE_MAINTENANCE: "/maintenance",
-  ROUTE_BMICALCULATOR: "/tools/bmi-calculator",
 };
 
 export const PAGE_TITLES = {
   home: "Pranesh | Crafting Digital Experiences",
   profile: "Pranesh | Crafting Digital Experiences",
-  bmiCalculator: "BMI Calculator",
 };
 
 export const DEFAULT_MAINTENANCE_DATA: IMaintenance = {
@@ -108,14 +106,6 @@ export const EMAILJS_CONFIG = {
   PUBLIC_KEY:
     "U2FsdGVkX1/M46+97vn9sj2D3LbKO9dKmwqIO+Zh21fONTOa8xN+aMKg0/zeLgj6",
 };
-
-export const DEFAULT_BMI_CALCULATOR_FORM_DATA = {
-  heightInCm: "",
-  weightInKg: "",
-};
-
-export const DEFAULT_BMI_CALCULATOR_FORM_ERROR =
-  DEFAULT_BMI_CALCULATOR_FORM_DATA;
 
 export const DEFAULT_CONFIG_DATA: IConfigData = {
   jsonConfig: {
