@@ -103,8 +103,74 @@ prisma/
 8. **Document new + touched code** — every exported symbol must have JSDoc/TSDoc (see Documentation Standard below)
 9. **No inline styles** — never use the `style={{ ... }}` prop on JSX elements (see No Inline Styles below)
 10. **No duplicated code** — extract repeated logic into shared helpers (see DRY / No Duplication below)
+11. **KISS** — keep code simple; reject over-engineering (see KISS Principle below)
+12. **Tests are mandatory** — every new feature/fix ships with tests (see Testing Standard below)
 
 ## DRY / No Duplication
+- **Rule**: if the same expression, calculation, formatter, regex, or block of logic appears in **2 or more places**, extract it into a shared helper. No copy-paste.
+- **Where helpers go**:
+  - Finance-specific business logic (couple-aware queries, financial math, schedule parsing) → `app/_services/finance/<area>.ts`
+  - Generic UI/data formatters (currency, dates, percentages, type icons/labels) → `app/_utils/finance/format.ts` (create if missing) or the closest existing `_utils.ts`
+  - Module-local helpers used across files in one feature folder → `<feature>/_utils.ts` in that folder
+  - React hooks reused in 2+ components → `app/_hooks/<useThing>.ts` (global) or `<feature>/_hooks/<useThing>.ts` (local)
+  - Styled-component atoms reused across files → `_styled.ts` in the nearest shared folder
+- **Banned patterns**:
+  - Two files defining their own `formatCurrency`, `typeIcon`, `typeLabel`, `EASING`, etc. — must be one source of truth.
+  - Two server actions repeating the same Zod schema — extract to a `<area>-helpers.ts`.
+  - Two components inlining the same `useEffect` cleanup or the same `useState` + setter pattern — extract a hook.
+  - Identical SQL/Prisma query bodies in 2+ actions — extract a service function.
+- **When you touch a file**: if you spot duplication during your edit, refactor it as part of the same change set (same PR/commit). Do NOT leave a TODO; do not "fix later".
+- **When you create a new file**: before writing a helper, search the workspace (`grep_search` / `semantic_search`) for an existing implementation. Reuse first; create only if nothing exists.
+- **Tolerable exceptions** (do NOT extract):
+  - Trivial 1–2 line snippets where extraction would HURT readability (e.g. a single `Number(x).toFixed(2)`).
+  - Test fixtures and mocks (each test owns its setup).
+  - Generated code (`prisma/migrations/**`, `next-env.d.ts`).
+- **Verification when auditing**: search for repeated function names, repeated Zod schemas, repeated literal strings (color hexes, easing curves, regex patterns), and repeated 3+ line blocks. Consolidate into one canonical helper, then update all call sites.
+
+## KISS Principle (Keep It Simple, Stupid)
+- **Default to the simplest solution that works.** Don't add abstractions until you need them at least twice.
+- **Banned patterns**:
+  - **Premature abstraction**: factories, generic wrappers, dependency injection containers, or "framework" code introduced for a single use case.
+  - **Speculative options**: function parameters / config flags that have no current caller (`enabled`, `mode`, `variant`) — add them when the second use case appears.
+  - **Indirection layers**: `BaseFooFactory → FooBuilder → ConcreteFoo` when a single function works.
+  - **Custom reactive systems**: re-implementing observable patterns, event emitters, or pub-sub when React state + props suffice.
+  - **Manual generic types**: complex `<T extends ...>` gymnastics when a discriminated union or two specific overloads are clearer.
+  - **Cleverness for compactness**: golf-style one-liners, dense ternary chains, regex when a `switch` statement is clearer.
+  - **Unused exports / dead code**: every `export` must have a real consumer.
+- **Preferred patterns**:
+  - One named function over an anonymous IIFE chain.
+  - Inline a helper used in only one file (don't promote it until the second consumer appears).
+  - Early `return` over nested `if/else`.
+  - `switch` or lookup objects over long ternary chains.
+  - Plain `useState` + `useEffect` over custom hooks-of-hooks for one-shot logic.
+  - Server Components when no interactivity is needed (don't reach for `"use client"` reflexively).
+- **When you spot complexity during an edit**: refactor it as part of the same change set if the simplification is local and obvious. If it requires touching 3+ unrelated files, leave a note in the commit body and proceed with the original task.
+- **Exception**: shared utilities used in 2+ places ALREADY justify extraction (per DRY rule above). KISS does NOT override DRY — they reinforce each other.
+
+## Testing Standard (mandatory)
+- **Every new feature, bug fix, or refactor MUST ship with tests.** Untested code does not get committed.
+- **What to test**:
+  - **Server actions** (`app/couple/finance/_actions/**`): Jest unit tests covering the happy path + 1 auth-failure path + 1 validation-failure path. Mock Prisma with a thin in-memory shim or `vitest-mock-extended`-style mocks.
+  - **Pure helpers** (`app/_lib/**`, `app/_utils/**`, `app/_services/finance/**`): Jest unit tests covering all branches.
+  - **React components**: React Testing Library tests covering render + 1 user interaction. Snapshot tests are NOT acceptable as the only test.
+  - **Custom hooks** (`app/_hooks/**`, `<feature>/_hooks/**`): RTL `renderHook` tests covering initial state + at least one state transition.
+  - **API route handlers** (`app/api/**`): Jest tests using `next/server` `NextRequest` mocks; cover happy path + auth-failure path.
+- **What NOT to test**:
+  - Trivial barrel files (only re-exports).
+  - Pure styled-components (`*.styled.ts`).
+  - Auto-generated code (`prisma/migrations/**`, `next-env.d.ts`).
+- **Test location**: co-located in `__tests__/` next to the file under test (e.g. `app/_lib/__tests__/formatters.test.ts` for `app/_lib/formatters.ts`). Filename pattern: `<source>.test.ts` or `<source>.test.tsx`.
+- **Coverage target**: aim for ≥ 80% line coverage on touched files. Run `npm test -- --coverage` to check.
+- **When you fix a bug**: add a failing test FIRST that reproduces the bug, then fix until the test passes (red → green).
+- **When you refactor**: existing tests must still pass without modification; if you must change a test, justify it in the commit message.
+- **Test style**:
+  - Use `describe` + `it` blocks. Test names start with "should …".
+  - One assertion target per `it` block (multiple `expect`s allowed if they verify the same behavior).
+  - Use `beforeEach` for setup; avoid shared mutable state between tests.
+  - Mock external services (Prisma, Auth.js, Gemini, fetch) at the module boundary — never at the global level.
+- **Pre-commit verification**: run `npm test` (or the focused subset for touched files) and confirm all green before committing.
+
+## No Inline Styles
 - **Rule**: if the same expression, calculation, formatter, regex, or block of logic appears in **2 or more places**, extract it into a shared helper. No copy-paste.
 - **Where helpers go**:
   - Finance-specific business logic (couple-aware queries, financial math, schedule parsing) → `app/_services/finance/<area>.ts`
