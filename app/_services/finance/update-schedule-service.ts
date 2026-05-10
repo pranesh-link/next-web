@@ -17,7 +17,7 @@ type ScheduleRow = {
  * param raw: The raw schedule text dump from the scan-schedule output.
  * return: Structured schedule rows in chronological order.
  */
-export function parseRawScheduleText(raw: string): ScheduleRow[] {
+function parseRawScheduleText(raw: string): ScheduleRow[] {
   const rows: ScheduleRow[] = [];
   let seq = 0;
 
