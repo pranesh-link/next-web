@@ -5,11 +5,15 @@ import { EASING } from "@/couple/_constants/theme";
 
 /** Top-level page wrapper with safe horizontal overflow. */
 export const PageWrapper = styled.main`
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
   padding: 24px;
   overflow-x: hidden;
 
   @media (max-width: 768px) {
     padding: 16px;
+    gap: 16px;
   }
 `;
 
@@ -24,9 +28,8 @@ export const Grid2Col = styled.div`
   }
 `;
 
-/** Full-width section block separated by 24px from the previous block. */
+/** Full-width section block; vertical spacing is provided by {@link PageWrapper} gap. */
 export const FullSection = styled.section`
-  margin-top: 24px;
   min-width: 0;
 `;
 
