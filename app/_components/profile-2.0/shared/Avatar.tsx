@@ -134,6 +134,7 @@ export const Avatar: React.FC<AvatarProps> = ({
     <AvatarWrapper $size={size} className={className}>
       <AvatarContainer>
         <StyledImage>
+          {/* inline-style: next/image fill mode requires style prop for objectFit */}
           <Image src={src} alt={alt} fill sizes="120px" style={{ objectFit: "cover" }} />
         </StyledImage>
       </AvatarContainer>

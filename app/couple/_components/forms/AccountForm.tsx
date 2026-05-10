@@ -11,6 +11,7 @@ import {
   FinanceLabel,
   FinanceErrorText,
 } from "@/couple/_components/theme/styled-primitives";
+import { accountSchema as canonicalAccountSchema } from "@/_lib/validations/finance";
 
 const ACCOUNT_TYPES = ["SAVINGS_ACCOUNT", "CREDIT_ACCOUNT", "CREDIT_CARD", "RECURRING_DEPOSIT", "FIXED_DEPOSIT"] as const;
 
@@ -22,12 +23,21 @@ const ACCOUNT_TYPE_LABELS: Record<(typeof ACCOUNT_TYPES)[number], string> = {
   FIXED_DEPOSIT: "Fixed Deposit",
 };
 
-const accountSchema = z.object({
-  name: z.string().min(1, "Account name is required").max(100),
-  type: z.enum(ACCOUNT_TYPES, { error: "Account type is required" }),
-  balance: z.number({ error: "Balance must be a number" }),
-});
+/**
+ * Form-side schema for AccountForm. Built from the canonical {@link canonicalAccountSchema}
+ * by picking the fields the form collects and overriding error messages.
+ */
+const accountSchema = canonicalAccountSchema
+  .pick({ name: true, type: true, balance: true })
+  .extend({
+    name: z.string().min(1, "Account name is required").max(100),
+    type: z.enum(ACCOUNT_TYPES, { error: "Account type is required" }),
+    balance: z.number({ error: "Balance must be a number" }),
+  });
 
+/**
+ * Validated AccountForm data inferred from the form-side {@link accountSchema}.
+ */
 type AccountData = z.infer<typeof accountSchema>;
 
 interface AccountFormProps {

@@ -136,7 +136,7 @@ const ProfileSections = (props: IProfileSectionsProps) => {
         })}
       >
         {!isExport && (
-          <div style={{ textAlign: 'center', paddingBottom: '20px', marginBottom: '20px' }}>
+          <div className="profile-header-block">
             <ShortDesc>{shortDesc}</ShortDesc>
             <PageHeader>
               {HorizontalSep}
@@ -155,13 +155,11 @@ const ProfileSections = (props: IProfileSectionsProps) => {
             return section.display !== false ? (
               <SectionWrap
                 key={index}
-                className={classNames({
+                data-anim-index={index + 1}
+                className={classNames("section-wrap-animated", {
                   "last-info-section":
                     index === reOrderedSectionComponents.length - 2,
                 })}
-                style={{
-                  animationDelay: `${(index + 1) * 0.1}s`
-                }}
               >
                 {section.component}
               </SectionWrap>
@@ -174,23 +172,7 @@ const ProfileSections = (props: IProfileSectionsProps) => {
                 e.preventDefault();
                 setDisplayVersionModal(true);
               }}
-              style={{
-                background: 'rgba(255, 255, 255, 0.9)',
-                color: '#667eea',
-                borderRadius: '20px',
-                padding: '8px 16px',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                transition: 'all 0.3s ease',
-                border: '1px solid rgba(102, 126, 234, 0.2)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.15)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
-              }}
+              className="version-pill"
             >
               v{version}
             </Version>

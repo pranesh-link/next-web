@@ -11,6 +11,7 @@ import {
   FinanceLabel,
   FinanceErrorText,
 } from "@/couple/_components/theme/styled-primitives";
+import { budgetSchema as canonicalBudgetSchema } from "@/_lib/validations/finance";
 
 const CATEGORIES = [
   "Food",
@@ -25,12 +26,21 @@ const CATEGORIES = [
   "Other",
 ] as const;
 
-const budgetSchema = z.object({
-  category: z.string().min(1, "Category is required"),
-  monthlyLimit: z.number().positive("Monthly limit must be positive"),
-  month: z.string().min(1, "Month is required"),
-});
+/**
+ * Form-side schema for BudgetForm. Built from the canonical
+ * {@link canonicalBudgetSchema}: renames `limit` to `monthlyLimit` and accepts a
+ * free-form `month` string (the form-level UI handles month selection).
+ */
+const budgetSchema = canonicalBudgetSchema
+  .omit({ limit: true, month: true })
+  .extend({
+    monthlyLimit: z.number().positive("Monthly limit must be positive"),
+    month: z.string().min(1, "Month is required"),
+  });
 
+/**
+ * Validated BudgetForm data inferred from the form-side {@link budgetSchema}.
+ */
 type BudgetData = z.infer<typeof budgetSchema>;
 
 interface BudgetFormProps {

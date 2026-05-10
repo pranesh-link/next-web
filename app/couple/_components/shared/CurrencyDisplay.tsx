@@ -6,7 +6,6 @@ import styled from 'styled-components';
 interface CurrencyDisplayProps {
   amount: number;
   currency?: string;
-  className?: string;
 }
 
 const Amount = styled.span<{ $color: string }>`
@@ -24,7 +23,6 @@ function getColor(amount: number): string {
 export default function CurrencyDisplay({
   amount,
   currency = 'INR',
-  className,
 }: CurrencyDisplayProps) {
   const formatted = new Intl.NumberFormat('en-IN', {
     style: 'currency',
@@ -35,7 +33,7 @@ export default function CurrencyDisplay({
   const display = amount < 0 ? `-${formatted}` : formatted;
 
   return (
-    <Amount $color={getColor(amount)} className={className}>
+    <Amount $color={getColor(amount)}>
       {display}
     </Amount>
   );
