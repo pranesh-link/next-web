@@ -13,6 +13,8 @@ import {
   TotalRow,
 } from "../_styled";
 import { formatCurrency, type LineItem } from "../_utils";
+import { Undo2 } from "lucide-react";
+import { PAID_EXPENSES_TITLE, UNDO_PAID, UNDO, METRIC_TOTAL_PAID } from "../_labels";
 
 const PaidSectionCard = styled(SectionCard)`
   border-left: 4px solid #22c55e;
@@ -35,7 +37,7 @@ export default function PaidExpensesSection({
 }: Props) {
   return (
     <PaidSectionCard>
-      <SectionTitle>Paid Expenses</SectionTitle>
+      <SectionTitle>{PAID_EXPENSES_TITLE}</SectionTitle>
       <LineItemGrid>
         {lineItems.map((item, index) =>
           item.paid ? (
@@ -61,15 +63,15 @@ export default function PaidExpensesSection({
                   readOnly
                 />
               </LineItemField>
-              <UndoButton onClick={() => onUndoPaid(index)} title="Undo paid">
-                ↩ Undo
+              <UndoButton onClick={() => onUndoPaid(index)} title={UNDO_PAID}>
+                <Undo2 size={14} /> {UNDO}
               </UndoButton>
             </LineItemRow>
           ) : null
         )}
       </LineItemGrid>
       <TotalRow>
-        <span>Total Paid Expenses</span>
+        <span>{METRIC_TOTAL_PAID}</span>
         <PaidAmount>{formatCurrency(totalPaid)}</PaidAmount>
       </TotalRow>
     </PaidSectionCard>

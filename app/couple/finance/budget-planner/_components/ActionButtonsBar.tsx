@@ -1,6 +1,7 @@
 "use client";
 
 import styled from "styled-components";
+import { SAVING, SAVE_PLAN, RESET, DELETE_PLAN } from "../_labels";
 import { EASING } from "../_utils";
 
 const ActionBar = styled.div`
@@ -98,12 +99,12 @@ export default function ActionButtonsBar({
   return (
     <ActionBar>
       <PrimaryButton onClick={onSave} disabled={submitting}>
-        {submitting ? "Saving…" : "Save Plan"}
+        {submitting ? SAVING : SAVE_PLAN}
       </PrimaryButton>
-      <OutlineButton onClick={onReset}>Reset</OutlineButton>
+      <OutlineButton onClick={onReset}>{RESET}</OutlineButton>
       {hasSavedPlan && (
         <DangerButton onClick={onDelete} disabled={submitting}>
-          Delete Plan
+          {DELETE_PLAN}
         </DangerButton>
       )}
     </ActionBar>

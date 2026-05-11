@@ -3,6 +3,7 @@
 import styled from "styled-components";
 import Modal from "@/couple/_components/shared/Modal";
 import { fadeIn } from "../_styled";
+import { SUGGESTIONS_MODAL_TITLE } from "../_labels";
 import { EASING, SUGGESTION_COLORS, type Suggestion } from "../_utils";
 
 const SuggestionCard = styled.div<{ $accentColor: string }>`
@@ -39,7 +40,7 @@ type Props = {
 
 export default function SuggestionsModal({ isOpen, suggestions, onClose }: Props) {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Smart Suggestions" size="md">
+    <Modal isOpen={isOpen} onClose={onClose} title={SUGGESTIONS_MODAL_TITLE} size="md">
       {suggestions.map((s, i) => (
         <SuggestionCard key={i} $accentColor={SUGGESTION_COLORS[s.type] || "#3b82f6"}>
           <SuggestionIcon>{s.icon}</SuggestionIcon>

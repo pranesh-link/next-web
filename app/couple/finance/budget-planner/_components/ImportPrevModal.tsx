@@ -3,6 +3,7 @@
 import styled from "styled-components";
 import Modal from "@/couple/_components/shared/Modal";
 import { ConfirmBody, ConfirmActions, ConfirmButton } from "../_styled";
+import { IMPORT_PREV_MONTHLY, IMPORT_PREV_YEARLY, SELECTABLE, SELECT_ALL, SELECT_NONE, NO_ITEMS_TO_IMPORT, UNCATEGORISED, BADGE_ALREADY_ADDED, BADGE_SIMILAR, BADGE_PAID, CANCEL, IMPORT } from "../_labels";
 import { EASING, formatCurrency, type PrevItemRow } from "../_utils";
 
 const ImportToolbar = styled.div`
@@ -158,30 +159,30 @@ export default function ImportPrevModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Import from last ${mode === "monthly" ? "month" : "year"}`}
+      title={mode === "monthly" ? IMPORT_PREV_MONTHLY : IMPORT_PREV_YEARLY}
       size="md"
     >
       <ConfirmBody>
         <ImportToolbar>
           <span>
             {importSelection.size} of{" "}
-            {importRows.filter((r) => r._class.kind !== "duplicate").length} selectable
+            {importRows.filter((r) => r._class.kind !== "duplicate").length} {SELECTABLE}
           </span>
           <div>
             <ImportLinkButton
               onClick={onSelectAll}
               disabled={importRows.every((r) => r._class.kind === "duplicate")}
             >
-              Select all
+              {SELECT_ALL}
             </ImportLinkButton>
             <ImportLinkButton onClick={onSelectNone} disabled={importSelection.size === 0}>
-              Select none
+              {SELECT_NONE}
             </ImportLinkButton>
           </div>
         </ImportToolbar>
 
         {importRows.length === 0 ? (
-          <ImportEmpty>No items to import.</ImportEmpty>
+          <ImportEmpty>{NO_ITEMS_TO_IMPORT}</ImportEmpty>
         ) : (
           <ImportListWrapper>
             {importRows.map((row) => {
@@ -197,21 +198,21 @@ export default function ImportPrevModal({
                   />
                   <ImportRowMain>
                     <ImportRowLine1>
-                      <span>{row.category || "Uncategorised"}</span>
+                      <span>{row.category || UNCATEGORISED}</span>
                       <ImportRowAmount>{formatCurrency(row.amount)}</ImportRowAmount>
                     </ImportRowLine1>
                     {row.note && <ImportRowNote>{row.note}</ImportRowNote>}
                   </ImportRowMain>
                   <ImportRowBadges>
                     {row._class.kind === "duplicate" && (
-                      <ImportRowBadge $variant="duplicate">Already added</ImportRowBadge>
+                      <ImportRowBadge $variant="duplicate">{BADGE_ALREADY_ADDED}</ImportRowBadge>
                     )}
                     {row._class.kind === "similar" && (
                       <ImportRowBadge $variant="similar">
-                        Similar exists ({formatCurrency(row._class.existingAmount)})
+                        {BADGE_SIMILAR} ({formatCurrency(row._class.existingAmount)})
                       </ImportRowBadge>
                     )}
-                    {row.paid && <ImportRowBadge $variant="paid">Paid last period</ImportRowBadge>}
+                    {row.paid && <ImportRowBadge $variant="paid">{BADGE_PAID}</ImportRowBadge>}
                   </ImportRowBadges>
                 </ImportRow>
               );
@@ -221,14 +222,14 @@ export default function ImportPrevModal({
 
         <ConfirmActions>
           <ConfirmButton $variant="cancel" onClick={onClose}>
-            Cancel
+            {CANCEL}
           </ConfirmButton>
           <ConfirmButton
             $variant="primary"
             onClick={onConfirm}
             disabled={importSelection.size === 0}
           >
-            Import {importSelection.size > 0 ? importSelection.size : ""}
+            {IMPORT} {importSelection.size > 0 ? importSelection.size : ""}
           </ConfirmButton>
         </ConfirmActions>
       </ConfirmBody>
