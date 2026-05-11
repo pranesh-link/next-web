@@ -2,6 +2,7 @@
 
 import Modal from "@/couple/_components/shared/Modal";
 import { ConfirmBody, ConfirmText, ConfirmActions, ConfirmButton } from "../_styled";
+import { DELETE_MODAL_TITLE, DELETE_MODAL_BODY_PREFIX, DELETE_MODAL_BODY_SUFFIX, CANCEL, DELETING, DELETE } from "../_labels";
 import { formatMonthLabel } from "../_utils";
 
 type Props = {
@@ -22,19 +23,19 @@ export default function DeleteModal({
   onConfirm,
 }: Props) {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Delete Budget Plan?">
+    <Modal isOpen={isOpen} onClose={onClose} title={DELETE_MODAL_TITLE}>
       <ConfirmBody>
         <ConfirmText>
-          This will permanently delete your budget plan for{" "}
-          {mode === "monthly" ? formatMonthLabel(monthAndYear) : monthAndYear}. This
-          action cannot be undone.
+          {DELETE_MODAL_BODY_PREFIX}{" "}
+          {mode === "monthly" ? formatMonthLabel(monthAndYear) : monthAndYear}.{" "}
+          {DELETE_MODAL_BODY_SUFFIX}
         </ConfirmText>
         <ConfirmActions>
           <ConfirmButton $variant="cancel" onClick={onClose}>
-            Cancel
+            {CANCEL}
           </ConfirmButton>
           <ConfirmButton $variant="danger" onClick={onConfirm} disabled={submitting}>
-            {submitting ? "Deleting…" : "Delete"}
+            {submitting ? DELETING : DELETE}
           </ConfirmButton>
         </ConfirmActions>
       </ConfirmBody>

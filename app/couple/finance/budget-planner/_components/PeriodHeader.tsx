@@ -1,5 +1,7 @@
 "use client";
 
+import { ChevronLeft, ChevronRight, Save, Loader, RotateCcw, Trash2 } from "lucide-react";
+
 import LastUpdatedBadge from "@/couple/_components/shared/LastUpdatedBadge";
 import {
   formatMonthLabel,
@@ -8,6 +10,15 @@ import {
   shiftYear,
   type SavedPlan,
 } from "../_utils";
+import {
+  MODE_MONTHLY,
+  MODE_YEARLY,
+  INCOME_LABEL_MONTHLY,
+  INCOME_LABEL_YEARLY,
+  ARIA_SAVE_PLAN,
+  ARIA_RESET,
+  ARIA_DELETE_PLAN,
+} from "../_labels";
 import {
   IconActionButton,
   ModeButton,
@@ -72,10 +83,10 @@ export default function PeriodHeader({
     <>
       <ModeToggle>
         <ModeButton $active={mode === "monthly"} onClick={() => onModeChange("monthly")}>
-          Monthly
+          {MODE_MONTHLY}
         </ModeButton>
         <ModeButton $active={mode === "yearly"} onClick={() => onModeChange("yearly")}>
-          Yearly
+          {MODE_YEARLY}
         </ModeButton>
       </ModeToggle>
 
@@ -87,9 +98,7 @@ export default function PeriodHeader({
             )
           }
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-            <path d="M15 19l-7-7 7-7" />
-          </svg>
+          <ChevronLeft size={18} />
         </MonthArrowButton>
 
         <MonthLabel>
@@ -103,9 +112,7 @@ export default function PeriodHeader({
             )
           }
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-            <path d="M9 5l7 7-7 7" />
-          </svg>
+          <ChevronRight size={18} />
         </MonthArrowButton>
 
         {mode === "monthly" && (
@@ -128,7 +135,7 @@ export default function PeriodHeader({
 
         <TopIncomeGroup>
           <label htmlFor="top-income">
-            {mode === "monthly" ? "Last Credited" : "Annual Income"}
+            {mode === "monthly" ? INCOME_LABEL_MONTHLY : INCOME_LABEL_YEARLY}
           </label>
           <span aria-hidden>₹</span>
           <input
@@ -146,23 +153,23 @@ export default function PeriodHeader({
             $variant="primary"
             onClick={onSave}
             disabled={submitting}
-            title={submitting ? "Saving…" : "Save Plan"}
-            aria-label="Save Plan"
+            title={submitting ? "Saving…" : ARIA_SAVE_PLAN}
+            aria-label={ARIA_SAVE_PLAN}
           >
-            {submitting ? "⋯" : "💾"}
+            {submitting ? <Loader size={16} /> : <Save size={16} />}
           </IconActionButton>
-          <IconActionButton onClick={onReset} title="Reset" aria-label="Reset">
-            ↻
+          <IconActionButton onClick={onReset} title={ARIA_RESET} aria-label={ARIA_RESET}>
+            <RotateCcw size={16} />
           </IconActionButton>
           {savedPlan && (
             <IconActionButton
               $variant="danger"
               onClick={onDelete}
               disabled={submitting}
-              title="Delete Plan"
-              aria-label="Delete Plan"
+              title={ARIA_DELETE_PLAN}
+              aria-label={ARIA_DELETE_PLAN}
             >
-              🗑
+              <Trash2 size={16} />
             </IconActionButton>
           )}
         </TopActionGroup>

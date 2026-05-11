@@ -2,6 +2,8 @@
 
 import styled from "styled-components";
 import { SectionCard, SectionTitle, MutedText } from "../_styled";
+import { CheckCircle2, AlertTriangle, TrendingUp, TrendingDown } from "lucide-react";
+import { COMPARISON_MONTHLY, COMPARISON_YEARLY, INCOME, EXPENSES, SAVINGS, METRIC_SAVINGS_RATE, CATEGORY_BREAKDOWN, NO_PLAN_SAVED_PREFIX, SAVE_PLANS_HINT_MONTHLY, SAVE_PLANS_HINT_YEARLY } from "../_labels";
 import {
   categoryAmount,
   deltaPercent,
@@ -190,13 +192,13 @@ export default function ComparisonSection({
   return (
     <SectionCard>
       <SectionTitle>
-        {mode === "monthly" ? "Last Month vs This Month" : "Last Year vs This Year"}
+        {mode === "monthly" ? COMPARISON_MONTHLY : COMPARISON_YEARLY}
       </SectionTitle>
       {prevPlan && income > 0 && hasExpenseData ? (
         <>
           {totalExpenses !== prevTotalExpenses && (
             <InsightBanner $positive={totalExpenses < prevTotalExpenses}>
-              {totalExpenses < prevTotalExpenses ? "✅" : "⚠️"}{" "}
+              {totalExpenses < prevTotalExpenses ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}{" "}
               Total expenses{" "}
               {totalExpenses < prevTotalExpenses ? "decreased" : "increased"}{" "}
               compared to last {mode === "monthly" ? "month" : "year"}
@@ -206,53 +208,53 @@ export default function ComparisonSection({
           )}
           <ComparisonGrid>
             <ComparisonCard>
-              <ComparisonLabel>Income</ComparisonLabel>
+              <ComparisonLabel>{INCOME}</ComparisonLabel>
               <ComparisonValues>
                 <ComparisonFrom>{formatCurrency(prevPlan.income)}</ComparisonFrom>
                 <ComparisonArrow>→</ComparisonArrow>
                 <ComparisonTo>{formatCurrency(income)}</ComparisonTo>
               </ComparisonValues>
               <DeltaIndicator $positive={income >= prevPlan.income}>
-                {income >= prevPlan.income ? "↑" : "↓"}{" "}
+                {income >= prevPlan.income ? <TrendingUp size={12} /> : <TrendingDown size={12} />}{" "}
                 {Math.abs(deltaPercent(prevPlan.income, income)).toFixed(1)}%
               </DeltaIndicator>
             </ComparisonCard>
 
             <ComparisonCard>
-              <ComparisonLabel>Expenses</ComparisonLabel>
+              <ComparisonLabel>{EXPENSES}</ComparisonLabel>
               <ComparisonValues>
                 <ComparisonFrom>{formatCurrency(prevTotalExpenses)}</ComparisonFrom>
                 <ComparisonArrow>→</ComparisonArrow>
                 <ComparisonTo>{formatCurrency(totalExpenses)}</ComparisonTo>
               </ComparisonValues>
               <DeltaIndicator $positive={totalExpenses <= prevTotalExpenses}>
-                {totalExpenses <= prevTotalExpenses ? "↓" : "↑"}{" "}
+                {totalExpenses <= prevTotalExpenses ? <TrendingDown size={12} /> : <TrendingUp size={12} />}{" "}
                 {Math.abs(deltaPercent(prevTotalExpenses, totalExpenses)).toFixed(1)}%
               </DeltaIndicator>
             </ComparisonCard>
 
             <ComparisonCard>
-              <ComparisonLabel>Savings</ComparisonLabel>
+              <ComparisonLabel>{SAVINGS}</ComparisonLabel>
               <ComparisonValues>
                 <ComparisonFrom>{formatCurrency(prevRemaining)}</ComparisonFrom>
                 <ComparisonArrow>→</ComparisonArrow>
                 <ComparisonTo>{formatCurrency(remaining)}</ComparisonTo>
               </ComparisonValues>
               <DeltaIndicator $positive={remaining >= prevRemaining}>
-                {remaining >= prevRemaining ? "↑" : "↓"}{" "}
+                {remaining >= prevRemaining ? <TrendingUp size={12} /> : <TrendingDown size={12} />}{" "}
                 {Math.abs(deltaPercent(prevRemaining, remaining)).toFixed(1)}%
               </DeltaIndicator>
             </ComparisonCard>
 
             <ComparisonCard>
-              <ComparisonLabel>Savings Rate</ComparisonLabel>
+              <ComparisonLabel>{METRIC_SAVINGS_RATE}</ComparisonLabel>
               <ComparisonValues>
                 <ComparisonFrom>{prevSavingsRate.toFixed(1)}%</ComparisonFrom>
                 <ComparisonArrow>→</ComparisonArrow>
                 <ComparisonTo>{savingsRate.toFixed(1)}%</ComparisonTo>
               </ComparisonValues>
               <DeltaIndicator $positive={savingsRate >= prevSavingsRate}>
-                {savingsRate >= prevSavingsRate ? "↑" : "↓"}{" "}
+                {savingsRate >= prevSavingsRate ? <TrendingUp size={12} /> : <TrendingDown size={12} />}{" "}
                 {Math.abs(savingsRate - prevSavingsRate).toFixed(1)}pp
               </DeltaIndicator>
             </ComparisonCard>
@@ -260,14 +262,14 @@ export default function ComparisonSection({
 
           {getCategoryDiffs(prevPlan, prevLineItems, lineItems).length > 0 && (
             <>
-              <SubSectionTitle>Category Breakdown</SubSectionTitle>
+              <SubSectionTitle>{CATEGORY_BREAKDOWN}</SubSectionTitle>
               <CategoryDiffGrid>
                 {getCategoryDiffs(prevPlan, prevLineItems, lineItems).map((d) => (
                   <CategoryDiffItem key={d.category} $flagged={d.flagged}>
                     <span>{d.category}</span>
                     <DeltaIndicator $positive={d.delta <= 0}>
-                      {d.delta <= 0 ? "↓" : "↑"} {Math.abs(d.delta).toFixed(0)}%
-                      {d.flagged && " ⚠"}
+                      {d.delta <= 0 ? <TrendingDown size={12} /> : <TrendingUp size={12} />} {Math.abs(d.delta).toFixed(0)}%
+                      {d.flagged && <>{" "}<AlertTriangle size={12} /></>}
                     </DeltaIndicator>
                   </CategoryDiffItem>
                 ))}
@@ -277,11 +279,12 @@ export default function ComparisonSection({
         </>
       ) : (
         <MutedText>
-          No plan saved for{" "}
+          {NO_PLAN_SAVED_PREFIX}{" "}
           {mode === "monthly"
             ? formatMonthLabel(shiftMonth(monthAndYear, -1))
             : shiftYear(monthAndYear, -1)}
-          . Save plans {mode === "monthly" ? "monthly" : "yearly"} to track trends.
+          .{" "}
+          {mode === "monthly" ? SAVE_PLANS_HINT_MONTHLY : SAVE_PLANS_HINT_YEARLY}
         </MutedText>
       )}
     </SectionCard>

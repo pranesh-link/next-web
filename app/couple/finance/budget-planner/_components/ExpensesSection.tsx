@@ -1,5 +1,6 @@
 "use client";
 
+import { Check, X, Plus, Download, ClipboardList } from "lucide-react";
 import {
   SectionCard,
   SectionTitle,
@@ -15,6 +16,21 @@ import {
   TotalRow,
 } from "../_styled";
 import { CATEGORIES, formatCurrency, type LineItem } from "../_utils";
+import {
+  ESTIMATED_EXPENSES_TITLE,
+  SELECT_CATEGORY,
+  AMOUNT_PLACEHOLDER,
+  NOTE_PLACEHOLDER,
+  MARK_AS_PAID,
+  REMOVE,
+  ADD_EXPENSE,
+  IMPORT_LOAN_EMIS,
+  IMPORT_PREV_MONTHLY,
+  IMPORT_PREV_YEARLY,
+  NO_PREV_PLAN_MONTHLY,
+  NO_PREV_PLAN_YEARLY,
+  METRIC_TOTAL_ESTIMATED,
+} from "../_labels";
 
 type Props = {
   mode: "monthly" | "yearly";
@@ -43,7 +59,7 @@ export default function ExpensesSection({
 }: Props) {
   return (
     <SectionCard>
-      <SectionTitle>Estimated Expenses</SectionTitle>
+      <SectionTitle>{ESTIMATED_EXPENSES_TITLE}</SectionTitle>
       <LineItemGrid>
         {lineItems.map((item, index) =>
           item.paid ? null : (
@@ -53,7 +69,7 @@ export default function ExpensesSection({
                   value={item.category}
                   onChange={(e) => onUpdate(index, "category", e.target.value)}
                 >
-                  <option value="">Select Category</option>
+                  <option value="">{SELECT_CATEGORY}</option>
                   {CATEGORIES.map((cat) => (
                     <option key={cat} value={cat}>
                       {cat}
@@ -65,7 +81,7 @@ export default function ExpensesSection({
                 <FinanceInput
                   type="number"
                   min={0}
-                  placeholder="Amount"
+                  placeholder={AMOUNT_PLACEHOLDER}
                   value={item.amount || ""}
                   onChange={(e) => onUpdate(index, "amount", Number(e.target.value))}
                 />
@@ -73,7 +89,7 @@ export default function ExpensesSection({
               <LineItemField>
                 <FinanceInput
                   type="text"
-                  placeholder="Note (required)"
+                  placeholder={NOTE_PLACEHOLDER}
                   value={item.note || ""}
                   onChange={(e) => onUpdate(index, "note", e.target.value)}
                 />
@@ -81,12 +97,12 @@ export default function ExpensesSection({
               <MarkPaidButton
                 onClick={() => onMarkPaid(index)}
                 disabled={!item.category || !item.amount}
-                title="Mark as paid"
+                title={MARK_AS_PAID}
               >
-                ✓
+                <Check size={14} />
               </MarkPaidButton>
-              <RemoveButton onClick={() => onRemove(index)} title="Remove">
-                ✕
+              <RemoveButton onClick={() => onRemove(index)} title={REMOVE}>
+                <X size={14} />
               </RemoveButton>
             </LineItemRow>
           )
@@ -94,23 +110,30 @@ export default function ExpensesSection({
       </LineItemGrid>
 
       <ExpenseActions>
-        <AddButton onClick={onAdd}>+ Add Expense</AddButton>
-        <AddButton onClick={onImportEMIs}>📥 Import existing loan EMIs</AddButton>
+        <AddButton onClick={onAdd}>
+          <Plus size={14} /> {ADD_EXPENSE}
+        </AddButton>
+        <AddButton onClick={onImportEMIs}>
+          <Download size={14} /> {IMPORT_LOAN_EMIS}
+        </AddButton>
         <AddButton
           onClick={onOpenImportPrev}
           disabled={!prevPlanHasItems}
           title={
             !prevPlanHasItems
-              ? `No previous ${mode === "monthly" ? "month" : "year"} plan to import from`
+              ? mode === "monthly"
+                ? NO_PREV_PLAN_MONTHLY
+                : NO_PREV_PLAN_YEARLY
               : undefined
           }
         >
-          📋 Import from last {mode === "monthly" ? "month" : "year"}
+          <ClipboardList size={14} />{" "}
+          {mode === "monthly" ? IMPORT_PREV_MONTHLY : IMPORT_PREV_YEARLY}
         </AddButton>
       </ExpenseActions>
 
       <TotalRow>
-        <span>Total Estimated Expenses</span>
+        <span>{METRIC_TOTAL_ESTIMATED}</span>
         <span>{formatCurrency(totalExpenses)}</span>
       </TotalRow>
     </SectionCard>

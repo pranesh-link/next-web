@@ -3,6 +3,17 @@
 import styled from "styled-components";
 import { SectionCard, SectionTitle } from "../_styled";
 import { EASING, formatCurrency } from "../_utils";
+import { Lightbulb } from "lucide-react";
+import {
+  SUMMARY_TITLE,
+  SMART_SUGGESTIONS,
+  INCOME_LABEL_MONTHLY,
+  INCOME_LABEL_YEARLY,
+  METRIC_TOTAL_ESTIMATED,
+  METRIC_TOTAL_PAID,
+  METRIC_REMAINING,
+  METRIC_SAVINGS_RATE,
+} from "../_labels";
 
 const SummaryGrid = styled.div`
   display: grid;
@@ -110,34 +121,34 @@ export default function SummarySection({
   return (
     <SectionCard>
       <SectionTitleRow>
-        <FlushSectionTitle>Summary</FlushSectionTitle>
+        <FlushSectionTitle>{SUMMARY_TITLE}</FlushSectionTitle>
         {suggestionsCount > 0 && (
           <SuggestionsButton onClick={onShowSuggestions}>
-            💡 Smart Suggestions ({suggestionsCount})
+            <Lightbulb size={14} /> {SMART_SUGGESTIONS} ({suggestionsCount})
           </SuggestionsButton>
         )}
       </SectionTitleRow>
       <SummaryGrid>
         <MetricCard>
-          <MetricLabel>{mode === "monthly" ? "Last Credited Income" : "Annual Income"}</MetricLabel>
+          <MetricLabel>{mode === "monthly" ? INCOME_LABEL_MONTHLY : INCOME_LABEL_YEARLY}</MetricLabel>
           <MetricValue>{formatCurrency(income)}</MetricValue>
         </MetricCard>
         <MetricCard>
-          <MetricLabel>Total Estimated Expenses</MetricLabel>
+          <MetricLabel>{METRIC_TOTAL_ESTIMATED}</MetricLabel>
           <MetricValue>{formatCurrency(totalExpenses)}</MetricValue>
         </MetricCard>
         <MetricCard>
-          <MetricLabel>Total Paid Expenses</MetricLabel>
+          <MetricLabel>{METRIC_TOTAL_PAID}</MetricLabel>
           <MetricValue $color="#22c55e">{formatCurrency(totalPaid)}</MetricValue>
         </MetricCard>
         <MetricCard>
-          <MetricLabel>Remaining Balance</MetricLabel>
+          <MetricLabel>{METRIC_REMAINING}</MetricLabel>
           <MetricValue $color={remaining >= 0 ? "#22c55e" : "#ef4444"}>
             {formatCurrency(remaining)}
           </MetricValue>
         </MetricCard>
         <MetricCard>
-          <MetricLabel>Savings Rate</MetricLabel>
+          <MetricLabel>{METRIC_SAVINGS_RATE}</MetricLabel>
           <MetricValue
             $color={
               savingsRate > 30

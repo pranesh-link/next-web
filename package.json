@@ -38,6 +38,7 @@
     "crypto-js": "4.2.0",
     "jsonwebtoken": "^9.0.3",
     "lodash": "4.17.21",
+    "lucide-react": "^1.14.0",
     "mobile-detect": "1.4.5",
     "mongoose": "8.4.0",
     "next": "15.3.8",

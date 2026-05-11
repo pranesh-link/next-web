@@ -17,6 +17,7 @@ import ActionButtonsBar from "./_components/ActionButtonsBar";
 import DeleteModal from "./_components/DeleteModal";
 import SuggestionsModal from "./_components/SuggestionsModal";
 import ImportPrevModal from "./_components/ImportPrevModal";
+import { PAGE_TITLE } from "./_labels";
 
 export default function BudgetPlannerPage() {
   const { data: session } = useSession();
@@ -26,7 +27,7 @@ export default function BudgetPlannerPage() {
 
   return (
     <>
-      <FinanceHeader title="Budget Planner" />
+      <FinanceHeader title={PAGE_TITLE} />
 
       {vm.notification && (
         <NotificationBanner notification={vm.notification} leaving={vm.notifLeaving} />
