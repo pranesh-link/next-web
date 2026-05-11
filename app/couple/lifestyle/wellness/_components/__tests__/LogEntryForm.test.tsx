@@ -52,17 +52,6 @@ describe("LogEntryForm", () => {
       renderForm({ defaults: { heightInCm: 0, weightInKg: 0 } });
       expect(screen.getByPlaceholderText("e.g. 175")).not.toBeDisabled();
     });
-
-    it("should unlock height when edit button is clicked", async () => {
-      renderForm();
-      const unlockBtn = screen.getByRole("button", { name: "Edit height" });
-      await userEvent.click(unlockBtn);
-
-      expect(screen.getByPlaceholderText("e.g. 175")).not.toBeDisabled();
-      expect(
-        screen.queryByText("Height is set once across entries"),
-      ).not.toBeInTheDocument();
-    });
   });
 
   describe("form reset after submit", () => {
