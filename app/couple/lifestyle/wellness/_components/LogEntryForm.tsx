@@ -98,15 +98,7 @@ const Note = styled.span`
   margin-top: 2px;
 `;
 
-const UnlockButton = styled.button`
-  background: none;
-  border: none;
-  color: var(--accent);
-  cursor: pointer;
-  font-size: 12px;
-  padding: 0;
-  margin-left: 4px;
-`;
+
 
 function todayIso() {
   const d = new Date();
@@ -143,9 +135,7 @@ export default function LogEntryForm({
   const [note, setNote] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
 
-  const isHeightLocked = heightLockedProp ?? defaults.heightInCm > 0;
-  const [heightUnlocked, setHeightUnlocked] = useState(false);
-  const heightDisabled = isHeightLocked && !heightUnlocked;
+  const heightDisabled = heightLockedProp ?? defaults.heightInCm > 0;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -209,18 +199,7 @@ export default function LogEntryForm({
           />
         </Field>
         <Field>
-          <Label>
-            Height (cm)
-            {heightDisabled && (
-              <UnlockButton
-                type="button"
-                onClick={() => setHeightUnlocked(true)}
-                aria-label="Edit height"
-              >
-                ✎
-              </UnlockButton>
-            )}
-          </Label>
+          <Label>Height (cm)</Label>
           <Input
             type="number"
             step="0.1"
