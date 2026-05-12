@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, Fragment } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import type { CoupleMessage } from "@prisma/client";
 import FinanceHeader from "@/couple/_components/layout/FinanceHeader";
 import MessageBubble from "./_components/MessageBubble";
 import ChatInput from "./_components/ChatInput";
-import { markAllRead } from "./_actions/messages";
+import { useCoupleChat } from "./_hooks/useCoupleChat";
 import {
   ChatPageWrapper,
   MessagesArea,
@@ -16,51 +15,42 @@ import {
   NoCoupleEmoji,
   InviteButton,
 } from "./_components/_chat.styled";
-
-/** State describing the SSE event payload. */
-interface StreamPayload {
-  count: number;
-  latest: Pick<CoupleMessage, "id" | "senderId" | "content" | "type" | "createdAt"> | null;
-}
+import { DateDivider, ScrollToBottomButton } from "./_components/_chat-extras.styled";
 
 /**
- * Fetch messages from the REST endpoint.
+ * Format a date as a human-readable day label.
  *
- * @returns Ordered array of CoupleMessage records (newest first), or empty array on error.
+ * @param date - The date to format.
+ * @returns A string like "Monday, Jan 5".
  */
-async function fetchMessages(): Promise<CoupleMessage[]> {
-  try {
-    const res = await fetch("/api/couple/chat/messages", { cache: "no-store" });
-    if (!res.ok) return [];
-    const json = await res.json();
-    return json.success ? (json.data as CoupleMessage[]) : [];
-  } catch {
-    return [];
-  }
+function formatDateLabel(date: Date | string): string {
+  return new Date(date).toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 /**
- * POST a new message to the REST endpoint.
+ * Return true when two dates fall on the same calendar day.
  *
- * @param content - Message text.
- * @param type - MessageType string.
- * @returns True when the request succeeded.
+ * @param a - First date.
+ * @param b - Second date.
+ * @returns True when both dates share year, month, and day.
  */
-async function postMessage(content: string, type: string): Promise<boolean> {
-  try {
-    const res = await fetch("/api/couple/chat/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content, type }),
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
+function isSameDay(a: Date | string, b: Date | string): boolean {
+  const da = new Date(a);
+  const db = new Date(b);
+  return (
+    da.getFullYear() === db.getFullYear() &&
+    da.getMonth() === db.getMonth() &&
+    da.getDate() === db.getDate()
+  );
 }
 
 /**
- * Chat page — real-time couple messaging with SSE polling.
+ * Chat page — real-time couple messaging with SSE polling, date separators,
+ * emoji reactions, and a scroll-to-bottom button.
  *
  * @returns The full chat page JSX including header, message list, and input bar.
  */
@@ -68,97 +58,34 @@ export default function ChatPage() {
   const { data: session } = useSession();
   const userId = session?.user?.id ?? "";
 
-  const [messages, setMessages] = useState<CoupleMessage[]>([]);
-  const [noCouple, setNoCouple] = useState(false);
-  const [coupleId, setCoupleId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { messages, noCouple, loading, memberNames, handleSend, handleRefresh, handleReact } =
+    useCoupleChat(userId);
+
   const bottomRef = useRef<HTMLDivElement>(null);
-  const lastCountRef = useRef<number>(-1);
+  const messagesAreaRef = useRef<HTMLDivElement>(null);
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
 
   /** Scroll to the bottom of the message list. */
   const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
-  /** Load messages and determine couple state from a single fetch. */
-  const loadMessages = useCallback(async () => {
-    try {
-      const res = await fetch("/api/couple/chat/messages", { cache: "no-store" });
-      const json = await res.json();
-
-      if (!json.success && json.error === "No couple found") {
-        setNoCouple(true);
-        setLoading(false);
-        return;
-      }
-
-      const msgs: CoupleMessage[] = json.success ? json.data : [];
-      // newest-first from API → reverse for display (oldest at top)
-      setMessages([...msgs].reverse());
-      if (msgs[0]?.coupleId) setCoupleId(msgs[0].coupleId);
-    } catch {
-      // network error — show empty state, not no-couple state
-    }
-    setLoading(false);
-  }, []);
-
-  // Initial load + mark read
-  useEffect(() => {
-    loadMessages();
-  }, [loadMessages]);
-
-  // Mark all read whenever coupleId is known
-  useEffect(() => {
-    if (coupleId) markAllRead(coupleId);
-  }, [coupleId]);
-
   // Scroll to bottom when messages change
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  // SSE subscription — reconnects automatically via EventSource
+  // Track scroll position to show/hide the scroll-to-bottom button
   useEffect(() => {
-    if (noCouple) return;
-
-    const source = new EventSource("/api/couple/chat/stream");
-
-    source.onmessage = async (event: MessageEvent) => {
-      try {
-        const payload = JSON.parse(event.data) as StreamPayload;
-        if (payload.count !== lastCountRef.current) {
-          lastCountRef.current = payload.count;
-          const msgs = await fetchMessages();
-          setMessages([...msgs].reverse());
-          if (msgs[0]?.coupleId) setCoupleId(msgs[0].coupleId);
-          if (coupleId) markAllRead(coupleId);
-        }
-      } catch {
-        // ignore parse errors
-      }
+    const area = messagesAreaRef.current;
+    if (!area) return;
+    const handleScroll = () => {
+      const distFromBottom = area.scrollHeight - area.scrollTop - area.clientHeight;
+      setShowScrollBtn(distFromBottom > 200);
     };
-
-    return () => source.close();
-  }, [noCouple, coupleId]);
-
-  /** Handle sending a new message. */
-  const handleSend = useCallback(
-    async (content: string, type: string) => {
-      const ok = await postMessage(content, type);
-      if (ok) {
-        const msgs = await fetchMessages();
-        setMessages([...msgs].reverse());
-        if (msgs[0]?.coupleId) setCoupleId(msgs[0].coupleId);
-        scrollToBottom();
-      }
-    },
-    [scrollToBottom],
-  );
-
-  /** Handle manual refresh. */
-  const handleRefresh = useCallback(async () => {
-    await loadMessages();
-  }, [loadMessages]);
+    area.addEventListener("scroll", handleScroll, { passive: true });
+    return () => area.removeEventListener("scroll", handleScroll);
+  }, []);
 
   if (noCouple) {
     return (
@@ -180,7 +107,7 @@ export default function ChatPage() {
     <ChatPageWrapper>
       <FinanceHeader title="Chat" onRefresh={handleRefresh} />
 
-      <MessagesArea>
+      <MessagesArea ref={messagesAreaRef}>
         {!loading && messages.length === 0 && (
           <EmptyState>
             <span>💬</span>
@@ -188,19 +115,42 @@ export default function ChatPage() {
           </EmptyState>
         )}
 
-        {messages.map((msg) => (
-          <MessageBubble
-            key={msg.id}
-            message={msg}
-            isMine={msg.senderId === userId}
-            senderName={msg.senderId === userId ? "You" : "Partner"}
-          />
-        ))}
+        {messages.map((msg, idx) => {
+          const prevMsg = idx > 0 ? messages[idx - 1] : null;
+          const showDate = !prevMsg || !isSameDay(prevMsg.createdAt, msg.createdAt);
+          const isGrouped = !!prevMsg && prevMsg.senderId === msg.senderId && !showDate;
+
+          return (
+            <Fragment key={msg.id}>
+              {showDate && (
+                <DateDivider>{formatDateLabel(msg.createdAt)}</DateDivider>
+              )}
+              <MessageBubble
+                message={msg}
+                isMine={msg.senderId === userId}
+                senderName={msg.senderId === userId ? "You" : (memberNames[msg.senderId] ?? "Partner")}
+                currentUserId={userId}
+                onReact={handleReact}
+                isGrouped={isGrouped}
+              />
+            </Fragment>
+          );
+        })}
 
         <div ref={bottomRef} />
       </MessagesArea>
+
+      {showScrollBtn && (
+        <ScrollToBottomButton onClick={scrollToBottom} aria-label="Scroll to bottom">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </ScrollToBottomButton>
+      )}
 
       <ChatInput onSend={handleSend} disabled={loading} />
     </ChatPageWrapper>
   );
 }
+
+

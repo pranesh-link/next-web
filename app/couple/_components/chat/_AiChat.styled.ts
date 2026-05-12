@@ -312,3 +312,281 @@ export const SendButton = styled.button`
   &:hover:not(:disabled) { opacity: 0.88; }
   &:disabled { opacity: 0.5; cursor: not-allowed; }
 `;
+
+// ─── History Panel ─────────────────────────────────────────────────────────────
+
+/** Outer wrapper for the two-column chat layout (history + chat area). */
+export const ChatLayout = styled.div`
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+`;
+
+/** Left history sidebar — collapsible. */
+export const HistoryPanel = styled.aside<{ $expanded: boolean }>`
+  width: ${(p) => (p.$expanded ? "240px" : "48px")};
+  min-width: ${(p) => (p.$expanded ? "240px" : "48px")};
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: width 0.25s ${EASING}, min-width 0.25s ${EASING};
+  background: var(--bg);
+
+  @media (max-width: 768px) {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    z-index: 50;
+    width: ${(p) => (p.$expanded ? "100%" : "0")};
+    min-width: 0;
+    border-right: none;
+    box-shadow: ${(p) => (p.$expanded ? "4px 0 20px rgba(0,0,0,0.15)" : "none")};
+  }
+`;
+
+/** Header row of the history panel (toggle + label). */
+export const HistoryPanelHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+`;
+
+/** "History" label in the panel header. */
+export const HistoryPanelTitle = styled.span`
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  overflow: hidden;
+`;
+
+/** Icon button to collapse/expand the history panel. */
+export const CollapseButton = styled.button`
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  transition: all 0.15s ${EASING};
+  &:hover { background: var(--surface); color: var(--text); }
+  svg { width: 16px; height: 16px; }
+`;
+
+/** "New chat" button at the top of the thread list. */
+export const NewChatButton = styled.button`
+  width: calc(100% - 20px);
+  margin: 10px;
+  padding: 8px 12px;
+  border: 1px dashed var(--accent);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ${EASING};
+  white-space: nowrap;
+  overflow: hidden;
+
+  &:hover {
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+  }
+`;
+
+/** Scrollable list of threads. */
+export const ThreadList = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 0;
+`;
+
+/** One thread row in the history panel. */
+export const ThreadItem = styled.div<{ $active: boolean; $deleting: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  border-left: 3px solid ${(p) => (p.$active ? "var(--accent)" : "transparent")};
+  background: ${(p) =>
+    p.$deleting
+      ? "color-mix(in srgb, var(--danger, #ef4444) 8%, transparent)"
+      : p.$active
+        ? "color-mix(in srgb, var(--accent) 8%, transparent)"
+        : "transparent"};
+  transition: all 0.15s ${EASING};
+  min-width: 0;
+
+  &:hover {
+    background: ${(p) =>
+      p.$active
+        ? "color-mix(in srgb, var(--accent) 12%, transparent)"
+        : "var(--surface)"};
+  }
+
+  &:hover .thread-delete { opacity: 1; }
+`;
+
+/** Thread title text — 1-line truncated. */
+export const ThreadTitle = styled.span`
+  flex: 1;
+  min-width: 0;
+  font-size: 0.82rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+/** Inline input shown when renaming a thread via double-click. */
+export const ThreadRenameInput = styled.input`
+  flex: 1;
+  min-width: 0;
+  font-size: 0.82rem;
+  color: var(--text);
+  background: var(--bg-elevated);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 1px 6px;
+  outline: none;
+`;
+
+/** Meta row beside the thread title (date + delete). */
+export const ThreadMeta = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+`;
+
+/** Relative date label for a thread. */
+export const ThreadDate = styled.span`
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+`;
+
+/** Trash icon button on a thread row. */
+export const ThreadDeleteBtn = styled.button`
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  opacity: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: 4px;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  &:hover { color: var(--danger, #ef4444); }
+  svg { width: 14px; height: 14px; }
+`;
+
+/** Inline delete confirmation row. */
+export const DeleteConfirm = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+`;
+
+/** Confirm or cancel button inside the delete confirmation row. */
+export const DeleteConfirmBtn = styled.button<{ $confirm?: boolean }>`
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: ${(p) => (p.$confirm ? "var(--danger, #ef4444)" : "var(--text-muted)")};
+  &:hover { background: var(--surface); }
+`;
+
+/** Shimmer animation for skeleton thread placeholders. */
+const shimmer = keyframes`
+  0% { background-position: -200px 0; }
+  100% { background-position: calc(200px + 100%) 0; }
+`;
+
+/** Skeleton placeholder for a thread row while history is loading. */
+export const SkeletonThread = styled.div`
+  height: 44px;
+  margin: 4px 10px;
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    var(--surface) 0px,
+    color-mix(in srgb, var(--accent) 6%, var(--surface)) 40px,
+    var(--surface) 80px
+  );
+  background-size: 200px 100%;
+  animation: ${shimmer} 1.4s ease-in-out infinite;
+`;
+
+/** Empty state shown when there are no threads. */
+export const EmptyHistory = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  gap: 8px;
+  text-align: center;
+
+  p {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin: 0;
+    line-height: 1.5;
+  }
+`;
+
+/** The right-side chat area that sits next to the history panel. */
+export const ChatArea = styled.div`
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+`;
+
+/** Button in the ChatHeader to toggle the history panel on mobile. */
+export const HistoryToggleButton = styled.button`
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  transition: all 0.15s ${EASING};
+  flex-shrink: 0;
+  &:hover { background: var(--surface); color: var(--text); }
+  svg { width: 18px; height: 18px; }
+`;

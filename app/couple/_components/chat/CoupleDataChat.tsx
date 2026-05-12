@@ -2,310 +2,228 @@
 
 import { useRef, useEffect, useState, useCallback } from "react";
 import {
-  ToggleButton,
-  Overlay,
-  ChatPanel,
-  ChatHeader,
-  CloseButton,
-  MessageList,
-  SuggestedPrompts,
-  SuggestedLabel,
-  PromptChip,
-  MessageRow,
-  MessageBubble,
-  ToolStatus,
-  ThinkingDots,
-  ChatInputForm,
-  ChatInput,
-  SendButton,
+  ToggleButton, Overlay, ChatPanel, ChatHeader, CloseButton,
+  MessageList, SuggestedPrompts, SuggestedLabel, PromptChip,
+  MessageRow, MessageBubble, ToolStatus, ThinkingDots,
+  ChatInputForm, ChatInput, SendButton,
+  ChatLayout, ChatArea, HistoryToggleButton,
 } from "./_AiChat.styled";
-
-// ─── CMS Config ───────────────────────────────────────────────────────────────
-
-interface AiChatCms {
-  title: string;
-  placeholder: string;
-  suggestedPrompts: string[];
-  toolLabels: Record<string, string>;
-}
-
-const DEFAULT_CONFIG: AiChatCms = {
-  title: "AI Finance Assistant",
-  placeholder: "Ask about your finances...",
-  suggestedPrompts: [
-    "How much did I spend this month?",
-    "What's my net worth?",
-    "Show my budget status for this month",
-    "Which category am I overspending on?",
-  ],
-  toolLabels: {},
-};
-
-function useChatConfig(configEndpoint: string) {
-  const [config, setConfig] = useState<AiChatCms>(DEFAULT_CONFIG);
-  useEffect(() => {
-    fetch(configEndpoint)
-      .then((r) => r.json())
-      .then((data: AiChatCms) => setConfig(data))
-      .catch(() => {/* keep defaults */});
-  }, [configEndpoint]);
-  return config;
-}
+import { useChatConfig, renderMarkdown } from "./_chat-utils";
+import { useChatHistory } from "./_useChatHistory";
+import ChatHistoryPanel from "./ChatHistoryPanel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+/** A single message in the AI chat conversation. */
 interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
 }
 
-// ─── Markdown renderer ────────────────────────────────────────────────────────
-
-function parseTableBlock(block: string): string {
-  const lines = block.split("\n").filter((l) => l.trim().startsWith("|"));
-  if (lines.length < 2) return block;
-  const isSeparator = (line: string) => /^\|[-| :]+\|$/.test(line.trim());
-  const parseCells = (line: string, tag: string) =>
-    line
-      .split("|")
-      .slice(1, -1)
-      .map((c) => `<${tag}>${c.trim()}</${tag}>`)
-      .join("");
-
-  const headerLine = lines[0];
-  const dataLines = lines.filter((l, i) => i !== 0 && !isSeparator(l));
-
-  const thead = `<thead><tr>${parseCells(headerLine, "th")}</tr></thead>`;
-  const tbody = `<tbody>${dataLines.map((l) => `<tr>${parseCells(l, "td")}</tr>`).join("")}</tbody>`;
-  return `<table>${thead}${tbody}</table>`;
-}
-
-function renderMarkdown(text: string): string {
-  // Extract and replace table blocks before other processing
-  const tableBlockRe = /(?:^\|.+\|$\n?){2,}/gm;
-  const processed = text.replace(tableBlockRe, (block) => parseTableBlock(block));
-
-  return processed
-    // Bold
-    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-    // Italic
-    .replace(/\*(.*?)\*/g, "<em>$1</em>")
-    // Inline code
-    .replace(/`([^`]+)`/g, "<code>$1</code>")
-    // H3
-    .replace(/^### (.+)$/gm, "<h3>$1</h3>")
-    // H2
-    .replace(/^## (.+)$/gm, "<h2>$1</h2>")
-    // H1
-    .replace(/^# (.+)$/gm, "<h1>$1</h1>")
-    // Unordered list items — wrap consecutive ones in <ul>
-    .replace(/^- (.+)$/gm, "<li>$1</li>")
-    .replace(/(<li>.*<\/li>\n?)+/g, (m) => `<ul>${m}</ul>`)
-    // Line breaks
-    .replace(/\n\n/g, "<br/><br/>")
-    .replace(/\n/g, "<br/>");
-}
-
 // ─── SSE Chat Hook ────────────────────────────────────────────────────────────
 
+/**
+ * Manages AI chat state: messages, loading, tool calls, and chat thread ID.
+ *
+ * @param endpoint - The SSE POST endpoint for the AI chat.
+ * @returns Chat state and action handlers.
+ */
 function useAiChat(endpoint: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [activeToolCall, setActiveToolCall] = useState<string | null>(null);
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const messagesRef = useRef<ChatMessage[]>([]);
+  const chatIdRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    messagesRef.current = messages;
-  }, [messages]);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+  useEffect(() => { chatIdRef.current = currentChatId; }, [currentChatId]);
 
-  const sendMessage = useCallback(
-    async (content: string) => {
-      if (!content.trim() || isLoading) return;
+  /** Replace all messages (used when switching threads). */
+  const loadMessages = useCallback((msgs: ChatMessage[]) => setMessages(msgs), []);
 
-      const userMsg: ChatMessage = { id: crypto.randomUUID(), role: "user", content };
-      const assistantId = crypto.randomUUID();
+  /** Clear messages and thread ID to start a fresh conversation. */
+  const resetChat = useCallback(() => {
+    setMessages([]);
+    setCurrentChatId(null);
+    chatIdRef.current = null;
+  }, []);
 
-      setMessages((prev) => [
-        ...prev,
-        userMsg,
-        { id: assistantId, role: "assistant", content: "" },
-      ]);
-      setInput("");
-      setIsLoading(true);
-      setActiveToolCall(null);
+  const sendMessage = useCallback(async (content: string) => {
+    if (!content.trim() || isLoading) return;
+    const userMsg: ChatMessage = { id: crypto.randomUUID(), role: "user", content };
+    const assistantId = crypto.randomUUID();
+    setMessages((prev) => [...prev, userMsg, { id: assistantId, role: "assistant", content: "" }]);
+    setInput("");
+    setIsLoading(true);
+    setActiveToolCall(null);
 
-      try {
-        const history = [...messagesRef.current, userMsg].map((m) => ({
-          role: m.role,
-          content: m.content,
-        }));
+    try {
+      const history = [...messagesRef.current, userMsg].map((m) => ({ role: m.role, content: m.content }));
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: history, chatId: chatIdRef.current }),
+      });
+      if (!res.ok || !res.body) throw new Error("Chat request failed");
 
-        const res = await fetch(endpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: history }),
-        });
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "", accumulated = "";
 
-        if (!res.ok || !res.body) throw new Error("Chat request failed");
-
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-        let accumulated = "";
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() ?? "";
-
-          for (const line of lines) {
-            if (!line.startsWith("data: ")) continue;
-            const raw = line.slice(6).trim();
-            if (!raw) continue;
-
-            let event: { type: string; toolName?: string; delta?: string; message?: string };
-            try {
-              event = JSON.parse(raw) as typeof event;
-            } catch {
-              continue;
-            }
-
-            if (event.type === "tool_call") {
-              setActiveToolCall(event.toolName ?? null);
-            } else if (event.type === "text_delta" && event.delta) {
-              accumulated += event.delta;
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantId ? { ...m, content: accumulated } : m
-                )
-              );
-              setActiveToolCall(null);
-            } else if (event.type === "done") {
-              setActiveToolCall(null);
-            } else if (event.type === "error") {
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantId
-                    ? { ...m, content: "Sorry, something went wrong. Please try again." }
-                    : m
-                )
-              );
-            }
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const raw = line.slice(6).trim();
+          if (!raw) continue;
+          let event: { type: string; toolName?: string; delta?: string; message?: string; chatId?: string };
+          try { event = JSON.parse(raw) as typeof event; } catch { continue; }
+          if (event.type === "tool_call") {
+            setActiveToolCall(event.toolName ?? null);
+          } else if (event.type === "text_delta" && event.delta) {
+            accumulated += event.delta;
+            setMessages((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: accumulated } : m));
+            setActiveToolCall(null);
+          } else if (event.type === "done") {
+            if (event.chatId) { setCurrentChatId(event.chatId); chatIdRef.current = event.chatId; }
+            setActiveToolCall(null);
+          } else if (event.type === "error") {
+            setMessages((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: "Sorry, something went wrong. Please try again." } : m));
           }
         }
-      } catch {
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.role === "assistant" && m.content === ""
-              ? { ...m, content: "Sorry, something went wrong. Please try again." }
-              : m
-          )
-        );
-      } finally {
-        setIsLoading(false);
-        setActiveToolCall(null);
       }
-    },
-    [endpoint, isLoading]
-  );
+    } catch {
+      setMessages((prev) => prev.map((m) => m.role === "assistant" && m.content === "" ? { ...m, content: "Sorry, something went wrong. Please try again." } : m));
+    } finally {
+      setIsLoading(false);
+      setActiveToolCall(null);
+    }
+  }, [endpoint, isLoading]);
 
-  return { messages, input, setInput, isLoading, activeToolCall, sendMessage };
+  return { messages, input, setInput, isLoading, activeToolCall, sendMessage, currentChatId, setCurrentChatId, resetChat, loadMessages };
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+/** Props for {@link CoupleDataChat}. */
 interface CoupleDataChatProps {
+  /** SSE POST endpoint for the AI assistant. */
   endpoint: string;
+  /** JSON endpoint for CMS config (title, prompts, tool labels). */
   configEndpoint: string;
+  /** When true renders inline (full-page). When false renders as a floating panel. */
   pageMode?: boolean;
 }
 
+/**
+ * AI chat panel with history sidebar for "Chat with your Couple data".
+ *
+ * @param props - See {@link CoupleDataChatProps}.
+ */
 export default function CoupleDataChat({ endpoint, configEndpoint, pageMode = false }: CoupleDataChatProps) {
   const [isOpen, setIsOpen] = useState(pageMode);
+  const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const config = useChatConfig(configEndpoint);
-  const { messages, input, setInput, isLoading, activeToolCall, sendMessage } = useAiChat(endpoint);
+  const { messages, input, setInput, isLoading, activeToolCall, sendMessage, currentChatId, setCurrentChatId, resetChat, loadMessages } = useAiChat(endpoint);
+  const { threads, activeThreadId, isLoading: historyLoading, historyExpanded, setActiveThreadId, setHistoryExpanded, loadThreadMessages, deleteThread, renameThread, refresh } = useChatHistory();
 
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, activeToolCall]);
+
+  // Sync new chat ID back to history list after first message creates a thread
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, activeToolCall]);
+    if (currentChatId && currentChatId !== activeThreadId) {
+      setActiveThreadId(currentChatId);
+      void refresh();
+    }
+  }, [currentChatId, activeThreadId, setActiveThreadId, refresh]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    void sendMessage(input);
-  };
+  const handleSelectThread = useCallback(async (chatId: string) => {
+    const msgs = await loadThreadMessages(chatId);
+    loadMessages(msgs.map((m) => ({ id: m.id, role: m.role as "user" | "assistant", content: m.content })));
+    setActiveThreadId(chatId);
+    setCurrentChatId(chatId);
+    setMobileHistoryOpen(false);
+  }, [loadThreadMessages, loadMessages, setActiveThreadId, setCurrentChatId]);
 
-  const panel = (
-    <ChatPanel $open={isOpen} $pageMode={pageMode}>
+  const handleNewChat = useCallback(() => {
+    resetChat();
+    setActiveThreadId(null);
+    setMobileHistoryOpen(false);
+  }, [resetChat, setActiveThreadId]);
+
+  const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); void sendMessage(input); };
+
+  const historyPanel = (
+    <ChatHistoryPanel
+      threads={threads}
+      activeThreadId={activeThreadId}
+      isLoading={historyLoading}
+      expanded={historyExpanded}
+      onToggleExpand={() => setHistoryExpanded(!historyExpanded)}
+      onSelectThread={(id) => void handleSelectThread(id)}
+      onNewChat={handleNewChat}
+      onDeleteThread={(id) => void deleteThread(id)}
+      onRenameThread={(id, title) => void renameThread(id, title)}
+    />
+  );
+
+  const chatBody = (
+    <ChatArea>
       <ChatHeader>
+        <HistoryToggleButton onClick={() => setMobileHistoryOpen(true)} aria-label="Open chat history">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+          </svg>
+        </HistoryToggleButton>
         <span>{config.title}</span>
-        {!pageMode && (
-          <CloseButton onClick={() => setIsOpen(false)} aria-label="Close chat">
-            ×
-          </CloseButton>
-        )}
+        {!pageMode && <CloseButton onClick={() => setIsOpen(false)} aria-label="Close chat">×</CloseButton>}
       </ChatHeader>
-
       <MessageList>
         {messages.length === 0 && (
           <SuggestedPrompts>
             <SuggestedLabel>Try asking:</SuggestedLabel>
             {config.suggestedPrompts.map((p) => (
-              <PromptChip key={p} onClick={() => void sendMessage(p)}>
-                {p}
-              </PromptChip>
+              <PromptChip key={p} onClick={() => void sendMessage(p)}>{p}</PromptChip>
             ))}
           </SuggestedPrompts>
         )}
-
         {messages.map((message) => (
           <MessageRow key={message.id} $role={message.role}>
             {message.content && (
-              message.role === "assistant" ? (
-                <MessageBubble
-                  $role={message.role}
-                  dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }}
-                />
-              ) : (
-                <MessageBubble $role={message.role}>{message.content}</MessageBubble>
-              )
+              message.role === "assistant"
+                ? <MessageBubble $role={message.role} dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }} />
+                : <MessageBubble $role={message.role}>{message.content}</MessageBubble>
             )}
           </MessageRow>
         ))}
-
-        {activeToolCall && (
-          <ToolStatus>⚡ {config.toolLabels?.[activeToolCall] ?? "Fetching your data..."}</ToolStatus>
-        )}
-
+        {activeToolCall && <ToolStatus>⚡ {config.toolLabels?.[activeToolCall] ?? "Fetching your data..."}</ToolStatus>}
         {isLoading && !activeToolCall && messages.at(-1)?.content === "" && (
-          <ThinkingDots>
-            <span />
-            <span />
-            <span />
-          </ThinkingDots>
+          <ThinkingDots><span /><span /><span /></ThinkingDots>
         )}
-
         <div ref={bottomRef} />
       </MessageList>
-
       <ChatInputForm onSubmit={handleSubmit}>
-        <ChatInput
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder={config.placeholder}
-          disabled={isLoading}
-          inputMode="text"
-          enterKeyHint="send"
-        />
-        <SendButton type="submit" disabled={isLoading || !input.trim()}>
-          Send
-        </SendButton>
+        <ChatInput value={input} onChange={(e) => setInput(e.target.value)} placeholder={config.placeholder} disabled={isLoading} inputMode="text" enterKeyHint="send" />
+        <SendButton type="submit" disabled={isLoading || !input.trim()}>Send</SendButton>
       </ChatInputForm>
+    </ChatArea>
+  );
+
+  const panel = (
+    <ChatPanel $open={isOpen} $pageMode={pageMode}>
+      <ChatLayout>
+        {historyPanel}
+        {mobileHistoryOpen && <Overlay onClick={() => setMobileHistoryOpen(false)} />}
+        {chatBody}
+      </ChatLayout>
     </ChatPanel>
   );
 
@@ -313,22 +231,8 @@ export default function CoupleDataChat({ endpoint, configEndpoint, pageMode = fa
 
   return (
     <>
-      <ToggleButton
-        onClick={() => setIsOpen((v) => !v)}
-        $isOpen={isOpen}
-        aria-label="Toggle AI chat"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="22"
-          height="22"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
+      <ToggleButton onClick={() => setIsOpen((v) => !v)} $isOpen={isOpen} aria-label="Toggle AI chat">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
         </svg>
       </ToggleButton>
