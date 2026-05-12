@@ -590,3 +590,35 @@ export const HistoryToggleButton = styled.button`
   &:hover { background: var(--surface); color: var(--text); }
   svg { width: 18px; height: 18px; }
 `;
+
+// ─── Suggestion Chips ─────────────────────────────────────────────────────────
+
+/** Horizontally wrapping row of follow-up suggestion chips shown after each AI response. */
+export const SuggestionChips = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 12px 10px;
+  animation: fadeIn 0.25s ease;
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+`;
+
+/** A single tappable suggestion pill that populates the chat input. */
+export const SuggestionChip = styled.button`
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  padding: 5px 14px;
+  transition: background 0.15s ${EASING}, border-color 0.15s ${EASING}, color 0.15s ${EASING};
+  white-space: nowrap;
+  &:hover {
+    background: var(--bg-elevated);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  @media (max-width: 480px) { font-size: 0.75rem; padding: 4px 11px; }
+`;
