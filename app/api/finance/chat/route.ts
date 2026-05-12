@@ -17,6 +17,7 @@ import fs from "fs";
 import OpenAI from "openai";
 import type { ChatCompletionMessageToolCall } from "openai/resources/chat/completions";
 import { auth } from "@/_lib/auth";
+import prisma from "@/_lib/prisma";
 import { getUserIdsForCouple } from "@/_services/finance/couple-service";
 import { FINANCE_TOOLS, executeToolCall } from "@/couple/finance/_lib/chat-tools";
 
@@ -48,8 +49,22 @@ export async function POST(req: Request): Promise<Response> {
   const coupleUserIds = await getUserIdsForCouple(session.user.id);
   const { systemPrompt } = loadCmsChatConfig();
 
+  // Fetch real names so the LLM never says "Person 1" / "Person 2"
+  const members = await prisma.user.findMany({
+    where: { id: { in: coupleUserIds } },
+    select: { id: true, name: true, email: true },
+  });
+  const memberNames = members.map((m) => `  '${m.id}' → ${m.name ?? m.email}`).join("\n");
+
   const today = new Date().toISOString().split("T")[0];
-  const enrichedSystemPrompt = `${systemPrompt}\n\nToday's date: ${today}. When the user asks about "last month", "this month", "last week", or similar, derive the correct YYYY-MM from today's date and call the appropriate tool with that value. Do not guess or fabricate dates.`;
+  const enrichedSystemPrompt = `${systemPrompt}
+
+Today's date: ${today}. When the user asks about "last month", "this month", "last week", or similar, derive the correct YYYY-MM from today's date and call the appropriate tool with that value. Do not guess or fabricate dates.
+
+Couple member user IDs and their real names (ALWAYS use these names — never say "Person 1" or "Person 2"):
+${memberNames}
+
+TransactionType enum values are exactly: 'INCOME' and 'EXPENSE' (uppercase). Always use uppercase in WHERE clauses.`;
 
   const client = new OpenAI({
     baseURL: "https://openrouter.ai/api/v1",

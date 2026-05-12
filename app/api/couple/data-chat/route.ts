@@ -17,7 +17,8 @@ import fs from "fs";
 import OpenAI from "openai";
 import type { ChatCompletionMessageToolCall } from "openai/resources/chat/completions";
 import { auth } from "@/_lib/auth";
-import { getUserIdsForCouple } from "@/_services/finance/couple-service";
+import prisma from "@/_lib/prisma";
+import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
 import { NL_TO_SQL_TOOL, NL_TO_SQL_TOOL_LABELS, validateAndExecuteQuery } from "@/couple/_lib/nl-to-sql-tool";
 import { extractSchemaForPrompt } from "@/couple/_lib/schema-extractor";
 
@@ -44,10 +45,23 @@ export async function POST(req: Request): Promise<Response> {
   const session = await auth();
   if (!session?.user?.id) return new Response("Unauthorized", { status: 401 });
 
-  const { messages } = (await req.json()) as { messages: { role: "user" | "assistant"; content: string }[] };
+  const { messages, chatId: incomingChatId } = (await req.json()) as {
+    messages: { role: "user" | "assistant"; content: string }[];
+    chatId?: string;
+  };
 
   const coupleUserIds = await getUserIdsForCouple(session.user.id);
+  const coupleId = await getCoupleIdForUser(session.user.id);
   const { systemPrompt } = loadCmsChatConfig();
+
+  // Fetch real names for couple members so the LLM can refer to them by name
+  const members = await prisma.user.findMany({
+    where: { id: { in: coupleUserIds } },
+    select: { id: true, name: true, email: true },
+  });
+  const memberNames = members
+    .map((m) => `  '${m.id}' → ${m.name ?? m.email}`)
+    .join("\n");
 
   const today = new Date().toISOString().split("T")[0];
   const schema = extractSchemaForPrompt();
@@ -56,8 +70,8 @@ export async function POST(req: Request): Promise<Response> {
 
 Today's date: ${today}.
 
-Couple member user IDs (MUST be used in every query):
-${userIdList}
+Couple member user IDs and their real names (ALWAYS use these names in responses — never say "Person 1" or "Person 2"):
+${memberNames}
 
 MANDATORY: Every SQL query MUST include WHERE "userId" IN (${userIdList}) — no exceptions. Never omit this filter.
 
@@ -67,13 +81,17 @@ SQL Rules:
 - Only SELECT queries
 - Always double-quote camelCase column names: "userId", "createdAt", "updatedAt", etc.
 - Table names are snake_case as listed in the schema above
+- TransactionType enum values are exactly: 'INCOME' and 'EXPENSE' (uppercase) — always use uppercase in WHERE clauses
+- To get income: WHERE type = 'INCOME'
+- To get expenses: WHERE type = 'EXPENSE'
 - Use DATE_TRUNC('month', date) for monthly grouping
 - Use DATE_TRUNC('week', date) for weekly grouping
 - Add LIMIT 100 if not specified
 - For amounts: SUM, AVG, MIN, MAX are fine
 - For dates: compare using >= and < boundaries
 - Current month start: DATE_TRUNC('month', CURRENT_DATE)
-- Last month start: DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1 month'`;
+- Last month start: DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1 month'
+- When showing per-person data (e.g. weight, metrics), JOIN with users table or use the userId → name mapping above to show real names`;
 
   const client = new OpenAI({
     baseURL: "https://openrouter.ai/api/v1",
@@ -88,6 +106,20 @@ SQL Rules:
       };
 
       try {
+        // Resolve or create the chat thread
+        let activeChatId = incomingChatId ?? null;
+        const firstUserMsg = messages.findLast((m) => m.role === "user")?.content ?? "";
+
+        if (!activeChatId && coupleId) {
+          const newChat = await prisma.coupleChat.create({
+            data: {
+              coupleId,
+              title: firstUserMsg.slice(0, 60) || "New chat",
+            },
+          });
+          activeChatId = newChat.id;
+        }
+
         // Build the message history for the agentic loop
         const current: ChatMessage[] = messages.map((m) => ({
           role: m.role,
@@ -96,6 +128,7 @@ SQL Rules:
 
         // Agentic loop — max 5 tool-call rounds to prevent runaway
         let answered = false;
+        let finalAssistantContent = "";
         for (let step = 0; step < 5; step++) {
           const completion = await client.chat.completions.create({
             model: "deepseek/deepseek-chat",
@@ -141,6 +174,7 @@ SQL Rules:
           } else {
             // Fix 2: Send full content as a single delta (no word-by-word streaming)
             const content = msg.content ?? "";
+            finalAssistantContent = content;
             send({ type: "text_delta", delta: content });
             answered = true;
             break;
@@ -149,13 +183,32 @@ SQL Rules:
 
         // Fix 3: Loop exhaustion fallback — model never produced a final answer
         if (!answered) {
+          finalAssistantContent = "I gathered your data but couldn't formulate a response. Please try rephrasing your question.";
           send({
             type: "text_delta",
-            delta: "I gathered your data but couldn't formulate a response. Please try rephrasing your question.",
+            delta: finalAssistantContent,
           });
         }
 
-        send({ type: "done" });
+        // Persist messages to DB
+        if (activeChatId) {
+          try {
+            await prisma.coupleChatMsg.createMany({
+              data: [
+                { chatId: activeChatId, role: "user", content: firstUserMsg },
+                { chatId: activeChatId, role: "assistant", content: finalAssistantContent },
+              ],
+            });
+            await prisma.coupleChat.update({
+              where: { id: activeChatId },
+              data: { updatedAt: new Date() },
+            });
+          } catch {
+            // Non-fatal — don't fail the response if DB write fails
+          }
+        }
+
+        send({ type: "done", chatId: activeChatId });
       } catch (err) {
         send({ type: "error", message: err instanceof Error ? err.message : "Unknown error" });
       } finally {

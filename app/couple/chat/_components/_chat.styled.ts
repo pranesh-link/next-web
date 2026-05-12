@@ -10,6 +10,7 @@ export const ChatPageWrapper = styled.div`
   height: calc(100vh - 65px);
   background: var(--bg);
   overflow: hidden;
+  position: relative;
 `;
 
 /** Scrollable area that holds all message bubbles. */
@@ -21,6 +22,7 @@ export const MessagesArea = styled.div`
   display: flex;
   flex-direction: column;
   gap: 4px;
+  position: relative;
 
   @media (max-width: 768px) {
     padding: 16px;
@@ -128,6 +130,7 @@ export const BubbleColumn = styled.div<{ $isMine: boolean }>`
   align-items: ${(p) => (p.$isMine ? "flex-end" : "flex-start")};
   max-width: 70%;
   min-width: 0;
+  position: relative;
 
   @media (max-width: 480px) {
     max-width: 85%;
@@ -170,6 +173,8 @@ export const BubbleBox = styled.div<{ $isMine: boolean; $isAI?: boolean }>`
   line-height: 1.5;
   border: 1px solid ${(p) => (p.$isMine ? "transparent" : "var(--border)")};
   word-break: break-word;
+  transition: transform 0.15s ease;
+  &:hover { transform: translateY(-1px); }
 `;
 
 /** Plain text content inside a bubble. */
@@ -177,7 +182,6 @@ export const BubbleText = styled.p`
   margin: 0;
   white-space: pre-wrap;
 `;
-
 /** Bullet list for LIST-type messages. */
 export const BulletList = styled.ul`
   margin: 0;
@@ -213,6 +217,7 @@ export const InputWrapper = styled.form`
   border-top: 1px solid var(--border);
   background: var(--bg-elevated);
   flex-shrink: 0;
+  position: relative;
 
   @media (max-width: 768px) {
     padding: 10px 12px 14px;

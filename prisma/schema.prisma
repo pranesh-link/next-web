@@ -729,3 +729,32 @@ model TripChecklist {
   @@index([tripId])
   @@map("trip_checklist")
 }
+
+// ─── AI Data Chat History ─────────────────────────────────────
+
+/** One conversation thread in the "Chat with your Couple data" AI assistant. */
+model CoupleChat {
+  id        String          @id @default(uuid())
+  coupleId  String
+  title     String          @default("New chat")
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  messages  CoupleChatMsg[]
+
+  @@index([coupleId])
+  @@map("couple_chats")
+}
+
+/** One message (user or assistant) within a CoupleChat thread. */
+model CoupleChatMsg {
+  id        String     @id @default(uuid())
+  chatId    String
+  role      String     // "user" | "assistant"
+  content   String     @db.Text
+  createdAt DateTime   @default(now())
+
+  chat CoupleChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  @@index([chatId])
+  @@map("couple_chat_messages")
+}
