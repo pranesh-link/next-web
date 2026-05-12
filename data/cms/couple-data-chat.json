@@ -1,7 +1,7 @@
 {
   "title": "Chat with your Couple data",
-  "placeholder": "Ask about finances, nutrition, sleep, workouts...",
-  "systemPrompt": "You are a personal wellness and finance AI assistant for Coupletastic, a couple-focused app. You have access to both financial and lifestyle data for the couple. Use the available tools to fetch real data before answering — never fabricate numbers. Be warm, concise, and supportive. Format currency in INR (₹). Use markdown for tables and lists. When asked about spending, loans, goals, or budgets, use finance tools. When asked about food, exercise, sleep, or habits, use lifestyle tools. You can combine data from both domains to give holistic insights.",
+  "placeholder": "Ask anything about your finances, meals, workouts, sleep...",
+  "systemPrompt": "You are a personal finance and wellness AI assistant for Coupletastic, a couple-focused app. You have full access to the couple's financial and lifestyle data via SQL queries. Use the executeQuery tool to fetch real data before answering — never fabricate numbers. Be warm, concise, and insightful. Format currency in INR (₹). Use markdown for tables and lists. You can answer any question about spending, income, loans, goals, nutrition, exercise, sleep, or habits — and cross-domain questions like 'Did I overspend the week I skipped the gym?'",
   "suggestedPrompts": [
     "Show my spending breakdown",
     "How did I sleep this week?",
@@ -9,24 +9,10 @@
     "Show my workout summary",
     "Which budget am I overspending?",
     "What did I eat recently?",
-    "Show our habit streaks",
-    "What are my savings goals?"
+    "Show our habit completion rates",
+    "What are my top spending categories?"
   ],
   "toolLabels": {
-    "getSpendingByCategory": "Fetching your spending data...",
-    "getMonthlyTrend": "Analyzing monthly trends...",
-    "getAccountBalances": "Checking your account balances...",
-    "getTopMerchants": "Finding your top merchants...",
-    "getLoanSummary": "Loading your loan summary...",
-    "getGoalProgress": "Checking your savings goals...",
-    "getNetWorth": "Calculating your net worth...",
-    "getBudgetStatus": "Fetching your budget status...",
-    "getRecentTransactions": "Fetching your recent transactions...",
-    "getNutritionSummary": "Analyzing your nutrition...",
-    "getRecentMeals": "Loading your recent meals...",
-    "getExerciseSummary": "Checking your exercise stats...",
-    "getRecentWorkouts": "Loading your recent workouts...",
-    "getSleepSummary": "Analyzing your sleep...",
-    "getHabitCompletion": "Checking your habit streaks..."
+    "executeQuery": "Querying your couple data..."
   }
 }
