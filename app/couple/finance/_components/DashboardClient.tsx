@@ -16,6 +16,7 @@ import BudgetsSection from "./dashboard/BudgetsSection";
 import LoansSection from "./dashboard/LoansSection";
 import GoalsSection from "./dashboard/GoalsSection";
 import RecentTransactionsSection from "./dashboard/RecentTransactionsSection";
+import BudgetVsActualsWidget from "./BudgetVsActualsWidget";
 import type { DashboardData } from "./dashboard/types";
 
 export default function DashboardClient({
@@ -83,6 +84,8 @@ export default function DashboardClient({
           <MonthlyTrendChart data={monthlyTrends} />
           <CategoryPieChart data={expenseBreakdown} />
         </ChartsGrid>
+
+        <BudgetVsActualsWidget />
 
         <HealthSection healthScore={healthScore} />
         <BudgetsSection budgetStatus={budgetStatus} />

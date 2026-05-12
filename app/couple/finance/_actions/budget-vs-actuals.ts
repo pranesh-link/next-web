@@ -1,0 +1,79 @@
+"use server";
+
+import { unstable_noStore as noStore } from "next/cache";
+import prisma from "@/_lib/prisma";
+import { requireAuthForAction } from "@/_lib/auth-utils";
+import { getUserIdsForCouple } from "@/_services/finance/couple-service";
+
+/** A single row in the Budget vs Actuals report. */
+export interface BudgetActualRow {
+  /** Transaction category name. */
+  category: string;
+  /** Budget limit for the month, or null when no budget is set. */
+  limit: number | null;
+  /** Actual amount spent in the month. */
+  spent: number;
+  /** True when spent >= limit (only relevant when limit is set). */
+  overBudget: boolean;
+  /** Percentage of limit consumed (0–∞). 0 when limit is null. */
+  pct: number;
+}
+
+/**
+ * Returns budget limits vs actual spend for each category for a given month.
+ * Includes categories that have spend but no budget set.
+ * Sorted by spent descending.
+ *
+ * @param month - Month in "YYYY-MM" format (e.g. "2026-05").
+ * @returns Array of {@link BudgetActualRow}, sorted by spent descending.
+ * @throws {Error} When authentication fails.
+ * @remarks Auth: requires session.
+ */
+export async function getBudgetVsActuals(month: string): Promise<BudgetActualRow[]> {
+  noStore();
+  const user = await requireAuthForAction();
+  if (!user) throw new Error("Not authenticated");
+
+  const [year, m] = month.split("-").map(Number);
+  const monthStart = new Date(year, m - 1, 1);
+  const monthEnd = new Date(year, m, 1);
+
+  const coupleUserIds = await getUserIdsForCouple(user.id);
+
+  const [budgets, spentGroups] = await Promise.all([
+    prisma.budget.findMany({
+      where: { userId: { in: coupleUserIds }, month },
+    }),
+    prisma.transaction.groupBy({
+      by: ["category"] as const,
+      where: {
+        userId: { in: coupleUserIds },
+        type: "EXPENSE" as const,
+        date: { gte: monthStart, lt: monthEnd },
+      },
+      _sum: { amount: true },
+    }),
+  ]);
+
+  const limitMap = new Map<string, number>(
+    budgets.map((b) => [b.category, b.limit])
+  );
+
+  const spentMap = new Map<string, number>(
+    spentGroups.map((g) => [g.category, g._sum.amount ?? 0])
+  );
+
+  // Merge categories from both sources
+  const allCategories = new Set([...limitMap.keys(), ...spentMap.keys()]);
+
+  const rows: BudgetActualRow[] = Array.from(allCategories).map((category) => {
+    const limit = limitMap.get(category) ?? null;
+    const spent = spentMap.get(category) ?? 0;
+    const overBudget = limit !== null && spent >= limit;
+    const pct = limit !== null && limit > 0 ? (spent / limit) * 100 : 0;
+    return { category, limit, spent, overBudget, pct };
+  });
+
+  rows.sort((a, b) => b.spent - a.spent);
+  return rows;
+}

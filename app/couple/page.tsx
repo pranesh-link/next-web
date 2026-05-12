@@ -124,13 +124,15 @@ const modules = [
     name: "Travel",
     icon: "🧳",
     desc: "Plan trips, share itineraries, and split travel expenses.",
-    active: false,
+    href: "/couple/travel",
+    active: true,
   },
   {
     name: "Chat",
     icon: "💬",
     desc: "Private messaging with shared lists and reminders.",
-    active: false,
+    active: true,
+    href: "/couple/chat",
   },
   {
     name: "Location Sharing",

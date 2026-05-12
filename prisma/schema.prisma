@@ -91,6 +91,16 @@ model User {
   bodyProfileCreated  BodyProfile[] @relation("BodyProfileCreator")
   bodyProfileSubject  BodyProfile?  @relation("BodyProfileSubject")
 
+  // Lifestyle relations
+  nutritionLogs    NutritionLog[]
+  exerciseLogs     ExerciseLog[]
+  sleepLogs        SleepLog[]
+  habits           Habit[]
+  habitLogs        HabitLog[]
+
+  // Travel relations
+  trips            Trip[]
+
   @@map("users")
 }
 
@@ -170,11 +180,12 @@ model Transaction {
   amount      Float
   type        TransactionType
   category    String
-  description String?
-  date        DateTime
-  coupleId    String?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  description   String?
+  receiptSource String?
+  date          DateTime
+  coupleId      String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 
   user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   account FinancialAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
@@ -487,6 +498,7 @@ model Notification {
   type      String   @default("COUPLE_INVITE")
   featureId String?
   read      Boolean  @default(false)
+  payload   Json?
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -494,4 +506,226 @@ model Notification {
   @@index([userId])
   @@index([featureId])
   @@map("notifications")
+}
+
+// ─── Lifestyle: Nutrition ────────────────────────────────────
+
+model NutritionLog {
+  id           String   @id @default(uuid())
+  userId       String
+  coupleId     String?
+  loggedOn     DateTime @db.Date
+  mealType     String   // BREAKFAST | LUNCH | DINNER | SNACK
+  name         String
+  calories     Float
+  proteinG     Float    @default(0)
+  carbsG       Float    @default(0)
+  fatG         Float    @default(0)
+  note         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, loggedOn])
+  @@index([coupleId])
+  @@map("nutrition_logs")
+}
+
+// ─── Lifestyle: Exercise ─────────────────────────────────────
+
+model ExerciseLog {
+  id             String   @id @default(uuid())
+  userId         String
+  coupleId       String?
+  loggedOn       DateTime @db.Date
+  type           String   // CARDIO | STRENGTH | YOGA | SPORTS | OTHER
+  name           String
+  durationMins   Int
+  caloriesBurned Float?
+  note           String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, loggedOn])
+  @@index([coupleId])
+  @@map("exercise_logs")
+}
+
+// ─── Lifestyle: Sleep ────────────────────────────────────────
+
+model SleepLog {
+  id           String   @id @default(uuid())
+  userId       String
+  coupleId     String?
+  date         DateTime @db.Date
+  bedtimeAt    DateTime
+  wakeAt       DateTime
+  durationMins Int
+  quality      Int      // 1-5 scale
+  note         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@index([coupleId])
+  @@map("sleep_logs")
+}
+
+// ─── Lifestyle: Habits ───────────────────────────────────────
+
+model Habit {
+  id          String   @id @default(uuid())
+  userId      String
+  coupleId    String?
+  name        String
+  description String?
+  targetDays  Int      @default(7) // per week
+  isShared    Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  logs HabitLog[]
+
+  @@index([userId])
+  @@index([coupleId])
+  @@map("habits")
+}
+
+model HabitLog {
+  id        String   @id @default(uuid())
+  habitId   String
+  userId    String
+  loggedOn  DateTime @db.Date
+  completed Boolean  @default(true)
+  note      String?
+  createdAt DateTime @default(now())
+
+  habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([habitId, userId, loggedOn])
+  @@index([habitId])
+  @@index([userId, loggedOn])
+  @@map("habit_logs")
+}
+
+// ─── Couple: Chat ────────────────────────────────────────────
+
+enum MessageType {
+  TEXT
+  LIST
+  REMINDER
+  AI_RESPONSE
+}
+
+model CoupleMessage {
+  id         String      @id @default(uuid())
+  coupleId   String
+  senderId   String
+  type       MessageType @default(TEXT)
+  content    String      @db.Text
+  payload    Json?       // structured data for LIST/REMINDER types
+  reminderAt DateTime?
+  readBy     String[]    @default([])
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@index([coupleId, createdAt])
+  @@index([senderId])
+  @@map("couple_messages")
+}
+
+// ─── Travel ──────────────────────────────────────────────────
+
+enum TripStatus {
+  PLANNING
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model Trip {
+  id          String     @id @default(uuid())
+  userId      String
+  coupleId    String?
+  name        String
+  destination String
+  startDate   DateTime   @db.Date
+  endDate     DateTime   @db.Date
+  budget      Float?
+  status      TripStatus @default(PLANNING)
+  notes       String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itineraryItems TripItineraryItem[]
+  expenses       TripExpense[]
+  checklistItems TripChecklist[]
+
+  @@index([userId])
+  @@index([coupleId])
+  @@map("trips")
+}
+
+model TripItineraryItem {
+  id          String   @id @default(uuid())
+  tripId      String
+  day         Int      // day number (1, 2, 3...)
+  time        String?  // "14:00" optional
+  title       String
+  description String?
+  location    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId])
+  @@map("trip_itinerary_items")
+}
+
+model TripExpense {
+  id        String   @id @default(uuid())
+  tripId    String
+  userId    String
+  title     String
+  amount    Float
+  currency  String   @default("INR")
+  category  String?
+  paidBy    String?  // userId of payer
+  splitWith String[] @default([])
+  date      DateTime @db.Date
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId])
+  @@index([userId])
+  @@map("trip_expenses")
+}
+
+model TripChecklist {
+  id         String   @id @default(uuid())
+  tripId     String
+  userId     String
+  item       String
+  packed     Boolean  @default(false)
+  assignedTo String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId])
+  @@map("trip_checklist")
 }

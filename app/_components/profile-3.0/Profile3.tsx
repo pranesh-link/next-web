@@ -4,14 +4,14 @@ import styled, { createGlobalStyle } from "styled-components";
 import { ProfileProvider } from "@/_store/profile/page/context";
 import { IProfileContext } from "@/_store/profile/types";
 import { ThemeProvider, useTheme } from "./shared/ThemeContext";
-// import ThemeToggle from "./shared/ThemeToggle";
-// import DarkNavigation from "./navigation/Navigation";
-// import DarkMobileMenu from "./navigation/MobileMenu";
+import ThemeToggle from "./shared/ThemeToggle";
+import DarkNavigation from "./navigation/Navigation";
+import DarkMobileMenu from "./navigation/MobileMenu";
 import InterestNav from "./navigation/InterestNav";
 import SectionPrompt from "./shared/SectionPrompt";
 import DarkHeroSection from "./sections/HeroSection";
-// import DarkStatsSection from "./sections/StatsSection";
-// import DarkAboutSection from "./sections/AboutSection";
+import DarkStatsSection from "./sections/StatsSection";
+import DarkAboutSection from "./sections/AboutSection";
 import DarkSkillsSection from "./sections/SkillsSection";
 import DarkExperienceSection from "./sections/ExperienceSection";
 import DarkEducationSection from "./sections/EducationSection";
@@ -98,7 +98,7 @@ interface Profile3Props {
 }
 
 const Profile3Inner: React.FC<Profile3Props> = ({ profileContext }) => {
-  const { isDark } = useTheme();
+  const { isDark, toggleTheme } = useTheme();
 
   const fullContext: IProfileContext = {
     ...profileContext,
@@ -109,16 +109,16 @@ const Profile3Inner: React.FC<Profile3Props> = ({ profileContext }) => {
   return (
     <ProfileProvider value={fullContext}>
       <DarkGlobalStyle $isDark={isDark} />
-      {/* <ThemeToggle isDark={isDark} onToggle={toggleTheme} /> */}
-      {/* <DarkNavigation /> */}
-      {/* <DarkMobileMenu /> */}
+      <ThemeToggle isDark={isDark} onToggle={toggleTheme} />
+      <DarkNavigation />
+      <DarkMobileMenu />
       <InterestNav />
       <PageContainer>
         <ContentWrapper>
           <DarkHeroSection />
-          {/* <DarkStatsSection /> */}
+          <DarkStatsSection />
           <SectionDivider />
-          {/* <DarkAboutSection /> */}
+          <DarkAboutSection />
           <DarkSkillsSection />
           <SectionPrompt text="Curious where I've applied these?" targetSection="experience" />
           <SectionDivider />
