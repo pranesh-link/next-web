@@ -5,6 +5,8 @@ import { SessionProvider } from "next-auth/react";
 import StyledComponentsRegistry from "@/_lib/registry";
 import CoupleProviders from "@/couple/_components/CoupleProviders";
 import FinanceLayout from "@/couple/_components/layout/FinanceLayout";
+import OnboardingCheck from "@/couple/_components/OnboardingCheck";
+import { prisma } from "@/_lib/prisma";
 
 export const metadata = {
   title: "Coupletastic",
@@ -19,6 +21,13 @@ export default async function CoupleRootLayout({
   const session = await auth();
   const headersList = await headers();
   const pathname = headersList.get("x-pathname") || "";
+
+  const hasCouple = session?.user?.id
+    ? !!(await prisma.coupleMember.findFirst({
+        where: { userId: session.user.id },
+        select: { id: true },
+      }))
+    : false;
 
   // Redirect unauthenticated users to login (except the login page itself)
   if (!session?.user && !pathname.startsWith("/couple/login")) {
@@ -41,6 +50,7 @@ export default async function CoupleRootLayout({
     <SessionProvider session={session}>
       <StyledComponentsRegistry>
         <CoupleProviders>
+          <OnboardingCheck hasCouple={hasCouple} />
           <FinanceLayout user={user}>{children}</FinanceLayout>
         </CoupleProviders>
       </StyledComponentsRegistry>

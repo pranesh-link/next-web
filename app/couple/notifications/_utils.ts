@@ -14,6 +14,8 @@ export type NotificationContent = {
   token: string | undefined;
   inviteId: string | undefined;
   linkTo?: string;
+  /** Label for the linkTo action button. Defaults to "View" when omitted. */
+  linkLabel?: string;
 };
 
 export function formatTime(date: Date | string): string {
@@ -30,9 +32,14 @@ export function formatTime(date: Date | string): string {
   return d.toLocaleDateString();
 }
 
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null;
+}
+
 type NotificationLike = {
   type: string;
   featureId: string | null;
+  payload?: unknown;
 };
 
 export function getNotificationContent(
@@ -63,6 +70,68 @@ export function getNotificationContent(
       token: undefined,
       inviteId: undefined,
       linkTo: "/couple/finance/accounts?addIncome=true",
+      linkLabel: "Add Income",
+    };
+  }
+  if (notif.type === "BUDGET_ALERT") {
+    const p = isRecord(notif.payload)
+      ? (notif.payload as { category: string; pct: number })
+      : null;
+    return {
+      icon: "⚠️",
+      title: p
+        ? `You've used ${p.pct}% of your ${p.category} budget this month`
+        : "Budget limit reached",
+      meta: "Budget alert",
+      hasActions: false,
+      token: undefined,
+      inviteId: undefined,
+      linkTo: "/couple/finance/budgets",
+      linkLabel: "View Budget",
+    };
+  }
+  if (notif.type === "SIP_REMINDER") {
+    const p = isRecord(notif.payload)
+      ? (notif.payload as { name: string; sipAmount: number; daysUntil: number })
+      : null;
+    const rupee = (v: number) => `\u20b9${v.toLocaleString("en-IN")}`;
+    return {
+      icon: "📈",
+      title: p
+        ? `Your SIP of ${rupee(p.sipAmount)} is due in ${p.daysUntil} day${
+            p.daysUntil === 1 ? "" : "s"
+          }`
+        : "SIP installment is due",
+      meta: "Investment reminder",
+      hasActions: false,
+      token: undefined,
+      inviteId: undefined,
+      linkTo: "/couple/finance/investments",
+      linkLabel: "View Investments",
+    };
+  }
+  if (notif.type === "DEPOSIT_REMINDER") {
+    const p = isRecord(notif.payload)
+      ? (notif.payload as { name: string; installmentAmount: number; dueDate: string })
+      : null;
+    const rupee = (v: number) => `\u20b9${v.toLocaleString("en-IN")}`;
+    const dateStr = p
+      ? new Date(p.dueDate).toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "short",
+        })
+      : "";
+    return {
+      icon: "🗓️",
+      title: p
+        ? `Deposit installment of ${rupee(p.installmentAmount)} is due on ${dateStr}`
+        : "Deposit installment is due",
+      meta: "Deposit reminder",
+      hasActions: false,
+      token: undefined,
+      inviteId: undefined,
+      linkTo: "/couple/finance/deposits",
+      linkLabel: "View Deposits",
     };
   }
   if (notif.type === "INVESTMENT_SIP_REMINDER") {
@@ -74,6 +143,7 @@ export function getNotificationContent(
       token: undefined,
       inviteId: undefined,
       linkTo: "/couple/finance/investments",
+      linkLabel: "View Investments",
     };
   }
   if (notif.type === "DEPOSIT_MATURITY_REMINDER") {
@@ -85,6 +155,7 @@ export function getNotificationContent(
       token: undefined,
       inviteId: undefined,
       linkTo: "/couple/finance/deposits",
+      linkLabel: "View Deposits",
     };
   }
   if (notif.type === "DEPOSIT_INSTALLMENT_REMINDER") {
@@ -96,6 +167,7 @@ export function getNotificationContent(
       token: undefined,
       inviteId: undefined,
       linkTo: "/couple/finance/deposits",
+      linkLabel: "View Deposits",
     };
   }
   return {

@@ -90,7 +90,7 @@ export default function NotificationCard({
               onLink(notif.id, content.linkTo as string);
             }}
           >
-            Add Income
+            {content.linkLabel ?? "View"}
           </ActionButton>
         </ActionRow>
       )}
