@@ -23,6 +23,18 @@ export const coupleNavItems: NavItem[] = [
     ),
   },
   {
+    label: "Chat with Couple data",
+    href: "/couple/finance/chat",
+    iconPath: (
+      <>
+        {/* sparkle icon */}
+        <path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z" />
+        <path d="M19 15l.75 2.25L22 18l-2.25.75L19 21l-.75-2.25L16 18l2.25-.75L19 15z" />
+        <path d="M5 17l.5 1.5L7 19l-1.5.5L5 21l-.5-1.5L3 19l1.5-.5L5 17z" />
+      </>
+    ),
+  },
+  {
     label: "Finance",
     href: "/couple/finance",
     iconPath: (
@@ -203,15 +215,6 @@ export const financeNavItems: NavItem[] = [
         <circle cx="12" cy="12" r="10" />
         <circle cx="12" cy="12" r="6" />
         <circle cx="12" cy="12" r="2" />
-      </>
-    ),
-  },
-  {
-    label: "AI Chat",
-    href: "/couple/finance/chat",
-    iconPath: (
-      <>
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
       </>
     ),
   },

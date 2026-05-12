@@ -190,7 +190,8 @@ async function generateDepositReminders(
  * @returns JSON with total count of notifications created.
  */
 export async function GET(request: NextRequest) {
-  const secret = request.headers.get("CRON_SECRET");
+  const authHeader = request.headers.get("authorization") ?? "";
+  const secret = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
   if (!secret || secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

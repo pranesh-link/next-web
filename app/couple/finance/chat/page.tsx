@@ -1,18 +1,17 @@
 import FinanceHeader from "@/couple/_components/layout/FinanceHeader";
-import FinanceChat from "@/couple/_components/chat/FinanceChat";
+import CoupleDataChat from "@/couple/_components/chat/CoupleDataChat";
 
-export const metadata = { title: "AI Chat | Coupletastic" };
+export const metadata = { title: "Chat with Couple data | Coupletastic" };
 
-/**
- * Full-page AI finance chat experience at `/couple/finance/chat`.
- *
- * @returns Page with the FinanceHeader and inline FinanceChat component.
- */
 export default function ChatPage() {
   return (
     <>
-      <FinanceHeader title="AI Chat" />
-      <FinanceChat pageMode />
+      <FinanceHeader title="Chat with Couple data" />
+      <CoupleDataChat
+        endpoint="/api/couple/data-chat"
+        configEndpoint="/api/couple/data-chat/config"
+        pageMode
+      />
     </>
   );
 }

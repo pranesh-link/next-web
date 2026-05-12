@@ -1,13 +1,13 @@
 /**
- * POST /api/finance/chat
+ * POST /api/couple/data-chat
  *
- * Streams an SSE response for the Finance AI assistant.
+ * Streams an SSE response for the "Chat with your Couple data" AI assistant.
  * Uses OpenAI-compatible API (OpenRouter + DeepSeek) with a tool-calling
- * agentic loop — no external AI SDK required.
+ * agentic loop — combines finance and lifestyle tools.
  *
  * SSE event shapes:
- *   {"type":"tool_call","toolName":"getSpendingByCategory"}
- *   {"type":"text_delta","delta":"Your spending..."}
+ *   {"type":"tool_call","toolName":"getNutritionSummary"}
+ *   {"type":"text_delta","delta":"Your nutrition..."}
  *   {"type":"done"}
  *   {"type":"error","message":"..."}
  */
@@ -18,18 +18,18 @@ import OpenAI from "openai";
 import type { ChatCompletionMessageToolCall } from "openai/resources/chat/completions";
 import { auth } from "@/_lib/auth";
 import { getUserIdsForCouple } from "@/_services/finance/couple-service";
-import { FINANCE_TOOLS, executeToolCall } from "@/couple/finance/_lib/chat-tools";
+import { COUPLE_DATA_TOOLS, executeCoupleDataToolCall } from "@/couple/_lib/couple-data-chat-tools";
 
 export const maxDuration = 60;
 
-interface FinanceChatCms {
+interface CoupleDataChatCms {
   systemPrompt: string;
 }
 
-function loadCmsChatConfig(): FinanceChatCms {
-  const filePath = path.join(process.cwd(), "data", "cms", "finance-chat.json");
+function loadCmsChatConfig(): CoupleDataChatCms {
+  const filePath = path.join(process.cwd(), "data", "cms", "couple-data-chat.json");
   const raw = fs.readFileSync(filePath, "utf-8");
-  return JSON.parse(raw) as FinanceChatCms;
+  return JSON.parse(raw) as CoupleDataChatCms;
 }
 
 type ChatMessage = {
@@ -48,8 +48,9 @@ export async function POST(req: Request): Promise<Response> {
   const coupleUserIds = await getUserIdsForCouple(session.user.id);
   const { systemPrompt } = loadCmsChatConfig();
 
+  // Fix 1: Inject today's date so the model can resolve relative time references correctly
   const today = new Date().toISOString().split("T")[0];
-  const enrichedSystemPrompt = `${systemPrompt}\n\nToday's date: ${today}. When the user asks about "last month", "this month", "last week", or similar, derive the correct YYYY-MM from today's date and call the appropriate tool with that value. Do not guess or fabricate dates.`;
+  const enrichedSystemPrompt = `${systemPrompt}\n\nToday's date: ${today}. When the user asks about "last month", "this month", "last week", derive the correct date range from today. Call the appropriate tools with correct YYYY-MM values. Do not guess or fabricate data.`;
 
   const client = new OpenAI({
     baseURL: "https://openrouter.ai/api/v1",
@@ -71,12 +72,13 @@ export async function POST(req: Request): Promise<Response> {
         }));
 
         // Agentic loop — max 5 tool-call rounds to prevent runaway
+        let answered = false;
         for (let step = 0; step < 5; step++) {
           const completion = await client.chat.completions.create({
             model: "deepseek/deepseek-chat",
             messages: [{ role: "system", content: enrichedSystemPrompt }, ...current] as Parameters<typeof client.chat.completions.create>[0]["messages"],
             // eslint-disable -- tools cast required for openai SDK
-            tools: FINANCE_TOOLS as Parameters<typeof client.chat.completions.create>[0]["tools"],
+            tools: COUPLE_DATA_TOOLS as Parameters<typeof client.chat.completions.create>[0]["tools"],
             tool_choice: "auto",
             stream: false,
           });
@@ -95,7 +97,7 @@ export async function POST(req: Request): Promise<Response> {
               let result: unknown;
               try {
                 const args = JSON.parse(toolCall.function.arguments ?? "{}") as Record<string, unknown>;
-                result = await executeToolCall(toolCall.function.name, args, coupleUserIds);
+                result = await executeCoupleDataToolCall(toolCall.function.name, args, coupleUserIds);
               } catch {
                 result = { error: "Tool execution failed" };
               }
@@ -108,17 +110,20 @@ export async function POST(req: Request): Promise<Response> {
             }
             // Continue loop to get the next model response
           } else {
-            // Final answer — send in one event
+            // Fix 2: Send full content as a single delta (no word-by-word streaming)
             const content = msg.content ?? "";
             send({ type: "text_delta", delta: content });
+            answered = true;
             break;
           }
         }
 
-        // If the loop exhausted without a final text answer, send a fallback
-        const lastMsg = current.at(-1);
-        if (!lastMsg || lastMsg.role !== "assistant" || lastMsg.content === null) {
-          send({ type: "text_delta", delta: "I wasn't able to complete the analysis. Please try rephrasing your question." });
+        // Fix 3: Loop exhaustion fallback — model never produced a final answer
+        if (!answered) {
+          send({
+            type: "text_delta",
+            delta: "I gathered your data but couldn't formulate a response. Please try rephrasing your question.",
+          });
         }
 
         send({ type: "done" });

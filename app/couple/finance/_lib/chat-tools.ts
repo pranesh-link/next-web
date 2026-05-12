@@ -115,6 +115,21 @@ export const FINANCE_TOOLS: ToolParam[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "getRecentTransactions",
+      description: "Fetch recent transactions for the couple, optionally filtered by type (INCOME, EXPENSE, or ALL). Returns date, amount, category, description, and type. Use for salary queries, recent spending, or income history.",
+      parameters: {
+        type: "object",
+        properties: {
+          type: { type: "string", description: "Filter by transaction type: INCOME, EXPENSE, or ALL (default ALL)" },
+          limit: { type: "number", description: "Number of transactions to return (1-50, default 20)" },
+        },
+        required: [],
+      },
+    },
+  },
 ];
 
 // ─── Human-readable tool labels (used in the UI) ──────────────────────────────
@@ -128,6 +143,7 @@ export const TOOL_LABELS: Record<string, string> = {
   getGoalProgress: "Checking your savings goals...",
   getNetWorth: "Calculating your net worth...",
   getBudgetStatus: "Fetching your budget status...",
+  getRecentTransactions: "Fetching your recent transactions...",
 };
 
 // ─── Tool Executors ───────────────────────────────────────────────────────────
@@ -149,15 +165,43 @@ export async function executeToolCall(
         _sum: { amount: true },
         orderBy: { _sum: { amount: "desc" } },
       });
-      return rows.map((r) => ({ category: r.category, total: r._sum.amount ?? 0 }));
+      if (rows.length > 0) {
+        return rows.map((r) => ({ category: r.category, total: r._sum.amount ?? 0 }));
+      }
+      // No data for requested month — find the most recent month that has data
+      const latestTx = await prisma.transaction.findFirst({
+        where: { userId: { in: coupleUserIds }, type: "EXPENSE" },
+        orderBy: { date: "desc" },
+        select: { date: true },
+      });
+      if (!latestTx) return [];
+      const ly = latestTx.date.getFullYear();
+      const lm = latestTx.date.getMonth();
+      const fallbackStart = new Date(ly, lm, 1);
+      const fallbackEnd = new Date(ly, lm + 1, 1);
+      const fallbackRows = await prisma.transaction.groupBy({
+        by: ["category"],
+        where: { userId: { in: coupleUserIds }, type: "EXPENSE", date: { gte: fallbackStart, lt: fallbackEnd } },
+        _sum: { amount: true },
+        orderBy: { _sum: { amount: "desc" } },
+      });
+      const fallbackMonth = `${ly}-${String(lm + 1).padStart(2, "0")}`;
+      return { note: `No data for ${month}. Showing ${fallbackMonth} instead.`, data: fallbackRows.map((r) => ({ category: r.category, total: r._sum.amount ?? 0 })) };
     }
 
     case "getMonthlyTrend": {
       const months = Math.min(Math.max(Number(args.months) || 6, 1), 12);
-      const now = new Date();
-      const startDate = new Date(now.getFullYear(), now.getMonth() - months + 1, 1);
+      // Anchor to the most recent transaction date so historical data is never missed
+      const latestTx = await prisma.transaction.findFirst({
+        where: { userId: { in: coupleUserIds } },
+        orderBy: { date: "desc" },
+        select: { date: true },
+      });
+      const anchor = latestTx?.date ?? new Date();
+      const endDate = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 1);
+      const startDate = new Date(anchor.getFullYear(), anchor.getMonth() - months + 1, 1);
       const txs = await prisma.transaction.findMany({
-        where: { userId: { in: coupleUserIds }, date: { gte: startDate } },
+        where: { userId: { in: coupleUserIds }, date: { gte: startDate, lt: endDate } },
         select: { date: true, type: true, amount: true },
       });
       const map: Record<string, { income: number; expense: number }> = {};
@@ -260,6 +304,27 @@ export async function executeToolCall(
         limit: b.limit,
         spent: spentMap[b.category] ?? 0,
         overBudget: (spentMap[b.category] ?? 0) > b.limit,
+      }));
+    }
+
+    case "getRecentTransactions": {
+      const txType = (args.type as string | undefined)?.toUpperCase();
+      const limit = Math.min(Math.max(Number(args.limit) || 20, 1), 50);
+      const txs = await prisma.transaction.findMany({
+        where: {
+          userId: { in: coupleUserIds },
+          ...(txType === "INCOME" || txType === "EXPENSE" ? { type: txType } : {}),
+        },
+        orderBy: { date: "desc" },
+        take: limit,
+        select: { date: true, amount: true, type: true, category: true, description: true },
+      });
+      return txs.map((t) => ({
+        date: t.date.toISOString().split("T")[0],
+        amount: t.amount,
+        type: t.type,
+        category: t.category,
+        description: t.description ?? null,
       }));
     }
 
