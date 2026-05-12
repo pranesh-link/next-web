@@ -18,7 +18,8 @@ import OpenAI from "openai";
 import type { ChatCompletionMessageToolCall } from "openai/resources/chat/completions";
 import { auth } from "@/_lib/auth";
 import { getUserIdsForCouple } from "@/_services/finance/couple-service";
-import { COUPLE_DATA_TOOLS, executeCoupleDataToolCall } from "@/couple/_lib/couple-data-chat-tools";
+import { NL_TO_SQL_TOOL, NL_TO_SQL_TOOL_LABELS, validateAndExecuteQuery } from "@/couple/_lib/nl-to-sql-tool";
+import { extractSchemaForPrompt } from "@/couple/_lib/schema-extractor";
 
 export const maxDuration = 60;
 
@@ -48,9 +49,31 @@ export async function POST(req: Request): Promise<Response> {
   const coupleUserIds = await getUserIdsForCouple(session.user.id);
   const { systemPrompt } = loadCmsChatConfig();
 
-  // Fix 1: Inject today's date so the model can resolve relative time references correctly
   const today = new Date().toISOString().split("T")[0];
-  const enrichedSystemPrompt = `${systemPrompt}\n\nToday's date: ${today}. When the user asks about "last month", "this month", "last week", derive the correct date range from today. Call the appropriate tools with correct YYYY-MM values. Do not guess or fabricate data.`;
+  const schema = extractSchemaForPrompt();
+  const userIdList = coupleUserIds.map((id) => `'${id}'`).join(", ");
+  const enrichedSystemPrompt = `${systemPrompt}
+
+Today's date: ${today}.
+
+Couple member user IDs (MUST be used in every query):
+${userIdList}
+
+MANDATORY: Every SQL query MUST include WHERE "userId" IN (${userIdList}) — no exceptions. Never omit this filter.
+
+${schema}
+
+SQL Rules:
+- Only SELECT queries
+- Always double-quote camelCase column names: "userId", "createdAt", "updatedAt", etc.
+- Table names are snake_case as listed in the schema above
+- Use DATE_TRUNC('month', date) for monthly grouping
+- Use DATE_TRUNC('week', date) for weekly grouping
+- Add LIMIT 100 if not specified
+- For amounts: SUM, AVG, MIN, MAX are fine
+- For dates: compare using >= and < boundaries
+- Current month start: DATE_TRUNC('month', CURRENT_DATE)
+- Last month start: DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1 month'`;
 
   const client = new OpenAI({
     baseURL: "https://openrouter.ai/api/v1",
@@ -78,7 +101,7 @@ export async function POST(req: Request): Promise<Response> {
             model: "deepseek/deepseek-chat",
             messages: [{ role: "system", content: enrichedSystemPrompt }, ...current] as Parameters<typeof client.chat.completions.create>[0]["messages"],
             // eslint-disable -- tools cast required for openai SDK
-            tools: COUPLE_DATA_TOOLS as Parameters<typeof client.chat.completions.create>[0]["tools"],
+            tools: NL_TO_SQL_TOOL as Parameters<typeof client.chat.completions.create>[0]["tools"],
             tool_choice: "auto",
             stream: false,
           });
@@ -92,12 +115,18 @@ export async function POST(req: Request): Promise<Response> {
 
             for (const toolCall of msg.tool_calls) {
               if (!("function" in toolCall)) continue;
-              send({ type: "tool_call", toolName: toolCall.function.name });
 
               let result: unknown;
               try {
                 const args = JSON.parse(toolCall.function.arguments ?? "{}") as Record<string, unknown>;
-                result = await executeCoupleDataToolCall(toolCall.function.name, args, coupleUserIds);
+                if (toolCall.function.name === "executeQuery") {
+                  const { query, explanation } = args as { query: string; explanation?: string };
+                  send({ type: "tool_call", toolName: "executeQuery", label: explanation ?? NL_TO_SQL_TOOL_LABELS.executeQuery });
+                  const { rows, error } = await validateAndExecuteQuery(query, coupleUserIds);
+                  result = error ? { error } : rows;
+                } else {
+                  result = { error: `Unknown tool: ${toolCall.function.name}` };
+                }
               } catch {
                 result = { error: "Tool execution failed" };
               }
