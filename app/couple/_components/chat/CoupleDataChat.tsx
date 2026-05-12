@@ -7,6 +7,7 @@ import {
   MessageRow, MessageBubble, ToolStatus, ThinkingDots,
   ChatInputForm, ChatInput, SendButton,
   ChatLayout, ChatArea, HistoryToggleButton,
+  SuggestionChips, SuggestionChip,
 } from "./_AiChat.styled";
 import { useChatConfig, renderMarkdown } from "./_chat-utils";
 import { useChatHistory } from "./_useChatHistory";
@@ -35,6 +36,7 @@ function useAiChat(endpoint: string) {
   const [isLoading, setIsLoading] = useState(false);
   const [activeToolCall, setActiveToolCall] = useState<string | null>(null);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   const messagesRef = useRef<ChatMessage[]>([]);
   const chatIdRef = useRef<string | null>(null);
 
@@ -59,6 +61,7 @@ function useAiChat(endpoint: string) {
     setInput("");
     setIsLoading(true);
     setActiveToolCall(null);
+    setSuggestions([]);
 
     try {
       const history = [...messagesRef.current, userMsg].map((m) => ({ role: m.role, content: m.content }));
@@ -83,7 +86,7 @@ function useAiChat(endpoint: string) {
           if (!line.startsWith("data: ")) continue;
           const raw = line.slice(6).trim();
           if (!raw) continue;
-          let event: { type: string; toolName?: string; delta?: string; message?: string; chatId?: string };
+          let event: { type: string; toolName?: string; delta?: string; message?: string; chatId?: string; suggestions?: string[] };
           try { event = JSON.parse(raw) as typeof event; } catch { continue; }
           if (event.type === "tool_call") {
             setActiveToolCall(event.toolName ?? null);
@@ -93,6 +96,7 @@ function useAiChat(endpoint: string) {
             setActiveToolCall(null);
           } else if (event.type === "done") {
             if (event.chatId) { setCurrentChatId(event.chatId); chatIdRef.current = event.chatId; }
+            if (event.suggestions?.length) setSuggestions(event.suggestions);
             setActiveToolCall(null);
           } else if (event.type === "error") {
             setMessages((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: "Sorry, something went wrong. Please try again." } : m));
@@ -107,7 +111,7 @@ function useAiChat(endpoint: string) {
     }
   }, [endpoint, isLoading]);
 
-  return { messages, input, setInput, isLoading, activeToolCall, sendMessage, currentChatId, setCurrentChatId, resetChat, loadMessages };
+  return { messages, input, setInput, isLoading, activeToolCall, suggestions, setSuggestions, sendMessage, currentChatId, setCurrentChatId, resetChat, loadMessages };
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -132,7 +136,7 @@ export default function CoupleDataChat({ endpoint, configEndpoint, pageMode = fa
   const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const config = useChatConfig(configEndpoint);
-  const { messages, input, setInput, isLoading, activeToolCall, sendMessage, currentChatId, setCurrentChatId, resetChat, loadMessages } = useAiChat(endpoint);
+  const { messages, input, setInput, isLoading, activeToolCall, suggestions, setSuggestions, sendMessage, currentChatId, setCurrentChatId, resetChat, loadMessages } = useAiChat(endpoint);
   const { threads, activeThreadId, isLoading: historyLoading, historyExpanded, setActiveThreadId, setHistoryExpanded, loadThreadMessages, deleteThread, renameThread, refresh } = useChatHistory();
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, activeToolCall]);
@@ -155,9 +159,10 @@ export default function CoupleDataChat({ endpoint, configEndpoint, pageMode = fa
 
   const handleNewChat = useCallback(() => {
     resetChat();
+    setSuggestions([]);
     setActiveThreadId(null);
     setMobileHistoryOpen(false);
-  }, [resetChat, setActiveThreadId]);
+  }, [resetChat, setSuggestions, setActiveThreadId]);
 
   const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); void sendMessage(input); };
 
@@ -204,6 +209,13 @@ export default function CoupleDataChat({ endpoint, configEndpoint, pageMode = fa
             )}
           </MessageRow>
         ))}
+        {!isLoading && suggestions.length > 0 && (
+          <SuggestionChips>
+            {suggestions.map((s) => (
+              <SuggestionChip key={s} onClick={() => setInput(s)}>{s}</SuggestionChip>
+            ))}
+          </SuggestionChips>
+        )}
         {activeToolCall && <ToolStatus>⚡ {config.toolLabels?.[activeToolCall] ?? "Fetching your data..."}</ToolStatus>}
         {isLoading && !activeToolCall && messages.at(-1)?.content === "" && (
           <ThinkingDots><span /><span /><span /></ThinkingDots>

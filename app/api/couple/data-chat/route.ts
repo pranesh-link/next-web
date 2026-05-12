@@ -190,6 +190,41 @@ SQL Rules:
           });
         }
 
+        // Generate 3 contextual follow-up suggestions (non-fatal)
+        let suggestions: string[] = [];
+        if (finalAssistantContent) {
+          try {
+            const suggCompletion = await client.chat.completions.create({
+              model: "deepseek/deepseek-chat",
+              messages: [
+                {
+                  role: "system",
+                  content:
+                    "You generate follow-up questions for a personal finance AI assistant. " +
+                    "Respond ONLY with a valid JSON array of exactly 3 strings. " +
+                    "No explanation. No markdown. Each question must be ≤ 60 characters.",
+                },
+                {
+                  role: "user",
+                  content: `Based on this response, suggest 3 short follow-up questions the user might ask:\n\n${finalAssistantContent.slice(0, 800)}`,
+                },
+              ],
+              stream: false,
+              temperature: 0.7,
+            });
+            const raw = suggCompletion.choices[0]?.message?.content ?? "[]";
+            const match = raw.match(/\[[\s\S]*\]/);
+            const parsed = JSON.parse(match?.[0] ?? "[]") as unknown;
+            if (Array.isArray(parsed)) {
+              suggestions = (parsed as unknown[])
+                .filter((s): s is string => typeof s === "string")
+                .slice(0, 3);
+            }
+          } catch {
+            // Non-fatal — emit empty suggestions if generation fails
+          }
+        }
+
         // Persist messages to DB
         if (activeChatId) {
           try {
@@ -208,7 +243,7 @@ SQL Rules:
           }
         }
 
-        send({ type: "done", chatId: activeChatId });
+        send({ type: "done", chatId: activeChatId, suggestions });
       } catch (err) {
         send({ type: "error", message: err instanceof Error ? err.message : "Unknown error" });
       } finally {
