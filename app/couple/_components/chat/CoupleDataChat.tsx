@@ -62,8 +62,31 @@ interface ChatMessage {
 
 // ─── Markdown renderer ────────────────────────────────────────────────────────
 
+function parseTableBlock(block: string): string {
+  const lines = block.split("\n").filter((l) => l.trim().startsWith("|"));
+  if (lines.length < 2) return block;
+  const isSeparator = (line: string) => /^\|[-| :]+\|$/.test(line.trim());
+  const parseCells = (line: string, tag: string) =>
+    line
+      .split("|")
+      .slice(1, -1)
+      .map((c) => `<${tag}>${c.trim()}</${tag}>`)
+      .join("");
+
+  const headerLine = lines[0];
+  const dataLines = lines.filter((l, i) => i !== 0 && !isSeparator(l));
+
+  const thead = `<thead><tr>${parseCells(headerLine, "th")}</tr></thead>`;
+  const tbody = `<tbody>${dataLines.map((l) => `<tr>${parseCells(l, "td")}</tr>`).join("")}</tbody>`;
+  return `<table>${thead}${tbody}</table>`;
+}
+
 function renderMarkdown(text: string): string {
-  return text
+  // Extract and replace table blocks before other processing
+  const tableBlockRe = /(?:^\|.+\|$\n?){2,}/gm;
+  const processed = text.replace(tableBlockRe, (block) => parseTableBlock(block));
+
+  return processed
     // Bold
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
     // Italic
@@ -79,15 +102,6 @@ function renderMarkdown(text: string): string {
     // Unordered list items — wrap consecutive ones in <ul>
     .replace(/^- (.+)$/gm, "<li>$1</li>")
     .replace(/(<li>.*<\/li>\n?)+/g, (m) => `<ul>${m}</ul>`)
-    // Table rows — simplified: | col | col | -> <tr><td>col</td><td>col</td></tr>
-    .replace(/^\|(.+)\|$/gm, (_, row) => {
-      const cells = row.split("|").map((c: string) => c.trim()).filter(Boolean);
-      return "<tr>" + cells.map((c: string) => `<td>${c}</td>`).join("") + "</tr>";
-    })
-    // Wrap consecutive <tr> in <table>
-    .replace(/(<tr>.*<\/tr>\n?)+/g, (m) => `<table>${m}</table>`)
-    // Table separator rows (---|---) — remove
-    .replace(/<tr>(<td>[-: ]+<\/td>)+<\/tr>/g, "")
     // Line breaks
     .replace(/\n\n/g, "<br/><br/>")
     .replace(/\n/g, "<br/>");

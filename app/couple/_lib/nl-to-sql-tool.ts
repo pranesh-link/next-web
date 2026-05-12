@@ -70,35 +70,38 @@ export async function validateAndExecuteQuery(
     .replace(/\/\*[\s\S]*?\*\//g, "") // block comments
     .trim();
 
-  // Step 2 — No semicolons (prevents statement chaining)
-  if (stripped.includes(";")) {
-    return { rows: [], error: "Query must not contain semicolons." };
+  // Step 2 — Strip trailing semicolon (LLMs always add one); reject mid-query
+  // semicolons which indicate statement chaining.
+  const noTrailingSemi = stripped.replace(/;\s*$/, "");
+  if (noTrailingSemi.includes(";")) {
+    return { rows: [], error: "Query must not contain multiple statements." };
   }
+  const cleaned = noTrailingSemi;
 
   // Step 3 — Must start with SELECT
-  if (!/^SELECT\b/i.test(stripped)) {
+  if (!/^SELECT\b/i.test(cleaned)) {
     return { rows: [], error: "Only SELECT queries are allowed." };
   }
 
   // Step 4 — Forbidden keyword check
   const FORBIDDEN =
     /\b(INSERT|UPDATE|DELETE|DROP|TRUNCATE|ALTER|CREATE|GRANT|REVOKE|EXECUTE|CALL|COPY|VACUUM|ANALYZE|EXPLAIN)\b/i;
-  if (FORBIDDEN.test(stripped)) {
+  if (FORBIDDEN.test(cleaned)) {
     return { rows: [], error: "Query contains forbidden keywords." };
   }
 
   // Step 5 — Must reference at least one of the couple user IDs
   const hasUserScope =
-    coupleUserIds.some((id) => stripped.includes(id)) ||
-    /WHERE[\s\S]+"userId"/i.test(stripped);
+    coupleUserIds.some((id) => cleaned.includes(id)) ||
+    /WHERE[\s\S]+"userId"/i.test(cleaned);
   if (!hasUserScope) {
     return { rows: [], error: "Query must be scoped to couple user IDs." };
   }
 
   // Step 6 — Add LIMIT if missing
-  const finalQuery = /\bLIMIT\b/i.test(stripped)
-    ? stripped
-    : `${stripped} LIMIT 100`;
+  const finalQuery = /\bLIMIT\b/i.test(cleaned)
+    ? cleaned
+    : `${cleaned} LIMIT 100`;
 
   // Step 7 — Execute
   try {

@@ -180,8 +180,50 @@ export const MessageBubble = styled.div<{ $role: string }>`
   white-space: pre-wrap;
   word-break: break-word;
 
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 8px 0;
+    font-size: 0.82rem;
+    white-space: normal;
+  }
+
+  th, td {
+    border: 1px solid var(--border);
+    padding: 6px 10px;
+    text-align: left;
+  }
+
+  thead th {
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  tbody tr:nth-child(even) {
+    background: color-mix(in srgb, var(--accent) 4%, transparent);
+  }
+
+  h1, h2, h3 { margin: 6px 0 2px; font-weight: 600; }
+  h1 { font-size: 1rem; }
+  h2 { font-size: 0.95rem; }
+  h3 { font-size: 0.875rem; }
+
+  ul { margin: 4px 0; padding-left: 18px; }
+  li { margin: 2px 0; }
+
+  code {
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 0.8rem;
+  }
+
   @media (max-width: 768px) {
     max-width: 90%;
+    table { font-size: 0.75rem; }
+    th, td { padding: 4px 6px; }
   }
 `;
 
