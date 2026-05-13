@@ -61,7 +61,7 @@ export const ChatPanel = styled.div<{ $open: boolean; $pageMode: boolean }>`
   right: ${({ $pageMode }) => ($pageMode ? "auto" : "0")};
   z-index: ${({ $pageMode }) => ($pageMode ? "auto" : "1000")};
   width: ${({ $pageMode }) => ($pageMode ? "100%" : "400px")};
-  height: ${({ $pageMode }) => ($pageMode ? "calc(100vh - 80px)" : "100dvh")};
+  height: ${({ $pageMode }) => ($pageMode ? "calc(100dvh - 80px)" : "100dvh")};
   background: var(--bg-elevated);
   border-left: ${({ $pageMode }) => ($pageMode ? "none" : "1px solid var(--border)")};
   border-radius: ${({ $pageMode }) => ($pageMode ? "12px" : "0")};
@@ -318,6 +318,7 @@ export const SendButton = styled.button`
 /** Outer wrapper for the two-column chat layout (history + chat area). */
 export const ChatLayout = styled.div`
   display: flex;
+  position: relative;
   width: 100%;
   height: 100%;
   overflow: hidden;

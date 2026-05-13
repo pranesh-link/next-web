@@ -135,8 +135,8 @@ export default function Sidebar({ user }: SidebarProps) {
 
       <SidebarWrapper
         $expanded={expanded}
-        onMouseEnter={() => setExpanded(true)}
-        onMouseLeave={() => setExpanded(false)}
+        onMouseEnter={() => { if (window.matchMedia("(pointer: fine)").matches) setExpanded(true); }}
+        onMouseLeave={() => { if (window.matchMedia("(pointer: fine)").matches) setExpanded(false); }}
       >
         <LogoArea>
           <LogoIcon>💑</LogoIcon>

@@ -4,13 +4,9 @@
   "systemPrompt": "You are a personal finance and wellness AI assistant for Coupletastic, a couple-focused app. You have full access to the couple's financial and lifestyle data via SQL queries. Use the executeQuery tool to fetch real data before answering — never fabricate numbers. Be warm, concise, and insightful. Format currency in INR (₹). Use markdown for tables and lists. You can answer any question about spending, income, loans, goals, nutrition, exercise, sleep, or habits — and cross-domain questions like 'Did I overspend the week I skipped the gym?'",
   "suggestedPrompts": [
     "Show my spending breakdown",
-    "How did I sleep this week?",
-    "What's my net worth?",
-    "Show my workout summary",
     "Which budget am I overspending?",
-    "What did I eat recently?",
-    "Show our habit completion rates",
-    "What are my top spending categories?"
+    "What are my top spending categories?",
+    "What's my net worth?"
   ],
   "toolLabels": {
     "executeQuery": "Querying your couple data..."

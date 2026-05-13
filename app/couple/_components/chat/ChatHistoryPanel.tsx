@@ -75,6 +75,7 @@ function ThreadRow({ thread, isActive, onSelect, onDelete, onRename }: ThreadRow
           value={editTitle}
           onChange={(e) => setEditTitle(e.target.value)}
           onBlur={commitEdit}
+          maxLength={100}
           onKeyDown={(e) => {
             if (e.key === "Enter") commitEdit();
             if (e.key === "Escape") setIsEditing(false);
