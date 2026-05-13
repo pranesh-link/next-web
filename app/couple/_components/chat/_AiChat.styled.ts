@@ -220,6 +220,13 @@ export const MessageBubble = styled.div<{ $role: string }>`
     font-size: 0.8rem;
   }
 
+  a {
+    color: inherit;
+    text-decoration: underline;
+    opacity: 0.85;
+    &:hover { opacity: 1; }
+  }
+
   @media (max-width: 768px) {
     max-width: 90%;
     table { font-size: 0.75rem; }

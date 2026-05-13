@@ -22,6 +22,7 @@ import {
   ReactionPill,
   ReactionRow,
 } from "./_chat-extras.styled";
+import { linkify } from "@/_utils/common/linkify";
 
 /** Quick-reaction emojis shown in the long-press / right-click bar. */
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮"];
@@ -69,7 +70,7 @@ function BubbleContent({ message, isMine }: Pick<MessageBubbleProps, "message" |
       return (
         <BulletList>
           {items.map((item, i) => (
-            <BulletItem key={i}>{item}</BulletItem>
+            <BulletItem key={i} dangerouslySetInnerHTML={{ __html: linkify(item) }} />
           ))}
         </BulletList>
       );
@@ -79,7 +80,7 @@ function BubbleContent({ message, isMine }: Pick<MessageBubbleProps, "message" |
       return (
         <ReminderWrapper>
           <span>🔔</span>
-          <BubbleText>{message.content}</BubbleText>
+          <BubbleText dangerouslySetInnerHTML={{ __html: linkify(message.content) }} />
         </ReminderWrapper>
       );
 
@@ -87,12 +88,12 @@ function BubbleContent({ message, isMine }: Pick<MessageBubbleProps, "message" |
       return (
         <ReminderWrapper>
           <span>🤖</span>
-          <BubbleText>{message.content}</BubbleText>
+          <BubbleText dangerouslySetInnerHTML={{ __html: linkify(message.content) }} />
         </ReminderWrapper>
       );
 
     default:
-      return <BubbleText>{message.content}</BubbleText>;
+      return <BubbleText dangerouslySetInnerHTML={{ __html: linkify(message.content) }} />;
   }
 }
 

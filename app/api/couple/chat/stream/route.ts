@@ -37,7 +37,7 @@ export async function GET() {
   const stream = new ReadableStream({
     async start(controller) {
       const deadline = Date.now() + 28_000;
-      const POLL_MS = 3_000;
+      const POLL_MS = 1_500;
 
       while (Date.now() < deadline) {
         try {
