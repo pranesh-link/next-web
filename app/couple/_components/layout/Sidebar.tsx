@@ -79,6 +79,7 @@ export default function Sidebar({ user }: SidebarProps) {
       if (href === "/couple") return pathname === "/couple";
       if (href === "/couple/finance") return pathname === "/couple/finance";
       if (href === "/couple/lifestyle") return pathname === "/couple/lifestyle";
+      if (href === "/couple/chat") return pathname === "/couple/chat";
       return pathname.startsWith(href);
     },
     [pathname],
