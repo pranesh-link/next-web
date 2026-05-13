@@ -390,8 +390,13 @@ export const CollapseButton = styled.button`
 /** "New chat" button at the top of the thread list. */
 export const NewChatButton = styled.button`
   width: calc(100% - 20px);
+  max-width: 220px;
   margin: 10px;
   padding: 8px 12px;
+
+  @media (max-width: 768px) {
+    max-width: calc(100% - 20px);
+  }
   border: 1px dashed var(--accent);
   border-radius: 8px;
   background: transparent;

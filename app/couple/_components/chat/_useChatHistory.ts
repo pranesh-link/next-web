@@ -78,8 +78,8 @@ export function useChatHistory(): {
     try {
       const res = await fetch("/api/v1/couple/chats");
       if (!res.ok) return;
-      const data = (await res.json()) as { threads?: ChatThread[] };
-      setThreads(data.threads ?? []);
+      const data = (await res.json()) as ChatThread[];
+      setThreads(Array.isArray(data) ? data : []);
     } finally {
       setIsLoading(false);
     }
