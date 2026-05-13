@@ -4,17 +4,11 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import type { CoupleMessage } from "@prisma/client";
 import { markAllRead } from "../_actions/messages";
 
-/** Payload received from the SSE stream endpoint. */
 interface StreamPayload {
   count: number;
   latest: Pick<CoupleMessage, "id" | "senderId" | "content" | "type" | "createdAt"> | null;
 }
 
-/**
- * Fetch messages from the REST endpoint (newest first).
- *
- * @returns Ordered array of CoupleMessage records, or empty array on error.
- */
 async function fetchMessages(): Promise<CoupleMessage[]> {
   try {
     const res = await fetch("/api/couple/chat/messages", { cache: "no-store" });
@@ -26,13 +20,6 @@ async function fetchMessages(): Promise<CoupleMessage[]> {
   }
 }
 
-/**
- * POST a new message to the REST endpoint.
- *
- * @param content - Message text.
- * @param type - MessageType string.
- * @returns True when the request succeeded.
- */
 async function postMessage(content: string, type: string): Promise<boolean> {
   try {
     const res = await fetch("/api/couple/chat/messages", {
@@ -46,39 +33,29 @@ async function postMessage(content: string, type: string): Promise<boolean> {
   }
 }
 
-/** Return value of {@link useCoupleChat}. */
 export interface UseCoupleChat {
-  /** Ordered message list (oldest first). */
   messages: CoupleMessage[];
-  /** True when the user has no couple linked yet. */
   noCouple: boolean;
-  /** The couple ID once known. */
   coupleId: string | null;
-  /** True while the initial load is in progress. */
   loading: boolean;
-  /** Map of userId → display name for all couple members. */
   memberNames: Record<string, string>;
-  /** Send a new message. */
+  partnerTyping: boolean;
   handleSend: (content: string, type: string) => Promise<void>;
-  /** Refresh the message list manually. */
   handleRefresh: () => Promise<void>;
-  /** Toggle a reaction on a message (optimistic update). */
   handleReact: (messageId: string, emoji: string) => Promise<void>;
+  signalTyping: () => void;
 }
 
-/**
- * Manages couple chat state, SSE subscription, and all message operations.
- *
- * @param userId - The signed-in user's ID (used for optimistic reaction updates).
- * @returns Chat state and action handlers.
- */
 export function useCoupleChat(userId: string): UseCoupleChat {
   const [messages, setMessages] = useState<CoupleMessage[]>([]);
   const [noCouple, setNoCouple] = useState(false);
   const [coupleId, setCoupleId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [memberNames, setMemberNames] = useState<Record<string, string>>({});
+  const [partnerTyping, setPartnerTyping] = useState(false);
   const lastCountRef = useRef<number>(-1);
+  const memberNamesFetchedRef = useRef(false);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadMessages = useCallback(async () => {
     try {
@@ -96,25 +73,25 @@ export function useCoupleChat(userId: string): UseCoupleChat {
       if (msgs[0]?.coupleId) {
         const cid = msgs[0].coupleId;
         setCoupleId(cid);
-        // Fetch real member names once we know the couple
-        fetch(`/api/v1/couple/members`)
-          .then((r) => r.json())
-          .then((data: { id: string; name: string | null; email: string }[]) => {
-            const map: Record<string, string> = {};
-            data.forEach((m) => { map[m.id] = m.name ?? m.email; });
-            setMemberNames(map);
-          })
-          .catch(() => {/* keep empty map */});
+        if (!memberNamesFetchedRef.current) {
+          memberNamesFetchedRef.current = true;
+          fetch(`/api/v1/couple/members`)
+            .then((r) => r.json())
+            .then((data: { id: string; name: string | null; email: string }[]) => {
+              const map: Record<string, string> = {};
+              data.forEach((m) => { map[m.id] = m.name ?? m.email; });
+              setMemberNames(map);
+            })
+            .catch(() => {});
+        }
       }
     } catch {
-      // network error — keep empty state
+      // network error
     }
     setLoading(false);
   }, []);
 
-  useEffect(() => {
-    loadMessages();
-  }, [loadMessages]);
+  useEffect(() => { loadMessages(); }, [loadMessages]);
 
   useEffect(() => {
     if (coupleId) markAllRead(coupleId);
@@ -127,21 +104,43 @@ export function useCoupleChat(userId: string): UseCoupleChat {
 
     source.onmessage = async (event: MessageEvent) => {
       try {
-        const payload = JSON.parse(event.data) as StreamPayload;
+        const payload = JSON.parse(event.data) as StreamPayload & { partnerTyping?: boolean };
         if (payload.count !== lastCountRef.current) {
           lastCountRef.current = payload.count;
           const msgs = await fetchMessages();
           setMessages([...msgs].reverse());
           if (msgs[0]?.coupleId) setCoupleId(msgs[0].coupleId);
           if (coupleId) markAllRead(coupleId);
+          setPartnerTyping(false); // clear typing when message arrives
         }
+        setPartnerTyping(payload.partnerTyping ?? false);
       } catch {
         // ignore parse errors
       }
     };
 
+    source.onerror = () => {
+      // Stream closed (28s limit hit) — fetch immediately to bridge the reconnect gap
+      lastCountRef.current = -1;
+      void fetchMessages().then((msgs) => {
+        if (msgs.length > 0) {
+          setMessages([...msgs].reverse());
+          if (msgs[0]?.coupleId) setCoupleId(msgs[0].coupleId);
+        }
+      });
+    };
+
     return () => source.close();
   }, [noCouple, coupleId]);
+
+  /** Debounced signal: fires a PATCH to set typing flag, clears after 3.5s. */
+  const signalTyping = useCallback(() => {
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    fetch("/api/couple/chat/typing", { method: "PATCH" }).catch(() => {});
+    typingTimeoutRef.current = setTimeout(() => {
+      typingTimeoutRef.current = null;
+    }, 3500);
+  }, []);
 
   const handleSend = useCallback(async (content: string, type: string) => {
     const ok = await postMessage(content, type);
@@ -152,9 +151,7 @@ export function useCoupleChat(userId: string): UseCoupleChat {
     }
   }, []);
 
-  const handleRefresh = useCallback(async () => {
-    await loadMessages();
-  }, [loadMessages]);
+  const handleRefresh = useCallback(async () => { await loadMessages(); }, [loadMessages]);
 
   const handleReact = useCallback(
     async (messageId: string, emoji: string) => {
@@ -167,25 +164,19 @@ export function useCoupleChat(userId: string): UseCoupleChat {
           const newUsers = users.includes(userId)
             ? users.filter((id) => id !== userId)
             : [...users, userId];
-          return {
-            ...msg,
-            payload: { ...payload, reactions: { ...reactions, [emoji]: newUsers } },
-          };
+          return { ...msg, payload: { ...payload, reactions: { ...reactions, [emoji]: newUsers } } };
         }),
       );
-
       try {
         await fetch(`/api/couple/chat/messages/${messageId}/react`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ emoji }),
         });
-      } catch {
-        // silent fail — reaction desyncs on next reload
-      }
+      } catch {}
     },
     [userId],
   );
 
-  return { messages, noCouple, coupleId, loading, memberNames, handleSend, handleRefresh, handleReact };
+  return { messages, noCouple, coupleId, loading, memberNames, partnerTyping, handleSend, handleRefresh, handleReact, signalTyping };
 }

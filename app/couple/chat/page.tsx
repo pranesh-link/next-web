@@ -15,7 +15,7 @@ import {
   NoCoupleEmoji,
   InviteButton,
 } from "./_components/_chat.styled";
-import { DateDivider, ScrollToBottomButton } from "./_components/_chat-extras.styled";
+import { DateDivider, ScrollToBottomButton, TypingIndicator } from "./_components/_chat-extras.styled";
 
 /**
  * Format a date as a human-readable day label.
@@ -58,7 +58,7 @@ export default function ChatPage() {
   const { data: session } = useSession();
   const userId = session?.user?.id ?? "";
 
-  const { messages, noCouple, loading, memberNames, handleSend, handleRefresh, handleReact } =
+  const { messages, noCouple, loading, memberNames, partnerTyping, handleSend, handleRefresh, handleReact, signalTyping } =
     useCoupleChat(userId);
 
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -137,6 +137,11 @@ export default function ChatPage() {
           );
         })}
 
+        {partnerTyping && (
+          <TypingIndicator>
+            <span /><span /><span />
+          </TypingIndicator>
+        )}
         <div ref={bottomRef} />
       </MessagesArea>
 
@@ -148,7 +153,7 @@ export default function ChatPage() {
         </ScrollToBottomButton>
       )}
 
-      <ChatInput onSend={handleSend} disabled={loading} />
+      <ChatInput onSend={handleSend} signalTyping={signalTyping} disabled={loading} />
     </ChatPageWrapper>
   );
 }

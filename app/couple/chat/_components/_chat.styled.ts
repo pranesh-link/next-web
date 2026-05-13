@@ -7,7 +7,7 @@ import { EASING } from "@/couple/_constants/theme";
 export const ChatPageWrapper = styled.div`
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 65px);
+  height: 100%;
   background: var(--bg);
   overflow: hidden;
   position: relative;

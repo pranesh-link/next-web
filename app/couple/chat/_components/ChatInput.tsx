@@ -38,6 +38,8 @@ const TYPE_PLACEHOLDERS: Record<string, string> = {
 interface ChatInputProps {
   /** Called when the user submits a message. */
   onSend: (content: string, type: string) => Promise<void>;
+  /** Called on each keystroke to signal the user is typing (debounced by caller). */
+  signalTyping?: () => void;
   /** Disables the entire form while a send is in progress. */
   disabled?: boolean;
 }
@@ -52,7 +54,7 @@ interface ChatInputProps {
  * @param disabled - Disables the entire form.
  * @returns JSX for the sticky bottom input bar.
  */
-export default function ChatInput({ onSend, disabled = false }: ChatInputProps) {
+export default function ChatInput({ onSend, signalTyping, disabled = false }: ChatInputProps) {
   const [content, setContent] = useState("");
   const [type, setType] = useState("TEXT");
   const [sending, setSending] = useState(false);
@@ -119,7 +121,7 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
 
       <AutoResizeTextarea
         value={content}
-        onChange={(e) => setContent(e.target.value)}
+        onChange={(e) => { setContent(e.target.value); signalTyping?.(); }}
         onKeyDown={handleKeyDown}
         placeholder={TYPE_PLACEHOLDERS[type] ?? "Type a message…"}
         disabled={isDisabled}

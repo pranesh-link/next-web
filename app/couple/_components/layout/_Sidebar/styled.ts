@@ -132,7 +132,7 @@ export const Nav = styled.nav<{ $disabled?: boolean }>`
 `;
 
 /** Single nav row; highlighted via `$active`. */
-export const NavLink = styled(Link)<{ $active: boolean }>`
+export const NavLink = styled(Link).attrs({ prefetch: true })<{ $active: boolean }>`
   display: flex;
   align-items: center;
   gap: 12px;
