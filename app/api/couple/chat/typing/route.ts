@@ -24,7 +24,7 @@ export async function PATCH() {
     return NextResponse.json({ error: "No couple found" }, { status: 404 });
   }
 
-  await cacheSet(`couple:${member.coupleId}:typing:${userId}`, 1, 4);
+  await cacheSet(`couple:${member.coupleId}:typing:${userId}`, 1, 6);
 
   return new NextResponse(null, { status: 204 });
 }

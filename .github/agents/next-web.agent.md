@@ -91,6 +91,7 @@ prisma/
 
 ## Zero Tolerance
 - **NEVER run build checks (`npx next build`, `npm run build`, type-check) unless the user explicitly asks for it.** Do not auto-trigger builds after implementation, before commits, or before pushes. Only run when the user says: "build", "check build", "run build", or similar.
+- **NEVER commit or push without explicit user instruction.** Do not auto-commit after implementing changes. Only run `git commit` or `git push` when the user explicitly says "commit", "push", "ship it", or similar. Finishing an implementation task does NOT imply permission to commit.
 
 ## Always
 1. **Read before writing** — never modify a file without reading its current content first

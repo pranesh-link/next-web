@@ -74,6 +74,21 @@ export function parseTableBlock(block: string): string {
 }
 
 /**
+ * Converts URLs in an already-HTML-escaped string into clickable anchor tags.
+ * Use after renderMarkdown (which already escapes HTML). Does NOT re-escape.
+ *
+ * @param html - HTML string to process.
+ * @returns HTML string with URLs wrapped in anchor tags.
+ */
+function linkifyHtml(html: string): string {
+  const URL_REGEX = /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)/g;
+  return html.replace(URL_REGEX, (url) => {
+    const href = url.startsWith("www.") ? `https://${url}` : url;
+    return `<a href="${href}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+  });
+}
+
+/**
  * Convert a subset of Markdown to HTML for display in chat bubbles.
  *
  * @param text - Raw markdown string from the LLM.
@@ -82,7 +97,7 @@ export function parseTableBlock(block: string): string {
 export function renderMarkdown(text: string): string {
   const tableBlockRe = /(?:^\|.+\|$\n?){2,}/gm;
   const processed = text.replace(tableBlockRe, (block) => parseTableBlock(block));
-  return processed
+  const html = processed
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.*?)\*/g, "<em>$1</em>")
     .replace(/`([^`]+)`/g, "<code>$1</code>")
@@ -93,4 +108,5 @@ export function renderMarkdown(text: string): string {
     .replace(/(<li>.*<\/li>\n?)+/g, (m) => `<ul>${m}</ul>`)
     .replace(/\n\n/g, "<br/><br/>")
     .replace(/\n/g, "<br/>");
+  return linkifyHtml(html);
 }

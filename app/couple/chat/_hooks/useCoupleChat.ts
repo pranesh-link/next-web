@@ -56,6 +56,7 @@ export function useCoupleChat(userId: string): UseCoupleChat {
   const lastCountRef = useRef<number>(-1);
   const memberNamesFetchedRef = useRef(false);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSignalRef = useRef<number>(0);
 
   const loadMessages = useCallback(async () => {
     try {
@@ -133,13 +134,12 @@ export function useCoupleChat(userId: string): UseCoupleChat {
     return () => source.close();
   }, [noCouple, coupleId]);
 
-  /** Debounced signal: fires a PATCH to set typing flag, clears after 3.5s. */
+  /** Throttled signal: fires a PATCH at most once per 2 s; Redis TTL handles expiry. */
   const signalTyping = useCallback(() => {
-    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    const now = Date.now();
+    if (now - lastSignalRef.current < 2000) return;
+    lastSignalRef.current = now;
     fetch("/api/couple/chat/typing", { method: "PATCH" }).catch(() => {});
-    typingTimeoutRef.current = setTimeout(() => {
-      typingTimeoutRef.current = null;
-    }, 3500);
   }, []);
 
   const handleSend = useCallback(async (content: string, type: string) => {

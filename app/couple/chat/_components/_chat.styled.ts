@@ -181,6 +181,12 @@ export const BubbleBox = styled.div<{ $isMine: boolean; $isAI?: boolean }>`
 export const BubbleText = styled.p`
   margin: 0;
   white-space: pre-wrap;
+  a {
+    color: inherit;
+    text-decoration: underline;
+    opacity: 0.85;
+    &:hover { opacity: 1; }
+  }
 `;
 /** Bullet list for LIST-type messages. */
 export const BulletList = styled.ul`
