@@ -24,7 +24,7 @@ export const coupleNavItems: NavItem[] = [
   },
   {
     label: "Chat with Couple data",
-    href: "/couple/finance/chat",
+    href: "/couple/chat-with-data",
     iconPath: (
       <>
         {/* sparkle icon */}
