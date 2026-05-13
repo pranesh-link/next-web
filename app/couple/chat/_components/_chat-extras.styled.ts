@@ -88,6 +88,11 @@ export const TypeToggleBar = styled.div`
   display: flex;
   gap: 4px;
   flex-shrink: 0;
+
+  @media (max-width: 480px) {
+    width: 100%;
+    order: -1;
+  }
 `;
 
 /** Individual type toggle button within {@link TypeToggleBar}. */

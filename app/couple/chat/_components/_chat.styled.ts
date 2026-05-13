@@ -222,6 +222,11 @@ export const InputWrapper = styled.form`
   @media (max-width: 768px) {
     padding: 10px 12px 14px;
   }
+
+  @media (max-width: 480px) {
+    flex-wrap: wrap;
+    align-items: flex-end;
+  }
 `;
 
 /** Dropdown for choosing the message type. */
