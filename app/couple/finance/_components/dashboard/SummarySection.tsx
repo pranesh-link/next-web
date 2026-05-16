@@ -9,19 +9,24 @@ import {
   PercentIcon,
   GemIcon,
   VaultIcon,
+  ShieldIcon,
 } from "./icons";
 import type { DashboardData } from "./types";
 
+/** Props for the dashboard summary cards section. */
 type Props = {
   totalBalance: DashboardData["totalBalance"];
+  netWorth: DashboardData["netWorth"];
   cashFlow: DashboardData["cashFlow"];
   savingsRate: DashboardData["savingsRate"];
   investmentsSummary: DashboardData["investmentsSummary"];
   depositsSummary: DashboardData["depositsSummary"];
 };
 
+/** Renders the top-level summary cards grid on the finance dashboard. */
 export default function SummarySection({
   totalBalance,
+  netWorth,
   cashFlow,
   savingsRate,
   investmentsSummary,
@@ -33,6 +38,12 @@ export default function SummarySection({
         title="Total Balance"
         value={totalBalance}
         icon={WalletIcon}
+      />
+      <SummaryCard
+        title="Net Worth"
+        value={netWorth}
+        icon={ShieldIcon}
+        trend={{ value: netWorth, isPositive: netWorth >= 0 }}
       />
       <SummaryCard
         title="Monthly Income"

@@ -22,6 +22,15 @@ import { getUserIdsForCouple } from "@/_services/finance/couple-service";
 import { unstable_cache } from "next/cache";
 import { CACHE_TAGS } from "@/_lib/cache";
 import { currentMonth } from "./insights-helpers";
+import {
+  computeAccountBreakdown,
+  computeLoanDetails,
+  computeBudgetRollup,
+  computeGoalsTimeline,
+  computeAlerts,
+  hasEmiDueSoon,
+  getNextEmiAmount,
+} from "./dashboard-helpers";
 
 const fetchDashboardData = unstable_cache(
   async (coupleUserIds: string[]) => {
@@ -104,21 +113,9 @@ const fetchDashboardData = unstable_cache(
     const loansSummary = {
       count: loans.length,
       totalRemaining: loans.reduce((sum, l) => sum + l.remainingBalance, 0),
-      totalEMI: loans.reduce((sum, l) => {
-        const schedule = Array.isArray(l.schedule) ? (l.schedule as { date: string; emi: number }[]) : null;
-        if (schedule && schedule.length > 0) {
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          const nextEntry = schedule.find((e) => {
-            const d = new Date(e.date);
-            d.setHours(0, 0, 0, 0);
-            return d.getTime() >= today.getTime();
-          });
-          return sum + (nextEntry ? nextEntry.emi : l.emiAmount);
-        }
-        return sum + l.emiAmount;
-      }, 0),
+      totalEMI: loans.reduce((sum, l) => sum + getNextEmiAmount(l), 0),
     };
+    const loanDetails = computeLoanDetails(loans);
 
     const goalsWithProgress = goals.map((g) => ({
       ...g,
@@ -168,6 +165,28 @@ const fetchDashboardData = unstable_cache(
         ? Math.max(0, 100 - ((totalBudgetSpent - totalBudgetLimit) / totalBudgetLimit) * 100)
         : 100;
 
+    const accountBreakdown = computeAccountBreakdown(accounts);
+    const netWorth =
+      totalBalance + investmentsSummary.currentValue - loansSummary.totalRemaining;
+    const goalsWithTimeline = computeGoalsTimeline(
+      goalsWithProgress,
+      cashFlow.income,
+    );
+    const budgetRollup = computeBudgetRollup(
+      totalBudgetLimit,
+      totalBudgetSpent,
+      budgetStatus.filter((b) => b.exceeded).length,
+    );
+    const alerts = computeAlerts({
+      totalBudgetLimit,
+      totalBudgetSpent,
+      emergencyFundMonths,
+      hasExpenses: cashFlow.expenses > 0,
+      debtToIncomeRatio,
+      atRiskGoalCount: goalsWithTimeline.filter((g) => g.isAtRisk).length,
+      emiDueSoon: hasEmiDueSoon(loans),
+    });
+
     const healthScore = calculateFinancialHealthScore({
       savingsRate,
       debtToIncomeRatio,
@@ -187,13 +206,19 @@ const fetchDashboardData = unstable_cache(
 
     return {
       totalBalance,
+      netWorth,
       cashFlow,
       savingsRate,
       expenseBreakdown,
       budgetStatus,
+      budgetRollup,
       loansSummary,
+      loanDetails,
       goalsSummary,
       goalsWithProgress,
+      goalsWithTimeline,
+      accountBreakdown,
+      alerts,
       investmentsSummary,
       depositsSummary,
       healthScore,
