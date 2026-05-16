@@ -21,17 +21,6 @@ export const getHref = (label: string, info: string) => {
   return "";
 };
 
-export const isBannerHidden = (hideTime: number) => {
-  if (hideTime > 0) {
-    const isHideTime = new Date().getTime() < hideTime;
-    if (!isHideTime) {
-      localStorage.removeItem("pwaBannerHideTime");
-    }
-    return new Date().getTime() < hideTime;
-  }
-  return false;
-};
-
 export const getPdfFile = async (url: string) => {
   let blob = {};
   if (url) {

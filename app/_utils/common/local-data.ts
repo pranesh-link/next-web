@@ -26,7 +26,6 @@ import maintenanceData from '../../../data/cms/maintenance.json';
 import messagesData from '../../../data/cms/messages.json';
 import profileLabelsData from '../../../data/cms/profile-labels.json';
 import profileSectionsData from '../../../data/cms/profile-sections.json';
-import pwaData from '../../../data/cms/pwa.json';
 import skillsData from '../../../data/cms/skills.json';
 import brillioExperienceData from '../../../data/cms/brillio-experience.json';
 import lillyExperienceData from '../../../data/cms/lilly-experience.json';
@@ -43,7 +42,6 @@ const JSON_DATA_MAP: Record<string, any> = {
   'messages.json': messagesData,
   'profile-labels.json': profileLabelsData,
   'profile-sections.json': profileSectionsData,
-  'pwa.json': pwaData,
   'skills.json': skillsData,
   'brillio-experience.json': brillioExperienceData,
   'lilly-experience.json': lillyExperienceData,

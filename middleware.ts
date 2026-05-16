@@ -4,7 +4,7 @@ export const config = {
   matcher: [
     {
       source:
-        "/((?!api|_next/static|_next/image|favicon.ico|manifest.json|robots.txt|sitemap.xml).*)",
+        "/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },
@@ -49,10 +49,8 @@ export async function middleware(req: NextRequest) {
       });
     }
 
-    // Allow static assets, service worker, and Server Actions through
+    // Allow static assets and Server Actions through
     if (
-      pathname === "/sw.js" ||
-      pathname === "/workbox-44c90a21.js" ||
       pathname.startsWith("/fonts") ||
       pathname.endsWith(".js") ||
       pathname.endsWith(".json") ||

@@ -1,7 +1,7 @@
 import styled from "styled-components";
 
-/** Page-level wrapper applying gradient background, PWA-aware margins and animations. */
-export const Wrapper = styled.section<{ $pwaOffset: number }>`
+/** Page-level wrapper applying gradient background and animations. */
+export const Wrapper = styled.section`
   &:not(.isMobile) {
     padding-top: 100px;
   }
@@ -33,18 +33,7 @@ export const Wrapper = styled.section<{ $pwaOffset: number }>`
     }
     
     &.add-margin-top {
-      margin-top: ${(props) => props.$pwaOffset || 0}px;
-      animation: ease-in-m-t 0.6s ease-out forwards;
-      @keyframes ease-in-m-t {
-        from {
-          margin-top: 0;
-          opacity: 0;
-        }
-        to {
-          margin-top: ${(props) => props.$pwaOffset || 0}px;
-          opacity: 1;
-        }
-      }
+      margin-top: 0;
     }
     &.add-margin-bottom {
       margin-bottom: 90px;

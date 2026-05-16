@@ -116,8 +116,6 @@ export interface IProfileContext {
   isModalOpen: boolean;
   /** EmailJS credentials. */
   emailJsConfig: IEmailJsConfig;
-  /** Vertical offset reserved for the PWA banner (px). */
-  pwaOffset: number;
   /** Setter for the contact-form open state. */
   setIsContactFormOpen: (isContactFormOpen: boolean) => void;
   /** Setter for the modal open state. */
