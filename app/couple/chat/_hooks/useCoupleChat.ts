@@ -55,7 +55,7 @@ export function useCoupleChat(userId: string): UseCoupleChat {
   const [partnerTyping, setPartnerTyping] = useState(false);
   const lastCountRef = useRef<number>(-1);
   const memberNamesFetchedRef = useRef(false);
-  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const lastSignalRef = useRef<number>(0);
 
   const loadMessages = useCallback(async () => {
