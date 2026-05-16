@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
 import prisma from "@/_lib/prisma";
-import { cacheSet } from "@/_lib/redis";
 
 /**
  * PATCH /api/couple/chat/typing
  *
- * Sets a short-lived Redis key indicating the current user is typing.
- * Key: `couple:{coupleId}:typing:{userId}` — TTL 4 seconds.
- * Called on every debounced keystroke from the chat input.
+ * Stamps `typingAt = now()` on the caller's CoupleMember row.
+ * The SSE stream checks this timestamp to emit `partnerTyping: true`
+ * when the stamp is within the last 6 seconds.
  *
  * @returns 204 on success, 401/404 on auth/couple failure.
  * @remarks PATCH · auth: NextAuth session or Bearer JWT.
@@ -24,7 +23,10 @@ export async function PATCH() {
     return NextResponse.json({ error: "No couple found" }, { status: 404 });
   }
 
-  await cacheSet(`couple:${member.coupleId}:typing:${userId}`, 1, 6);
+  await prisma.coupleMember.update({
+    where: { coupleId_userId: { coupleId: member.coupleId, userId } },
+    data: { typingAt: new Date() },
+  });
 
   return new NextResponse(null, { status: 204 });
 }

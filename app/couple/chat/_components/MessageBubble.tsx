@@ -137,11 +137,15 @@ export default function MessageBubble({
   }, [showReactionBar]);
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    // Allow native browser context menu on links (open in new tab, copy URL, etc.)
+    if ((e.target as HTMLElement).closest("a")) return;
     e.preventDefault();
     setShowReactionBar(true);
   }, []);
 
-  const handleTouchStart = useCallback(() => {
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    // Let links handle their own touch so tapping a link navigates normally
+    if ((e.target as HTMLElement).closest("a")) return;
     pressTimerRef.current = setTimeout(() => setShowReactionBar(true), LONG_PRESS_DELAY);
   }, []);
 
