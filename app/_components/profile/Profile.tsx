@@ -34,10 +34,8 @@ interface ProfileProps {
   isHamburgerMenuOpen: boolean;
   isInstallBannerOpen: boolean;
   isExport: boolean;
-  hasPWAInstalled: boolean;
   showComponentLibUrl?: boolean;
   deviceConfig: IDeviceConfig;
-  pwaOffset: number;
   setIsDownloading: (isDownloading: boolean) => void;
   setIsHamburgerMenuOpen: (isHamburgerMenuOpen: boolean) => void;
 }
@@ -58,7 +56,6 @@ const Profile = (props: ProfileProps) => {
     isHamburgerMenuOpen,
     isInstallBannerOpen,
     isExport,
-    hasPWAInstalled,
     setIsHamburgerMenuOpen,
     appVersion,
     preloadSrcList,
@@ -67,7 +64,6 @@ const Profile = (props: ProfileProps) => {
     emailJsConfig,
     isDarkMode,
     showComponentLibUrl = true,
-    pwaOffset,
   } = props;
   const [currentSection, setCurrentSection] = useState<string>("aboutMe");
   const [isContactFormOpen, setIsContactFormOpen] = useState(false);
@@ -112,14 +108,12 @@ const Profile = (props: ProfileProps) => {
           preloadedAssets,
           emailJsConfig,
           showComponentLibUrl,
-          pwaOffset,
           setIsContactFormOpen,
           setIsModalOpen,
         }}
       >
         <HamBurgerMenu
           isOpen={isHamburgerMenuOpen}
-          hasPWAInstalled={hasPWAInstalled}
           setIsOpen={(isOpen) => setIsHamburgerMenuOpen(isOpen)}
           onMenuChange={(section) => setCurrentSection(section)}
         />

@@ -1,39 +1,6 @@
 /** @type {import('next').NextConfig} */
-import withPWAInit from "@ducanh2912/next-pwa";
-// import runtimeCaching from "@ducanh2912/next-pwa/cache.js";
 import packageJson from "./package.json" assert { type: "json" };
 
-const withPWA = withPWAInit({
-  dest: "public",
-  register: true,
-  skipWaiting: true,
-  reloadOnOnline: true,
-  // runtimeCaching,
-  scope: "/",
-  disable: process.env.NEXT_PUBLIC_DISABLE_PWA === "true",
-  // Bump cacheId on every release that ships SW changes; abandons all old caches
-  // belonging to prior cacheIds when the new SW activates.
-  cacheId: `cpl-${packageJson.version}`,
-  // Do not cache page navigations from the SW — Next.js handles routing/data freshness.
-  // This prevents stale page chrome (and therefore stale client JS) from being served
-  // after a deploy, which has caused data-loss bugs (old client → silently dropped fields).
-  cacheOnFrontEndNav: false,
-  aggressiveFrontEndNavCaching: false,
-  workboxOptions: {
-    // Take control of all open clients the moment the new SW activates so users
-    // don't keep running stale chunks until the next full reload.
-    clientsClaim: true,
-    // Don't precache HTML documents; only static assets.
-    exclude: [
-      /\.map$/,
-      /^manifest.*\.js$/,
-      /\/couple\/finance\//,
-    ],
-  },
-  fallbacks: {
-    document: "/offline",
-  },
-});
 const nextConfig = {
   allowedDevOrigins: ["dev.data.lilly.com", "192.168.1.9"],
   compiler: {
@@ -123,4 +90,4 @@ const nextConfig = {
   },
 };
 
-export default withPWA(nextConfig);
+export default nextConfig;

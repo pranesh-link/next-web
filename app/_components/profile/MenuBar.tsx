@@ -1,6 +1,5 @@
 import BackArrow from "@/_assets/back-arrow.gif";
 import { SECTION_ORDER_DISPLAY } from "@/_constants/profile";
-import { useAppSelector } from "@/_redux/hooks";
 import { ProfileContext } from "@/_store/profile/page/context";
 import { ProfileSectionType, RefTypes } from "@/_store/profile/types";
 import { scrollTo } from "@/_utils/common/ScrollTo";
@@ -20,13 +19,12 @@ const MenuBar = (props: IMenuBarProps) => {
   const { refs, data, currentSection, isMobile } =
     React.useContext(ProfileContext);
   const router = useRouter();
-  const pwaOffsetState = useAppSelector((state) => state.app.pwaOffset);
   const { onMenuChange } = props;
   const initialOffset = useMemo(() => (isMobile ? 80 : 20), [isMobile]);
   const [isScrolled, setIsScrolled] = useState(false);
   
   const goTo = (section: string) => {
-    scrollTo(`#${section}`, initialOffset + pwaOffsetState);
+    scrollTo(`#${section}`, initialOffset);
   };
   let timeout: any;
   const menuItems = Object.keys(data.sections)
@@ -67,8 +65,7 @@ const MenuBar = (props: IMenuBarProps) => {
         if (currentRef.current) {
           const pos = Math.round(
             currentRef.current.getBoundingClientRect().top -
-              initialOffset -
-              pwaOffsetState
+              initialOffset
           );
 
           if (index === 0 || (pos <= 0 && pos > result.pos)) {

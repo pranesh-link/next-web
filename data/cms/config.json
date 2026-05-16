@@ -1,11 +1,6 @@
 {
   "jsonConfig": {
     "defaultConfig": [
-      {
-        "name": "pwa",
-        "type": "defaultConfig",
-        "ref": "pwa.json"
-      },
       { "name": "links", "type": "profileConfig", "ref": "links.json" },
       {
         "name": "maintenance",
@@ -74,16 +69,10 @@
       "goToHomePage": "Redirecting you to homepage in {0} seconds..."
     },
     "pwa": {
-      "browsers": ["Chrome"],
-      "os": ["Android"]
+      "browsers": [],
+      "os": []
     },
     "preloadSrcList": [
-      {
-        "id": "offlineAnimation",
-        "type": "image",
-        "fileName": "offline-animation.gif",
-        "fileLocation": "web"
-      },
       {
         "id": "contactMeIcon",
         "type": "image",

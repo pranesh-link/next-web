@@ -3,18 +3,12 @@ import { ActionBtn, FlexBox, Version } from "@/_components/common/Elements";
 import VersionModal from "@/_components/modal/common/VersionModal";
 import CloseIcon from "@/_components/svg/CloseIcon";
 import HamburgerIcon from "@/_components/svg/HamburgerIcon";
-import useAppInstalled from "@/_hooks/use-app-installed";
 import { useIsClient } from "@/_hooks/use-is-client";
-import { updateIsAppInstalled } from "@/_redux/actions/app";
-import { useAppDispatch, useAppSelector } from "@/_redux/hooks";
-import { AppDispatch } from "@/_redux/store";
 import { ProfileContext } from "@/_store/profile/page/context";
-import { setLocalStorage } from "@/_utils/profile/client";
 import classNames from "classnames";
 import React, { ComponentType, useContext, useEffect, useState } from "react";
 import { Transition } from "react-transition-group";
 import { TransitionProps } from "react-transition-group/Transition";
-import InstallPWAButton from "../common/InstallPWAButton";
 import { ContentSection, IconWrap, Menu, RightSection } from "./Elements";
 import MenuBar from "./MenuBar";
 
@@ -22,7 +16,6 @@ const TransitionComponent = Transition as ComponentType<TransitionProps>;
 
 interface IHamburgerMenuProps {
   isOpen: boolean;
-  hasPWAInstalled: boolean;
   setIsOpen: (isOpen: boolean) => void;
   onMenuChange: (section: string) => void;
 }
@@ -33,10 +26,6 @@ const HamBurgerMenu = (props: IHamburgerMenuProps) => {
   const { appVersion: version } = useContext(ProfileContext);
 
   const isClient = useIsClient();
-  const isAppInstalled = useAppInstalled();
-  const showPWABannerState = useAppSelector((state) => state.app.showPwaBanner);
-
-  const dispatch = useAppDispatch<AppDispatch>();
 
   const [hamburgerClicked, setHamburgerClicked] = useState<boolean>(false);
   const [hideMenu, setHideMenu] = useState<boolean>(window.innerWidth > 767);
@@ -49,11 +38,6 @@ const HamBurgerMenu = (props: IHamburgerMenuProps) => {
   const handleResize = () => {
     setHideMenu(window.innerWidth > 767);
   };
-
-  useEffect(() => {
-    dispatch(updateIsAppInstalled(isAppInstalled));
-    setLocalStorage("isAppInstalled", isAppInstalled);
-  }, [dispatch, isAppInstalled]);
 
   useEffect(() => {
     // On open scroll to top of content div
@@ -124,11 +108,6 @@ const HamBurgerMenu = (props: IHamburgerMenuProps) => {
                 closeHamburgerMenu={() => setIsOpen(false)}
                 onMenuChange={(section) => onMenuChange(section)}
               />
-              {showPWABannerState && (
-                <FlexBox $justifyContent="center">
-                  <InstallPWAButton hideAnimation />
-                </FlexBox>
-              )}
               <Version
                 href=""
                 onClick={(e) => {

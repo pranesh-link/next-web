@@ -1,7 +1,6 @@
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata, Viewport } from "next";
-import dynamicImport from "next/dynamic";
 import localFont from "next/font/local";
 import { Suspense } from "react";
 import { browserName, isMobileOnly, osName } from "react-device-detect";
@@ -20,8 +19,6 @@ import {
 } from "./_utils/common/local-data";
 import "./globals.scss";
 import Loading from "./loading";
-
-const PWABanner = dynamicImport(() => import("@/_components/common/PWABanner"));
 
 export const metadata: Metadata = HEADER_INFO.METADATA;
 
@@ -84,7 +81,6 @@ export default async function RootLayout({
   return (
     <html lang="en" className={font.className}>
       <head>
-        <link rel="manifest" href="/manifest.json" />
         {/* Preconnect to external domains */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
@@ -128,7 +124,6 @@ export default async function RootLayout({
             >
               <StyledComponentsRegistry>
                 <Suspense fallback={<Loading />}>
-                  <PWABanner />
                   <PageWrapper>{children}</PageWrapper>
                 </Suspense>
               </StyledComponentsRegistry>

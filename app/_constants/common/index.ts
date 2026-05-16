@@ -1,4 +1,4 @@
-import { DEFAULT_PROFILE_CONTEXT, DEFAULT_PWA } from "@/_constants/profile";
+import { DEFAULT_PROFILE_CONTEXT } from "@/_constants/profile";
 import { IAppContext } from "@/_store/app/types";
 import { IConfigData, IMaintenance } from "@/_store/common/types";
 
@@ -78,7 +78,6 @@ export const DEFAULT_APP_CONTEXT: IAppContext = {
     },
     hasError: false,
     links: DEFAULT_PROFILE_CONTEXT.data.sections.links,
-    pwa: DEFAULT_PWA,
     maintenance: DEFAULT_MAINTENANCE_DATA,
     appConfig: {
       notFoundPage: {

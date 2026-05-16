@@ -30,7 +30,6 @@ export default function ProfilePage() {
 
   const {
     data: {
-      appConfig = { pwa: { os: [], browsers: [] } },
       currentDevice: { browserName, osName },
       version,
       preloadSrcList,
@@ -42,9 +41,6 @@ export default function ProfilePage() {
   if (hasError) {
     throw new Error("failed to fetch data");
   }
-  const {
-    pwa: { os, browsers },
-  } = appConfig;
   const isClient = useIsClient();
   const queryParams = useSearchParams();
   const isMock = queryParams.get("demo");
@@ -66,7 +62,6 @@ export default function ProfilePage() {
       isExport={false}
       isDarkMode={isDarkMode}
       profileData={profileDataByQueryParam}
-      pwaOffset={40}
       refs={{
         homeRef,
         skillsRef,
@@ -78,14 +73,13 @@ export default function ProfilePage() {
       isDownloading={false}
       isMobile={mobileDetect}
       isInstallBannerOpen={false}
-      hasPWAInstalled={false}
       isHamburgerMenuOpen={isHamburgerMenuOpen}
       setIsDownloading={() => {}}
       setIsHamburgerMenuOpen={(isHamburgerMenuOpen: boolean) =>
         setIsHamburgerMenuOpen(isHamburgerMenuOpen)
       }
       appVersion={version}
-      deviceConfig={{ os, osName, browserName, browsers }}
+      deviceConfig={{ os: [], osName, browserName, browsers: [] }}
       preloadSrcList={preloadSrcList}
       preloadedAssets={preloadedAssets}
       emailJsConfig={{

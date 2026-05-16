@@ -106,8 +106,7 @@ export const ProjectLink = styled(ActionBtn)`
   }
 `;
 
-/** Page-level container that adds optional top padding via `$paddingTop`. */
-export const PageContainer = styled.div<{ $paddingTop?: number }>`
-  padding-top: ${(props) => props.$paddingTop || 0}px;
+/** Page-level container. */
+export const PageContainer = styled.div`
   transition: all 1s ease-out;
 `;

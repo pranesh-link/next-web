@@ -37,7 +37,6 @@ const ProfileSections = (props: IProfileSectionsProps) => {
     isExport = false,
     isMobile,
     data: { header },
-    pwaOffset,
   } = React.useContext(ProfileContext);
   const { appVersion: version } = useContext(ProfileContext);
   const [displayVersionModal, setDisplayVersionModal] = useState(false);
@@ -128,7 +127,6 @@ const ProfileSections = (props: IProfileSectionsProps) => {
         setDisplayVersionModal={setDisplayVersionModal}
       />
       <Wrapper
-        $pwaOffset={pwaOffset}
         className={classNames({
           export: isExport,
           "add-margin-top": false,

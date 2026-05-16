@@ -22,9 +22,7 @@ export {
   LoaderImg,
   ModalBanner,
   ModalContentWrap,
-  MobilePWAWrapper,
   Overlay,
-  PWAWrapper,
 } from "./elements/Overlay";
 export {
   PageContainer,
@@ -45,8 +43,6 @@ import {
   LoaderImg,
   ModalBanner,
   ModalContentWrap,
-  MobilePWAWrapper,
-  PWAWrapper,
 } from "./elements/Overlay";
 import {
   ProjectLink,
@@ -69,10 +65,8 @@ const exports = {
   FlexBoxSection,
   Grid,
   LoaderImg,
-  MobilePWAWrapper,
   ModalBanner,
   ModalContentWrap,
-  PWAWrapper,
   ProjectLink,
   SecHeader,
   SectionWrapper,

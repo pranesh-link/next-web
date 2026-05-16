@@ -22,29 +22,6 @@ export type DownloadType = {
   base64: string;
 };
 
-/** PWA install banner configuration. */
-export interface IPWA {
-  /** Display strings used by the PWA prompt UI. */
-  messages: {
-    /** Install prompt headline. */
-    install: string;
-    /** Affirmative action label. */
-    yes: string;
-    /** Dismissive action label. */
-    no: string;
-    /** Open-app action label. */
-    open: string;
-    /** Related-app section label. */
-    relatedApp: string;
-    /** Install-app section label. */
-    installApp: string;
-    /** Open-app section label. */
-    openApp: string;
-  };
-  /** Banner expiry time (in ms or seconds depending on caller). */
-  bannerExpiryTime: number;
-}
-
 /** A file that has been preloaded into memory. */
 export interface IPreloadedFile {
   /** Stable identifier. */

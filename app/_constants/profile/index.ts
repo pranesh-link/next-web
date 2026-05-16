@@ -2,7 +2,6 @@ import {
   ExpandableInfosType,
   IProfileConfigData,
   IProfileContext,
-  IPWA,
   ShortInfosType,
 } from "@/_store/profile/types";
 import React from "react";
@@ -22,19 +21,6 @@ export const SHORT_INFOS: ShortInfosType[] = [
 export const EXPANDABLE_INFOS: ExpandableInfosType[] = ["description"];
 export const LINKS = {
   NEXT_JS_LIBRARY: "https://www.npmjs.com/package/next",
-};
-
-export const DEFAULT_PWA: IPWA = {
-  messages: {
-    install: "",
-    yes: "",
-    no: "",
-    open: "",
-    relatedApp: "",
-    installApp: "",
-    openApp: "",
-  },
-  bannerExpiryTime: 0,
 };
 
 export const DEFAULT_PROFILE_CONTEXT: IProfileContext = {
@@ -117,7 +103,6 @@ export const DEFAULT_PROFILE_CONTEXT: IProfileContext = {
       },
     },
   },
-  pwaOffset: 0,
   isDarkMode: false,
   showComponentLibUrl: true,
   refs: {
