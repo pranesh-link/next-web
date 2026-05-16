@@ -1,5 +1,6 @@
 "use client";
 import styled from "styled-components";
+import { FlexBox } from "./Layout";
 
 /** Spinning loader image; size adjusts via the `isMobile` prop. */
 export const LoaderImg = styled.img<{ isMobile: boolean }>`

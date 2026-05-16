@@ -127,6 +127,11 @@ const IconWrap = styled.div`
   color: var(--accent-light);
   flex-shrink: 0;
   margin-left: 16px;
+
+  svg {
+    width: 20px;
+    height: 20px;
+  }
 `;
 
 export default function SummaryCard({

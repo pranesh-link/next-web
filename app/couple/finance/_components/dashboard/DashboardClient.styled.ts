@@ -179,6 +179,11 @@ export const LoanIconWrap = styled.div`
   justify-content: center;
   color: var(--danger);
   flex-shrink: 0;
+
+  svg {
+    width: 22px;
+    height: 22px;
+  }
 `;
 
 export const LoanStat = styled.div`
