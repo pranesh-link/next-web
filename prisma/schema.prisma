@@ -439,13 +439,14 @@ model Couple {
 }
 
 model CoupleMember {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   coupleId  String
   userId    String
-  role      String   @default("OWNER")
-  joinedAt  DateTime @default(now())
-  couple    Couple   @relation(fields: [coupleId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String    @default("OWNER")
+  joinedAt  DateTime  @default(now())
+  typingAt  DateTime?
+  couple    Couple    @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([coupleId, userId])
   @@map("couple_members")

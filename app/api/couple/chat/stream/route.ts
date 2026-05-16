@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
 import prisma from "@/_lib/prisma";
-import { cacheGet } from "@/_lib/redis";
 
 /** SSE streams are capped at 30 s on Vercel Hobby. */
 export const maxDuration = 30;
@@ -41,7 +40,7 @@ export async function GET() {
 
       while (Date.now() < deadline) {
         try {
-          const [count, latest, typingVal] = await Promise.all([
+          const [count, latest, partnerMemberSnapshot] = await Promise.all([
             prisma.coupleMessage.count({ where: { coupleId } }),
             prisma.coupleMessage.findFirst({
               where: { coupleId },
@@ -55,11 +54,19 @@ export async function GET() {
               },
             }),
             partnerUserId
-              ? cacheGet<number>(`couple:${coupleId}:typing:${partnerUserId}`)
+              ? prisma.coupleMember.findFirst({
+                  where: { coupleId, userId: partnerUserId },
+                  select: { typingAt: true },
+                })
               : Promise.resolve(null),
           ]);
 
-          const payload = JSON.stringify({ count, latest, partnerTyping: !!typingVal });
+          const TYPING_TTL_MS = 6_000;
+          const isTyping =
+            !!partnerMemberSnapshot?.typingAt &&
+            Date.now() - new Date(partnerMemberSnapshot.typingAt).getTime() < TYPING_TTL_MS;
+
+          const payload = JSON.stringify({ count, latest, partnerTyping: isTyping });
           controller.enqueue(encoder.encode(`data: ${payload}\n\n`));
         } catch {
           // ignore transient DB errors; keep the stream open
