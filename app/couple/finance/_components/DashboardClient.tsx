@@ -16,6 +16,8 @@ import BudgetsSection from "./dashboard/BudgetsSection";
 import LoansSection from "./dashboard/LoansSection";
 import GoalsSection from "./dashboard/GoalsSection";
 import RecentTransactionsSection from "./dashboard/RecentTransactionsSection";
+import AlertsBanner from "./dashboard/AlertsBanner";
+import AccountBreakdownSection from "./dashboard/AccountBreakdownSection";
 import BudgetVsActualsWidget from "./BudgetVsActualsWidget";
 import type { DashboardData } from "./dashboard/types";
 
@@ -55,12 +57,17 @@ export default function DashboardClient({
 
   const {
     totalBalance,
+    netWorth,
     cashFlow,
     savingsRate,
     expenseBreakdown,
     budgetStatus,
+    budgetRollup,
     loansSummary,
-    goalsWithProgress,
+    loanDetails,
+    goalsWithTimeline,
+    accountBreakdown,
+    alerts,
     investmentsSummary,
     depositsSummary,
     healthScore,
@@ -72,12 +79,20 @@ export default function DashboardClient({
     <>
       <FinanceHeader title="Dashboard" onRefresh={handleRefresh} />
       <PageWrapper $pending={isPending}>
+        <AlertsBanner alerts={alerts} />
+
         <SummarySection
           totalBalance={totalBalance}
+          netWorth={netWorth}
           cashFlow={cashFlow}
           savingsRate={savingsRate}
           investmentsSummary={investmentsSummary}
           depositsSummary={depositsSummary}
+        />
+
+        <AccountBreakdownSection
+          accountBreakdown={accountBreakdown}
+          netWorth={netWorth}
         />
 
         <ChartsGrid>
@@ -88,9 +103,9 @@ export default function DashboardClient({
         <BudgetVsActualsWidget />
 
         <HealthSection healthScore={healthScore} />
-        <BudgetsSection budgetStatus={budgetStatus} />
-        <LoansSection loansSummary={loansSummary} />
-        <GoalsSection goalsWithProgress={goalsWithProgress} />
+        <BudgetsSection budgetStatus={budgetStatus} budgetRollup={budgetRollup} />
+        <LoansSection loansSummary={loansSummary} loanDetails={loanDetails} />
+        <GoalsSection goalsWithTimeline={goalsWithTimeline} />
         <RecentTransactionsSection recentTransactions={recentTransactions} />
       </PageWrapper>
     </>
