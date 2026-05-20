@@ -51,7 +51,8 @@
         {
           "photosPermission": "Allow LuvVerse to access photos for receipt scanning."
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
