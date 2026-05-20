@@ -1,0 +1,69 @@
+{
+  "expo": {
+    "name": "LuvVerse",
+    "slug": "luvverse",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "scheme": "luvverse",
+    "owner": "pranaish",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "splash": {
+      "backgroundColor": "#1a1a2e"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "link.pranesh.luvverse",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#1a1a2e"
+      },
+      "package": "link.pranesh.luvverse",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow LuvVerse to use the camera for scanning receipts."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow LuvVerse to access photos for receipt scanning."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "8305ac76-d0e8-42b7-963f-e60593fd8f78"
+      },
+      "router": {}
+    },
+    "updates": {
+      "url": "https://u.expo.dev/8305ac76-d0e8-42b7-963f-e60593fd8f78"
+    }
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "name": "@next-web/mobile",
+  "version": "1.0.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "dev": "expo start",
+    "dev:ios": "expo start --ios",
+    "dev:android": "expo start --android",
+    "build:dev": "eas build --profile development --platform all",
+    "build:beta": "eas build --profile beta --platform all",
+    "build:beta:ios": "eas build --profile beta --platform ios",
+    "build:beta:android": "eas build --profile beta --platform android",
+    "build:production": "eas build --profile production --platform all",
+    "submit:beta:ios": "eas submit --profile beta --platform ios",
+    "submit:beta:android": "eas submit --profile beta --platform android",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@next-web/shared": "file:../packages/shared",
+    "@next-web/ui": "file:../packages/ui",
+    "@tamagui/config": "^1.115.0",
+    "@tamagui/lucide-icons": "^1.115.0",
+    "@tanstack/react-query": "^5.60.0",
+    "expo": "~53.0.0",
+    "expo-auth-session": "~6.1.0",
+    "expo-camera": "~16.1.0",
+    "expo-constants": "~17.1.0",
+    "expo-crypto": "~14.1.0",
+    "expo-dev-client": "~5.1.0",
+    "expo-image-picker": "~16.1.0",
+    "expo-linking": "~7.1.0",
+    "expo-router": "~5.0.0",
+    "expo-secure-store": "~14.1.0",
+    "expo-splash-screen": "~0.30.0",
+    "expo-status-bar": "~2.2.0",
+    "expo-updates": "~0.28.0",
+    "expo-web-browser": "~14.1.0",
+    "react": "19.1.0",
+    "react-native": "0.79.2",
+    "react-native-gesture-handler": "~2.24.0",
+    "react-native-reanimated": "~3.17.0",
+    "react-native-safe-area-context": "~5.4.0",
+    "react-native-screens": "~4.10.0",
+    "react-native-web": "~0.19.13",
+    "tamagui": "^1.115.0",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.0",
+    "@tamagui/babel-plugin": "^1.115.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "19.1.6",
+    "typescript": "^5"
+  },
+  "overrides": {
+    "electron-to-chromium": "1.5.137"
+  }
+}
