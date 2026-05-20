@@ -16,10 +16,12 @@ set -euo pipefail
 
 log() { echo "[ignore-build] $*"; }
 
-if [[ "${VERCEL_GIT_COMMIT_REF:-}" == "master" ]]; then
-  log "branch=master -> BUILD"
-  exit 1
+# Skip all non-production branches (no preview deployments).
+# Only master is allowed to build.
+if [[ "${VERCEL_GIT_COMMIT_REF:-}" != "master" ]]; then
+  log "branch=${VERCEL_GIT_COMMIT_REF:-unknown} is not master -> SKIP"
+  exit 0
 fi
 
-log "branch=${VERCEL_GIT_COMMIT_REF:-unknown} is not master -> SKIP"
-exit 0
+log "branch=master -> BUILD"
+exit 1
