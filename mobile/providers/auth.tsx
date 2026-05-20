@@ -1,10 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import * as SecureStore from 'expo-secure-store';
-import * as AuthSession from 'expo-auth-session';
-import * as WebBrowser from 'expo-web-browser';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { useRouter, useSegments } from 'expo-router';
-
-WebBrowser.maybeCompleteAuthSession();
 
 interface User {
   id: string;
@@ -26,13 +23,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 const TOKEN_KEY = 'auth_token';
 const USER_KEY = 'auth_user';
 
-const GOOGLE_DISCOVERY = {
-  authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
-  tokenEndpoint: 'https://oauth2.googleapis.com/token',
-  revocationEndpoint: 'https://oauth2.googleapis.com/revoke',
-};
-
-/** Auth provider managing JWT tokens and Google OAuth flow. */
+/** Auth provider managing JWT tokens and native Google Sign-In. */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -41,6 +32,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const segments = useSegments();
 
   useEffect(() => {
+    GoogleSignin.configure({
+      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+      offlineAccess: true,
+    });
     loadStoredAuth();
   }, []);
 
@@ -70,34 +65,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithGoogle = useCallback(async () => {
     setIsLoading(true);
     try {
-      const redirectUri = AuthSession.makeRedirectUri({ scheme: 'luvverse' });
-      const request = new AuthSession.AuthRequest({
-        clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? '',
-        scopes: ['openid', 'profile', 'email'],
-        redirectUri,
+      await GoogleSignin.hasPlayServices();
+      const signInResult = await GoogleSignin.signIn();
+      const idToken = signInResult.data?.idToken;
+
+      if (!idToken) {
+        throw new Error('No ID token received from Google Sign-In');
+      }
+
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/v1/auth/mobile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
       });
 
-      const result = await request.promptAsync(GOOGLE_DISCOVERY);
-
-      if (result.type === 'success') {
-        const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/v1/auth/mobile`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code: result.params.code, redirectUri }),
-        });
-
-        const data = await response.json();
-        await SecureStore.setItemAsync(TOKEN_KEY, data.token);
-        await SecureStore.setItemAsync(USER_KEY, JSON.stringify(data.user));
-        setToken(data.token);
-        setUser(data.user);
+      if (!response.ok) {
+        throw new Error('Backend authentication failed');
       }
+
+      const data = await response.json();
+      await SecureStore.setItemAsync(TOKEN_KEY, data.token);
+      await SecureStore.setItemAsync(USER_KEY, JSON.stringify(data.user));
+      setToken(data.token);
+      setUser(data.user);
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'code' in error) {
+        const code = (error as { code: string }).code;
+        if (code === statusCodes.SIGN_IN_CANCELLED) return;
+        if (code === statusCodes.IN_PROGRESS) return;
+      }
+      throw error;
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   const signOut = useCallback(async () => {
+    try {
+      await GoogleSignin.revokeAccess();
+      await GoogleSignin.signOut();
+    } catch {
+      /* Google sign-out may fail if token expired — still clear local state */
+    }
     await SecureStore.deleteItemAsync(TOKEN_KEY);
     await SecureStore.deleteItemAsync(USER_KEY);
     setToken(null);
