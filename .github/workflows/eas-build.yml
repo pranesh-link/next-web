@@ -46,4 +46,4 @@ jobs:
       #   run: eas build --profile beta --platform ios --non-interactive
 
       - name: Build Android
-        run: eas build --profile beta --platform android --non-interactive --no-wait
+        run: eas build --profile beta --platform android --non-interactive
