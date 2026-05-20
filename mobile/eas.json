@@ -15,6 +15,9 @@
       "distribution": "internal",
       "autoIncrement": true,
       "channel": "beta",
+      "cache": {
+        "key": "v1"
+      },
       "ios": {
         "buildConfiguration": "Release"
       },
@@ -22,7 +25,9 @@
         "buildType": "apk"
       },
       "env": {
-        "APP_VARIANT": "beta"
+        "APP_VARIANT": "beta",
+        "EXPO_PUBLIC_GOOGLE_CLIENT_ID": "24282158014-lj19o58fhi59jdd5qgip68bh41f6hvj6.apps.googleusercontent.com",
+        "EXPO_PUBLIC_API_URL": "https://pranesh.link"
       }
     },
     "production": {
