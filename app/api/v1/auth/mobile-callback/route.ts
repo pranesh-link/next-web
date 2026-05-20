@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
   // Return HTML that auto-redirects to the deep link
   return htmlResponse(`
     <h2>Signed in successfully!</h2>
-    <p>Returning to Coupletastic...</p>
+    <p>Returning to LuvVerse...</p>
     <script>window.location.replace(${JSON.stringify(deepLink)});</script>
     <noscript><a href="${deepLink}">Tap here to return to the app</a></noscript>
   `);
@@ -134,7 +134,7 @@ function htmlResponse(body: string): NextResponse {
 <html><head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Coupletastic</title>
+  <title>LuvVerse</title>
   <style>
     body { font-family: system-ui, sans-serif; display: flex;
            justify-content: center; align-items: center; min-height: 80vh;

@@ -10,7 +10,7 @@ import { signMobileToken } from "@/api/v1/_lib/auth";
  */
 export async function GET(request: NextRequest) {
   const scheme =
-    request.nextUrl.searchParams.get("scheme") || "coupletastic";
+    request.nextUrl.searchParams.get("scheme") || "luvverse";
 
   const session = await auth();
 

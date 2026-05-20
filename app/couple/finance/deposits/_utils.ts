@@ -62,6 +62,6 @@ export const initialFormState: FormState = {
 };
 
 /** Session-storage key that records the one-time legacy migration. */
-export const LEGACY_MIGRATION_SESSION_KEY = "coupletastic_deposits_legacy_migrated";
+export const LEGACY_MIGRATION_SESSION_KEY = "luvverse_deposits_legacy_migrated";
 
 export { formatCurrency } from "@/_lib/formatters";

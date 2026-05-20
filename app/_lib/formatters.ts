@@ -1,5 +1,5 @@
 /**
- * Shared formatting helpers for the Coupletastic / finance modules.
+ * Shared formatting helpers for the LuvVerse / finance modules.
  *
  * Centralises currency, month-label, and date formatting so all consumers
  * produce identical output. Do not duplicate these helpers in feature folders;

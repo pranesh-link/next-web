@@ -16,7 +16,7 @@ const GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo";
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const code = searchParams.get("code");
-  const scheme = searchParams.get("state") || "coupletastic";
+  const scheme = searchParams.get("state") || "luvverse";
 
   if (!code) {
     return new NextResponse(errorPage("No authorization code received"), {
