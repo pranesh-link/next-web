@@ -1,7 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
 
-const SCAN_SERVICE_URL = process.env.SCAN_SERVICE_URL;
-const SCAN_SERVICE_API_KEY = process.env.SCAN_SERVICE_API_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 const ai = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
@@ -94,37 +92,14 @@ async function scanWithGemini(fileBuffer: ArrayBuffer, mimeType: string): Promis
   return JSON.parse(text) as ReceiptParsed;
 }
 
-async function scanWithPythonService(file: File) {
-  if (!SCAN_SERVICE_URL || !SCAN_SERVICE_API_KEY) return null;
-
-  const proxyForm = new FormData();
-  proxyForm.append("receipt", file, file.name);
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 55_000);
-
-  try {
-    const res = await fetch(`${SCAN_SERVICE_URL}/scan-receipt`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${SCAN_SERVICE_API_KEY}` },
-      body: proxyForm,
-      signal: controller.signal,
-    });
-    const data = await res.json();
-    return { data, status: res.status };
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
 /**
- * Core receipt-scan logic. Validates the file, applies Gemini vision (with
- * Python service fallback) and returns a uniform result envelope.
+ * Core receipt-scan logic. Validates the file, applies Gemini vision,
+ * and returns a uniform result envelope.
  *
  * Caller is responsible for authentication and rate-limiting.
  *
- * param file: The uploaded receipt image.
- * return: A {@link ReceiptScanResult} envelope describing success or failure.
+ * @param file - The uploaded receipt image.
+ * @returns A {@link ReceiptScanResult} envelope describing success or failure.
  */
 export async function scanReceipt(file: File): Promise<ReceiptScanResult> {
   if (!RECEIPT_ALLOWED_MIME_TYPES.has(file.type)) {
@@ -135,53 +110,33 @@ export async function scanReceipt(file: File): Promise<ReceiptScanResult> {
     return { ok: false, status: 400, error: "Image must be under 10MB" };
   }
 
-  if (GEMINI_API_KEY) {
-    try {
-      const parsed = await scanWithGemini(await file.arrayBuffer(), file.type || "image/jpeg");
-
-      if (!parsed.totalAmount) {
-        return {
-          ok: false,
-          status: 422,
-          error: "Could not find a total amount in the receipt. Try a clearer photo.",
-        };
-      }
-
-      return {
-        ok: true,
-        status: 200,
-        body: { success: true, data: parsed, method: "gemini-js" },
-      };
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error("[scan-receipt] Gemini JS error:", msg);
-
-      if (!SCAN_SERVICE_URL) {
-        return {
-          ok: false,
-          status: 422,
-          error: "Could not read receipt. Try a clearer, well-lit photo.",
-        };
-      }
-    }
-  }
-
-  if (!SCAN_SERVICE_URL || !SCAN_SERVICE_API_KEY) {
+  if (!GEMINI_API_KEY) {
     return { ok: false, status: 503, error: "Scan service not configured" };
   }
 
   try {
-    const result = await scanWithPythonService(file);
-    if (!result) {
-      return { ok: false, status: 503, error: "Scan service unavailable" };
+    const parsed = await scanWithGemini(await file.arrayBuffer(), file.type || "image/jpeg");
+
+    if (!parsed.totalAmount) {
+      return {
+        ok: false,
+        status: 422,
+        error: "Could not find a total amount in the receipt. Try a clearer photo.",
+      };
     }
-    return { ok: true, status: result.status, body: result.data };
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : "Unknown";
-    console.error("[scan-receipt] Python proxy error:", msg);
-    if (msg.includes("aborted")) {
-      return { ok: false, status: 504, error: "Scan timed out. Try a smaller or clearer image." };
-    }
-    return { ok: false, status: 502, error: "Scan service unavailable" };
+
+    return {
+      ok: true,
+      status: 200,
+      body: { success: true, data: parsed, method: "gemini-js" },
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[scan-receipt] Gemini JS error:", msg);
+    return {
+      ok: false,
+      status: 422,
+      error: "Could not read receipt. Try a clearer, well-lit photo.",
+    };
   }
 }

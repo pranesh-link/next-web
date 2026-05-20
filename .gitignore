@@ -45,9 +45,14 @@ next-env.d.ts
 
 /app/generated/prisma
 
-# Python
-python-api/__pycache__/
-python-api/**/__pycache__/
-python-api/*.pyc
-python-api/.venv/
-python-api/.env
+# Monorepo
+.turbo
+packages/*/dist
+
+# Mobile (Expo)
+mobile/.expo/
+mobile/dist/
+mobile/ios/
+mobile/android/
+mobile/node_modules/
+mobile/.env
