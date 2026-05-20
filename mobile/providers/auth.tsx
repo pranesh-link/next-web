@@ -70,9 +70,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const idToken = signInResult.data?.idToken;
 
       if (!idToken) {
-        throw new Error('No ID token received from Google Sign-In');
+        console.error('[Auth] No ID token received from Google Sign-In');
+        return;
       }
 
+      console.log('[Auth] Got idToken, calling backend...');
       const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/v1/auth/mobile`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -80,7 +82,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (!response.ok) {
-        throw new Error('Backend authentication failed');
+        const errorBody = await response.text();
+        console.error('[Auth] Backend failed:', response.status, errorBody);
+        return;
       }
 
       const data = await response.json();
@@ -94,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (code === statusCodes.SIGN_IN_CANCELLED) return;
         if (code === statusCodes.IN_PROGRESS) return;
       }
-      throw error;
+      console.error('[Auth] Sign-in error:', error);
     } finally {
       setIsLoading(false);
     }
