@@ -12,6 +12,8 @@
       "policy": "appVersion"
     },
     "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
       "backgroundColor": "#1a1a2e"
     },
     "ios": {
