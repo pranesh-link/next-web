@@ -2,9 +2,13 @@
   "name": "next-web",
   "version": "3.17.0",
   "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "postinstall": "prisma generate",
     "dev": "tsc --noEmit && next dev -p 3737 --hostname 0.0.0.0",
+    "dev:mobile": "cd mobile && expo start",
     "build": "prisma migrate resolve --applied 20260317174619_init || true && prisma migrate deploy && rm -rf .next && next build",
     "build:analyze": "ANALYZE=true npm run build",
     "start": "next start -p 3737",
@@ -94,7 +98,8 @@
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
     "postcss": "^8",
-    "typescript": "^5"
+    "turbo": "^2",
+    "typescript": "~5.8"
   },
   "resolutions": {
     "@types/react": "19.1.6",

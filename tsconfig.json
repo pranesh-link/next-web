@@ -20,10 +20,14 @@
       }
     ],
     "paths": {
-      "@/*": ["./app/*"]
+      "@/*": ["./app/*"],
+      "@next-web/shared": ["./packages/shared/src"],
+      "@next-web/shared/*": ["./packages/shared/src/*"],
+      "@next-web/ui": ["./packages/ui/src"],
+      "@next-web/ui/*": ["./packages/ui/src/*"]
     },
     "typeRoots" : ["node_modules/@types", "src/types"]
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules", "**/*.test.ts", "**/*.test.tsx", "**/__tests__/**", "prisma.config.ts"]
+  "exclude": ["node_modules", "**/*.test.ts", "**/*.test.tsx", "**/__tests__/**", "prisma.config.ts", "mobile/**", "packages/**"]
 }
