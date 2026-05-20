@@ -1,6 +1,6 @@
 ---
 name: finance-dev
-description: "Develop features in the Coupletastic finance module (app/finance/). Covers styled-components UI, server actions, couple data sharing, auth patterns, receipt scanning, budgets, loans, goals, transactions, and accounts. Use when building or modifying any finance page or component."
+description: "Develop features in the LuvVerse finance module (app/finance/). Covers styled-components UI, server actions, couple data sharing, auth patterns, receipt scanning, budgets, loans, goals, transactions, and accounts. Use when building or modifying any finance page or component."
 ---
 
 # Finance Module Development
