@@ -1,6 +1,6 @@
 ---
 mode: agent
-description: "Full-lifecycle development agent for the next-web monorepo. Covers all modules: Coupletastic finance app, profile/portfolio pages, admin panel, public tools, API routes, database, auth, middleware, and deployment. Handles features, fixes, refactors, migrations, builds, tests, and shipping."
+description: "Full-lifecycle development agent for the next-web monorepo. Covers all modules: LuvVerse finance app, profile/portfolio pages, admin panel, public tools, API routes, database, auth, middleware, and deployment. Handles features, fixes, refactors, migrations, builds, tests, and shipping."
 instructions:
   - .github/skills/finance-dev/SKILL.md
   - .github/skills/api-routes/SKILL.md
@@ -29,7 +29,7 @@ You are **next-web Agent** — the primary development agent for the next-web mo
 
 | Module | Path | Styling | State | Notes |
 |--------|------|---------|-------|-------|
-| Couple (Coupletastic) | `app/couple/` | styled-components | Server Actions | Root module with sidebar, auth, providers |
+| Couple (LuvVerse) | `app/couple/` | styled-components | Server Actions | Root module with sidebar, auth, providers |
 | Finance | `app/couple/finance/` | styled-components | Server Actions | Financial features under couple umbrella |
 | Profile / Portfolio | `app/profile/`, `app/profile-2.0/` | SCSS + Tailwind | Redux | Legacy, uses MongoDB for some routes |
 | Admin | `app/admin/` | SCSS | — | Admin panel |
@@ -51,7 +51,7 @@ app/
   _redux/            # Redux store, hooks, actions, reducers
   _store/            # Zustand/context stores: app, common, form, profile
 
-  couple/            # Coupletastic root (auth, sidebar, providers)
+  couple/            # LuvVerse root (auth, sidebar, providers)
     _components/     # Couple-wide UI: CoupleProviders, layout/, auth/, cards/, charts/, forms/, loan/, receipt/, shared/, tables/, theme/
     layout.tsx       # Root layout: SessionProvider → StyledComponentsRegistry → CoupleProviders → FinanceLayout (sidebar+main)
     page.tsx         # Module dashboard ("Welcome back")
@@ -99,7 +99,7 @@ prisma/
 3. **No Co-Authored-By** — never add `Co-Authored-By: Claude` in git commits
 4. **Pull before push** — `git pull --rebase origin master` before pushing
 5. **Auth-guard everything** — server actions use `auth()`, v1 API routes use `authenticateRequest()`
-6. **Update memory** — after significant decisions, update `/memories/repo/coupletastic-architecture.md`
+6. **Update memory** — after significant decisions, update `/memories/repo/luvverse-architecture.md`
 7. **300-line cap** — every `.ts` / `.tsx` / `.js` / `.jsx` file must be ≤ 300 lines (see File Size Limit below)
 8. **Document new + touched code** — every exported symbol must have JSDoc/TSDoc (see Documentation Standard below)
 9. **No inline styles** — never use the `style={{ ... }}` prop on JSX elements (see No Inline Styles below)
@@ -319,7 +319,7 @@ prisma.model.findFirst({ where: { id, userId: { in: coupleUserIds } } });
 For every task, follow this sequence:
 
 ## 1. Bootstrap
-- Read `/memories/repo/coupletastic-architecture.md` for prior decisions and gotchas
+- Read `/memories/repo/luvverse-architecture.md` for prior decisions and gotchas
 - Run `git status` and `git log --oneline -5` to understand current state
 - Identify which module(s) the task affects (finance, profile, API, shared)
 
@@ -345,7 +345,7 @@ For every task, follow this sequence:
 - If the user asks, run and fix any errors until clean.
 
 ## 6. Memory & Self-Improvement
-- Record important decisions in `/memories/repo/coupletastic-architecture.md`
+- Record important decisions in `/memories/repo/luvverse-architecture.md`
 - Update the `_Last updated_` timestamp and append to the Decisions Log
 - Run the Self-Check (see Self-Improvement Protocol) — update this agent file if structure changed
 - If the user corrected an approach, add a preventive rule
@@ -391,7 +391,7 @@ Use the **Explore** sub-agent for read-only research and the **next-web** sub-ag
 
 This agent learns from every session. Follow these rules to keep the agent and its memory current.
 
-## When to Update Memory (`/memories/repo/coupletastic-architecture.md`)
+## When to Update Memory (`/memories/repo/luvverse-architecture.md`)
 - **After every schema change** — new models, fields, migrations
 - **After route restructures** — path changes, new pages, moved files
 - **After new architectural patterns** — couple data sharing changes, auth pattern changes, new service patterns
