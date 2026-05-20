@@ -18,7 +18,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "link.pranesh.luvverse",
+      "bundleIdentifier": "link.pranaish.luvverse",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -27,7 +27,7 @@
       "adaptiveIcon": {
         "backgroundColor": "#1a1a2e"
       },
-      "package": "link.pranesh.luvverse",
+      "package": "link.pranaish.luvverse",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.CAMERA",
@@ -54,7 +54,7 @@
           "photosPermission": "Allow LuvVerse to access photos for receipt scanning."
         }
       ],
-      "expo-web-browser"
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true
