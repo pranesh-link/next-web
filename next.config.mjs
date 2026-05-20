@@ -3,6 +3,7 @@ import packageJson from "./package.json" assert { type: "json" };
 
 const nextConfig = {
   allowedDevOrigins: ["dev.data.lilly.com", "192.168.1.9"],
+  transpilePackages: ["@next-web/shared", "@next-web/ui"],
   compiler: {
     styledComponents: true,
     removeConsole: process.env.NODE_ENV === "production" ? { exclude: ["error", "warn"] } : false,
