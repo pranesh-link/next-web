@@ -16,7 +16,8 @@
       "autoIncrement": true,
       "channel": "beta",
       "cache": {
-        "key": "v1"
+        "key": "v2",
+        "paths": ["~/.gradle/caches", "~/.gradle/wrapper"]
       },
       "ios": {
         "buildConfiguration": "Release"
