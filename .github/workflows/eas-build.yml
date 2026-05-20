@@ -46,7 +46,11 @@ jobs:
       #   run: eas build --profile beta --platform ios --non-interactive
 
       - name: Build Android
-        run: eas build --profile beta --platform android --non-interactive --json | tee build-result.json
+        run: |
+          START_TIME=$(date +%s)
+          eas build --profile beta --platform android --non-interactive --json | tee build-result.json
+          END_TIME=$(date +%s)
+          echo "BUILD_DURATION=$(( END_TIME - START_TIME ))" >> $GITHUB_ENV
 
       - name: Build Summary
         if: always()
@@ -57,6 +61,8 @@ jobs:
             PLATFORM=$(jq -r '.[0].platform' build-result.json)
             APP_VERSION=$(jq -r '.[0].appVersion // "N/A"' build-result.json)
             BUILD_URL="https://expo.dev/accounts/pranaish/projects/luvverse/builds/${BUILD_ID}"
+            DURATION_MIN=$(( ${BUILD_DURATION:-0} / 60 ))
+            DURATION_SEC=$(( ${BUILD_DURATION:-0} % 60 ))
             
             echo "## 📱 EAS Build Summary" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
@@ -65,6 +71,7 @@ jobs:
             echo "| **Status** | ${STATUS} |" >> $GITHUB_STEP_SUMMARY
             echo "| **Platform** | ${PLATFORM} |" >> $GITHUB_STEP_SUMMARY
             echo "| **App Version** | ${APP_VERSION} |" >> $GITHUB_STEP_SUMMARY
+            echo "| **Build Time** | ${DURATION_MIN}m ${DURATION_SEC}s |" >> $GITHUB_STEP_SUMMARY
             echo "| **Build ID** | \`${BUILD_ID}\` |" >> $GITHUB_STEP_SUMMARY
             echo "| **Build URL** | [View on Expo](${BUILD_URL}) |" >> $GITHUB_STEP_SUMMARY
           else
