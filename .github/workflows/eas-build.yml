@@ -2,14 +2,14 @@ name: EAS Build (Beta)
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - feat/monorepo-setup
-    paths:
-      - 'mobile/**'
-      - 'packages/**'
-      - '.npmrc'
-      - '.github/workflows/eas-build.yml'
+  # TODO: Enable push trigger once mobile auth flow is stable
+  # push:
+  #   branches:
+  #     - master
+  #   paths:
+  #     - 'mobile/**'
+  #     - 'packages/**'
+  #     - '.github/workflows/eas-build.yml'
 
 jobs:
   build:
