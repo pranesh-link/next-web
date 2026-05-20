@@ -181,7 +181,7 @@ export default function LoginCard({ callbackUrl = "/couple/finance" }: LoginCard
       <Card>
         <LogoRow>
           <LogoCircle>💑</LogoCircle>
-          <AppName>Coupletastic</AppName>
+          <AppName>LuvVerse</AppName>
         </LogoRow>
         <Tagline>Sign in to manage your finances together</Tagline>
         <GoogleButton

@@ -206,7 +206,7 @@ export default function InviteAcceptPage() {
         <Title>Couple Invite</Title>
         <Description>
           <strong>{inviterName}</strong> invited you to join
-          {coupleName ? ` "${coupleName}"` : " their couple"} on Coupletastic.
+          {coupleName ? ` "${coupleName}"` : " their couple"} on LuvVerse.
         </Description>
         <PrimaryButton disabled={accepting} onClick={handleAccept}>
           {accepting ? "Accepting…" : "Accept Invite"}

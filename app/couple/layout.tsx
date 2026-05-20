@@ -9,7 +9,7 @@ import OnboardingCheck from "@/couple/_components/OnboardingCheck";
 import { prisma } from "@/_lib/prisma";
 
 export const metadata = {
-  title: "Coupletastic",
+  title: "LuvVerse",
   description: "Your shared space for everything together",
 };
 

@@ -51,7 +51,7 @@ interface SidebarProps {
 }
 
 /**
- * Coupletastic-wide sidebar with context-aware navigation.
+ * LuvVerse-wide sidebar with context-aware navigation.
  *
  * Switches between the couple-level nav (`/couple` routes), the finance-level
  * nav (`/couple/finance/*` routes), and the lifestyle-level nav
@@ -140,7 +140,7 @@ export default function Sidebar({ user }: SidebarProps) {
       >
         <LogoArea>
           <LogoIcon>💑</LogoIcon>
-          <LogoText $visible={expanded}>Coupletastic</LogoText>
+          <LogoText $visible={expanded}>LuvVerse</LogoText>
         </LogoArea>
 
         <Nav $disabled={signingOut}>

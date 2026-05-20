@@ -24,14 +24,14 @@ import {
 } from "./_styled";
 
 const CURRENCIES = ["INR", "USD", "EUR", "GBP", "SGD", "AED"] as const;
-const ONBOARDING_KEY = "coupletastic_onboarded";
+const ONBOARDING_KEY = "luvverse_onboarded";
 const TOTAL_STEPS = 3;
 
 /**
  * Multi-step onboarding wizard for new couple members.
  *
  * Guides the user through: welcome → currency & income setup → completion.
- * Stores completion state in localStorage under `coupletastic_onboarded`.
+ * Stores completion state in localStorage under `luvverse_onboarded`.
  *
  * @returns The onboarding wizard page.
  */

@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 
-const ONBOARDING_KEY = "coupletastic_onboarded";
+const ONBOARDING_KEY = "luvverse_onboarded";
 
 interface OnboardingCheckProps {
   /** Whether the current user belongs to an active couple. */
