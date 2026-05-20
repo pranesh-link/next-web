@@ -1,5 +1,5 @@
 /**
- * Layout for the Coupletastic Lifestyle module.
+ * Layout for the LuvVerse Lifestyle module.
  * Adds the floating "Chat with your Couple data" button to all lifestyle sub-pages.
  */
 import CoupleDataChat from "@/couple/_components/chat/CoupleDataChat";

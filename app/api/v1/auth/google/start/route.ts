@@ -11,7 +11,7 @@ const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
-  const appScheme = searchParams.get("scheme") || "coupletastic";
+  const appScheme = searchParams.get("scheme") || "luvverse";
 
   // Use the public base URL (e.g. ngrok) so Google accepts the redirect URI
   const callbackUrl = `${AUTH_BASE_URL}/api/v1/auth/google/callback`;

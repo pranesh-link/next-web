@@ -8,7 +8,7 @@ import {
   IPreloadedAsset,
   IProfileData,
 } from "@/_store/profile/types";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import HamBurgerMenu from "./HamBurgerMenu";
 import MenuBar from "./MenuBar";
@@ -68,6 +68,13 @@ const Profile = (props: ProfileProps) => {
   const [currentSection, setCurrentSection] = useState<string>("aboutMe");
   const [isContactFormOpen, setIsContactFormOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     isModalOpen

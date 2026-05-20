@@ -1,5 +1,5 @@
 /**
- * Zod validation schemas for the Coupletastic Lifestyle / Wellness module.
+ * Zod validation schemas for the LuvVerse Lifestyle / Wellness module.
  *
  * Schemas defined here are consumed by server actions in
  * `app/couple/lifestyle/_actions/**` and by any future API routes that touch
