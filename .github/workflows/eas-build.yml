@@ -46,4 +46,29 @@ jobs:
       #   run: eas build --profile beta --platform ios --non-interactive
 
       - name: Build Android
-        run: eas build --profile beta --platform android --non-interactive
+        run: eas build --profile beta --platform android --non-interactive --json | tee build-result.json
+
+      - name: Build Summary
+        if: always()
+        run: |
+          if [ -f build-result.json ]; then
+            BUILD_ID=$(jq -r '.[0].id' build-result.json)
+            STATUS=$(jq -r '.[0].status' build-result.json)
+            PLATFORM=$(jq -r '.[0].platform' build-result.json)
+            APP_VERSION=$(jq -r '.[0].appVersion // "N/A"' build-result.json)
+            BUILD_URL="https://expo.dev/accounts/pranaish/projects/luvverse/builds/${BUILD_ID}"
+            
+            echo "## 📱 EAS Build Summary" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+            echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| **Status** | ${STATUS} |" >> $GITHUB_STEP_SUMMARY
+            echo "| **Platform** | ${PLATFORM} |" >> $GITHUB_STEP_SUMMARY
+            echo "| **App Version** | ${APP_VERSION} |" >> $GITHUB_STEP_SUMMARY
+            echo "| **Build ID** | \`${BUILD_ID}\` |" >> $GITHUB_STEP_SUMMARY
+            echo "| **Build URL** | [View on Expo](${BUILD_URL}) |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ❌ EAS Build Summary" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Build failed — no result JSON produced." >> $GITHUB_STEP_SUMMARY
+          fi
