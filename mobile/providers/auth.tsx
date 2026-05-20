@@ -1,7 +1,13 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import * as SecureStore from 'expo-secure-store';
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { useRouter, useSegments } from 'expo-router';
+
+/**
+ * Auth mode: "native" uses @react-native-google-signin (requires custom build),
+ * "web" uses expo-auth-session (works in Expo Go).
+ * Set via EXPO_PUBLIC_AUTH_MODE env var. Defaults to "native".
+ */
+const AUTH_MODE = process.env.EXPO_PUBLIC_AUTH_MODE || 'native';
 
 interface User {
   id: string;
@@ -23,7 +29,13 @@ const AuthContext = createContext<AuthContextType | null>(null);
 const TOKEN_KEY = 'auth_token';
 const USER_KEY = 'auth_user';
 
-/** Auth provider managing JWT tokens and native Google Sign-In. */
+const GOOGLE_DISCOVERY = {
+  authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
+  tokenEndpoint: 'https://oauth2.googleapis.com/token',
+  revocationEndpoint: 'https://oauth2.googleapis.com/revoke',
+};
+
+/** Auth provider managing JWT tokens and Google Sign-In (native or web mode). */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -32,10 +44,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const segments = useSegments();
 
   useEffect(() => {
-    GoogleSignin.configure({
-      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-      offlineAccess: true,
-    });
+    if (AUTH_MODE === 'native') {
+      const { GoogleSignin } = require('@react-native-google-signin/google-signin');
+      GoogleSignin.configure({
+        webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+        offlineAccess: true,
+      });
+    }
     loadStoredAuth();
   }, []);
 
@@ -62,54 +77,94 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const signInWithGoogle = useCallback(async () => {
-    setIsLoading(true);
+  async function handleBackendAuth(body: Record<string, string>) {
+    const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/v1/auth/mobile`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error('[Auth] Backend failed:', response.status, errorBody);
+      return;
+    }
+
+    const data = await response.json();
+    await SecureStore.setItemAsync(TOKEN_KEY, data.token);
+    await SecureStore.setItemAsync(USER_KEY, JSON.stringify(data.user));
+    setToken(data.token);
+    setUser(data.user);
+  }
+
+  const signInNative = useCallback(async () => {
+    const { GoogleSignin, statusCodes } = require('@react-native-google-signin/google-signin');
     try {
       await GoogleSignin.hasPlayServices();
       const signInResult = await GoogleSignin.signIn();
       const idToken = signInResult.data?.idToken;
 
       if (!idToken) {
-        console.error('[Auth] No ID token received from Google Sign-In');
+        console.error('[Auth] No ID token received from native Google Sign-In');
         return;
       }
 
-      console.log('[Auth] Got idToken, calling backend...');
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/v1/auth/mobile`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
-      });
-
-      if (!response.ok) {
-        const errorBody = await response.text();
-        console.error('[Auth] Backend failed:', response.status, errorBody);
-        return;
-      }
-
-      const data = await response.json();
-      await SecureStore.setItemAsync(TOKEN_KEY, data.token);
-      await SecureStore.setItemAsync(USER_KEY, JSON.stringify(data.user));
-      setToken(data.token);
-      setUser(data.user);
+      console.log('[Auth] Got native idToken, calling backend...');
+      await handleBackendAuth({ idToken });
     } catch (error: unknown) {
       if (error && typeof error === 'object' && 'code' in error) {
         const code = (error as { code: string }).code;
         if (code === statusCodes.SIGN_IN_CANCELLED) return;
         if (code === statusCodes.IN_PROGRESS) return;
       }
-      console.error('[Auth] Sign-in error:', error);
-    } finally {
-      setIsLoading(false);
+      console.error('[Auth] Native sign-in error:', error);
     }
   }, []);
 
-  const signOut = useCallback(async () => {
+  const signInWeb = useCallback(async () => {
+    const AuthSession = require('expo-auth-session');
+    const WebBrowser = require('expo-web-browser');
+    WebBrowser.maybeCompleteAuthSession();
+
+    const redirectUri = AuthSession.makeRedirectUri({ scheme: 'luvverse' });
+    const clientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '';
+
+    const request = new AuthSession.AuthRequest({
+      clientId,
+      scopes: ['openid', 'profile', 'email'],
+      redirectUri,
+    });
+
+    const result = await request.promptAsync(GOOGLE_DISCOVERY);
+
+    if (result.type === 'success' && result.params?.code) {
+      console.log('[Auth] Got web auth code, calling backend...');
+      await handleBackendAuth({ code: result.params.code, redirectUri });
+    }
+  }, []);
+
+  const signInWithGoogle = useCallback(async () => {
+    setIsLoading(true);
     try {
-      await GoogleSignin.revokeAccess();
-      await GoogleSignin.signOut();
-    } catch {
-      /* Google sign-out may fail if token expired — still clear local state */
+      if (AUTH_MODE === 'native') {
+        await signInNative();
+      } else {
+        await signInWeb();
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [signInNative, signInWeb]);
+
+  const signOut = useCallback(async () => {
+    if (AUTH_MODE === 'native') {
+      try {
+        const { GoogleSignin } = require('@react-native-google-signin/google-signin');
+        await GoogleSignin.revokeAccess();
+        await GoogleSignin.signOut();
+      } catch {
+        /* Google sign-out may fail if token expired — still clear local state */
+      }
     }
     await SecureStore.deleteItemAsync(TOKEN_KEY);
     await SecureStore.deleteItemAsync(USER_KEY);
@@ -122,6 +177,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
+}
+
+/** Hook to access auth context. */
+export function useAuth(): AuthContextType {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error('useAuth must be used within AuthProvider');
+  return context;
 }
 
 /** Hook to access auth context. */

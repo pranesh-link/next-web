@@ -54,7 +54,8 @@
           "photosPermission": "Allow LuvVerse to access photos for receipt scanning."
         }
       ],
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
