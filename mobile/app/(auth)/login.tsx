@@ -9,12 +9,13 @@ export default function LoginScreen() {
   return (
     <Container paddingTop="$20">
       <YStack gap="$6" alignItems="center">
-        <AppText variant="heading" center>LuvVerse</AppText>
+        <AppText variant="heading" center color="$gray12">LuvVerse</AppText>
         <AppText variant="body" muted center>
           Manage finances together
         </AppText>
         <AppButton
           variant="primary"
+          size="lg"
           fullWidth
           onPress={signInWithGoogle}
           disabled={isLoading}
