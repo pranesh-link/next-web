@@ -8,6 +8,7 @@ import { useRouter, useSegments } from 'expo-router';
  * Set via EXPO_PUBLIC_AUTH_MODE env var. Defaults to "web" for Expo Go compatibility.
  */
 const AUTH_MODE = process.env.EXPO_PUBLIC_AUTH_MODE || 'web';
+const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '24282158014-46vngus6rh904t1pi4rbpsauaqqggb8h.apps.googleusercontent.com';
 
 interface User {
   id: string;
@@ -48,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const { GoogleSignin } = require('@react-native-google-signin/google-signin');
         GoogleSignin.configure({
-          webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+          webClientId: WEB_CLIENT_ID,
           offlineAccess: true,
         });
       } catch (error) {
@@ -131,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     WebBrowser.maybeCompleteAuthSession();
 
     const redirectUri = AuthSession.makeRedirectUri({ scheme: 'luvverse' });
-    const clientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '';
+    const clientId = WEB_CLIENT_ID;
 
     console.log('[Auth] Web mode - clientId:', clientId ? clientId.substring(0, 20) + '...' : 'EMPTY');
     console.log('[Auth] Web mode - redirectUri:', redirectUri);
