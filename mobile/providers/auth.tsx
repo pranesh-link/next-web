@@ -5,9 +5,9 @@ import { useRouter, useSegments } from 'expo-router';
 /**
  * Auth mode: "native" uses @react-native-google-signin (requires custom build),
  * "web" uses expo-auth-session (works in Expo Go).
- * Set via EXPO_PUBLIC_AUTH_MODE env var. Defaults to "native".
+ * Set via EXPO_PUBLIC_AUTH_MODE env var. Defaults to "web" for Expo Go compatibility.
  */
-const AUTH_MODE = process.env.EXPO_PUBLIC_AUTH_MODE || 'native';
+const AUTH_MODE = process.env.EXPO_PUBLIC_AUTH_MODE || 'web';
 
 interface User {
   id: string;
@@ -45,11 +45,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (AUTH_MODE === 'native') {
-      const { GoogleSignin } = require('@react-native-google-signin/google-signin');
-      GoogleSignin.configure({
-        webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-        offlineAccess: true,
-      });
+      try {
+        const { GoogleSignin } = require('@react-native-google-signin/google-signin');
+        GoogleSignin.configure({
+          webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+          offlineAccess: true,
+        });
+      } catch (error) {
+        console.warn('[Auth] Native GoogleSignin unavailable, falling back to web mode:', error);
+      }
     }
     loadStoredAuth();
   }, []);
@@ -177,13 +181,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-/** Hook to access auth context. */
-export function useAuth(): AuthContextType {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within AuthProvider');
-  return context;
 }
 
 /** Hook to access auth context. */
