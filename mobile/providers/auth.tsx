@@ -133,6 +133,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const redirectUri = AuthSession.makeRedirectUri({ scheme: 'luvverse' });
     const clientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '';
 
+    console.log('[Auth] Web mode - clientId:', clientId ? clientId.substring(0, 20) + '...' : 'EMPTY');
+    console.log('[Auth] Web mode - redirectUri:', redirectUri);
+
+    if (!clientId) {
+      console.error('[Auth] EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID is not set!');
+      return;
+    }
+
     const request = new AuthSession.AuthRequest({
       clientId,
       scopes: ['openid', 'profile', 'email'],
