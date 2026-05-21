@@ -131,24 +131,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const WebBrowser = require('expo-web-browser');
     WebBrowser.maybeCompleteAuthSession();
 
-    const redirectUri = AuthSession.makeRedirectUri({ scheme: 'luvverse' });
-    const clientId = WEB_CLIENT_ID;
+    const redirectUri = AuthSession.makeRedirectUri({ useProxy: true });
 
-    console.log('[Auth] Web mode - clientId:', clientId ? clientId.substring(0, 20) + '...' : 'EMPTY');
+    console.log('[Auth] Web mode - clientId:', WEB_CLIENT_ID.substring(0, 20) + '...');
     console.log('[Auth] Web mode - redirectUri:', redirectUri);
 
-    if (!clientId) {
-      console.error('[Auth] EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID is not set!');
-      return;
-    }
-
     const request = new AuthSession.AuthRequest({
-      clientId,
+      clientId: WEB_CLIENT_ID,
       scopes: ['openid', 'profile', 'email'],
       redirectUri,
+      responseType: AuthSession.ResponseType.Code,
+      usePKCE: true,
     });
 
-    const result = await request.promptAsync(GOOGLE_DISCOVERY);
+    const result = await request.promptAsync(GOOGLE_DISCOVERY, { useProxy: true });
 
     if (result.type === 'success' && result.params?.code) {
       console.log('[Auth] Got web auth code, calling backend...');
