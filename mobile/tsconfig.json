@@ -2,7 +2,9 @@
   "compilerOptions": {
     "strict": true,
     "target": "ESNext",
-    "lib": ["ESNext"],
+    "lib": [
+      "ESNext"
+    ],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
@@ -14,12 +16,29 @@
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "paths": {
-      "@/*": ["./app/*"],
-      "@shared/*": ["../packages/shared/src/*"],
-      "@ui/*": ["../packages/ui/src/*"]
+      "@/*": [
+        "./app/*"
+      ],
+      "@shared/*": [
+        "../packages/shared/src/*"
+      ],
+      "@ui/*": [
+        "../packages/ui/src/*"
+      ]
     },
-    "types": ["react-native", "node"]
+    "types": [
+      "react-native",
+      "node"
+    ]
   },
-  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ],
+  "extends": "expo/tsconfig.base"
 }
