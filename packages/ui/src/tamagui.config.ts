@@ -9,7 +9,7 @@ const headingFont = createInterFont({
 });
 
 const bodyFont = createInterFont({
-  size: { 1: 12, 2: 14, 3: 16, 4: 18 },
+  size: { 1: 12, 2: 14, 3: 16, 4: 18, lg: 18, xl: 20 },
   weight: { 4: '300', 5: '400', 6: '600' },
 });
 
