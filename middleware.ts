@@ -4,7 +4,7 @@ export const config = {
   matcher: [
     {
       source:
-        "/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)",
+        "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },
@@ -13,14 +13,37 @@ export const config = {
   ],
 };
 
+const CORS_HEADERS: Record<string, string> = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type,Authorization",
+  "Access-Control-Max-Age": "86400",
+};
+
 export const dynamic = "force-dynamic";
 
 export async function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+
+  // Handle CORS preflight for API routes at the edge (prevents redirect issues)
+  if (pathname.startsWith("/api/") && req.method === "OPTIONS") {
+    return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
+  }
+
+  // Add CORS headers to all API responses
+  if (pathname.startsWith("/api/")) {
+    const response = NextResponse.next();
+    Object.entries(CORS_HEADERS).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
+    return response;
+  }
+
   const deviceType =
     userAgent(req).device.type === "mobile" ? "mobile" : "desktop";
   try {
     const requestHeaders = new Headers(req.headers);
-    requestHeaders.set("x-pathname", req.nextUrl.pathname);
+    requestHeaders.set("x-pathname", pathname);
     requestHeaders.set("x-devicetype", deviceType);
     
     // Add performance and security headers
@@ -40,14 +63,6 @@ export async function middleware(req: NextRequest) {
     );
     
     const { pathname } = req.nextUrl;
-
-    // Allow API v1 routes through without any middleware processing
-    if (pathname.startsWith("/api/v1/")) {
-      return NextResponse.next({
-        request: { headers: requestHeaders },
-        headers: responseHeaders,
-      });
-    }
 
     // Allow static assets and Server Actions through
     if (
