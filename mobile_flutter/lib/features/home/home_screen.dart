@@ -1,0 +1,134 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:luvverse/core/auth/auth_provider.dart';
+import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_spacing.dart';
+import 'package:luvverse/core/theme/app_typography.dart';
+import 'package:luvverse/features/finance/providers/finance_providers.dart';
+import 'package:luvverse/shared/widgets/app_card.dart';
+
+class HomeScreen extends ConsumerWidget {
+  const HomeScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authProvider).user;
+    final firstName = user?.name.split(' ').first;
+    final balance = ref.watch(totalBalanceProvider);
+
+    return Scaffold(
+      backgroundColor: AppColors.bg,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Expanded(
+                    child: Text('LuvVerse', style: AppTypography.pageTitle.copyWith(color: AppColors.accent)),
+                  ),
+                  GestureDetector(
+                    onTap: () => context.go('/settings'),
+                    child: CircleAvatar(
+                      radius: 18,
+                      backgroundColor: AppColors.accent.withValues(alpha: 0.1),
+                      backgroundImage: user?.image != null ? NetworkImage(user!.image!) : null,
+                      child: user?.image == null
+                          ? Text((user?.name ?? 'U')[0].toUpperCase(), style: TextStyle(color: AppColors.accent, fontSize: 14, fontWeight: FontWeight.w700))
+                          : null,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.xxl),
+              Text(
+                firstName != null ? 'Welcome back, $firstName' : 'Welcome back',
+                style: AppTypography.cardTitle.copyWith(letterSpacing: -0.3),
+              ),
+              const SizedBox(height: AppSpacing.xxl),
+              // Module grid
+              Expanded(
+                child: GridView.count(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: AppSpacing.lg,
+                  crossAxisSpacing: AppSpacing.lg,
+                  childAspectRatio: 1.05,
+                  children: [
+                    _ModuleCard(icon: Icons.account_balance_wallet, title: 'Finance', subtitle: 'Track money together', color: AppColors.accent, onTap: () => context.go('/finance')),
+                    _ModuleCard(icon: Icons.flight, title: 'Travel', subtitle: 'Plan trips', color: const Color(0xFF8B5CF6), onTap: () => _snackbar(context, 'Coming soon')),
+                    _ModuleCard(icon: Icons.favorite, title: 'Lifestyle', subtitle: 'Health & wellness', color: const Color(0xFFEC4899), onTap: () => context.go('/lifestyle')),
+                    _ModuleCard(icon: Icons.chat_bubble, title: 'Chat', subtitle: 'Stay connected', color: AppColors.success, onTap: () => _snackbar(context, 'Coming soon')),
+                  ],
+                ),
+              ),
+              // Quick stats
+              balance.when(
+                data: (val) => Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  decoration: BoxDecoration(
+                    color: AppColors.bgElevated,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.cardBorder),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.account_balance_wallet_outlined, size: 20, color: AppColors.textMuted),
+                      const SizedBox(width: AppSpacing.md),
+                      Text('Total Balance', style: AppTypography.small.copyWith(color: AppColors.textMuted)),
+                      const Spacer(),
+                      Text('\$${val.toStringAsFixed(2)}', style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w700)),
+                    ],
+                  ),
+                ),
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _snackbar(BuildContext context, String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 2)));
+  }
+}
+
+class _ModuleCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ModuleCard({required this.icon, required this.title, required this.subtitle, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(11)),
+            child: Icon(icon, color: color, size: 22),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(title, style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 2),
+          Text(subtitle, style: AppTypography.small.copyWith(color: AppColors.textMuted)),
+        ],
+      ),
+    );
+  }
+}
