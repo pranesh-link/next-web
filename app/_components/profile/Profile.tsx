@@ -69,12 +69,6 @@ const Profile = (props: ProfileProps) => {
   const [isContactFormOpen, setIsContactFormOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  let timer: NodeJS.Timeout;
-  useEffect(() => {
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   useEffect(() => {
     isModalOpen
       ? document.body.classList.add("modal-open")
