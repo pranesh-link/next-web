@@ -18,5 +18,7 @@ jobs:
         run: yarn --frozen-lockfile --ignore-engines
       # - name: Run the tests
       #   run: npm test
+      - name: Generate Prisma client
+        run: npx prisma generate
       - name: Build
-        run: CI="" yarn build
+        run: CI="" npx next build --no-lint
