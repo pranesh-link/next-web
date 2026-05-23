@@ -2,12 +2,14 @@ import classNames from "classnames";
 import PhoneInput from "react-phone-number-input";
 import { FormFieldValueType } from "@/_store/profile/types";
 
+type PhoneValue = import("react-phone-number-input").Value;
+
 interface IMobileFieldProps {
   fieldValid?: boolean;
   autoFocus: boolean;
   isFormSubmit: boolean;
   fieldValue: FormFieldValueType;
-  handleMobileInputChange: (value: string) => void;
+  handleMobileInputChange: (value?: PhoneValue) => void;
 }
 const MobileField = (props: IMobileFieldProps) => {
   const {
@@ -29,7 +31,7 @@ const MobileField = (props: IMobileFieldProps) => {
       className={classNames("phone-input", {
         error: fieldValid === false,
       })}
-      value={fieldValue as string as import('react-phone-number-input').E164Number | undefined}
+      value={fieldValue as PhoneValue | undefined}
       onChange={handleMobileInputChange}
     />
   );
