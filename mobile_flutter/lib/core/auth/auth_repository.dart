@@ -34,9 +34,13 @@ class AuthRepository {
       );
 
       final token = response['token'] as String;
+      final refreshToken = response['refreshToken'] as String?;
       final userData = User.fromJson(response['user'] as Map<String, dynamic>);
 
       await SecureStorage.saveToken(token);
+      if (refreshToken != null) {
+        await SecureStorage.saveRefreshToken(refreshToken);
+      }
       await SecureStorage.saveUser(userData);
       return userData;
     }

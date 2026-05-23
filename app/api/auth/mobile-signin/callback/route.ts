@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/_lib/prisma";
-import { signMobileToken } from "@/api/v1/_lib/auth";
+import { signMobileToken, signMobileRefreshToken } from "@/api/v1/_lib/auth";
 
 /**
  * GET /api/auth/mobile-signin/callback
@@ -91,6 +91,7 @@ export async function GET(request: NextRequest) {
 
     // Sign JWT for mobile
     const token = signMobileToken(user.id);
+    const refreshToken = signMobileRefreshToken(user.id);
 
     const userPayload = encodeURIComponent(
       JSON.stringify({
@@ -101,7 +102,7 @@ export async function GET(request: NextRequest) {
       }),
     );
 
-    return redirectToApp(`token=${token}&user=${userPayload}`);
+    return redirectToApp(`token=${token}&refreshToken=${refreshToken}&user=${userPayload}`);
   } catch (err) {
     console.error("[mobile-signin] Callback error:", err);
     return redirectToApp("error=server_error");

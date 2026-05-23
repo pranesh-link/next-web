@@ -6,10 +6,27 @@ import prisma from "@/_lib/prisma";
 const JWT_SECRET = process.env.NEXTAUTH_SECRET || "fallback-dev-secret";
 
 /**
- * Signs a JWT for mobile clients.
+ * Signs a short-lived access token for mobile clients.
+ *
+ * @param userId - The authenticated user's ID.
+ * @returns A JWT valid for 1 hour.
  */
 export function signMobileToken(userId: string): string {
-  return jwt.sign({ sub: userId }, JWT_SECRET, { expiresIn: "30d" });
+  return jwt.sign({ sub: userId, type: "access" }, JWT_SECRET, {
+    expiresIn: "1h",
+  });
+}
+
+/**
+ * Signs a long-lived refresh token for mobile clients.
+ *
+ * @param userId - The authenticated user's ID.
+ * @returns A JWT valid for 90 days.
+ */
+export function signMobileRefreshToken(userId: string): string {
+  return jwt.sign({ sub: userId, type: "refresh" }, JWT_SECRET, {
+    expiresIn: "90d",
+  });
 }
 
 /**
@@ -40,7 +57,15 @@ export async function getAuthUserId(): Promise<string | null> {
 
   // Try as our own JWT first
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { sub: string };
+    const decoded = jwt.verify(token, JWT_SECRET) as {
+      sub: string;
+      type?: string;
+    };
+    // Reject refresh tokens used as access tokens
+    if (decoded.type === "refresh") {
+      console.log("[getAuthUserId] refresh token rejected for API access");
+      return null;
+    }
     if (decoded.sub) {
       console.log("[getAuthUserId] via JWT:", decoded.sub);
       return decoded.sub;
