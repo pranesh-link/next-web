@@ -29,7 +29,7 @@ const MobileField = (props: IMobileFieldProps) => {
       className={classNames("phone-input", {
         error: fieldValid === false,
       })}
-      value={fieldValue as string}
+      value={fieldValue as string as import('react-phone-number-input').E164Number | undefined}
       onChange={handleMobileInputChange}
     />
   );
