@@ -13,4 +13,5 @@ abstract final class ApiEndpoints {
   static const notifications = '/api/v1/finance/notifications';
   static const scanReceipt = '/api/finance/scan-receipt';
   static const scanSchedule = '/api/finance/scan-schedule';
+  static const syncStatus = '/api/v1/finance/sync-status';
 }

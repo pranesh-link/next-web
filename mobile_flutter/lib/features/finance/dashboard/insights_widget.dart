@@ -8,9 +8,6 @@ import 'package:luvverse/features/finance/providers/extended_providers.dart';
 import 'package:luvverse/models/insight.dart';
 import 'package:luvverse/shared/widgets/app_card.dart';
 import 'package:luvverse/shared/widgets/loading_skeleton.dart';
-import 'package:intl/intl.dart';
-
-final _currencyFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
 
 /// Dashboard alerts and insights widget.
 class InsightsWidget extends ConsumerWidget {

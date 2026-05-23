@@ -12,4 +12,3 @@
     { "path": "/api/finance/notifications/generate", "schedule": "0 8 * * *" }
   ]
 }
-
