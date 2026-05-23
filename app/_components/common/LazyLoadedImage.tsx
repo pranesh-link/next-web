@@ -48,5 +48,5 @@ export default function LazyLoadedImage(props: ILazyLoadedImageProps) {
     imageProps.blurDataURL = blurDataURL;
   }
   
-  return <Image {...imageProps} />;
+  return <Image alt={props.alt} {...imageProps} />;
 }
