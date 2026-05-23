@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:luvverse/core/theme/app_colors.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
+import 'package:luvverse/features/finance/dashboard/account_breakdown_widget.dart';
+import 'package:luvverse/features/finance/dashboard/budgets_status_widget.dart';
+import 'package:luvverse/features/finance/dashboard/goals_summary_widget.dart';
+import 'package:luvverse/features/finance/dashboard/health_score_widget.dart';
+import 'package:luvverse/features/finance/dashboard/insights_widget.dart';
+import 'package:luvverse/features/finance/dashboard/loans_summary_widget.dart';
+import 'package:luvverse/features/finance/dashboard/net_worth_card.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';
+import 'package:luvverse/features/finance/providers/extended_providers.dart';
 import 'package:luvverse/models/transaction.dart';
 import 'package:luvverse/shared/widgets/currency_display.dart';
 import 'package:luvverse/shared/widgets/loading_skeleton.dart';
@@ -33,12 +42,14 @@ class FinanceDashboardScreen extends ConsumerWidget {
     final balance = ref.watch(totalBalanceProvider);
     final income = ref.watch(monthlyIncomeProvider);
     final expense = ref.watch(monthlyExpenseProvider);
+    final savingsRate = ref.watch(savingsRateProvider);
     final txns = ref.watch(transactionsProvider);
-
     return RefreshIndicator(
       onRefresh: () async {
         await ref.read(accountsProvider.notifier).refresh();
         await ref.read(transactionsProvider.notifier).refresh();
+        ref.invalidate(healthScoreProvider);
+        ref.invalidate(dashboardInsightsProvider);
       },
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -46,10 +57,26 @@ class FinanceDashboardScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 1. Summary: Balance + Net Worth + Cash Flow + Savings Rate
             const SectionHeader(title: 'Overview'),
             const SizedBox(height: AppSpacing.sm),
-            _buildSummaryRow(income, expense, balance),
+            _buildSummaryRow(income, expense, balance, savingsRate),
+            const SizedBox(height: AppSpacing.md),
+            const NetWorthCard(),
             const SizedBox(height: AppSpacing.xxl),
+            // 3. Account Breakdown
+            const AccountBreakdownWidget(),
+            const SizedBox(height: AppSpacing.xxl),
+            // 4. Health Score
+            const HealthScoreWidget(),
+            const SizedBox(height: AppSpacing.xxl),
+            // 5. Alerts / Insights
+            const InsightsWidget(),
+            const SizedBox(height: AppSpacing.xxl),
+            // 6. Monthly Trends
+            const MonthlyTrendsWidget(),
+            const SizedBox(height: AppSpacing.xxl),
+            // 7. Expense Breakdown pie
             const SectionHeader(title: 'Expense Breakdown'),
             const SizedBox(height: AppSpacing.sm),
             txns.when(
@@ -58,6 +85,16 @@ class FinanceDashboardScreen extends ConsumerWidget {
               data: (items) => _buildPieChart(items),
             ),
             const SizedBox(height: AppSpacing.xxl),
+            // 8. Budgets Status
+            const BudgetsStatusWidget(),
+            const SizedBox(height: AppSpacing.xxl),
+            // 9. Loans Summary
+            const LoansSummaryWidget(),
+            const SizedBox(height: AppSpacing.xxl),
+            // 10. Goals Summary
+            const GoalsSummaryWidget(),
+            const SizedBox(height: AppSpacing.xxl),
+            // 11. Recent Transactions
             const SectionHeader(title: 'Recent Transactions'),
             const SizedBox(height: AppSpacing.sm),
             txns.when(
@@ -76,7 +113,7 @@ class FinanceDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSummaryRow(AsyncValue<double> income, AsyncValue<double> expense, AsyncValue<double> balance) {
+  Widget _buildSummaryRow(AsyncValue<double> income, AsyncValue<double> expense, AsyncValue<double> balance, AsyncValue<double> savingsRate) {
     return Column(
       children: [
         balance.when(
@@ -100,6 +137,37 @@ class FinanceDashboardScreen extends ConsumerWidget {
                 loading: () => const LoadingSkeleton(type: SkeletonType.card, count: 1),
                 error: (e, _) => Text('$e'),
                 data: (val) => SummaryCard(title: 'Expenses', value: _currencyFormat.format(val), icon: Icons.trending_down),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Row(
+          children: [
+            Expanded(
+              child: income.when(
+                loading: () => const LoadingSkeleton(type: SkeletonType.card, count: 1),
+                error: (e, _) => Text('$e'),
+                data: (incVal) {
+                  final expVal = expense.valueOrNull ?? 0.0;
+                  return SummaryCard(
+                    title: 'Cash Flow',
+                    value: _currencyFormat.format(incVal - expVal),
+                    icon: Icons.swap_vert,
+                  );
+                },
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: savingsRate.when(
+                loading: () => const LoadingSkeleton(type: SkeletonType.card, count: 1),
+                error: (e, _) => Text('$e'),
+                data: (val) => SummaryCard(
+                  title: 'Savings Rate',
+                  value: '${val.toStringAsFixed(1)}%',
+                  icon: Icons.savings_outlined,
+                ),
               ),
             ),
           ],

@@ -54,4 +54,15 @@ class GoalsRepository {
   Future<void> deleteGoal(String id) async {
     await _api.delete('${ApiEndpoints.goals}/$id');
   }
+
+  Future<Goal> contributeToGoal({
+    required String id,
+    required double amount,
+  }) async {
+    final response = await _api.post<Map<String, dynamic>>(
+      '${ApiEndpoints.goals}/$id/contribute',
+      data: {'amount': amount},
+    );
+    return Goal.fromJson(response['data'] as Map<String, dynamic>);
+  }
 }

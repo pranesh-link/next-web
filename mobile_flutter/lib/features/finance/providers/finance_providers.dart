@@ -13,6 +13,9 @@ import 'package:luvverse/models/goal.dart';
 
 // -- Repositories --
 
+/// The authenticated user's internal DB user ID (resolved from API responses).
+final dbUserIdProvider = StateProvider<String?>((ref) => null);
+
 final accountsRepositoryProvider = Provider<AccountsRepository>((ref) {
   return AccountsRepository(ref.read(apiClientProvider));
 });
@@ -43,14 +46,24 @@ final accountsProvider =
 class AccountsNotifier extends AsyncNotifier<List<Account>> {
   @override
   Future<List<Account>> build() async {
-    return ref.read(accountsRepositoryProvider).getAccounts();
+    return _fetchAccounts();
+  }
+
+  Future<List<Account>> _fetchAccounts() async {
+    final result = await ref.read(accountsRepositoryProvider).getAccountsRaw();
+    final currentUserId = result['currentUserId'] as String?;
+    if (currentUserId != null) {
+      ref.read(dbUserIdProvider.notifier).state = currentUserId;
+    }
+    final list = (result['data'] as List)
+        .map((e) => Account.fromJson(e as Map<String, dynamic>))
+        .toList();
+    return list;
   }
 
   Future<void> refresh() async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(
-      () => ref.read(accountsRepositoryProvider).getAccounts(),
-    );
+    state = await AsyncValue.guard(() => _fetchAccounts());
   }
 
   Future<void> create({
@@ -65,6 +78,19 @@ class AccountsNotifier extends AsyncNotifier<List<Account>> {
           balance: balance,
           nickname: nickname,
         );
+    await refresh();
+  }
+
+  Future<void> updateAccountData(String id, Map<String, dynamic> data) async {
+    await ref.read(accountsRepositoryProvider).updateAccountData(id, data);
+    await refresh();
+  }
+
+  Future<void> togglePin(String id, bool currentPinned) async {
+    await ref.read(accountsRepositoryProvider).updateAccountData(
+      id,
+      {'isPinned': !currentPinned},
+    );
     await refresh();
   }
 
@@ -124,6 +150,27 @@ class TransactionsNotifier extends AsyncNotifier<List<Transaction>> {
     await refresh();
   }
 
+  Future<void> updateTransaction({
+    required String id,
+    String? accountId,
+    double? amount,
+    String? type,
+    String? category,
+    DateTime? date,
+    String? description,
+  }) async {
+    await ref.read(transactionsRepositoryProvider).updateTransaction(
+          id: id,
+          accountId: accountId,
+          amount: amount,
+          type: type,
+          category: category,
+          date: date,
+          description: description,
+        );
+    await refresh();
+  }
+
   Future<void> delete(String id) async {
     await ref.read(transactionsRepositoryProvider).deleteTransaction(id);
     await refresh();
@@ -165,6 +212,21 @@ class BudgetsNotifier extends AsyncNotifier<List<Budget>> {
     await refresh();
   }
 
+  Future<void> updateBudget({
+    required String id,
+    String? category,
+    double? limit,
+    String? month,
+  }) async {
+    await ref.read(budgetsRepositoryProvider).updateBudget(
+          id: id,
+          category: category,
+          limit: limit,
+          month: month,
+        );
+    await refresh();
+  }
+
   Future<void> delete(String id) async {
     await ref.read(budgetsRepositoryProvider).deleteBudget(id);
     await refresh();
@@ -189,6 +251,31 @@ class LoansNotifier extends AsyncNotifier<List<Loan>> {
     state = await AsyncValue.guard(
       () => ref.read(loansRepositoryProvider).getLoans(),
     );
+  }
+
+  Future<void> updateLoan({
+    required String id,
+    String? name,
+    double? principal,
+    double? interestRate,
+    int? tenureMonths,
+    double? emiAmount,
+    DateTime? startDate,
+    String? loanProvider,
+    String? loanAccountNumber,
+  }) async {
+    await ref.read(loansRepositoryProvider).updateLoan(
+          id: id,
+          name: name,
+          principal: principal,
+          interestRate: interestRate,
+          tenureMonths: tenureMonths,
+          emiAmount: emiAmount,
+          startDate: startDate,
+          loanProvider: loanProvider,
+          loanAccountNumber: loanAccountNumber,
+        );
+    await refresh();
   }
 
   Future<void> delete(String id) async {
@@ -228,6 +315,31 @@ class GoalsNotifier extends AsyncNotifier<List<Goal>> {
           targetAmount: targetAmount,
           currentAmount: currentAmount,
           deadline: deadline,
+        );
+    await refresh();
+  }
+
+  Future<void> updateGoal({
+    required String id,
+    String? name,
+    double? targetAmount,
+    double? currentAmount,
+    DateTime? deadline,
+  }) async {
+    await ref.read(goalsRepositoryProvider).updateGoal(
+          id: id,
+          name: name,
+          targetAmount: targetAmount,
+          currentAmount: currentAmount,
+          deadline: deadline,
+        );
+    await refresh();
+  }
+
+  Future<void> contribute({required String id, required double amount}) async {
+    await ref.read(goalsRepositoryProvider).contributeToGoal(
+          id: id,
+          amount: amount,
         );
     await refresh();
   }

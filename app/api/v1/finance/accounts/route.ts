@@ -24,11 +24,12 @@ export async function GET() {
 
     const accounts = await prisma.financialAccount.findMany({
       where: { userId: { in: coupleUserIds } },
+      include: { user: { select: { id: true, name: true } } },
       orderBy: { createdAt: "desc" },
     });
 
     return NextResponse.json(
-      { success: true, data: accounts },
+      { success: true, data: accounts, currentUserId: userId },
       { headers: corsHeaders("private, max-age=30") },
     );
   } catch (error) {

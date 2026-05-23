@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:luvverse/core/auth/auth_provider.dart';
 import 'package:luvverse/core/theme/app_colors.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
@@ -81,7 +82,7 @@ class HomeScreen extends ConsumerWidget {
                       const SizedBox(width: AppSpacing.md),
                       Text('Total Balance', style: AppTypography.small.copyWith(color: AppColors.textMuted)),
                       const Spacer(),
-                      Text('\$${val.toStringAsFixed(2)}', style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w700)),
+                      Text(NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 2).format(val), style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w700)),
                     ],
                   ),
                 ),
@@ -116,17 +117,17 @@ class _ModuleCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(11)),
-            child: Icon(icon, color: color, size: 22),
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+            child: Icon(icon, color: color, size: 20),
           ),
-          const SizedBox(height: AppSpacing.md),
-          Text(title, style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 2),
-          Text(subtitle, style: AppTypography.small.copyWith(color: AppColors.textMuted)),
+          const SizedBox(height: AppSpacing.sm),
+          Text(title, style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+          Text(subtitle, style: AppTypography.small.copyWith(color: AppColors.textMuted), maxLines: 1, overflow: TextOverflow.ellipsis),
         ],
       ),
     );

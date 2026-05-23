@@ -5,12 +5,20 @@ import 'package:luvverse/core/theme/app_colors.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';
+import 'package:luvverse/features/finance/transactions/edit_transaction_form.dart';
+import 'package:luvverse/features/finance/transactions/transaction_list_widgets.dart';
 import 'package:luvverse/models/transaction.dart';
-import 'package:luvverse/shared/widgets/app_button.dart';
-import 'package:luvverse/shared/widgets/currency_display.dart';
 import 'package:luvverse/shared/widgets/empty_state.dart';
 import 'package:luvverse/shared/widgets/loading_skeleton.dart';
 import 'package:luvverse/features/finance/forms/add_transaction_form.dart';
+
+const _filterCategories = [
+  'All', 'Food', 'Transport', 'Shopping', 'Bills',
+  'Entertainment', 'Health', 'Education', 'Other',
+];
+
+final _categoryFilterProvider = StateProvider<String>((ref) => 'All');
+final _accountFilterProvider = StateProvider<String?>((ref) => null);
 
 class TransactionsScreen extends ConsumerWidget {
   const TransactionsScreen({super.key});
@@ -18,79 +26,224 @@ class TransactionsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedMonth = ref.watch(selectedMonthProvider);
+    final categoryFilter = ref.watch(_categoryFilterProvider);
+    final accountFilter = ref.watch(_accountFilterProvider);
     final asyncTxns = ref.watch(transactionsProvider);
+    final accounts = ref.watch(accountsProvider).valueOrNull ?? [];
 
-    return Padding(
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              _MonthSelector(
-                current: selectedMonth,
-                onChanged: (m) => ref.read(selectedMonthProvider.notifier).state = m,
-              ),
-              const Spacer(),
-              AppButton(label: 'Add', icon: Icons.add, size: ButtonSize.sm, onPressed: () => AddTransactionForm.show(context)),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          Expanded(
-            child: asyncTxns.when(
-              loading: () => const LoadingSkeleton(type: SkeletonType.list, count: 6),
-              error: (e, _) => Center(child: Text('Error: $e')),
-              data: (txns) => txns.isEmpty
-                  ? EmptyState(
-                      icon: Icons.receipt_long,
-                      title: 'No transactions',
-                      description: 'Your transactions will appear here',
-                      actionLabel: 'Add Transaction',
-                      onAction: () => AddTransactionForm.show(context),
-                    )
-                  : _buildGroupedList(txns),
+    return Scaffold(
+      body: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          children: [
+            _MonthSelector(
+              current: selectedMonth,
+              onChanged: (m) =>
+                  ref.read(selectedMonthProvider.notifier).state = m,
             ),
+            const SizedBox(height: AppSpacing.md),
+            _FilterBar(
+              categoryFilter: categoryFilter,
+              accountFilter: accountFilter,
+              accounts: accounts,
+              onCategoryChanged: (v) =>
+                  ref.read(_categoryFilterProvider.notifier).state = v,
+              onAccountChanged: (v) =>
+                  ref.read(_accountFilterProvider.notifier).state = v,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () =>
+                    ref.read(transactionsProvider.notifier).refresh(),
+                child: asyncTxns.when(
+                  loading: () => const LoadingSkeleton(
+                      type: SkeletonType.list, count: 6),
+                  error: (e, _) => Center(child: Text('Error: $e')),
+                  data: (txns) {
+                    final filtered =
+                        _applyFilters(txns, categoryFilter, accountFilter);
+                    return filtered.isEmpty
+                        ? _buildEmpty(context)
+                        : TransactionGroupedList(
+                            transactions: filtered,
+                            onEdit: (tx) =>
+                                EditTransactionForm.show(context, tx),
+                            onDelete: (tx) =>
+                                _confirmDelete(context, ref, tx),
+                          );
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton.small(
+            heroTag: 'scan',
+            onPressed: () => _scanReceipt(context),
+            backgroundColor: AppColors.accent,
+            child: const Icon(Icons.document_scanner, color: Colors.white),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          FloatingActionButton(
+            heroTag: 'add',
+            onPressed: () => AddTransactionForm.show(context),
+            backgroundColor: AppColors.accent,
+            child: const Icon(Icons.add, color: Colors.white),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildGroupedList(List<Transaction> txns) {
-    final grouped = <String, List<Transaction>>{};
-    for (final tx in txns) {
-      final key = DateFormat('dd MMM yyyy').format(tx.date);
-      grouped.putIfAbsent(key, () => []).add(tx);
+  List<Transaction> _applyFilters(
+      List<Transaction> txns, String category, String? accountId) {
+    var result = txns;
+    if (category != 'All') {
+      result = result.where((t) => t.category == category).toList();
     }
-    return ListView.builder(
-      itemCount: grouped.length,
-      itemBuilder: (_, i) {
-        final date = grouped.keys.elementAt(i);
-        final items = grouped[date]!;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-              child: Text(date, style: AppTypography.small),
-            ),
-            ...items.map(_buildTxTile),
-          ],
-        );
-      },
+    if (accountId != null) {
+      result = result.where((t) => t.accountId == accountId).toList();
+    }
+    return result;
+  }
+
+  Widget _buildEmpty(BuildContext context) {
+    return ListView(
+      children: [
+        const SizedBox(height: 100),
+        EmptyState(
+          icon: Icons.receipt_long,
+          title: 'No transactions',
+          description: 'Your transactions will appear here',
+          actionLabel: 'Add Transaction',
+          onAction: () => AddTransactionForm.show(context),
+        ),
+      ],
     );
   }
 
-  Widget _buildTxTile(Transaction tx) {
-    final isIncome = tx.type == TransactionType.income;
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(
-        isIncome ? Icons.arrow_downward : Icons.arrow_upward,
-        color: isIncome ? AppColors.success : AppColors.danger,
+  void _scanReceipt(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Receipt scanning coming soon')),
+    );
+  }
+
+  Future<void> _confirmDelete(
+      BuildContext context, WidgetRef ref, Transaction tx) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Transaction'),
+        content: Text(
+            'Delete "${tx.description ?? tx.category}" for \$${tx.amount.toStringAsFixed(2)}?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Delete',
+                  style: TextStyle(color: AppColors.danger))),
+        ],
       ),
-      title: Text(tx.description ?? tx.category, style: AppTypography.body),
-      subtitle: Text(tx.category, style: AppTypography.small),
-      trailing: CurrencyDisplay(amount: tx.amount, colorCoded: true, showSign: true),
+    );
+    if (confirmed == true) {
+      try {
+        await ref.read(transactionsProvider.notifier).delete(tx.id);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Transaction deleted')),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text('Error: $e')));
+        }
+      }
+    }
+  }
+}
+
+class _FilterBar extends StatelessWidget {
+  final String categoryFilter;
+  final String? accountFilter;
+  final List accounts;
+  final ValueChanged<String> onCategoryChanged;
+  final ValueChanged<String?> onAccountChanged;
+
+  const _FilterBar({
+    required this.categoryFilter,
+    required this.accountFilter,
+    required this.accounts,
+    required this.onCategoryChanged,
+    required this.onAccountChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _chipDropdown(
+            value: categoryFilter,
+            items: _filterCategories,
+            onChanged: (v) => onCategoryChanged(v ?? 'All'),
+            hint: 'Category',
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: _chipDropdown(
+            value: accountFilter ?? 'All',
+            items: ['All', ...accounts.map((a) => a.id as String)],
+            labels: {
+              'All': 'All Accounts',
+              for (final a in accounts) a.id as String: a.nickname ?? a.name,
+            },
+            onChanged: (v) => onAccountChanged(v == 'All' ? null : v),
+            hint: 'Account',
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _chipDropdown({
+    required String value,
+    required List<String> items,
+    required ValueChanged<String?> onChanged,
+    required String hint,
+    Map<String, String>? labels,
+  }) {
+    return DropdownButtonFormField<String>(
+      initialValue: value,
+      isExpanded: true,
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: AppColors.bgElevated,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+      ),
+      style: AppTypography.small,
+      items: items
+          .map((v) =>
+              DropdownMenuItem(value: v, child: Text(labels?[v] ?? v)))
+          .toList(),
+      onChanged: onChanged,
     );
   }
 }
@@ -104,24 +257,29 @@ class _MonthSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     final date = DateTime.parse('$current-01');
     return Row(
-      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         IconButton(
           icon: const Icon(Icons.chevron_left),
           onPressed: () {
             final prev = DateTime(date.year, date.month - 1);
-            onChanged('${prev.year}-${prev.month.toString().padLeft(2, '0')}');
+            onChanged(
+                '${prev.year}-${prev.month.toString().padLeft(2, '0')}');
           },
         ),
-        Text(DateFormat('MMM yyyy').format(date), style: AppTypography.cardTitle),
+        Text(DateFormat('MMM yyyy').format(date),
+            style: AppTypography.cardTitle),
         IconButton(
           icon: const Icon(Icons.chevron_right),
           onPressed: () {
             final next = DateTime(date.year, date.month + 1);
-            onChanged('${next.year}-${next.month.toString().padLeft(2, '0')}');
+            onChanged(
+                '${next.year}-${next.month.toString().padLeft(2, '0')}');
           },
         ),
       ],
     );
   }
 }
+
+
