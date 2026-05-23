@@ -37,8 +37,16 @@ export async function POST(request: NextRequest) {
       }
 
       const payload = await verifyRes.json();
-      const expectedClientId = process.env.GOOGLE_CLIENT_ID;
-      if (expectedClientId && payload.aud !== expectedClientId) {
+      // Accept tokens from either the web client (NextAuth) or the mobile
+      // serverClientId (Firebase project). Both are trusted audiences.
+      const trustedAudiences = [
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_MOBILE_CLIENT_ID,
+      ].filter(Boolean);
+      if (
+        trustedAudiences.length > 0 &&
+        !trustedAudiences.includes(payload.aud)
+      ) {
         return NextResponse.json(
           { error: "Token audience mismatch" },
           { status: 401 },
