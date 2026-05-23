@@ -1,5 +1,5 @@
 /** @type {import('next').NextConfig} */
-import packageJson from "./package.json" assert { type: "json" };
+import packageJson from "./package.json" with { type: "json" };
 
 const nextConfig = {
   allowedDevOrigins: ["dev.data.lilly.com", "192.168.1.9"],
