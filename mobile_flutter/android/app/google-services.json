@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "613218271037",
+    "project_id": "luvverse-pranaish",
+    "storage_bucket": "luvverse-pranaish.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:613218271037:android:1037ba7132fb6bf70ecf54",
+        "android_client_info": {
+          "package_name": "link.pranaish.luvverse"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "613218271037-bkdks72pub8k0008vugvnghebj38nim1.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "link.pranaish.luvverse",
+            "certificate_hash": "fb3bf51ea50be83b7e3eb13853151a9d7af84761"
+          }
+        },
+        {
+          "client_id": "613218271037-oht848dvug59av1tjclb0ga85vplhb97.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBeM2oph-1wEc6V6HANi8aZUaTGq4SfA88"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "613218271037-oht848dvug59av1tjclb0ga85vplhb97.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
