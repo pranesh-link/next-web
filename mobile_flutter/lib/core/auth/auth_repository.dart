@@ -45,21 +45,25 @@ class AuthRepository {
       return userData;
     }
 
-    // Fallback: use Google access token directly as Bearer.
-    // Backend's getAuthUserId() supports Google access tokens.
+    // Fallback: exchange Google access token with backend for our JWT pair.
     final accessToken = googleAuth.accessToken;
     if (accessToken == null) throw Exception('No access token received');
 
-    await SecureStorage.saveToken(accessToken);
-
-    final user = User(
-      id: googleUser.id,
-      name: googleUser.displayName ?? '',
-      email: googleUser.email,
-      image: googleUser.photoUrl,
+    final response = await _api.post<Map<String, dynamic>>(
+      ApiEndpoints.auth,
+      data: {'accessToken': accessToken},
     );
-    await SecureStorage.saveUser(user);
-    return user;
+
+    final token = response['token'] as String;
+    final refreshToken = response['refreshToken'] as String?;
+    final userData = User.fromJson(response['user'] as Map<String, dynamic>);
+
+    await SecureStorage.saveToken(token);
+    if (refreshToken != null) {
+      await SecureStorage.saveRefreshToken(refreshToken);
+    }
+    await SecureStorage.saveUser(userData);
+    return userData;
   }
 
   Future<void> signOut() async {
