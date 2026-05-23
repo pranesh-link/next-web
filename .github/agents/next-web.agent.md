@@ -106,6 +106,7 @@ prisma/
 10. **No duplicated code** — extract repeated logic into shared helpers (see DRY / No Duplication below)
 11. **KISS** — keep code simple; reject over-engineering (see KISS Principle below)
 12. **Tests are mandatory** — every new feature/fix ships with tests (see Testing Standard below)
+13. **Feature parity between web and mobile** — both channels (Next.js web and Flutter mobile) must have equivalent features. If a feature exists on web, implement it on mobile too (adapted for mobile UX). If intentionally omitting a feature from one channel, ask the user for confirmation before proceeding. Mobile implementation may differ in UX pattern (e.g. bottom sheets vs modals, swipe gestures vs buttons) but must cover the same functionality.
 
 ## DRY / No Duplication
 - **Rule**: if the same expression, calculation, formatter, regex, or block of logic appears in **2 or more places**, extract it into a shared helper. No copy-paste.
