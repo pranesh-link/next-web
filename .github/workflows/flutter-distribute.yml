@@ -89,7 +89,7 @@ jobs:
         with:
           appId: ${{ secrets.FIREBASE_ANDROID_APP_ID }}
           serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
-          groups: internal
+          groups: luvverse-testers
           file: mobile_flutter/build/app/outputs/flutter-apk/app-release.apk
           releaseNotes: ${{ steps.notes.outputs.notes }}
 
