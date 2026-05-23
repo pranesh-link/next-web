@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:luvverse/core/auth/google_sign_in_instance.dart';
 import 'package:luvverse/core/auth/secure_storage.dart';
@@ -16,51 +15,47 @@ class AuthRepository {
   final GoogleSignIn _googleSignIn = googleSignInInstance;
 
   Future<User> signInWithGoogle() async {
-    // On native, disconnect to force account picker. On web, skip it —
-    // the async gap breaks the user-gesture chain and browsers block the popup.
-    if (!kIsWeb) {
-      await _googleSignIn.disconnect().catchError((_) => null);
-    }
+    // Disconnect to force account picker on subsequent sign-ins.
+    await _googleSignIn.disconnect().catchError((_) => null);
 
     final googleUser = await _googleSignIn.signIn();
     if (googleUser == null) throw Exception('Google sign-in cancelled');
 
     final googleAuth = await googleUser.authentication;
+    final idToken = googleAuth.idToken;
 
-    if (kIsWeb) {
-      // Web: idToken is not available. Use access token as Bearer.
-      // Backend's getAuthUserId() supports Google access tokens directly.
-      final accessToken = googleAuth.accessToken;
-      if (accessToken == null) throw Exception('No access token received');
-
-      await SecureStorage.saveToken(accessToken);
-
-      final user = User(
-        id: googleUser.id,
-        name: googleUser.displayName ?? '',
-        email: googleUser.email,
-        image: googleUser.photoUrl,
+    // Prefer idToken exchange with backend (gives us a long-lived JWT).
+    // Falls back to accessToken if idToken is unavailable (e.g. web or
+    // when serverClientId isn't configured).
+    if (idToken != null) {
+      final response = await _api.post<Map<String, dynamic>>(
+        ApiEndpoints.auth,
+        data: {'idToken': idToken},
       );
-      await SecureStorage.saveUser(user);
-      return user;
+
+      final token = response['token'] as String;
+      final userData = User.fromJson(response['user'] as Map<String, dynamic>);
+
+      await SecureStorage.saveToken(token);
+      await SecureStorage.saveUser(userData);
+      return userData;
     }
 
-    // Native: exchange idToken for our own long-lived JWT
-    final idToken = googleAuth.idToken;
-    if (idToken == null) throw Exception('No ID token received');
+    // Fallback: use Google access token directly as Bearer.
+    // Backend's getAuthUserId() supports Google access tokens.
+    final accessToken = googleAuth.accessToken;
+    if (accessToken == null) throw Exception('No access token received');
 
-    final response = await _api.post<Map<String, dynamic>>(
-      ApiEndpoints.auth,
-      data: {'idToken': idToken},
+    await SecureStorage.saveToken(accessToken);
+
+    final user = User(
+      id: googleUser.id,
+      name: googleUser.displayName ?? '',
+      email: googleUser.email,
+      image: googleUser.photoUrl,
     );
-
-    final token = response['token'] as String;
-    final userData = User.fromJson(response['user'] as Map<String, dynamic>);
-
-    await SecureStorage.saveToken(token);
-    await SecureStorage.saveUser(userData);
-
-    return userData;
+    await SecureStorage.saveUser(user);
+    return user;
   }
 
   Future<void> signOut() async {
