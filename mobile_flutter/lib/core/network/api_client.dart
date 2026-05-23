@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:luvverse/core/auth/google_sign_in_instance.dart';
 import 'package:luvverse/core/auth/secure_storage.dart';
 import 'package:luvverse/core/network/api_exceptions.dart';
 
@@ -9,18 +10,18 @@ final apiClientProvider = Provider<ApiClient>((ref) {
 });
 
 class ApiClient {
-  static const _baseUrl = String.fromEnvironment(
-    'API_URL',
-    defaultValue: 'https://pranesh.link',
-  );
+  static const _baseUrl = 'https://www.pranesh.link';
 
   late final Dio _dio;
+  bool _isRefreshing = false;
+  final List<({ErrorInterceptorHandler handler, RequestOptions options})>
+      _pendingRequests = [];
 
   ApiClient() {
     _dio = Dio(BaseOptions(
       baseUrl: _baseUrl,
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 15),
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 30),
       headers: {'Content-Type': 'application/json'},
     ));
 
@@ -32,16 +33,98 @@ class ApiClient {
         }
         handler.next(options);
       },
-      onError: (error, handler) {
-        if (error.response?.statusCode == 401) {
-          SecureStorage.clearAll();
+      onError: (error, handler) async {
+        if (error.response?.statusCode != 401) {
+          return handler.next(error);
         }
+
+        // If already refreshing, queue this request for retry later
+        if (_isRefreshing) {
+          _pendingRequests
+              .add((handler: handler, options: error.requestOptions));
+          return;
+        }
+
+        _isRefreshing = true;
+        try {
+          final newToken = await _refreshGoogleToken();
+          if (newToken != null) {
+            await SecureStorage.saveToken(newToken);
+            // Retry the original request
+            final opts = error.requestOptions;
+            opts.headers['Authorization'] = 'Bearer $newToken';
+            final response = await _dio.fetch(opts);
+            handler.resolve(response);
+            // Retry all queued requests
+            await _retryPendingRequests(newToken);
+            return;
+          }
+        } catch (_) {
+          // Refresh failed
+        } finally {
+          _isRefreshing = false;
+        }
+        // Refresh failed — clear auth and reject all pending
+        await SecureStorage.clearAll();
+        _rejectPendingRequests(error);
         handler.next(error);
       },
     ));
 
     if (kDebugMode) {
-      _dio.interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
+      _dio.interceptors.add(LogInterceptor(
+        requestBody: true,
+        responseBody: true,
+      ));
+    }
+  }
+
+  Future<void> _retryPendingRequests(String newToken) async {
+    final pending = List.of(_pendingRequests);
+    _pendingRequests.clear();
+    for (final req in pending) {
+      req.options.headers['Authorization'] = 'Bearer $newToken';
+      try {
+        final response = await _dio.fetch(req.options);
+        req.handler.resolve(response);
+      } on DioException catch (e) {
+        req.handler.reject(e);
+      }
+    }
+  }
+
+  void _rejectPendingRequests(DioException error) {
+    final pending = List.of(_pendingRequests);
+    _pendingRequests.clear();
+    for (final req in pending) {
+      req.handler.reject(DioException(
+        requestOptions: req.options,
+        error: error.error,
+        response: error.response,
+        type: error.type,
+      ));
+    }
+  }
+
+  /// Attempts silent Google re-auth to get a fresh access token.
+  Future<String?> _refreshGoogleToken() async {
+    try {
+      // On web, try signInSilently first
+      var account = await googleSignInInstance
+          .signInSilently()
+          .timeout(const Duration(seconds: 5));
+      // If silent fails on web, try full signIn (shows popup)
+      if (account == null && kIsWeb) {
+        account = await googleSignInInstance
+            .signIn()
+            .timeout(const Duration(seconds: 10));
+      }
+      if (account == null) return null;
+      final auth = await account.authentication
+          .timeout(const Duration(seconds: 5));
+      return auth.accessToken;
+    } catch (_) {
+      return null;
     }
   }
 

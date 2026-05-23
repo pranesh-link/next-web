@@ -13,6 +13,14 @@ import 'package:luvverse/features/finance/budgets/budgets_screen.dart';
 import 'package:luvverse/features/finance/loans/loans_screen.dart';
 import 'package:luvverse/features/finance/loans/loan_detail_screen.dart';
 import 'package:luvverse/features/finance/goals/goals_screen.dart';
+import 'package:luvverse/features/finance/deposits/deposits_screen.dart';
+import 'package:luvverse/features/finance/investments/investments_screen.dart';
+import 'package:luvverse/features/finance/budget_planner/budget_planner_screen.dart';
+import 'package:luvverse/features/finance/notifications/notifications_screen.dart';
+import 'package:luvverse/features/finance/scanning/scan_receipt_screen.dart';
+import 'package:luvverse/features/finance/scanning/scan_schedule_screen.dart';
+import 'package:luvverse/features/finance/finance_shell.dart';
+import 'package:luvverse/features/couple/couple_management_screen.dart';
 import 'package:luvverse/features/lifestyle/lifestyle_screen.dart';
 import 'package:luvverse/features/settings/settings_screen.dart';
 import 'package:luvverse/features/couple/invite_screen.dart';
@@ -67,7 +75,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           // Finance shell with nested routes
           ShellRoute(
             navigatorKey: _financeShellNavigatorKey,
-            builder: (context, state, child) => child,
+            builder: (context, state, child) => FinanceShell(
+              child: child,
+              currentLocation: state.matchedLocation,
+            ),
             routes: [
               GoRoute(
                 path: '/finance',
@@ -111,6 +122,30 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: 'goals',
                     builder: (context, state) => const GoalsScreen(),
                   ),
+                  GoRoute(
+                    path: 'deposits',
+                    builder: (context, state) => const DepositsScreen(),
+                  ),
+                  GoRoute(
+                    path: 'investments',
+                    builder: (context, state) => const InvestmentsScreen(),
+                  ),
+                  GoRoute(
+                    path: 'budget-planner',
+                    builder: (context, state) => const BudgetPlannerScreen(),
+                  ),
+                  GoRoute(
+                    path: 'notifications',
+                    builder: (context, state) => const NotificationsScreen(),
+                  ),
+                  GoRoute(
+                    path: 'scan-receipt',
+                    builder: (context, state) => const ScanReceiptScreen(),
+                  ),
+                  GoRoute(
+                    path: 'scan-schedule',
+                    builder: (context, state) => const ScanScheduleScreen(),
+                  ),
                 ],
               ),
             ],
@@ -129,6 +164,12 @@ final routerProvider = Provider<GoRouter>((ref) {
             ),
           ),
         ],
+      ),
+
+      // Couple management
+      GoRoute(
+        path: '/couple/manage',
+        builder: (context, state) => const CoupleManagementScreen(),
       ),
 
       // Deep link: couple invite
@@ -167,11 +208,6 @@ class ScaffoldWithNavBar extends StatelessWidget {
             label: 'Finance',
           ),
           NavigationDestination(
-            icon: Icon(Icons.favorite_outline),
-            selectedIcon: Icon(Icons.favorite),
-            label: 'Lifestyle',
-          ),
-          NavigationDestination(
             icon: Icon(Icons.settings_outlined),
             selectedIcon: Icon(Icons.settings),
             label: 'Settings',
@@ -184,8 +220,7 @@ class ScaffoldWithNavBar extends StatelessWidget {
   int _calculateSelectedIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
     if (location.startsWith('/finance')) return 1;
-    if (location.startsWith('/lifestyle')) return 2;
-    if (location.startsWith('/settings')) return 3;
+    if (location.startsWith('/settings')) return 2;
     return 0;
   }
 
@@ -196,8 +231,6 @@ class ScaffoldWithNavBar extends StatelessWidget {
       case 1:
         context.go('/finance');
       case 2:
-        context.go('/lifestyle');
-      case 3:
         context.go('/settings');
     }
   }

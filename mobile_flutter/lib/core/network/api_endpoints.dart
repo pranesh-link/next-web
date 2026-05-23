@@ -5,6 +5,8 @@ abstract final class ApiEndpoints {
   static const budgets = '/api/v1/finance/budgets';
   static const loans = '/api/v1/finance/loans';
   static const goals = '/api/v1/finance/goals';
+  static const deposits = '/api/v1/finance/deposits';
+  static const investments = '/api/v1/finance/investments';
   static const insights = '/api/v1/finance/insights';
   static const budgetPlans = '/api/v1/finance/budget-plans';
   static const couple = '/api/couple';

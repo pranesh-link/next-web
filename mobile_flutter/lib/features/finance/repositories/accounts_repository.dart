@@ -14,6 +14,11 @@ class AccountsRepository {
     return list;
   }
 
+  /// Returns the raw API response map including `data` and `currentUserId`.
+  Future<Map<String, dynamic>> getAccountsRaw() async {
+    return await _api.get<Map<String, dynamic>>(ApiEndpoints.accounts);
+  }
+
   Future<Account> createAccount({
     required String name,
     required String type,
@@ -47,6 +52,15 @@ class AccountsRepository {
         if (balance != null) 'balance': balance,
         if (nickname != null) 'nickname': nickname,
       },
+    );
+    return Account.fromJson(response['data'] as Map<String, dynamic>);
+  }
+
+  /// Generic update that sends arbitrary fields to PUT /accounts/:id.
+  Future<Account> updateAccountData(String id, Map<String, dynamic> data) async {
+    final response = await _api.put<Map<String, dynamic>>(
+      '${ApiEndpoints.accounts}/$id',
+      data: data,
     );
     return Account.fromJson(response['data'] as Map<String, dynamic>);
   }

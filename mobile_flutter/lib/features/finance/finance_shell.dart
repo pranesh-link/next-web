@@ -4,25 +4,28 @@ import 'package:luvverse/core/theme/app_colors.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 
 class FinanceShell extends StatelessWidget {
-  final StatefulNavigationShell navigationShell;
+  final Widget child;
+  final String currentLocation;
 
-  const FinanceShell({super.key, required this.navigationShell});
+  const FinanceShell({super.key, required this.child, required this.currentLocation});
 
   static const _tabs = [
     _Tab('Dashboard', Icons.dashboard_outlined),
     _Tab('Accounts', Icons.account_balance_outlined),
     _Tab('Transactions', Icons.receipt_long_outlined),
     _Tab('Budgets', Icons.pie_chart_outline),
+    _Tab('Planner', Icons.calendar_month_outlined),
     _Tab('Loans', Icons.real_estate_agent_outlined),
     _Tab('Goals', Icons.flag_outlined),
   ];
 
-  static const _routes = ['/finance', '/finance/accounts', '/finance/transactions', '/finance/budgets', '/finance/loans', '/finance/goals'];
+  static const _routes = ['/finance', '/finance/accounts', '/finance/transactions', '/finance/budgets', '/finance/budget-planner', '/finance/loans', '/finance/goals'];
 
   @override
   Widget build(BuildContext context) {
-    final currentPath = GoRouterState.of(context).uri.path;
-    final activeIndex = _routes.indexWhere((r) => currentPath == r || currentPath.startsWith('$r/'));
+    final activeIndex = _routes.indexWhere((r) => r != '/finance' && currentLocation.startsWith(r));
+    // If no sub-route matched, we're on the dashboard (index 0)
+    final resolvedIndex = activeIndex == -1 ? 0 : activeIndex;
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -31,6 +34,17 @@ class FinanceShell extends StatelessWidget {
         backgroundColor: AppColors.bg,
         elevation: 0,
         titleTextStyle: AppTypography.pageTitle,
+        actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: AppColors.textMuted),
+            onSelected: (route) => context.go(route),
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: '/finance/scan-receipt', child: Text('Scan Receipt')),
+              PopupMenuItem(value: '/finance/scan-schedule', child: Text('Scan Schedule')),
+              PopupMenuItem(value: '/couple/manage', child: Text('Couple')),
+            ],
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -39,7 +53,7 @@ class FinanceShell extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: List.generate(_tabs.length, (i) {
-                final isActive = i == (activeIndex == -1 ? 0 : activeIndex);
+                final isActive = i == resolvedIndex;
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: GestureDetector(
@@ -69,7 +83,7 @@ class FinanceShell extends StatelessWidget {
               }),
             ),
           ),
-          Expanded(child: navigationShell),
+          Expanded(child: child),
         ],
       ),
     );
