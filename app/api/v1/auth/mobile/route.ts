@@ -92,9 +92,31 @@ export async function POST(request: NextRequest) {
       email = userInfo.email;
       name = userInfo.name;
       picture = userInfo.picture;
+    } else if (body.accessToken) {
+      // Access token mode: verify with Google userinfo endpoint
+      const userRes = await fetch(
+        "https://www.googleapis.com/oauth2/v3/userinfo",
+        { headers: { Authorization: `Bearer ${body.accessToken}` } },
+      );
+
+      if (!userRes.ok) {
+        return NextResponse.json(
+          { error: "Invalid Google access token" },
+          { status: 401 },
+        );
+      }
+
+      const userInfo = await userRes.json();
+      googleId = userInfo.sub;
+      email = userInfo.email;
+      name = userInfo.name;
+      picture = userInfo.picture;
     } else {
       return NextResponse.json(
-        { error: "Provide either idToken (native) or code+redirectUri (web)" },
+        {
+          error:
+            "Provide idToken (native), code+redirectUri (web), or accessToken",
+        },
         { status: 400 },
       );
     }
