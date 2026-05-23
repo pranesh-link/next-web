@@ -1,11 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:luvverse/core/auth/auth_repository.dart';
 import 'package:luvverse/core/auth/secure_storage.dart';
+import 'package:luvverse/core/cache/cache_providers.dart';
 import 'package:luvverse/core/network/api_client.dart';
 import 'package:luvverse/models/user.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return AuthRepository(ref.read(apiClientProvider));
+  return AuthRepository(ref.read(apiClientProvider), ref.read(cacheServiceProvider));
 });
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {

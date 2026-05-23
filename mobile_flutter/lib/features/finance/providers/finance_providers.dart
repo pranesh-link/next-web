@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:luvverse/core/cache/cache_providers.dart';
+import 'package:luvverse/core/cache/cached_repositories.dart';
 import 'package:luvverse/core/network/api_client.dart';
 import 'package:luvverse/features/finance/repositories/accounts_repository.dart';
 import 'package:luvverse/features/finance/repositories/transactions_repository.dart';
@@ -11,7 +13,7 @@ import 'package:luvverse/models/budget.dart';
 import 'package:luvverse/models/loan.dart';
 import 'package:luvverse/models/goal.dart';
 
-// -- Repositories --
+// -- Repositories (original, for mutations that haven't been migrated) --
 
 /// The authenticated user's internal DB user ID (resolved from API responses).
 final dbUserIdProvider = StateProvider<String?>((ref) => null);
@@ -36,6 +38,43 @@ final goalsRepositoryProvider = Provider<GoalsRepository>((ref) {
   return GoalsRepository(ref.read(apiClientProvider));
 });
 
+// -- Cached repositories (for reads with offline fallback) --
+
+final cachedAccountsProvider = Provider<CachedAccountsRepository>((ref) {
+  return CachedAccountsRepository(
+    ref.read(apiClientProvider),
+    ref.read(cacheServiceProvider),
+  );
+});
+
+final cachedTransactionsProvider = Provider<CachedTransactionsRepository>((ref) {
+  return CachedTransactionsRepository(
+    ref.read(apiClientProvider),
+    ref.read(cacheServiceProvider),
+  );
+});
+
+final cachedBudgetsProvider = Provider<CachedBudgetsRepository>((ref) {
+  return CachedBudgetsRepository(
+    ref.read(apiClientProvider),
+    ref.read(cacheServiceProvider),
+  );
+});
+
+final cachedLoansProvider = Provider<CachedLoansRepository>((ref) {
+  return CachedLoansRepository(
+    ref.read(apiClientProvider),
+    ref.read(cacheServiceProvider),
+  );
+});
+
+final cachedGoalsProvider = Provider<CachedGoalsRepository>((ref) {
+  return CachedGoalsRepository(
+    ref.read(apiClientProvider),
+    ref.read(cacheServiceProvider),
+  );
+});
+
 // -- Accounts --
 
 final accountsProvider =
@@ -50,7 +89,7 @@ class AccountsNotifier extends AsyncNotifier<List<Account>> {
   }
 
   Future<List<Account>> _fetchAccounts() async {
-    final result = await ref.read(accountsRepositoryProvider).getAccountsRaw();
+    final result = await ref.read(cachedAccountsProvider).getAccountsRaw();
     final currentUserId = result['currentUserId'] as String?;
     if (currentUserId != null) {
       ref.read(dbUserIdProvider.notifier).state = currentUserId;
@@ -116,18 +155,14 @@ class TransactionsNotifier extends AsyncNotifier<List<Transaction>> {
   @override
   Future<List<Transaction>> build() async {
     final month = ref.watch(selectedMonthProvider);
-    return ref.read(transactionsRepositoryProvider).getTransactions(
-          month: month,
-        );
+    return ref.read(cachedTransactionsProvider).getTransactions(month: month);
   }
 
   Future<void> refresh() async {
     state = const AsyncValue.loading();
     final month = ref.read(selectedMonthProvider);
     state = await AsyncValue.guard(
-      () => ref.read(transactionsRepositoryProvider).getTransactions(
-            month: month,
-          ),
+      () => ref.read(cachedTransactionsProvider).getTransactions(month: month),
     );
   }
 
@@ -188,14 +223,14 @@ class BudgetsNotifier extends AsyncNotifier<List<Budget>> {
   @override
   Future<List<Budget>> build() async {
     final month = ref.watch(selectedMonthProvider);
-    return ref.read(budgetsRepositoryProvider).getBudgets(month: month);
+    return ref.read(cachedBudgetsProvider).getBudgets(month: month);
   }
 
   Future<void> refresh() async {
     state = const AsyncValue.loading();
     final month = ref.read(selectedMonthProvider);
     state = await AsyncValue.guard(
-      () => ref.read(budgetsRepositoryProvider).getBudgets(month: month),
+      () => ref.read(cachedBudgetsProvider).getBudgets(month: month),
     );
   }
 
@@ -243,13 +278,13 @@ final loansProvider =
 class LoansNotifier extends AsyncNotifier<List<Loan>> {
   @override
   Future<List<Loan>> build() async {
-    return ref.read(loansRepositoryProvider).getLoans();
+    return ref.read(cachedLoansProvider).getLoans();
   }
 
   Future<void> refresh() async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(
-      () => ref.read(loansRepositoryProvider).getLoans(),
+      () => ref.read(cachedLoansProvider).getLoans(),
     );
   }
 
@@ -294,13 +329,13 @@ final goalsProvider =
 class GoalsNotifier extends AsyncNotifier<List<Goal>> {
   @override
   Future<List<Goal>> build() async {
-    return ref.read(goalsRepositoryProvider).getGoals();
+    return ref.read(cachedGoalsProvider).getGoals();
   }
 
   Future<void> refresh() async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(
-      () => ref.read(goalsRepositoryProvider).getGoals(),
+      () => ref.read(cachedGoalsProvider).getGoals(),
     );
   }
 

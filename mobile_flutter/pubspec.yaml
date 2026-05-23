@@ -20,6 +20,20 @@ dependencies:
   # Network
   dio: ^5.7.0
 
+  # Offline Cache
+  drift: ^2.22.1
+  sqlite3: ^2.4.6
+  sqlite3_flutter_libs: ^0.5.28
+  sqlcipher_flutter_libs: ^0.6.5
+  path_provider: ^2.1.5
+  path: ^1.9.1
+
+  # Connectivity
+  connectivity_plus: ^6.1.4
+
+  # Background Sync
+  workmanager: ^0.5.2
+
   # Auth
   google_sign_in: ^6.2.2
   flutter_secure_storage: ^9.2.4
@@ -57,6 +71,7 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
   build_runner: ^2.4.14
+  drift_dev: ^2.22.1
   freezed: ^2.5.8
   json_serializable: ^6.9.4
   riverpod_generator: ^2.6.3

@@ -2,14 +2,16 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:luvverse/core/auth/google_sign_in_instance.dart';
 import 'package:luvverse/core/auth/secure_storage.dart';
+import 'package:luvverse/core/cache/cache_service.dart';
 import 'package:luvverse/core/network/api_client.dart';
 import 'package:luvverse/core/network/api_endpoints.dart';
 import 'package:luvverse/models/user.dart';
 
 class AuthRepository {
   final ApiClient _api;
+  final CacheService? _cache;
 
-  AuthRepository(this._api);
+  AuthRepository(this._api, [this._cache]);
 
   final GoogleSignIn _googleSignIn = googleSignInInstance;
 
@@ -64,6 +66,7 @@ class AuthRepository {
   Future<void> signOut() async {
     await _googleSignIn.signOut();
     await SecureStorage.clearAll();
+    await _cache?.clearAll();
   }
 
   Future<({User? user, String? token})> getStoredCredentials() async {

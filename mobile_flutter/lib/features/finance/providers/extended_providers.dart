@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:luvverse/core/cache/cache_providers.dart';
+import 'package:luvverse/core/cache/cached_repositories_ext.dart';
 import 'package:luvverse/core/network/api_client.dart';
 import 'package:luvverse/features/finance/repositories/deposits_repository.dart';
 import 'package:luvverse/features/finance/repositories/investments_repository.dart';
@@ -12,7 +14,7 @@ import 'package:luvverse/models/budget_plan.dart';
 import 'package:luvverse/models/notification_model.dart';
 import 'package:luvverse/models/insight.dart';
 
-// -- Repository Providers --
+// -- Repository Providers (original, for mutations) --
 
 final depositsRepositoryProvider = Provider<DepositsRepository>((ref) {
   return DepositsRepository(ref.read(apiClientProvider));
@@ -35,6 +37,44 @@ final insightsRepositoryProvider = Provider<InsightsRepository>((ref) {
   return InsightsRepository(ref.read(apiClientProvider));
 });
 
+// -- Cached Repository Providers --
+
+final cachedDepositsProvider = Provider<CachedDepositsRepository>((ref) {
+  return CachedDepositsRepository(
+    ref.read(apiClientProvider),
+    ref.read(cacheServiceProvider),
+  );
+});
+
+final cachedInvestmentsProvider = Provider<CachedInvestmentsRepository>((ref) {
+  return CachedInvestmentsRepository(
+    ref.read(apiClientProvider),
+    ref.read(cacheServiceProvider),
+  );
+});
+
+final cachedNotificationsProvider =
+    Provider<CachedNotificationsRepository>((ref) {
+  return CachedNotificationsRepository(
+    ref.read(apiClientProvider),
+    ref.read(cacheServiceProvider),
+  );
+});
+
+final cachedInsightsProvider = Provider<CachedInsightsRepository>((ref) {
+  return CachedInsightsRepository(
+    ref.read(apiClientProvider),
+    ref.read(cacheServiceProvider),
+  );
+});
+
+final cachedBudgetPlansProvider = Provider<CachedBudgetPlansRepository>((ref) {
+  return CachedBudgetPlansRepository(
+    ref.read(apiClientProvider),
+    ref.read(cacheServiceProvider),
+  );
+});
+
 // -- Deposits --
 
 final depositsProvider =
@@ -45,13 +85,13 @@ final depositsProvider =
 class DepositsNotifier extends AsyncNotifier<List<Deposit>> {
   @override
   Future<List<Deposit>> build() async {
-    return ref.read(depositsRepositoryProvider).getDeposits();
+    return ref.read(cachedDepositsProvider).getDeposits();
   }
 
   Future<void> refresh() async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(
-      () => ref.read(depositsRepositoryProvider).getDeposits(),
+      () => ref.read(cachedDepositsProvider).getDeposits(),
     );
   }
 
@@ -137,13 +177,13 @@ final investmentsProvider =
 class InvestmentsNotifier extends AsyncNotifier<List<Investment>> {
   @override
   Future<List<Investment>> build() async {
-    return ref.read(investmentsRepositoryProvider).getInvestments();
+    return ref.read(cachedInvestmentsProvider).getInvestments();
   }
 
   Future<void> refresh() async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(
-      () => ref.read(investmentsRepositoryProvider).getInvestments(),
+      () => ref.read(cachedInvestmentsProvider).getInvestments(),
     );
   }
 
@@ -238,7 +278,7 @@ class BudgetPlanNotifier extends AsyncNotifier<BudgetPlan?> {
   Future<BudgetPlan?> build() async {
     final monthAndYear = ref.watch(budgetPlanMonthProvider);
     final mode = ref.watch(budgetPlanModeProvider);
-    return ref.read(budgetPlansRepositoryProvider).getBudgetPlan(
+    return ref.read(cachedBudgetPlansProvider).getBudgetPlan(
           monthAndYear: monthAndYear,
           mode: mode,
         );
@@ -249,7 +289,7 @@ class BudgetPlanNotifier extends AsyncNotifier<BudgetPlan?> {
     final monthAndYear = ref.read(budgetPlanMonthProvider);
     final mode = ref.read(budgetPlanModeProvider);
     state = await AsyncValue.guard(
-      () => ref.read(budgetPlansRepositoryProvider).getBudgetPlan(
+      () => ref.read(cachedBudgetPlansProvider).getBudgetPlan(
             monthAndYear: monthAndYear,
             mode: mode,
           ),
@@ -262,7 +302,7 @@ class BudgetPlanNotifier extends AsyncNotifier<BudgetPlan?> {
   }) async {
     final monthAndYear = ref.read(budgetPlanMonthProvider);
     final mode = ref.read(budgetPlanModeProvider);
-    await ref.read(budgetPlansRepositoryProvider).saveBudgetPlan(
+    await ref.read(cachedBudgetPlansProvider).saveBudgetPlan(
           monthAndYear: monthAndYear,
           mode: mode,
           income: income,
@@ -272,7 +312,7 @@ class BudgetPlanNotifier extends AsyncNotifier<BudgetPlan?> {
   }
 
   Future<void> delete(String id) async {
-    await ref.read(budgetPlansRepositoryProvider).deleteBudgetPlan(id);
+    await ref.read(cachedBudgetPlansProvider).deleteBudgetPlan(id);
     await refresh();
   }
 }
@@ -287,13 +327,13 @@ final notificationsProvider =
 class NotificationsNotifier extends AsyncNotifier<NotificationsResponse> {
   @override
   Future<NotificationsResponse> build() async {
-    return ref.read(notificationsRepositoryProvider).getNotifications();
+    return ref.read(cachedNotificationsProvider).getNotifications();
   }
 
   Future<void> refresh() async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(
-      () => ref.read(notificationsRepositoryProvider).getNotifications(),
+      () => ref.read(cachedNotificationsProvider).getNotifications(),
     );
   }
 
@@ -325,24 +365,20 @@ class DashboardInsightsNotifier extends AsyncNotifier<DashboardInsights> {
   @override
   Future<DashboardInsights> build() async {
     final month = ref.watch(selectedMonthProvider);
-    return ref.read(insightsRepositoryProvider).getDashboardInsights(
-          month: month,
-        );
+    return ref.read(cachedInsightsProvider).getDashboardInsights(month: month);
   }
 
   Future<void> refresh() async {
     state = const AsyncValue.loading();
     final month = ref.read(selectedMonthProvider);
     state = await AsyncValue.guard(
-      () => ref.read(insightsRepositoryProvider).getDashboardInsights(
-            month: month,
-          ),
+      () => ref.read(cachedInsightsProvider).getDashboardInsights(month: month),
     );
   }
 }
 
 final healthScoreProvider = FutureProvider<HealthScore>((ref) async {
-  return ref.read(insightsRepositoryProvider).getHealthScore();
+  return ref.read(cachedInsightsProvider).getHealthScore();
 });
 
 // -- Derived Dashboard Providers --

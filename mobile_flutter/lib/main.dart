@@ -3,10 +3,28 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:luvverse/app.dart';
+import 'package:luvverse/core/cache/cache_providers.dart';
+import 'package:luvverse/core/cache/cache_service.dart';
+import 'package:luvverse/core/cache/platform.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   Intl.defaultLocale = 'en_IN';
   await initializeDateFormatting('en_IN');
-  runApp(const ProviderScope(child: LuvVerseApp()));
+
+  // Initialize offline cache database
+  final cacheDb = await openCacheDatabase();
+  final cacheService = CacheService(cacheDb);
+
+  // Prune old entries on startup
+  await cacheService.prune();
+
+  runApp(
+    ProviderScope(
+      overrides: [
+        cacheDatabaseProvider.overrideWithValue(cacheDb),
+      ],
+      child: const LuvVerseApp(),
+    ),
+  );
 }
