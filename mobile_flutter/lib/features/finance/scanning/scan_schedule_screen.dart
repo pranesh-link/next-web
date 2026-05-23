@@ -5,7 +5,6 @@ import 'package:luvverse/core/network/api_endpoints.dart';
 import 'package:luvverse/core/theme/app_colors.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
-import 'package:luvverse/features/finance/providers/finance_providers.dart';
 import 'package:luvverse/shared/widgets/app_button.dart';
 import 'package:luvverse/shared/widgets/app_card.dart';
 import 'package:image_picker/image_picker.dart';

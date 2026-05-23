@@ -27,12 +27,6 @@ class AccountCard extends StatelessWidget {
     this.onAddIncome,
   });
 
-  static final _currencyFmt = NumberFormat.currency(
-    locale: 'en_IN',
-    symbol: '₹',
-    decimalDigits: 2,
-  );
-
   @override
   Widget build(BuildContext context) {
     return GestureDetector(

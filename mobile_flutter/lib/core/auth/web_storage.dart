@@ -1,5 +1,4 @@
 // ignore: avoid_web_libraries_in_flutter
-import 'dart:js_interop';
 import 'package:web/web.dart' as web;
 
 /// Simple localStorage wrapper for web platform.
