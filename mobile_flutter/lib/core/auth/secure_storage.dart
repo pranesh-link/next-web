@@ -11,6 +11,7 @@ abstract final class SecureStorage {
 
   static const _tokenKey = 'auth_token';
   static const _userKey = 'auth_user';
+  static const _refreshTokenKey = 'auth_refresh_token';
 
   static Future<void> saveToken(String token) async {
     if (kIsWeb) {
@@ -23,6 +24,19 @@ abstract final class SecureStorage {
   static Future<String?> getToken() async {
     if (kIsWeb) return WebStorage.read(_tokenKey);
     return _storage.read(key: _tokenKey);
+  }
+
+  static Future<void> saveRefreshToken(String token) async {
+    if (kIsWeb) {
+      WebStorage.write(_refreshTokenKey, token);
+    } else {
+      await _storage.write(key: _refreshTokenKey, value: token);
+    }
+  }
+
+  static Future<String?> getRefreshToken() async {
+    if (kIsWeb) return WebStorage.read(_refreshTokenKey);
+    return _storage.read(key: _refreshTokenKey);
   }
 
   static Future<void> saveUser(User user) async {
@@ -44,9 +58,11 @@ abstract final class SecureStorage {
     if (kIsWeb) {
       WebStorage.delete(_tokenKey);
       WebStorage.delete(_userKey);
+      WebStorage.delete(_refreshTokenKey);
     } else {
       await _storage.delete(key: _tokenKey);
       await _storage.delete(key: _userKey);
+      await _storage.delete(key: _refreshTokenKey);
     }
   }
 }
