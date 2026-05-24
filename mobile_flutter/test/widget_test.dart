@@ -2,6 +2,8 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:luvverse/core/auth/auth_provider.dart';
+import 'package:luvverse/core/auth/auth_repository.dart';
 import 'package:luvverse/core/cache/cache_providers.dart';
 import 'package:luvverse/core/cache/cache_service.dart';
 import 'package:luvverse/core/cache/connectivity_service.dart';
@@ -30,16 +32,21 @@ class _NoOpSyncManager extends SyncManager {
 void main() {
   testWidgets('App renders without crashing', (WidgetTester tester) async {
     final db = CacheDatabase(NativeDatabase.memory());
+    final cacheService = CacheService(db);
     addTearDown(() => db.close());
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           cacheDatabaseProvider.overrideWithValue(db),
+          cacheServiceProvider.overrideWithValue(cacheService),
           connectivityProvider.overrideWith(
             (ref) => Stream.value(true),
           ),
           syncManagerProvider.overrideWithValue(_NoOpSyncManager()),
+          authProvider.overrideWith(
+            (ref) => AuthNotifier(AuthRepository(ApiClient())),
+          ),
         ],
         child: const LuvVerseApp(),
       ),
