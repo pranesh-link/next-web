@@ -11,5 +11,6 @@ const _serverClientId =
 /// [serverClientId] requests an idToken for backend verification.
 final googleSignInInstance = GoogleSignIn(
   scopes: ['email', 'profile'],
-  serverClientId: _serverClientId,
+  // TODO: restore serverClientId after debugging error 10
+  // serverClientId: _serverClientId,
 );
