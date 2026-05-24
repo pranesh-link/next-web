@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  These values are manually maintained since the google-services Gradle plugin
+  (4.4.2) is incompatible with AGP 9.0. Values extracted from google-services.json.
+  If google-services.json changes, update these values accordingly.
+-->
+<resources>
+    <string name="default_web_client_id" translatable="false">613218271037-oht848dvug59av1tjclb0ga85vplhb97.apps.googleusercontent.com</string>
+    <string name="gcm_defaultSenderId" translatable="false">613218271037</string>
+    <string name="google_api_key" translatable="false">AIzaSyBeM2oph-1wEc6V6HANi8aZUaTGq4SfA88</string>
+    <string name="google_app_id" translatable="false">1:613218271037:android:1037ba7132fb6bf70ecf54</string>
+    <string name="google_storage_bucket" translatable="false">luvverse-pranaish.firebasestorage.app</string>
+    <string name="project_id" translatable="false">luvverse-pranaish</string>
+</resources>
