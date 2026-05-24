@@ -22,7 +22,15 @@
           }
         },
         {
-          "client_id": "613218271037-oht848dvug59av1tjclb0ga85vplhb97.apps.googleusercontent.com",
+          "client_id": "613218271037-gco2j8fmi49k21bghtf2t1it4i60vv67.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "link.pranaish.luvverse",
+            "certificate_hash": "0e825a3d3d4485b5cab534a920efa9fd1b9b354c"
+          }
+        },
+        {
+          "client_id": "613218271037-0ggpisbgjhqit56nt9ep47vb73dh117i.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
@@ -35,7 +43,7 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "613218271037-oht848dvug59av1tjclb0ga85vplhb97.apps.googleusercontent.com",
+              "client_id": "613218271037-0ggpisbgjhqit56nt9ep47vb73dh117i.apps.googleusercontent.com",
               "client_type": 3
             }
           ]
