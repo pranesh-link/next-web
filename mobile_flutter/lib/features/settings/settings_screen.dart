@@ -58,7 +58,7 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.xxl),
-          _SettingsTile(icon: Icons.people, title: 'Couple', onTap: () => context.go('/couple/manage')),
+          _SettingsTile(icon: Icons.people, title: 'Couple', onTap: () => context.push('/couple/manage')),
           _SettingsTile(icon: Icons.notifications_outlined, title: 'Notifications', onTap: () => _showSnackbar(context, 'Coming soon')),
           const SizedBox(height: AppSpacing.lg),
           // Theme section
@@ -160,13 +160,29 @@ class _BiometricToggle extends ConsumerWidget {
           value: biometricEnabled,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           onChanged: (value) async {
+            final messenger = ScaffoldMessenger.of(context);
             if (value) {
+              final hasEnrolled = await biometricService.hasEnrolledBiometrics();
+              if (!hasEnrolled) {
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'No biometrics enrolled. Set up Face ID / fingerprint in device settings first.',
+                    ),
+                  ),
+                );
+                return;
+              }
               final success = await biometricService.authenticate();
               if (success) {
-                ref.read(biometricEnabledProvider.notifier).toggle(true);
+                await ref.read(biometricEnabledProvider.notifier).toggle(true);
+              } else {
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('Authentication failed.')),
+                );
               }
             } else {
-              ref.read(biometricEnabledProvider.notifier).toggle(false);
+              await ref.read(biometricEnabledProvider.notifier).toggle(false);
             }
           },
         );

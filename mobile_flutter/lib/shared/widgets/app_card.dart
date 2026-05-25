@@ -24,7 +24,7 @@ class AppCard extends StatelessWidget {
         padding: padding ?? const EdgeInsets.all(AppSpacing.xxl),
         decoration: BoxDecoration(
           color: context.colors.bgElevated,
-          border: Border.all(color: const Color(0xFFE5E7EB)),
+          border: Border.all(color: context.colors.cardBorder),
           borderRadius: BorderRadius.circular(16),
         ),
         child: showAccentBar

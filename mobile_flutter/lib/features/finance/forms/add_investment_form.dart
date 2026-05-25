@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/shared/widgets/app_button.dart';
 import 'package:luvverse/shared/widgets/app_input.dart';
@@ -138,7 +139,7 @@ class _AddInvestmentFormState extends ConsumerState<AddInvestmentForm> {
           value: _assetType,
           decoration: InputDecoration(
             filled: true,
-            fillColor: Colors.white,
+            fillColor: context.colors.inputBg,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
@@ -156,7 +157,7 @@ class _AddInvestmentFormState extends ConsumerState<AddInvestmentForm> {
           value: _mode,
           decoration: InputDecoration(
             filled: true,
-            fillColor: Colors.white,
+            fillColor: context.colors.inputBg,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
@@ -187,7 +188,7 @@ class _AddInvestmentFormState extends ConsumerState<AddInvestmentForm> {
                       value: _exchange,
                       decoration: InputDecoration(
                         filled: true,
-                        fillColor: Colors.white,
+                        fillColor: context.colors.inputBg,
                         contentPadding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 10),
                         border: OutlineInputBorder(

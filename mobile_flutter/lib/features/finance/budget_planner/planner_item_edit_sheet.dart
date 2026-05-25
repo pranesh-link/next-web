@@ -31,19 +31,15 @@ class PlannerItemEditSheet extends StatefulWidget {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: context.colors.bgElevated,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (sheetContext) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
-        ),
-        child: PlannerItemEditSheet(
-          item: item,
-          onSave: onSave,
-          onDelete: onDelete,
-        ),
+      builder: (sheetContext) => PlannerItemEditSheet(
+        item: item,
+        onSave: onSave,
+        onDelete: onDelete,
       ),
     );
   }
@@ -53,9 +49,15 @@ class _PlannerItemEditSheetState extends State<PlannerItemEditSheet> {
   @override
   Widget build(BuildContext context) {
     final categories = plannerCategoryColors.keys.toList();
+    final viewInsets = MediaQuery.viewInsetsOf(context);
 
-    return Padding(
-      padding: const EdgeInsets.all(AppSpacing.xl),
+    return SingleChildScrollView(
+      padding: EdgeInsets.only(
+        left: AppSpacing.xl,
+        right: AppSpacing.xl,
+        top: AppSpacing.xl,
+        bottom: AppSpacing.xl + viewInsets.bottom,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,

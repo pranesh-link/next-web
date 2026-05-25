@@ -50,6 +50,16 @@ class BiometricService {
     }
   }
 
+  /// Returns true if the user has at least one biometric enrolled on device.
+  Future<bool> hasEnrolledBiometrics() async {
+    try {
+      final available = await _auth.getAvailableBiometrics();
+      return available.isNotEmpty;
+    } on PlatformException {
+      return false;
+    }
+  }
+
   /// Authenticate the user with biometrics.
   Future<bool> authenticate() async {
     try {

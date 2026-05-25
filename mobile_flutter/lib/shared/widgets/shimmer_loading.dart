@@ -1,6 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
+
+/// Returns the (base, highlight) shimmer colors for the current brightness.
+({Color base, Color highlight}) _shimmerColors(BuildContext context) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  if (isDark) {
+    return (
+      base: const Color(0xFF2A2D37),
+      highlight: const Color(0xFF3A3D47),
+    );
+  }
+  return (
+    base: const Color(0xFFE5E7EB),
+    highlight: const Color(0xFFF8FAFC),
+  );
+}
 
 /// A single card-shaped shimmer placeholder.
 class ShimmerCard extends StatelessWidget {
@@ -11,13 +27,14 @@ class ShimmerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = _shimmerColors(context);
     return Shimmer.fromColors(
-      baseColor: const Color(0xFFE5E7EB),
-      highlightColor: const Color(0xFFF8FAFC),
+      baseColor: colors.base,
+      highlightColor: colors.highlight,
       child: Container(
         height: height,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.colors.bgElevated,
           borderRadius: BorderRadius.circular(borderRadius),
         ),
       ),
@@ -40,9 +57,10 @@ class ShimmerList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = _shimmerColors(context);
     return Shimmer.fromColors(
-      baseColor: const Color(0xFFE5E7EB),
-      highlightColor: const Color(0xFFF8FAFC),
+      baseColor: colors.base,
+      highlightColor: colors.highlight,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: List.generate(
@@ -52,7 +70,7 @@ class ShimmerList extends StatelessWidget {
             child: Container(
               height: height,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.colors.bgElevated,
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
