@@ -6,6 +6,7 @@ import 'package:luvverse/core/auth/auth_provider.dart';
 import 'package:luvverse/core/theme/app_colors.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
+import 'package:luvverse/core/theme/theme_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -13,10 +14,10 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authProvider).user;
+    final currentTheme = ref.watch(themeProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.bg,
-      appBar: AppBar(title: const Text('Settings'), backgroundColor: AppColors.bg, elevation: 0),
+      appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.xl),
         children: [
@@ -24,9 +25,9 @@ class SettingsScreen extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(AppSpacing.xl),
             decoration: BoxDecoration(
-              color: AppColors.bgElevated,
+              color: Theme.of(context).cardTheme.color,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.cardBorder),
+              border: Border.all(color: Theme.of(context).dividerColor),
             ),
             child: Row(
               children: [
@@ -58,7 +59,25 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: AppSpacing.xxl),
           _SettingsTile(icon: Icons.people, title: 'Couple', onTap: () => context.go('/couple/manage')),
           _SettingsTile(icon: Icons.notifications_outlined, title: 'Notifications', onTap: () => _showSnackbar(context, 'Coming soon')),
-          _SettingsTile(icon: Icons.palette_outlined, title: 'Appearance', onTap: () => _showSnackbar(context, 'Coming soon')),
+          const SizedBox(height: AppSpacing.lg),
+          // Theme section
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Text('Theme', style: AppTypography.small.copyWith(color: AppColors.textMuted, fontWeight: FontWeight.w600)),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          SegmentedButton<ThemeMode>(
+            segments: const [
+              ButtonSegment(value: ThemeMode.light, label: Text('Light'), icon: Icon(Icons.light_mode)),
+              ButtonSegment(value: ThemeMode.system, label: Text('System'), icon: Icon(Icons.settings_brightness)),
+              ButtonSegment(value: ThemeMode.dark, label: Text('Dark'), icon: Icon(Icons.dark_mode)),
+            ],
+            selected: {currentTheme},
+            onSelectionChanged: (selected) {
+              ref.read(themeProvider.notifier).setTheme(selected.first);
+            },
+          ),
+          const SizedBox(height: AppSpacing.lg),
           _SettingsTile(
             icon: Icons.info_outline,
             title: 'About',

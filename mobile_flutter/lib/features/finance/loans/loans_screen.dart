@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:luvverse/core/theme/app_colors.dart';
@@ -27,7 +28,7 @@ class LoansScreen extends ConsumerWidget {
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
-            children: [AppButton(label: 'Add Loan', icon: Icons.add, size: ButtonSize.sm, onPressed: () => AddLoanForm.show(context))],
+            children: [AppButton(label: 'Add Loan', icon: Icons.add, size: ButtonSize.sm, onPressed: () { HapticFeedback.mediumImpact(); AddLoanForm.show(context); })],
           ),
           const SizedBox(height: AppSpacing.lg),
           Expanded(
@@ -87,6 +88,7 @@ class LoansScreen extends ConsumerWidget {
       ),
     );
     if (confirm == true) {
+      HapticFeedback.mediumImpact();
       await ref.read(loansProvider.notifier).delete(loan.id);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Loan deleted')));

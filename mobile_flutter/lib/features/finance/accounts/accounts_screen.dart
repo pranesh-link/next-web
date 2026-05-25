@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -41,7 +42,10 @@ class AccountsScreen extends ConsumerWidget {
                 label: 'Add Account',
                 icon: Icons.add,
                 size: ButtonSize.sm,
-                onPressed: () => AddAccountForm.show(context),
+                onPressed: () {
+                  HapticFeedback.mediumImpact();
+                  AddAccountForm.show(context);
+                },
               ),
             ],
           ),
@@ -99,34 +103,74 @@ class AccountsScreen extends ConsumerWidget {
           ...sorted.map(
             (account) => Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.md),
-              child: AccountCard(
-                account: account,
-                currentUserId: currentUserId,
-                onTap: () =>
-                    context.go('/finance/accounts/${account.id}'),
-                onTogglePin: () => ref
-                    .read(accountsProvider.notifier)
-                    .togglePin(account.id, account.isPinned),
-                onEditNickname: () => EditNicknameModal.show(
-                  context: context,
-                  account: account,
-                  onSuccess: () =>
-                      ref.read(accountsProvider.notifier).refresh(),
+              child: Dismissible(
+                key: Key(account.id),
+                direction: DismissDirection.endToStart,
+                background: Container(
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.only(right: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(Icons.delete, color: Colors.white),
                 ),
-                onUpdateBalance: () => UpdateBalanceModal.show(
-                  context: context,
+                confirmDismiss: (_) => _confirmDeleteAccount(context, account),
+                onDismissed: (_) {
+                  HapticFeedback.mediumImpact();
+                  ref.read(accountsProvider.notifier).delete(account.id);
+                },
+                child: AccountCard(
                   account: account,
-                  onSuccess: () =>
-                      ref.read(accountsProvider.notifier).refresh(),
-                ),
-                onAddIncome: () => AddIncomeModal.show(
-                  context: context,
-                  account: account,
-                  onSuccess: () =>
-                      ref.read(accountsProvider.notifier).refresh(),
+                  currentUserId: currentUserId,
+                  onTap: () =>
+                      context.go('/finance/accounts/${account.id}'),
+                  onTogglePin: () => ref
+                      .read(accountsProvider.notifier)
+                      .togglePin(account.id, account.isPinned),
+                  onEditNickname: () => EditNicknameModal.show(
+                    context: context,
+                    account: account,
+                    onSuccess: () =>
+                        ref.read(accountsProvider.notifier).refresh(),
+                  ),
+                  onUpdateBalance: () => UpdateBalanceModal.show(
+                    context: context,
+                    account: account,
+                    onSuccess: () =>
+                        ref.read(accountsProvider.notifier).refresh(),
+                  ),
+                  onAddIncome: () => AddIncomeModal.show(
+                    context: context,
+                    account: account,
+                    onSuccess: () =>
+                        ref.read(accountsProvider.notifier).refresh(),
+                  ),
                 ),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<bool?> _confirmDeleteAccount(
+      BuildContext context, Account account) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Account'),
+        content: Text('Delete "${account.name}"? This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete',
+                style: TextStyle(color: Colors.red)),
           ),
         ],
       ),

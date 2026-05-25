@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:luvverse/core/theme/app_colors.dart';
@@ -37,7 +38,10 @@ class GoalsScreen extends ConsumerWidget {
                 label: 'Add Goal',
                 icon: Icons.add,
                 size: ButtonSize.sm,
-                onPressed: () => AddGoalForm.show(context),
+                onPressed: () {
+                  HapticFeedback.mediumImpact();
+                  AddGoalForm.show(context);
+                },
               ),
             ],
           ),
@@ -116,6 +120,7 @@ class _GoalsList extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () {
+              HapticFeedback.mediumImpact();
               Navigator.pop(ctx);
               ref.read(goalsProvider.notifier).delete(goal.id);
             },

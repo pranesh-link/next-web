@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:luvverse/core/theme/app_colors.dart';
@@ -88,14 +89,20 @@ class TransactionsScreen extends ConsumerWidget {
         children: [
           FloatingActionButton.small(
             heroTag: 'scan',
-            onPressed: () => _scanReceipt(context),
+            onPressed: () {
+              HapticFeedback.mediumImpact();
+              _scanReceipt(context);
+            },
             backgroundColor: AppColors.accent,
             child: const Icon(Icons.document_scanner, color: Colors.white),
           ),
           const SizedBox(height: AppSpacing.sm),
           FloatingActionButton(
             heroTag: 'add',
-            onPressed: () => AddTransactionForm.show(context),
+            onPressed: () {
+              HapticFeedback.mediumImpact();
+              AddTransactionForm.show(context);
+            },
             backgroundColor: AppColors.accent,
             child: const Icon(Icons.add, color: Colors.white),
           ),
@@ -157,6 +164,7 @@ class TransactionsScreen extends ConsumerWidget {
       ),
     );
     if (confirmed == true) {
+      HapticFeedback.mediumImpact();
       try {
         await ref.read(transactionsProvider.notifier).delete(tx.id);
         if (context.mounted) {

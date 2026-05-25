@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:luvverse/core/theme/app_colors.dart';
@@ -31,7 +32,10 @@ class InvestmentsScreen extends ConsumerWidget {
             children: [
               AppButton(
                 label: 'Add Investment',
-                onPressed: () => AddInvestmentForm.show(context),
+                onPressed: () {
+                  HapticFeedback.mediumImpact();
+                  AddInvestmentForm.show(context);
+                },
                 size: ButtonSize.sm,
               ),
             ],

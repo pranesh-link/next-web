@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:luvverse/core/theme/app_colors.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
@@ -77,7 +78,10 @@ class TransactionTile extends StatelessWidget {
         child: const Icon(Icons.delete, color: Colors.white),
       ),
       confirmDismiss: (_) async => true,
-      onDismissed: (_) => onDismissed(),
+      onDismissed: (_) {
+        HapticFeedback.mediumImpact();
+        onDismissed();
+      },
       child: ListTile(
         contentPadding: EdgeInsets.zero,
         onTap: onTap,

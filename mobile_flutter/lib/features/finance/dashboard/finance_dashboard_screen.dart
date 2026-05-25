@@ -126,7 +126,7 @@ class FinanceDashboardScreen extends ConsumerWidget {
         balance.when(
           loading: () => const LoadingSkeleton(type: SkeletonType.card, count: 1),
           error: (_, __) => const SizedBox.shrink(),
-          data: (val) => SummaryCard(title: 'Total Balance', value: _currencyFormat.format(val), icon: Icons.account_balance_wallet),
+          data: (val) => _AnimatedSummaryCard(title: 'Total Balance', value: val, icon: Icons.account_balance_wallet),
         ),
         const SizedBox(height: AppSpacing.md),
         Row(
@@ -135,7 +135,7 @@ class FinanceDashboardScreen extends ConsumerWidget {
               child: income.when(
                 loading: () => const LoadingSkeleton(type: SkeletonType.card, count: 1),
                 error: (_, __) => const SizedBox.shrink(),
-                data: (val) => SummaryCard(title: 'Income', value: _currencyFormat.format(val), icon: Icons.trending_up),
+                data: (val) => _AnimatedSummaryCard(title: 'Income', value: val, icon: Icons.trending_up),
               ),
             ),
             const SizedBox(width: AppSpacing.md),
@@ -143,7 +143,7 @@ class FinanceDashboardScreen extends ConsumerWidget {
               child: expense.when(
                 loading: () => const LoadingSkeleton(type: SkeletonType.card, count: 1),
                 error: (_, __) => const SizedBox.shrink(),
-                data: (val) => SummaryCard(title: 'Expenses', value: _currencyFormat.format(val), icon: Icons.trending_down),
+                data: (val) => _AnimatedSummaryCard(title: 'Expenses', value: val, icon: Icons.trending_down),
               ),
             ),
           ],
@@ -157,9 +157,9 @@ class FinanceDashboardScreen extends ConsumerWidget {
                 error: (_, __) => const SizedBox.shrink(),
                 data: (incVal) {
                   final expVal = expense.valueOrNull ?? 0.0;
-                  return SummaryCard(
+                  return _AnimatedSummaryCard(
                     title: 'Cash Flow',
-                    value: _currencyFormat.format(incVal - expVal),
+                    value: incVal - expVal,
                     icon: Icons.swap_vert,
                   );
                 },
@@ -170,9 +170,9 @@ class FinanceDashboardScreen extends ConsumerWidget {
               child: savingsRate.when(
                 loading: () => const LoadingSkeleton(type: SkeletonType.card, count: 1),
                 error: (_, __) => const SizedBox.shrink(),
-                data: (val) => SummaryCard(
+                data: (val) => _AnimatedPercentCard(
                   title: 'Savings Rate',
-                  value: '${val.toStringAsFixed(1)}%',
+                  value: val,
                   icon: Icons.savings_outlined,
                 ),
               ),
@@ -249,6 +249,58 @@ class FinanceDashboardScreen extends ConsumerWidget {
       title: Text(tx.description ?? tx.category, style: AppTypography.body),
       subtitle: Text(DateFormat('dd MMM yyyy').format(tx.date), style: AppTypography.small),
       trailing: CurrencyDisplay(amount: isIncome ? tx.amount : -tx.amount, colorCoded: true, showSign: true, style: AppTypography.body),
+    );
+  }
+}
+
+class _AnimatedSummaryCard extends StatelessWidget {
+  final String title;
+  final double value;
+  final IconData icon;
+
+  const _AnimatedSummaryCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: value),
+      duration: const Duration(milliseconds: 800),
+      curve: Curves.easeOutCubic,
+      builder: (context, animatedValue, _) => SummaryCard(
+        title: title,
+        value: _currencyFormat.format(animatedValue),
+        icon: icon,
+      ),
+    );
+  }
+}
+
+class _AnimatedPercentCard extends StatelessWidget {
+  final String title;
+  final double value;
+  final IconData icon;
+
+  const _AnimatedPercentCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: value),
+      duration: const Duration(milliseconds: 800),
+      curve: Curves.easeOutCubic,
+      builder: (context, animatedValue, _) => SummaryCard(
+        title: title,
+        value: '${animatedValue.toStringAsFixed(1)}%',
+        icon: icon,
+      ),
     );
   }
 }
