@@ -10,6 +10,8 @@ const _serverClientId =
 /// On Android: Play Services uses the Android OAuth client matched by
 /// package name + signing cert SHA-1 from google-services.json project.
 /// [serverClientId] requests an idToken for backend verification.
+/// On iOS: the iOS OAuth client ID from GoogleService-Info.plist is used
+/// automatically; serverClientId is needed for backend token exchange.
 /// On Web: serverClientId is not supported — client ID is set via meta tag
 /// in web/index.html instead.
 final googleSignInInstance = GoogleSignIn(

@@ -57,7 +57,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                 'LuvVerse',
                 style: TextStyle(fontSize: 36, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -0.5),
               ),
-              SizedBox(height: 24),
+              SizedBox(height: 8),
+              Text(
+                'Everyday for the couple',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: Colors.white70, letterSpacing: 0.3),
+              ),
+              SizedBox(height: 32),
               SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white70)),
             ],
           ),
