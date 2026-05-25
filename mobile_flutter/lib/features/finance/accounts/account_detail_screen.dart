@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';
@@ -21,7 +21,7 @@ class AccountDetailScreen extends ConsumerWidget {
     final txnsAsync = ref.watch(transactionsProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: context.colors.bg,
       appBar: AppBar(
         title: accountsAsync.whenOrNull(
               data: (accounts) => Text(
@@ -49,7 +49,7 @@ class AccountDetailScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeader(account.name, account.nickname, account.type, account.balance),
+                _buildHeader(context, account.name, account.nickname, account.type, account.balance),
                 const SizedBox(height: AppSpacing.xxl),
                 Text('Recent Transactions', style: AppTypography.sectionTitle),
                 const SizedBox(height: AppSpacing.md),
@@ -65,11 +65,11 @@ class AccountDetailScreen extends ConsumerWidget {
                       return Padding(
                         padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl),
                         child: Center(
-                          child: Text('No transactions yet', style: AppTypography.body.copyWith(color: AppColors.textMuted)),
+                          child: Text('No transactions yet', style: AppTypography.body.copyWith(color: context.colors.textMuted)),
                         ),
                       );
                     }
-                    return Column(children: filtered.take(10).map(_buildTxTile).toList());
+                    return Column(children: filtered.take(10).map((tx) => _buildTxTile(context, tx)).toList());
                   },
                 ),
                 const SizedBox(height: AppSpacing.xxl),
@@ -82,30 +82,30 @@ class AccountDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeader(String name, String? nickname, String type, double balance) {
+  Widget _buildHeader(BuildContext context, String name, String? nickname, String type, double balance) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (nickname != null) Text(nickname, style: AppTypography.body.copyWith(color: AppColors.textMuted)),
+        if (nickname != null) Text(nickname, style: AppTypography.body.copyWith(color: context.colors.textMuted)),
         const SizedBox(height: AppSpacing.xs),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
-          decoration: BoxDecoration(color: AppColors.accent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
-          child: Text(type.replaceAll('_', ' '), style: AppTypography.xs.copyWith(color: AppColors.accent)),
+          decoration: BoxDecoration(color: context.colors.accent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
+          child: Text(type.replaceAll('_', ' '), style: AppTypography.xs.copyWith(color: context.colors.accent)),
         ),
         const SizedBox(height: AppSpacing.lg),
-        Text('Current Balance', style: AppTypography.label.copyWith(color: AppColors.textMuted)),
+        Text('Current Balance', style: AppTypography.label.copyWith(color: context.colors.textMuted)),
         const SizedBox(height: AppSpacing.xs),
         CurrencyDisplay(amount: balance, colorCoded: false, style: AppTypography.pageTitle),
       ],
     );
   }
 
-  Widget _buildTxTile(Transaction tx) {
+  Widget _buildTxTile(BuildContext context, Transaction tx) {
     final isIncome = tx.type == TransactionType.income;
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: Icon(isIncome ? Icons.arrow_downward : Icons.arrow_upward, color: isIncome ? AppColors.success : AppColors.danger),
+      leading: Icon(isIncome ? Icons.arrow_downward : Icons.arrow_upward, color: isIncome ? context.colors.success : context.colors.danger),
       title: Text(tx.description ?? tx.category, style: AppTypography.body),
       subtitle: Text(DateFormat('dd MMM yyyy').format(tx.date), style: AppTypography.small),
       trailing: CurrencyDisplay(amount: isIncome ? tx.amount : -tx.amount, colorCoded: true, showSign: true, style: AppTypography.body),
@@ -124,7 +124,7 @@ class AccountDetailScreen extends ConsumerWidget {
               content: const Text('Are you sure? This cannot be undone.'),
               actions: [
                 TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Delete', style: TextStyle(color: AppColors.danger))),
+                TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Delete', style: TextStyle(color: context.colors.danger))),
               ],
             ),
           );
@@ -133,7 +133,7 @@ class AccountDetailScreen extends ConsumerWidget {
             if (context.mounted) Navigator.pop(context);
           }
         },
-        style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+        style: TextButton.styleFrom(foregroundColor: context.colors.danger),
         child: const Text('Delete Account'),
       ),
     );

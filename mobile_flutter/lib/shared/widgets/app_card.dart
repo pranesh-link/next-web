@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 
 class AppCard extends StatelessWidget {
@@ -23,7 +23,7 @@ class AppCard extends StatelessWidget {
       child: Container(
         padding: padding ?? const EdgeInsets.all(AppSpacing.xxl),
         decoration: BoxDecoration(
-          color: AppColors.bgElevated,
+          color: context.colors.bgElevated,
           border: Border.all(color: const Color(0xFFE5E7EB)),
           borderRadius: BorderRadius.circular(16),
         ),
@@ -37,10 +37,10 @@ class AppCard extends StatelessWidget {
                     margin: const EdgeInsets.only(right: AppSpacing.md),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(2),
-                      gradient: const LinearGradient(
+                      gradient: LinearGradient(
                         begin: Alignment(-0.7, -0.7),
                         end: Alignment(0.7, 0.7),
-                        colors: [AppColors.gradientStart, AppColors.gradientEnd],
+                        colors: [context.colors.gradientStart, context.colors.gradientEnd],
                       ),
                     ),
                   ),

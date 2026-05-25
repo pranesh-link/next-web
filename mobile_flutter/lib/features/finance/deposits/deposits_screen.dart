@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/deposits/deposit_card.dart';
@@ -104,7 +104,7 @@ class _SummarySection extends StatelessWidget {
                 label: 'Total Invested',
                 value: currencyFmt.format(totalInvested),
                 icon: Icons.account_balance_wallet,
-                color: AppColors.accent,
+                color: context.colors.accent,
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
@@ -113,7 +113,7 @@ class _SummarySection extends StatelessWidget {
                 label: 'Maturity Value',
                 value: currencyFmt.format(maturityValue),
                 icon: Icons.trending_up,
-                color: AppColors.success,
+                color: context.colors.success,
               ),
             ),
           ],
@@ -135,7 +135,7 @@ class _SummarySection extends StatelessWidget {
                 label: 'Active / Matured',
                 value: '$activeCount / $maturedCount',
                 icon: Icons.pie_chart_outline,
-                color: AppColors.accent,
+                color: context.colors.accent,
               ),
             ),
           ],
@@ -171,7 +171,7 @@ class _SummaryCard extends StatelessWidget {
               Expanded(
                 child: Text(label,
                     style: AppTypography.xs
-                        .copyWith(color: AppColors.textMuted)),
+                        .copyWith(color: context.colors.textMuted)),
               ),
             ],
           ),

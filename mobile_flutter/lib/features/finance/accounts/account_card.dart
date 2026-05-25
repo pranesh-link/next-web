@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/models/account.dart';
@@ -34,11 +34,11 @@ class AccountCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.xxl),
         decoration: BoxDecoration(
-          color: AppColors.bgElevated,
+          color: context.colors.bgElevated,
           border: Border.all(
             color: account.isPinned
                 ? const Color(0xFFD4AF37)
-                : AppColors.cardBorder,
+                : context.colors.cardBorder,
             width: account.isPinned ? 2 : 1,
           ),
           borderRadius: BorderRadius.circular(16),
@@ -46,24 +46,24 @@ class AccountCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeader(),
+            _buildHeader(context),
             const SizedBox(height: AppSpacing.md),
             _buildBadges(),
             const SizedBox(height: AppSpacing.md),
-            _buildTypeRow(),
+            _buildTypeRow(context),
             const SizedBox(height: AppSpacing.md),
             CurrencyDisplay(amount: account.balance, colorCoded: true),
             const SizedBox(height: AppSpacing.sm),
             _buildLastUpdated(),
             const SizedBox(height: AppSpacing.lg),
-            _buildActionRow(),
+            _buildActionRow(context),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
     return Row(
       children: [
         Expanded(
@@ -84,13 +84,13 @@ class AccountCard extends StatelessWidget {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.accent.withOpacity(0.1),
+                    color: context.colors.accent.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     account.nickname!,
                     style: AppTypography.xs.copyWith(
-                      color: AppColors.accent,
+                      color: context.colors.accent,
                     ),
                   ),
                 ),
@@ -142,10 +142,10 @@ class AccountCard extends StatelessWidget {
     );
   }
 
-  Widget _buildTypeRow() {
+  Widget _buildTypeRow(BuildContext context) {
     return Row(
       children: [
-        Icon(_iconForType(account.type), size: 16, color: AppColors.accent),
+        Icon(_iconForType(account.type), size: 16, color: context.colors.accent),
         const SizedBox(width: AppSpacing.xs),
         Text(_labelForType(account.type), style: AppTypography.small),
       ],
@@ -178,20 +178,20 @@ class AccountCard extends StatelessWidget {
     return 'Partner';
   }
 
-  Widget _buildActionRow() {
+  Widget _buildActionRow(BuildContext context) {
     return Wrap(
       spacing: AppSpacing.sm,
       runSpacing: AppSpacing.xs,
       children: [
-        _actionChip('✏️ Nickname', onEditNickname),
-        _actionChip('💰 Balance', onUpdateBalance),
+        _actionChip(context, '✏️ Nickname', onEditNickname),
+        _actionChip(context, '💰 Balance', onUpdateBalance),
         if (account.isSalaryAccount && onAddIncome != null)
-          _actionChip('💰 Add Income', onAddIncome!),
+          _actionChip(context, '💰 Add Income', onAddIncome!),
       ],
     );
   }
 
-  Widget _actionChip(String label, VoidCallback onTap) {
+  Widget _actionChip(BuildContext context, String label, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -200,12 +200,12 @@ class AccountCard extends StatelessWidget {
           vertical: AppSpacing.xs,
         ),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: context.colors.surface,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.cardBorder),
+          border: Border.all(color: context.colors.cardBorder),
         ),
         child: Text(label, style: AppTypography.xs.copyWith(
-          color: AppColors.textDim,
+          color: context.colors.textDim,
         )),
       ),
     );

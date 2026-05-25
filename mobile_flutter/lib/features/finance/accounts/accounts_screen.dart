@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/accounts/account_card.dart';
@@ -98,7 +98,7 @@ class AccountsScreen extends ConsumerWidget {
       onRefresh: () => ref.read(accountsProvider.notifier).refresh(),
       child: ListView(
         children: [
-          _buildTotalBalanceBar(totalBalance),
+          _buildTotalBalanceBar(context, totalBalance),
           const SizedBox(height: AppSpacing.lg),
           ...sorted.map(
             (account) => Padding(
@@ -177,15 +177,15 @@ class AccountsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTotalBalanceBar(double total) {
+  Widget _buildTotalBalanceBar(BuildContext context, double total) {
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.xxl,
         vertical: AppSpacing.lg,
       ),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.gradientStart, AppColors.gradientEnd],
+        gradient: LinearGradient(
+          colors: [context.colors.gradientStart, context.colors.gradientEnd],
         ),
         borderRadius: BorderRadius.circular(12),
       ),

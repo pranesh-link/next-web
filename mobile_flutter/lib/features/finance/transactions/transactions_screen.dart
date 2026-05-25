@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';
@@ -93,7 +93,7 @@ class TransactionsScreen extends ConsumerWidget {
               HapticFeedback.mediumImpact();
               _scanReceipt(context);
             },
-            backgroundColor: AppColors.accent,
+            backgroundColor: context.colors.accent,
             child: const Icon(Icons.document_scanner, color: Colors.white),
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -103,7 +103,7 @@ class TransactionsScreen extends ConsumerWidget {
               HapticFeedback.mediumImpact();
               AddTransactionForm.show(context);
             },
-            backgroundColor: AppColors.accent,
+            backgroundColor: context.colors.accent,
             child: const Icon(Icons.add, color: Colors.white),
           ),
         ],
@@ -158,8 +158,8 @@ class TransactionsScreen extends ConsumerWidget {
               child: const Text('Cancel')),
           TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Delete',
-                  style: TextStyle(color: AppColors.danger))),
+              child: Text('Delete',
+                  style: TextStyle(color: context.colors.danger))),
         ],
       ),
     );
@@ -203,6 +203,7 @@ class _FilterBar extends StatelessWidget {
       children: [
         Expanded(
           child: _chipDropdown(
+            context: context,
             value: categoryFilter,
             items: _filterCategories,
             onChanged: (v) => onCategoryChanged(v ?? 'All'),
@@ -212,6 +213,7 @@ class _FilterBar extends StatelessWidget {
         const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: _chipDropdown(
+            context: context,
             value: accountFilter ?? 'All',
             items: ['All', ...accounts.map((a) => a.id as String)],
             labels: {
@@ -227,6 +229,7 @@ class _FilterBar extends StatelessWidget {
   }
 
   Widget _chipDropdown({
+    required BuildContext context,
     required String value,
     required List<String> items,
     required ValueChanged<String?> onChanged,
@@ -238,16 +241,16 @@ class _FilterBar extends StatelessWidget {
       isExpanded: true,
       decoration: InputDecoration(
         filled: true,
-        fillColor: AppColors.bgElevated,
+        fillColor: context.colors.bgElevated,
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide(color: context.colors.border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide(color: context.colors.border),
         ),
       ),
       style: AppTypography.small,

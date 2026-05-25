@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/providers/extended_providers.dart';
@@ -29,14 +29,15 @@ class _HealthScoreCard extends StatelessWidget {
   final HealthScore score;
   const _HealthScoreCard({required this.score});
 
-  Color get _scoreColor {
-    if (score.score >= 80) return AppColors.success;
+  Color _scoreColor(BuildContext context) {
+    if (score.score >= 80) return context.colors.success;
     if (score.score >= 60) return const Color(0xFFF59E0B);
-    return AppColors.danger;
+    return context.colors.danger;
   }
 
   @override
   Widget build(BuildContext context) {
+    final scoreColor = _scoreColor(context);
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -49,13 +50,14 @@ class _HealthScoreCard extends StatelessWidget {
                 child: CustomPaint(
                   painter: _ScoreRingPainter(
                     progress: score.score / 100,
-                    color: _scoreColor,
+                    color: scoreColor,
+                    bgColor: context.colors.border,
                   ),
                   child: Center(
                     child: Text(
                       '${score.score}',
                       style: AppTypography.cardTitle.copyWith(
-                        color: _scoreColor,
+                        color: scoreColor,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -73,13 +75,13 @@ class _HealthScoreCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: _scoreColor.withAlpha(25),
+                        color: scoreColor.withAlpha(25),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         score.rating,
                         style: AppTypography.xs.copyWith(
-                          color: _scoreColor,
+                          color: scoreColor,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -133,11 +135,11 @@ class _BreakdownRow extends StatelessWidget {
     this.invertColor = false,
   });
 
-  Color get _color {
+  Color _color(BuildContext context) {
     final p = invertColor ? 1 - progress : progress;
-    if (p >= 0.7) return AppColors.success;
+    if (p >= 0.7) return context.colors.success;
     if (p >= 0.4) return const Color(0xFFF59E0B);
-    return AppColors.danger;
+    return context.colors.danger;
   }
 
   @override
@@ -146,7 +148,7 @@ class _BreakdownRow extends StatelessWidget {
       children: [
         Expanded(
           flex: 2,
-          child: Text(label, style: AppTypography.xs.copyWith(color: AppColors.textMuted)),
+          child: Text(label, style: AppTypography.xs.copyWith(color: context.colors.textMuted)),
         ),
         Expanded(
           flex: 3,
@@ -154,8 +156,8 @@ class _BreakdownRow extends StatelessWidget {
             borderRadius: BorderRadius.circular(3),
             child: LinearProgressIndicator(
               value: progress.clamp(0.0, 1.0),
-              backgroundColor: AppColors.border,
-              color: _color,
+              backgroundColor: context.colors.border,
+              color: _color(context),
               minHeight: 5,
             ),
           ),
@@ -175,8 +177,9 @@ class _BreakdownRow extends StatelessWidget {
 class _ScoreRingPainter extends CustomPainter {
   final double progress;
   final Color color;
+  final Color bgColor;
 
-  _ScoreRingPainter({required this.progress, required this.color});
+  _ScoreRingPainter({required this.progress, required this.color, required this.bgColor});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -188,7 +191,7 @@ class _ScoreRingPainter extends CustomPainter {
       center,
       radius,
       Paint()
-        ..color = AppColors.border
+        ..color = bgColor
         ..style = PaintingStyle.stroke
         ..strokeWidth = 6,
     );

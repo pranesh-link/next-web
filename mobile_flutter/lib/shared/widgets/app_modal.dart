@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 
 enum ModalSize { sm, md, lg, full }
@@ -25,20 +25,20 @@ class AppModal {
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         height: MediaQuery.of(context).size.height * height,
-        decoration: const BoxDecoration(
-          color: AppColors.bgElevated,
+        decoration: BoxDecoration(
+          color: context.colors.bgElevated,
           borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
         ),
         child: Column(
           children: [
             const SizedBox(height: AppSpacing.md),
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: AppColors.borderStrong, borderRadius: BorderRadius.circular(2))),
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: context.colors.borderStrong, borderRadius: BorderRadius.circular(2))),
             Padding(
               padding: const EdgeInsets.fromLTRB(AppSpacing.xxl, AppSpacing.lg, AppSpacing.sm, AppSpacing.sm),
               child: Row(
                 children: [
-                  Expanded(child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.text))),
-                  IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close, color: AppColors.textMuted)),
+                  Expanded(child: Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: context.colors.text))),
+                  IconButton(onPressed: () => Navigator.pop(context), icon: Icon(Icons.close, color: context.colors.textMuted)),
                 ],
               ),
             ),
@@ -47,7 +47,7 @@ class AppModal {
             if (actions != null)
               Container(
                 padding: const EdgeInsets.all(AppSpacing.lg),
-                decoration: BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
+                decoration: BoxDecoration(border: Border(top: BorderSide(color: context.colors.border))),
                 child: Row(children: actions.map((a) => Expanded(child: a)).toList()),
               ),
           ],

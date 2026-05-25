@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/budget_planner/planner_constants.dart';
@@ -37,22 +37,22 @@ class PlannerItemCard extends StatelessWidget {
         alignment: Alignment.centerLeft,
         padding: const EdgeInsets.only(left: 20),
         decoration: BoxDecoration(
-          color: AppColors.success.withAlpha(30),
+          color: context.colors.success.withAlpha(30),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Icon(
           isPaid ? Icons.remove_circle_outline : Icons.check_circle,
-          color: AppColors.success,
+          color: context.colors.success,
         ),
       ),
       secondaryBackground: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         decoration: BoxDecoration(
-          color: AppColors.danger.withAlpha(30),
+          color: context.colors.danger.withAlpha(30),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: const Icon(Icons.delete_outline, color: AppColors.danger),
+        child: Icon(Icons.delete_outline, color: context.colors.danger),
       ),
       confirmDismiss: (direction) async {
         if (direction == DismissDirection.endToStart) {
@@ -68,12 +68,12 @@ class PlannerItemCard extends StatelessWidget {
         child: Container(
           constraints: const BoxConstraints(minHeight: 100),
           decoration: BoxDecoration(
-            color: AppColors.bgElevated,
+            color: context.colors.bgElevated,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isPaid
-                  ? AppColors.success.withAlpha(40)
-                  : AppColors.cardBorder,
+                  ? context.colors.success.withAlpha(40)
+                  : context.colors.cardBorder,
             ),
           ),
           child: Row(
@@ -119,8 +119,8 @@ class PlannerItemCard extends StatelessWidget {
                             ),
                           const Spacer(),
                           if (isPaid)
-                            const Icon(Icons.check_circle,
-                                size: 18, color: AppColors.success),
+                            Icon(Icons.check_circle,
+                                size: 18, color: context.colors.success),
                         ],
                       ),
                       const SizedBox(height: AppSpacing.sm),
@@ -131,7 +131,7 @@ class PlannerItemCard extends StatelessWidget {
                           fontWeight: FontWeight.w600,
                           decoration:
                               isPaid ? TextDecoration.lineThrough : null,
-                          color: isPaid ? AppColors.textMuted : AppColors.text,
+                          color: isPaid ? context.colors.textMuted : context.colors.text,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -140,7 +140,7 @@ class PlannerItemCard extends StatelessWidget {
                         _currencyFormat.format(item.amount),
                         style: AppTypography.cardTitle.copyWith(
                           fontSize: 18,
-                          color: isPaid ? AppColors.textMuted : AppColors.text,
+                          color: isPaid ? context.colors.textMuted : context.colors.text,
                         ),
                       ),
                     ],

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 
 class TrendPill extends StatelessWidget {
@@ -11,7 +11,7 @@ class TrendPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _isPositive ? AppColors.success : AppColors.danger;
+    final color = _isPositive ? context.colors.success : context.colors.danger;
     final icon = _isPositive ? Icons.trending_up : Icons.trending_down;
     final text = '${_isPositive ? '+' : ''}${percent.toStringAsFixed(1)}%';
 

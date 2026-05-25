@@ -24,6 +24,7 @@ import 'package:luvverse/features/couple/couple_management_screen.dart';
 import 'package:luvverse/features/lifestyle/lifestyle_screen.dart';
 import 'package:luvverse/features/settings/settings_screen.dart';
 import 'package:luvverse/features/couple/invite_screen.dart';
+import 'package:luvverse/features/onboarding/onboarding_screen.dart';
 import 'package:luvverse/core/auth/auth_provider.dart';
 
 /// Navigation shell keys for nested navigation.
@@ -44,8 +45,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isLoggedIn = auth.isAuthenticated;
       final isLoggingIn = state.uri.path == '/login';
       final isSplash = state.uri.path == '/splash';
+      final isOnboarding = state.uri.path == '/onboarding';
 
       if (isSplash) return null;
+      if (isOnboarding) return null;
       if (!isLoggedIn) return isLoggingIn ? null : '/login';
       if (isLoggingIn) return '/home';
       return null;
@@ -58,6 +61,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/onboarding',
+        builder: (context, state) => OnboardingScreen(
+          onComplete: () => GoRouter.of(context).go('/login'),
+        ),
       ),
 
       // Main shell with bottom navigation

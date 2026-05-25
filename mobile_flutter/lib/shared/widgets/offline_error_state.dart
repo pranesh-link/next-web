@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:luvverse/core/network/api_exceptions.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 
@@ -26,7 +26,7 @@ class OfflineErrorState extends StatelessWidget {
             Icon(
               isOffline ? Icons.wifi_off_rounded : Icons.error_outline_rounded,
               size: 48,
-              color: isOffline ? AppColors.textMuted : AppColors.danger,
+              color: isOffline ? context.colors.textMuted : context.colors.danger,
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(
@@ -41,7 +41,7 @@ class OfflineErrorState extends StatelessWidget {
               isOffline
                   ? 'Data will appear when you reconnect.'
                   : _userFriendlyMessage(error),
-              style: AppTypography.small.copyWith(color: AppColors.textMuted),
+              style: AppTypography.small.copyWith(color: context.colors.textMuted),
               textAlign: TextAlign.center,
             ),
             if (onRetry != null) ...[

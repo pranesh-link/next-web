@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/loans/widgets/prepayment_simulator.dart';
@@ -24,7 +24,7 @@ class LoanDetailScreen extends ConsumerWidget {
     final loansAsync = ref.watch(loansProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: context.colors.bg,
       appBar: AppBar(
         title: loansAsync.whenOrNull(
               data: (loans) => Text(loans.where((l) => l.id == loanId).firstOrNull?.name ?? 'Loan'),
@@ -48,13 +48,13 @@ class LoanDetailScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeader(loan),
+                _buildHeader(context, loan),
                 const SizedBox(height: AppSpacing.lg),
-                _buildStatsRow(loan),
+                _buildStatsRow(context, loan),
                 const SizedBox(height: AppSpacing.lg),
-                _buildProgress(loan),
+                _buildProgress(context, loan),
                 const SizedBox(height: AppSpacing.lg),
-                _buildDetailsSection(loan),
+                _buildDetailsSection(context, loan),
                 const SizedBox(height: AppSpacing.xxl),
                 PrepaymentSimulator(loan: loan),
                 if (loan.schedule != null && loan.schedule!.isNotEmpty) ...[
@@ -63,7 +63,7 @@ class LoanDetailScreen extends ConsumerWidget {
                 ],
                 if (loan.prepayments != null && loan.prepayments!.isNotEmpty) ...[
                   const SizedBox(height: AppSpacing.xxl),
-                  _buildPrepayments(loan.prepayments!),
+                  _buildPrepayments(context, loan.prepayments!),
                 ],
                 const SizedBox(height: AppSpacing.xxl),
               ],
@@ -74,47 +74,47 @@ class LoanDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeader(Loan loan) {
+  Widget _buildHeader(BuildContext context, Loan loan) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (loan.loanProvider != null)
-          Text(loan.loanProvider!, style: AppTypography.body.copyWith(color: AppColors.textMuted)),
+          Text(loan.loanProvider!, style: AppTypography.body.copyWith(color: context.colors.textMuted)),
         if (loan.loanAccountNumber != null)
-          Text('A/C: ${loan.loanAccountNumber}', style: AppTypography.xs.copyWith(color: AppColors.textMuted)),
+          Text('A/C: ${loan.loanAccountNumber}', style: AppTypography.xs.copyWith(color: context.colors.textMuted)),
         const SizedBox(height: AppSpacing.xs),
-        Text('Remaining Balance', style: AppTypography.label.copyWith(color: AppColors.textMuted)),
+        Text('Remaining Balance', style: AppTypography.label.copyWith(color: context.colors.textMuted)),
         CurrencyDisplay(amount: loan.remainingBalance, colorCoded: false, style: AppTypography.pageTitle),
       ],
     );
   }
 
-  Widget _buildStatsRow(Loan loan) {
+  Widget _buildStatsRow(BuildContext context, Loan loan) {
     return Row(
       children: [
-        _statCard('Principal', _fmt.format(loan.principal)),
+        _statCard(context, 'Principal', _fmt.format(loan.principal)),
         const SizedBox(width: AppSpacing.sm),
-        _statCard('Rate', '${loan.interestRate}%'),
+        _statCard(context, 'Rate', '${loan.interestRate}%'),
         const SizedBox(width: AppSpacing.sm),
-        _statCard('Tenure', '${loan.tenureMonths}mo'),
+        _statCard(context, 'Tenure', '${loan.tenureMonths}mo'),
         const SizedBox(width: AppSpacing.sm),
-        _statCard('EMI', _fmt.format(loan.emiAmount)),
+        _statCard(context, 'EMI', _fmt.format(loan.emiAmount)),
       ],
     );
   }
 
-  Widget _statCard(String label, String value) {
+  Widget _statCard(BuildContext context, String label, String value) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
-          color: AppColors.bgElevated,
+          color: context.colors.bgElevated,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: context.colors.border),
         ),
         child: Column(
           children: [
-            Text(label, style: AppTypography.xs.copyWith(color: AppColors.textMuted)),
+            Text(label, style: AppTypography.xs.copyWith(color: context.colors.textMuted)),
             const SizedBox(height: AppSpacing.xs),
             Text(value, style: AppTypography.bodyMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
           ],
@@ -123,7 +123,7 @@ class LoanDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildProgress(Loan loan) {
+  Widget _buildProgress(BuildContext context, Loan loan) {
     final paid = loan.principal - loan.remainingBalance;
     final progress = loan.principal > 0 ? (paid / loan.principal).clamp(0.0, 1.0) : 0.0;
     return Column(
@@ -132,8 +132,8 @@ class LoanDetailScreen extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('${(progress * 100).toStringAsFixed(1)}% repaid', style: AppTypography.body.copyWith(color: AppColors.accent)),
-            Text(_fmt.format(paid), style: AppTypography.small.copyWith(color: AppColors.textMuted)),
+            Text('${(progress * 100).toStringAsFixed(1)}% repaid', style: AppTypography.body.copyWith(color: context.colors.accent)),
+            Text(_fmt.format(paid), style: AppTypography.small.copyWith(color: context.colors.textMuted)),
           ],
         ),
         const SizedBox(height: AppSpacing.sm),
@@ -141,8 +141,8 @@ class LoanDetailScreen extends ConsumerWidget {
           borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
             value: progress,
-            backgroundColor: AppColors.border,
-            color: progress >= 1.0 ? AppColors.success : AppColors.accent,
+            backgroundColor: context.colors.border,
+            color: progress >= 1.0 ? context.colors.success : context.colors.accent,
             minHeight: 10,
           ),
         ),
@@ -150,39 +150,39 @@ class LoanDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildDetailsSection(Loan loan) {
+  Widget _buildDetailsSection(BuildContext context, Loan loan) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: AppColors.bgElevated,
+        color: context.colors.bgElevated,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.colors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Loan Details', style: AppTypography.sectionTitle),
           const SizedBox(height: AppSpacing.md),
-          _detailRow('Start Date', _dateFormat.format(loan.startDate)),
-          _detailRow('Tenure', '${loan.tenureMonths} months'),
-          _detailRow('Interest Rate', '${loan.interestRate}% p.a.'),
-          _detailRow('Monthly EMI', _fmt.format(loan.emiAmount)),
-          _detailRow('Total Payable', _fmt.format(loan.emiAmount * loan.tenureMonths)),
-          _detailRow('Total Interest', _fmt.format((loan.emiAmount * loan.tenureMonths) - loan.principal)),
-          if (loan.loanProvider != null) _detailRow('Provider', loan.loanProvider!),
-          if (loan.loanAccountNumber != null) _detailRow('Account No.', loan.loanAccountNumber!),
+          _detailRow(context, 'Start Date', _dateFormat.format(loan.startDate)),
+          _detailRow(context, 'Tenure', '${loan.tenureMonths} months'),
+          _detailRow(context, 'Interest Rate', '${loan.interestRate}% p.a.'),
+          _detailRow(context, 'Monthly EMI', _fmt.format(loan.emiAmount)),
+          _detailRow(context, 'Total Payable', _fmt.format(loan.emiAmount * loan.tenureMonths)),
+          _detailRow(context, 'Total Interest', _fmt.format((loan.emiAmount * loan.tenureMonths) - loan.principal)),
+          if (loan.loanProvider != null) _detailRow(context, 'Provider', loan.loanProvider!),
+          if (loan.loanAccountNumber != null) _detailRow(context, 'Account No.', loan.loanAccountNumber!),
         ],
       ),
     );
   }
 
-  Widget _detailRow(String label, String value) {
+  Widget _detailRow(BuildContext context, String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: AppTypography.small.copyWith(color: AppColors.textMuted)),
+          Text(label, style: AppTypography.small.copyWith(color: context.colors.textMuted)),
           const SizedBox(width: AppSpacing.md),
           Flexible(child: Text(value, style: AppTypography.bodyMedium, textAlign: TextAlign.right, maxLines: 1, overflow: TextOverflow.ellipsis)),
         ],
@@ -194,7 +194,7 @@ class LoanDetailScreen extends ConsumerWidget {
     return _ExpandableSchedule(schedule: schedule);
   }
 
-  Widget _buildPrepayments(List<LoanPrepayment> prepayments) {
+  Widget _buildPrepayments(BuildContext context, List<LoanPrepayment> prepayments) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -202,11 +202,11 @@ class LoanDetailScreen extends ConsumerWidget {
         const SizedBox(height: AppSpacing.md),
         ...prepayments.map((p) => ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.payment, color: AppColors.accent),
+              leading: Icon(Icons.payment, color: context.colors.accent),
               title: Text(_fmt.format(p.amount), style: AppTypography.bodyMedium),
               subtitle: Text(
                 '${p.date}${p.source != null ? ' · ${p.source}' : ''}',
-                style: AppTypography.small.copyWith(color: AppColors.textMuted),
+                style: AppTypography.small.copyWith(color: context.colors.textMuted),
               ),
               trailing: p.balanceAfter != null
                   ? Text('Bal: ${_fmt.format(p.balanceAfter!)}', style: AppTypography.small)
@@ -250,7 +250,7 @@ class _ExpandableScheduleState extends State<_ExpandableSchedule> {
           scrollDirection: Axis.horizontal,
           child: DataTable(
             columnSpacing: AppSpacing.lg.toDouble(),
-            headingTextStyle: AppTypography.xs.copyWith(color: AppColors.textMuted),
+            headingTextStyle: AppTypography.xs.copyWith(color: context.colors.textMuted),
             dataTextStyle: AppTypography.small,
             columns: const [
               DataColumn(label: Text('Month')),

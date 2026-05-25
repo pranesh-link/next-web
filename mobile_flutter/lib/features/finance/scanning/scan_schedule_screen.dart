@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:luvverse/core/network/api_client.dart';
 import 'package:luvverse/core/network/api_endpoints.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/shared/widgets/app_button.dart';
@@ -67,10 +67,10 @@ class _ScanScheduleScreenState extends ConsumerState<ScanScheduleScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: context.colors.bg,
       appBar: AppBar(
         title: const Text('Scan Schedule'),
-        backgroundColor: AppColors.bg,
+        backgroundColor: context.colors.bg,
         elevation: 0,
         titleTextStyle: AppTypography.pageTitle,
       ),
@@ -82,11 +82,11 @@ class _ScanScheduleScreenState extends ConsumerState<ScanScheduleScreen> {
             AppCard(
               child: Column(
                 children: [
-                  const Icon(Icons.table_chart, size: 48, color: AppColors.accent),
+                  Icon(Icons.table_chart, size: 48, color: context.colors.accent),
                   const SizedBox(height: AppSpacing.md),
                   Text(
                     'Scan a loan or deposit schedule document',
-                    style: AppTypography.body.copyWith(color: AppColors.textMuted),
+                    style: AppTypography.body.copyWith(color: context.colors.textMuted),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: AppSpacing.xl),
@@ -130,11 +130,11 @@ class _ScanScheduleScreenState extends ConsumerState<ScanScheduleScreen> {
               AppCard(
                 child: Row(
                   children: [
-                    const Icon(Icons.error_outline, color: AppColors.danger),
+                    Icon(Icons.error_outline, color: context.colors.danger),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: Text(_error!,
-                          style: AppTypography.small.copyWith(color: AppColors.danger)),
+                          style: AppTypography.small.copyWith(color: context.colors.danger)),
                     ),
                   ],
                 ),

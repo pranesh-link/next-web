@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/providers/extended_providers.dart';
@@ -159,10 +159,10 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
         NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
 
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: context.colors.bg,
       appBar: AppBar(
         title: const Text('Budget Planner'),
-        backgroundColor: AppColors.bg,
+        backgroundColor: context.colors.bg,
         elevation: 0,
         titleTextStyle: AppTypography.pageTitle,
       ),
@@ -170,7 +170,7 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
           ? null
           : FloatingActionButton(
               onPressed: _addItem,
-              backgroundColor: AppColors.accent,
+              backgroundColor: context.colors.accent,
               child: const Icon(Icons.add, color: Colors.white),
             ),
       body: Column(
@@ -226,8 +226,8 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
-        color: AppColors.bg,
-        border: Border.all(color: AppColors.cardBorder),
+        color: context.colors.bg,
+        border: Border.all(color: context.colors.cardBorder),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -240,13 +240,13 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
               padding:
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.accent : Colors.transparent,
+                color: isSelected ? context.colors.accent : Colors.transparent,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
                 m == 'monthly' ? 'Monthly' : 'Yearly',
                 style: AppTypography.xs.copyWith(
-                  color: isSelected ? Colors.white : AppColors.textMuted,
+                  color: isSelected ? Colors.white : context.colors.textMuted,
                   fontWeight:
                       isSelected ? FontWeight.w600 : FontWeight.w400,
                 ),
@@ -277,7 +277,7 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
                   children: [
                     Text('Monthly Income',
                         style: AppTypography.xs
-                            .copyWith(color: AppColors.textMuted)),
+                            .copyWith(color: context.colors.textMuted)),
                     const SizedBox(height: 4),
                     TextField(
                       controller: _incomeCtrl,
@@ -305,15 +305,15 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
         Row(
           children: [
             PlannerSummaryChip(
-                'Planned', currencyFmt.format(totalPlanned), AppColors.accent),
+                'Planned', currencyFmt.format(totalPlanned), context.colors.accent),
             const SizedBox(width: AppSpacing.sm),
             PlannerSummaryChip(
-                'Paid', currencyFmt.format(totalPaid), AppColors.success),
+                'Paid', currencyFmt.format(totalPaid), context.colors.success),
             const SizedBox(width: AppSpacing.sm),
             PlannerSummaryChip(
               'Remaining',
               currencyFmt.format(remaining),
-              remaining >= 0 ? AppColors.success : AppColors.danger,
+              remaining >= 0 ? context.colors.success : context.colors.danger,
             ),
           ],
         ),
@@ -364,11 +364,11 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
               title: Text(
                 'Paid (${paid.length})',
                 style: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.success,
+                  color: context.colors.success,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              leading: const Icon(Icons.check_circle, color: AppColors.success, size: 20),
+              leading: Icon(Icons.check_circle, color: context.colors.success, size: 20),
               children: paid
                   .map((entry) => Padding(
                         padding: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -392,8 +392,8 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
       padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.lg, vertical: AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.bgElevated,
-        border: const Border(top: BorderSide(color: AppColors.cardBorder)),
+        color: context.colors.bgElevated,
+        border: Border(top: BorderSide(color: context.colors.cardBorder)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withAlpha(10),
@@ -410,13 +410,13 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
               child: Text(
                 'Unsaved changes',
                 style:
-                    AppTypography.small.copyWith(color: AppColors.textMuted),
+                    AppTypography.small.copyWith(color: context.colors.textMuted),
               ),
             ),
             TextButton(
               onPressed: _discard,
               child: Text('Discard',
-                  style: TextStyle(color: AppColors.textMuted)),
+                  style: TextStyle(color: context.colors.textMuted)),
             ),
             const SizedBox(width: AppSpacing.sm),
             FilledButton(

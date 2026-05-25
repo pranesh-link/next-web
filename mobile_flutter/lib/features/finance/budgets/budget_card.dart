@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/models/budget.dart';
@@ -46,13 +46,13 @@ class BudgetCard extends StatelessWidget {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.danger.withValues(alpha: 0.1),
+                          color: context.colors.danger.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           'Exceeded!',
                           style: AppTypography.xs.copyWith(
-                            color: AppColors.danger,
+                            color: context.colors.danger,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -63,14 +63,14 @@ class BudgetCard extends StatelessWidget {
               ),
               IconButton(
                 icon: const Icon(Icons.edit_outlined, size: 18),
-                color: AppColors.textMuted,
+                color: context.colors.textMuted,
                 onPressed: onEdit,
                 constraints: const BoxConstraints(),
                 padding: const EdgeInsets.all(AppSpacing.xs),
               ),
               IconButton(
                 icon: const Icon(Icons.delete_outline, size: 18),
-                color: AppColors.danger,
+                color: context.colors.danger,
                 onPressed: onDelete,
                 constraints: const BoxConstraints(),
                 padding: const EdgeInsets.all(AppSpacing.xs),
@@ -82,8 +82,8 @@ class BudgetCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: progress,
-              backgroundColor: AppColors.bgElevated,
-              color: isOver ? AppColors.danger : AppColors.accent,
+              backgroundColor: context.colors.bgElevated,
+              color: isOver ? context.colors.danger : context.colors.accent,
               minHeight: 8,
             ),
           ),
@@ -100,7 +100,7 @@ class BudgetCard extends StatelessWidget {
                     ? '${_currencyFormat.format(remaining.abs())} over'
                     : '${_currencyFormat.format(remaining)} remaining',
                 style: AppTypography.small.copyWith(
-                  color: isOver ? AppColors.danger : AppColors.success,
+                  color: isOver ? context.colors.danger : context.colors.success,
                   fontWeight: FontWeight.w600,
                 ),
               ),

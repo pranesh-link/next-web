@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/goals/contribute_modal.dart';
@@ -124,7 +124,7 @@ class _GoalsList extends ConsumerWidget {
               Navigator.pop(ctx);
               ref.read(goalsProvider.notifier).delete(goal.id);
             },
-            child: const Text('Delete', style: TextStyle(color: AppColors.danger)),
+            child: Text('Delete', style: TextStyle(color: context.colors.danger)),
           ),
         ],
       ),
@@ -154,7 +154,7 @@ class _SummaryRow extends StatelessWidget {
           child: _SummaryCard(
             label: 'SAVED',
             value: _currencyFormat.format(totalSaved),
-            color: AppColors.success,
+            color: context.colors.success,
           ),
         ),
         const SizedBox(width: AppSpacing.sm),
@@ -186,7 +186,7 @@ class _SummaryCard extends StatelessWidget {
           Text(
             value,
             style: AppTypography.bodyMedium.copyWith(
-              color: color ?? AppColors.text,
+              color: color ?? context.colors.text,
               fontWeight: FontWeight.w700,
             ),
           ),

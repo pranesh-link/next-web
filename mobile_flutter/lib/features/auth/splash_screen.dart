@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:luvverse/core/auth/auth_provider.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/quick_actions/quick_actions_service.dart';
+import 'package:luvverse/core/router/app_router.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
+import 'package:luvverse/features/onboarding/onboarding_screen.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -31,22 +34,50 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   void _navigate() {
     if (!mounted) return;
     final auth = ref.read(authProvider);
-    if (auth.isAuthenticated) {
-      context.go('/home');
-    } else {
-      context.go('/login');
-    }
+
+    // Initialize quick actions after splash
+    final router = ref.read(routerProvider);
+    QuickActionsService().init(router);
+
+    // Check onboarding status
+    final onboarding = ref.read(onboardingCompleteProvider);
+    onboarding.when(
+      data: (complete) {
+        if (!complete) {
+          context.go('/onboarding');
+        } else if (auth.isAuthenticated) {
+          context.go('/home');
+        } else {
+          context.go('/login');
+        }
+      },
+      loading: () {
+        // Default to login while loading
+        if (auth.isAuthenticated) {
+          context.go('/home');
+        } else {
+          context.go('/login');
+        }
+      },
+      error: (_, __) {
+        if (auth.isAuthenticated) {
+          context.go('/home');
+        } else {
+          context.go('/login');
+        }
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [AppColors.gradientStart, AppColors.gradientEnd],
+            colors: [context.colors.gradientStart, context.colors.gradientEnd],
           ),
         ),
         child: const Center(

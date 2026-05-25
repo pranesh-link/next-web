@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 
@@ -17,17 +17,17 @@ class PlannerEmptyState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.event_note_outlined,
-                size: 56, color: AppColors.textMuted.withAlpha(100)),
+                size: 56, color: context.colors.textMuted.withAlpha(100)),
             const SizedBox(height: AppSpacing.lg),
             Text(
               'No plans yet',
               style:
-                  AppTypography.cardTitle.copyWith(color: AppColors.textMuted),
+                  AppTypography.cardTitle.copyWith(color: context.colors.textMuted),
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
               'Start planning your month',
-              style: AppTypography.small.copyWith(color: AppColors.textMuted),
+              style: AppTypography.small.copyWith(color: context.colors.textMuted),
             ),
             const SizedBox(height: AppSpacing.xl),
             FilledButton.icon(

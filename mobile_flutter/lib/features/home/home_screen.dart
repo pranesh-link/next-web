@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:luvverse/core/auth/auth_provider.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';
@@ -20,7 +20,7 @@ class HomeScreen extends ConsumerWidget {
     final balance = ref.watch(totalBalanceProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: context.colors.bg,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.xl),
@@ -31,16 +31,16 @@ class HomeScreen extends ConsumerWidget {
               Row(
                 children: [
                   Expanded(
-                    child: Text('LuvVerse', style: AppTypography.pageTitle.copyWith(color: AppColors.accent)),
+                    child: Text('LuvVerse', style: AppTypography.pageTitle.copyWith(color: context.colors.accent)),
                   ),
                   GestureDetector(
                     onTap: () => context.go('/settings'),
                     child: CircleAvatar(
                       radius: 18,
-                      backgroundColor: AppColors.accent.withValues(alpha: 0.1),
+                      backgroundColor: context.colors.accent.withValues(alpha: 0.1),
                       backgroundImage: user?.image != null ? CachedNetworkImageProvider(user!.image!) : null,
                       child: user?.image == null
-                          ? Text((user?.name ?? 'U')[0].toUpperCase(), style: TextStyle(color: AppColors.accent, fontSize: 14, fontWeight: FontWeight.w700))
+                          ? Text((user?.name ?? 'U')[0].toUpperCase(), style: TextStyle(color: context.colors.accent, fontSize: 14, fontWeight: FontWeight.w700))
                           : null,
                     ),
                   ),
@@ -60,10 +60,10 @@ class HomeScreen extends ConsumerWidget {
                   crossAxisSpacing: AppSpacing.lg,
                   childAspectRatio: 1.05,
                   children: [
-                    _ModuleCard(icon: Icons.account_balance_wallet, title: 'Finance', subtitle: 'Track money together', color: AppColors.accent, onTap: () => context.go('/finance')),
+                    _ModuleCard(icon: Icons.account_balance_wallet, title: 'Finance', subtitle: 'Track money together', color: context.colors.accent, onTap: () => context.go('/finance')),
                     _ModuleCard(icon: Icons.flight, title: 'Travel', subtitle: 'Plan trips', color: const Color(0xFF8B5CF6), onTap: () => _snackbar(context, 'Coming soon')),
                     _ModuleCard(icon: Icons.favorite, title: 'Lifestyle', subtitle: 'Health & wellness', color: const Color(0xFFEC4899), onTap: () => context.go('/lifestyle')),
-                    _ModuleCard(icon: Icons.chat_bubble, title: 'Chat', subtitle: 'Stay connected', color: AppColors.success, onTap: () => _snackbar(context, 'Coming soon')),
+                    _ModuleCard(icon: Icons.chat_bubble, title: 'Chat', subtitle: 'Stay connected', color: context.colors.success, onTap: () => _snackbar(context, 'Coming soon')),
                   ],
                 ),
               ),
@@ -73,15 +73,15 @@ class HomeScreen extends ConsumerWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(AppSpacing.lg),
                   decoration: BoxDecoration(
-                    color: AppColors.bgElevated,
+                    color: context.colors.bgElevated,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.cardBorder),
+                    border: Border.all(color: context.colors.cardBorder),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.account_balance_wallet_outlined, size: 20, color: AppColors.textMuted),
+                      Icon(Icons.account_balance_wallet_outlined, size: 20, color: context.colors.textMuted),
                       const SizedBox(width: AppSpacing.md),
-                      Text('Total Balance', style: AppTypography.small.copyWith(color: AppColors.textMuted)),
+                      Text('Total Balance', style: AppTypography.small.copyWith(color: context.colors.textMuted)),
                       const Spacer(),
                       Text(NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 2).format(val), style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w700)),
                     ],
@@ -128,7 +128,7 @@ class _ModuleCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(title, style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
-          Text(subtitle, style: AppTypography.small.copyWith(color: AppColors.textMuted), maxLines: 1, overflow: TextOverflow.ellipsis),
+          Text(subtitle, style: AppTypography.small.copyWith(color: context.colors.textMuted), maxLines: 1, overflow: TextOverflow.ellipsis),
         ],
       ),
     );

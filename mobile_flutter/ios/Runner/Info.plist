@@ -58,7 +58,7 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Used to select receipt images for transaction entry</string>
 	<key>NSFaceIDUsageDescription</key>
-	<string>Authenticate with Face ID to access your finances</string>
+	<string>Authenticate to access your LuvVerse data</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

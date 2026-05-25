@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/providers/extended_providers.dart';
@@ -62,21 +62,22 @@ class _AlertCard extends StatelessWidget {
     }
   }
 
-  Color get _color {
+  Color _color(BuildContext context) {
     switch (alert.severity) {
       case 'warning':
         return const Color(0xFFF59E0B);
       case 'error':
-        return AppColors.danger;
+        return context.colors.danger;
       case 'success':
-        return AppColors.success;
+        return context.colors.success;
       default:
-        return AppColors.accent;
+        return context.colors.accent;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final color = _color(context);
     return AppCard(
       onTap: alert.actionUrl != null
           ? () => context.go(alert.actionUrl!)
@@ -86,10 +87,10 @@ class _AlertCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: _color.withAlpha(20),
+              color: color.withAlpha(20),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(_icon, color: _color, size: 20),
+            child: Icon(_icon, color: color, size: 20),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
@@ -99,7 +100,7 @@ class _AlertCard extends StatelessWidget {
             ),
           ),
           if (alert.actionUrl != null)
-            Icon(Icons.chevron_right, color: AppColors.textMuted, size: 20),
+            Icon(Icons.chevron_right, color: context.colors.textMuted, size: 20),
         ],
       ),
     );
@@ -161,7 +162,7 @@ class _TrendsChart extends StatelessWidget {
                               width: 8,
                               height: incomeH,
                               decoration: BoxDecoration(
-                                color: AppColors.success,
+                                color: context.colors.success,
                                 borderRadius: BorderRadius.circular(2),
                               ),
                             ),
@@ -170,7 +171,7 @@ class _TrendsChart extends StatelessWidget {
                               width: 8,
                               height: expenseH,
                               decoration: BoxDecoration(
-                                color: AppColors.danger,
+                                color: context.colors.danger,
                                 borderRadius: BorderRadius.circular(2),
                               ),
                             ),
@@ -179,7 +180,7 @@ class _TrendsChart extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           t.month.substring(5),
-                          style: AppTypography.xs.copyWith(color: AppColors.textDim),
+                          style: AppTypography.xs.copyWith(color: context.colors.textDim),
                         ),
                       ],
                     ),
@@ -192,9 +193,9 @@ class _TrendsChart extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _Legend(color: AppColors.success, label: 'Income'),
+              _Legend(color: context.colors.success, label: 'Income'),
               const SizedBox(width: AppSpacing.lg),
-              _Legend(color: AppColors.danger, label: 'Expense'),
+              _Legend(color: context.colors.danger, label: 'Expense'),
             ],
           ),
         ],

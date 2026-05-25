@@ -1,15 +1,57 @@
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 
-class BiometricService {
-  static final _auth = LocalAuthentication();
+const _biometricEnabledKey = 'biometric_enabled';
 
-  static Future<bool> isAvailable() async {
-    final canCheck = await _auth.canCheckBiometrics;
-    final isSupported = await _auth.isDeviceSupported();
-    return canCheck && isSupported;
+/// Provider for biometric authentication service.
+final biometricServiceProvider = Provider<BiometricService>((ref) {
+  return BiometricService();
+});
+
+/// Provider that tracks whether biometric is enabled by user.
+final biometricEnabledProvider =
+    StateNotifierProvider<BiometricEnabledNotifier, bool>((ref) {
+  return BiometricEnabledNotifier();
+});
+
+/// Notifier that persists the biometric enabled preference.
+class BiometricEnabledNotifier extends StateNotifier<bool> {
+  final _storage = const FlutterSecureStorage();
+
+  BiometricEnabledNotifier() : super(false) {
+    _load();
   }
 
-  static Future<bool> authenticate() async {
+  Future<void> _load() async {
+    final value = await _storage.read(key: _biometricEnabledKey);
+    state = value == 'true';
+  }
+
+  Future<void> toggle(bool enabled) async {
+    await _storage.write(key: _biometricEnabledKey, value: enabled.toString());
+    state = enabled;
+  }
+}
+
+/// Service for biometric authentication (fingerprint/Face ID).
+class BiometricService {
+  final _auth = LocalAuthentication();
+
+  /// Check if device supports biometric authentication.
+  Future<bool> isAvailable() async {
+    try {
+      final canCheck = await _auth.canCheckBiometrics;
+      final isSupported = await _auth.isDeviceSupported();
+      return canCheck && isSupported;
+    } on PlatformException {
+      return false;
+    }
+  }
+
+  /// Authenticate the user with biometrics.
+  Future<bool> authenticate() async {
     try {
       return await _auth.authenticate(
         localizedReason: 'Authenticate to access LuvVerse',
@@ -18,7 +60,7 @@ class BiometricService {
           biometricOnly: false,
         ),
       );
-    } catch (_) {
+    } on PlatformException {
       return false;
     }
   }

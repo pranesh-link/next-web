@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';
@@ -52,20 +52,20 @@ class _LoansContent extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppColors.danger.withAlpha(20),
+                      color: context.colors.danger.withAlpha(20),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.account_balance_outlined, color: AppColors.danger, size: 20),
+                    child: Icon(Icons.account_balance_outlined, color: context.colors.danger, size: 20),
                   ),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Total Outstanding', style: AppTypography.small.copyWith(color: AppColors.textMuted)),
+                        Text('Total Outstanding', style: AppTypography.small.copyWith(color: context.colors.textMuted)),
                         Text(
                           _currencyFormat.format(totalOutstanding),
-                          style: AppTypography.cardTitle.copyWith(color: AppColors.danger),
+                          style: AppTypography.cardTitle.copyWith(color: context.colors.danger),
                         ),
                       ],
                     ),
@@ -107,7 +107,7 @@ class _StatItem extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: AppTypography.xs.copyWith(color: AppColors.textMuted)),
+        Text(label, style: AppTypography.xs.copyWith(color: context.colors.textMuted)),
         const SizedBox(height: 4),
         Text(value, style: AppTypography.body.copyWith(fontWeight: FontWeight.w600)),
       ],

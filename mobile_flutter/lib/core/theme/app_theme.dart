@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
+import 'app_colors_extension.dart';
 import 'app_decorations.dart';
 
 abstract final class AppTheme {
@@ -19,6 +20,7 @@ abstract final class AppTheme {
       colorScheme: colorScheme,
       fontFamily: 'Inter',
       scaffoldBackgroundColor: AppColors.bg,
+      extensions: const [LuvVerseColors.light],
       textTheme: const TextTheme(
         headlineLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: -0.5),
         titleLarge: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
@@ -111,6 +113,7 @@ abstract final class AppTheme {
       fontFamily: 'Inter',
       brightness: Brightness.dark,
       scaffoldBackgroundColor: AppColorsDark.bg,
+      extensions: const [LuvVerseColors.dark],
       textTheme: const TextTheme(
         headlineLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: -0.5, color: AppColorsDark.text),
         titleLarge: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColorsDark.text),

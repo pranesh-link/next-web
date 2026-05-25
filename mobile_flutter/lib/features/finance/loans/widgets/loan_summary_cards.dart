@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/models/loan.dart';
@@ -42,18 +42,18 @@ class _SummaryCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
-          color: AppColors.bgElevated,
-          border: Border.all(color: AppColors.border),
+          color: context.colors.bgElevated,
+          border: Border.all(color: context.colors.border),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, size: 18, color: AppColors.accent),
+            Icon(icon, size: 18, color: context.colors.accent),
             const SizedBox(height: AppSpacing.xs),
             Text(value, style: AppTypography.bodyMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
             const SizedBox(height: 2),
-            Text(label, style: AppTypography.xs.copyWith(color: AppColors.textMuted)),
+            Text(label, style: AppTypography.xs.copyWith(color: context.colors.textMuted)),
           ],
         ),
       ),

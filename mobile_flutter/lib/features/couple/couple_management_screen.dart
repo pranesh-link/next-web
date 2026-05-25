@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:luvverse/core/network/api_client.dart';
 import 'package:luvverse/core/network/api_exceptions.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/repositories/couple_repository.dart';
@@ -107,8 +107,8 @@ class _CoupleManagementScreenState
               child: const Text('Cancel')),
           TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Leave',
-                  style: TextStyle(color: AppColors.danger))),
+              child: Text('Leave',
+                  style: TextStyle(color: context.colors.danger))),
         ],
       ),
     );
@@ -146,8 +146,8 @@ class _CoupleManagementScreenState
               child: const Text('Cancel')),
           TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Disband',
-                  style: TextStyle(color: AppColors.danger))),
+              child: Text('Disband',
+                  style: TextStyle(color: context.colors.danger))),
         ],
       ),
     );
@@ -177,10 +177,10 @@ class _CoupleManagementScreenState
     final coupleAsync = ref.watch(_coupleProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: context.colors.bg,
       appBar: AppBar(
         title: const Text('Couple'),
-        backgroundColor: AppColors.bg,
+        backgroundColor: context.colors.bg,
         elevation: 0,
         titleTextStyle: AppTypography.pageTitle,
         leading: IconButton(
@@ -207,11 +207,11 @@ class _CoupleManagementScreenState
         AppCard(
           child: Column(
             children: [
-              const Icon(Icons.favorite, size: 48, color: AppColors.accent),
+              Icon(Icons.favorite, size: 48, color: context.colors.accent),
               const SizedBox(height: AppSpacing.md),
               Text(
                 'Create a couple to share finances',
-                style: AppTypography.body.copyWith(color: AppColors.textMuted),
+                style: AppTypography.body.copyWith(color: context.colors.textMuted),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.xl),
@@ -245,7 +245,7 @@ class _CoupleManagementScreenState
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.favorite, color: AppColors.accent),
+                    Icon(Icons.favorite, color: context.colors.accent),
                     const SizedBox(width: AppSpacing.sm),
                     Text(couple.name, style: AppTypography.cardTitle),
                   ],
@@ -272,7 +272,7 @@ class _CoupleManagementScreenState
                                 Text(m.user.name, style: AppTypography.bodyMedium),
                                 Text(m.role,
                                     style: AppTypography.xs
-                                        .copyWith(color: AppColors.textMuted)),
+                                        .copyWith(color: context.colors.textMuted)),
                               ],
                             ),
                           ),
@@ -313,7 +313,7 @@ class _CoupleManagementScreenState
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Danger Zone',
-                    style: AppTypography.cardTitle.copyWith(color: AppColors.danger)),
+                    style: AppTypography.cardTitle.copyWith(color: context.colors.danger)),
                 const SizedBox(height: AppSpacing.md),
                 AppButton(
                   label: 'Leave Couple',

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';
@@ -53,13 +53,13 @@ class _BudgetsContent extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppColors.success.withAlpha(20),
+                      color: context.colors.success.withAlpha(20),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       '$onTrack of ${budgets.length} on track',
                       style: AppTypography.xs.copyWith(
-                        color: AppColors.success,
+                        color: context.colors.success,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -83,10 +83,10 @@ class _BudgetRow extends StatelessWidget {
   final Budget budget;
   const _BudgetRow({required this.budget});
 
-  Color get _progressColor {
-    if (budget.isOverBudget) return AppColors.danger;
+  Color _progressColor(BuildContext context) {
+    if (budget.isOverBudget) return context.colors.danger;
     if (budget.progress > 0.8) return const Color(0xFFF59E0B);
-    return AppColors.success;
+    return context.colors.success;
   }
 
   @override
@@ -106,7 +106,7 @@ class _BudgetRow extends StatelessWidget {
             Flexible(
               child: Text(
                 '${_currencyFormat.format(spent)} / ${_currencyFormat.format(budget.limit)}',
-                style: AppTypography.xs.copyWith(color: AppColors.textMuted),
+                style: AppTypography.xs.copyWith(color: context.colors.textMuted),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -118,8 +118,8 @@ class _BudgetRow extends StatelessWidget {
           borderRadius: BorderRadius.circular(3),
           child: LinearProgressIndicator(
             value: budget.progress.clamp(0.0, 1.0),
-            backgroundColor: AppColors.border,
-            color: _progressColor,
+            backgroundColor: context.colors.border,
+            color: _progressColor(context),
             minHeight: 6,
           ),
         ),

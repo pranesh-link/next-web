@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/budget_planner/planner_constants.dart';
@@ -31,7 +31,7 @@ class PlannerItemEditSheet extends StatefulWidget {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.bgElevated,
+      backgroundColor: context.colors.bgElevated,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -66,7 +66,7 @@ class _PlannerItemEditSheetState extends State<PlannerItemEditSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColors.border,
+                color: context.colors.border,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -96,13 +96,13 @@ class _PlannerItemEditSheetState extends State<PlannerItemEditSheet> {
                         isSelected ? color.withAlpha(30) : Colors.transparent,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: isSelected ? color : AppColors.cardBorder,
+                      color: isSelected ? color : context.colors.cardBorder,
                     ),
                   ),
                   child: Text(
                     cat,
                     style: AppTypography.small.copyWith(
-                      color: isSelected ? color : AppColors.textMuted,
+                      color: isSelected ? color : context.colors.textMuted,
                       fontWeight:
                           isSelected ? FontWeight.w600 : FontWeight.w400,
                     ),
@@ -154,8 +154,8 @@ class _PlannerItemEditSheetState extends State<PlannerItemEditSheet> {
                     Navigator.pop(context);
                   },
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.danger,
-                    side: const BorderSide(color: AppColors.danger),
+                    foregroundColor: context.colors.danger,
+                    side: BorderSide(color: context.colors.danger),
                   ),
                   child: const Text('Delete'),
                 ),

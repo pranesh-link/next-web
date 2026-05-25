@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 
@@ -15,7 +15,7 @@ class SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Row(
         children: [
-          Expanded(child: Text(title.toUpperCase(), style: AppTypography.sectionTitle.copyWith(color: AppColors.textMuted))),
+          Expanded(child: Text(title.toUpperCase(), style: AppTypography.sectionTitle.copyWith(color: context.colors.textMuted))),
           if (trailing != null) trailing!,
         ],
       ),

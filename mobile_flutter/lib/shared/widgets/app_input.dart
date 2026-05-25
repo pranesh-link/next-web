@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 
 class AppInput extends StatelessWidget {
   final String? label;
@@ -47,7 +47,7 @@ class AppInput extends StatelessWidget {
           maxLines: maxLines,
           onChanged: onChanged,
           readOnly: readOnly,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.text),
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: context.colors.text),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
@@ -58,10 +58,10 @@ class AppInput extends StatelessWidget {
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFD1D5DB))),
             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFD1D5DB))),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.accent, width: 2)),
-            errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.danger)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: context.colors.accent, width: 2)),
+            errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: context.colors.danger)),
             errorText: error,
-            errorStyle: const TextStyle(fontSize: 12, color: AppColors.danger),
+            errorStyle: TextStyle(fontSize: 12, color: context.colors.danger),
           ),
         ),
       ],

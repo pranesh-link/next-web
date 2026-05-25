@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/budgets/budget_card.dart';
@@ -128,7 +128,7 @@ class _BudgetsList extends ConsumerWidget {
               Navigator.pop(ctx);
               ref.read(budgetsProvider.notifier).delete(budget.id);
             },
-            child: const Text('Delete', style: TextStyle(color: AppColors.danger)),
+            child: Text('Delete', style: TextStyle(color: context.colors.danger)),
           ),
         ],
       ),
@@ -152,9 +152,9 @@ class _SummaryRow extends StatelessWidget {
       children: [
         Expanded(child: _SummaryCard(label: 'BUDGETED', value: budgeted)),
         const SizedBox(width: AppSpacing.sm),
-        Expanded(child: _SummaryCard(label: 'SPENT', value: spent, color: AppColors.danger)),
+        Expanded(child: _SummaryCard(label: 'SPENT', value: spent, color: context.colors.danger)),
         const SizedBox(width: AppSpacing.sm),
-        Expanded(child: _SummaryCard(label: 'REMAINING', value: remaining, color: AppColors.success)),
+        Expanded(child: _SummaryCard(label: 'REMAINING', value: remaining, color: context.colors.success)),
       ],
     );
   }
@@ -177,7 +177,7 @@ class _SummaryCard extends StatelessWidget {
           Text(
             _currencyFormat.format(value),
             style: AppTypography.bodyMedium.copyWith(
-              color: color ?? AppColors.text,
+              color: color ?? context.colors.text,
               fontWeight: FontWeight.w700,
             ),
           ),

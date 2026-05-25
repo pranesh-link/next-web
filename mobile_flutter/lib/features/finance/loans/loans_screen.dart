@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/features/finance/loans/widgets/edit_loan_form.dart';
 import 'package:luvverse/features/finance/loans/widgets/loan_card.dart';
@@ -47,7 +47,7 @@ class LoansScreen extends ConsumerWidget {
                       onAction: () => AddLoanForm.show(context),
                     )
                   : RefreshIndicator(
-                      color: AppColors.accent,
+                      color: context.colors.accent,
                       onRefresh: () => ref.read(loansProvider.notifier).refresh(),
                       child: ListView(
                         children: [
@@ -82,7 +82,7 @@ class LoansScreen extends ConsumerWidget {
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text('Delete', style: TextStyle(color: AppColors.danger)),
+            child: Text('Delete', style: TextStyle(color: context.colors.danger)),
           ),
         ],
       ),

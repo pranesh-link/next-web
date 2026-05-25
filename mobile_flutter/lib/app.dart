@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:luvverse/core/auth/biometric_lock_screen.dart';
 import 'package:luvverse/core/cache/connectivity_wrapper.dart';
 import 'package:luvverse/core/router/app_router.dart';
 import 'package:luvverse/core/theme/app_theme.dart';
@@ -21,7 +22,9 @@ class LuvVerseApp extends ConsumerWidget {
       routerConfig: router,
       debugShowCheckedModeBanner: false,
       builder: (context, child) {
-        return ConnectivityWrapper(child: child ?? const SizedBox.shrink());
+        return BiometricLockScreen(
+          child: ConnectivityWrapper(child: child ?? const SizedBox.shrink()),
+        );
       },
     );
   }
