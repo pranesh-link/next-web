@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -32,7 +33,7 @@ class SettingsScreen extends ConsumerWidget {
                 CircleAvatar(
                   radius: 28,
                   backgroundColor: AppColors.accent.withValues(alpha: 0.1),
-                  backgroundImage: user?.image != null ? NetworkImage(user!.image!) : null,
+                  backgroundImage: user?.image != null ? CachedNetworkImageProvider(user!.image!) : null,
                   child: user?.image == null
                       ? Text(
                           (user?.name ?? 'U')[0].toUpperCase(),

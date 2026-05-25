@@ -17,6 +17,7 @@ import 'package:luvverse/features/finance/providers/extended_providers.dart';
 import 'package:luvverse/models/transaction.dart';
 import 'package:luvverse/shared/widgets/currency_display.dart';
 import 'package:luvverse/shared/widgets/loading_skeleton.dart';
+import 'package:luvverse/shared/widgets/offline_error_state.dart';
 import 'package:luvverse/shared/widgets/section_header.dart';
 import 'package:luvverse/shared/widgets/summary_card.dart';
 
@@ -87,7 +88,7 @@ class FinanceDashboardScreen extends ConsumerWidget {
             const SizedBox(height: AppSpacing.sm),
             txns.when(
               loading: () => const LoadingSkeleton(type: SkeletonType.chart),
-              error: (e, _) => Text('Error: $e'),
+              error: (e, _) => OfflineErrorState(error: e, onRetry: () => ref.read(transactionsProvider.notifier).refresh()),
               data: (items) => _buildPieChart(items),
             ),
             const SizedBox(height: AppSpacing.xxl),
@@ -105,7 +106,7 @@ class FinanceDashboardScreen extends ConsumerWidget {
             const SizedBox(height: AppSpacing.sm),
             txns.when(
               loading: () => const LoadingSkeleton(type: SkeletonType.list, count: 5),
-              error: (e, _) => Center(child: Text('Error: $e')),
+              error: (e, _) => OfflineErrorState(error: e, onRetry: () => ref.read(transactionsProvider.notifier).refresh()),
               data: (items) => items.isEmpty
                   ? Padding(
                       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -124,7 +125,7 @@ class FinanceDashboardScreen extends ConsumerWidget {
       children: [
         balance.when(
           loading: () => const LoadingSkeleton(type: SkeletonType.card, count: 1),
-          error: (e, _) => Text('Error: $e'),
+          error: (_, __) => const SizedBox.shrink(),
           data: (val) => SummaryCard(title: 'Total Balance', value: _currencyFormat.format(val), icon: Icons.account_balance_wallet),
         ),
         const SizedBox(height: AppSpacing.md),
@@ -133,7 +134,7 @@ class FinanceDashboardScreen extends ConsumerWidget {
             Expanded(
               child: income.when(
                 loading: () => const LoadingSkeleton(type: SkeletonType.card, count: 1),
-                error: (e, _) => Text('$e'),
+                error: (_, __) => const SizedBox.shrink(),
                 data: (val) => SummaryCard(title: 'Income', value: _currencyFormat.format(val), icon: Icons.trending_up),
               ),
             ),
@@ -141,7 +142,7 @@ class FinanceDashboardScreen extends ConsumerWidget {
             Expanded(
               child: expense.when(
                 loading: () => const LoadingSkeleton(type: SkeletonType.card, count: 1),
-                error: (e, _) => Text('$e'),
+                error: (_, __) => const SizedBox.shrink(),
                 data: (val) => SummaryCard(title: 'Expenses', value: _currencyFormat.format(val), icon: Icons.trending_down),
               ),
             ),
@@ -153,7 +154,7 @@ class FinanceDashboardScreen extends ConsumerWidget {
             Expanded(
               child: income.when(
                 loading: () => const LoadingSkeleton(type: SkeletonType.card, count: 1),
-                error: (e, _) => Text('$e'),
+                error: (_, __) => const SizedBox.shrink(),
                 data: (incVal) {
                   final expVal = expense.valueOrNull ?? 0.0;
                   return SummaryCard(
@@ -168,7 +169,7 @@ class FinanceDashboardScreen extends ConsumerWidget {
             Expanded(
               child: savingsRate.when(
                 loading: () => const LoadingSkeleton(type: SkeletonType.card, count: 1),
-                error: (e, _) => Text('$e'),
+                error: (_, __) => const SizedBox.shrink(),
                 data: (val) => SummaryCard(
                   title: 'Savings Rate',
                   value: '${val.toStringAsFixed(1)}%',

@@ -8,6 +8,7 @@ import 'package:luvverse/features/finance/providers/finance_providers.dart';
 import 'package:luvverse/models/transaction.dart';
 import 'package:luvverse/shared/widgets/currency_display.dart';
 import 'package:luvverse/shared/widgets/loading_skeleton.dart';
+import 'package:luvverse/shared/widgets/offline_error_state.dart';
 
 class AccountDetailScreen extends ConsumerWidget {
   final String accountId;
@@ -34,7 +35,10 @@ class AccountDetailScreen extends ConsumerWidget {
           padding: EdgeInsets.all(AppSpacing.xl),
           child: LoadingSkeleton(type: SkeletonType.card, count: 2),
         ),
-        error: (e, _) => Center(child: Text('Error: $e', style: AppTypography.body)),
+        error: (e, _) => OfflineErrorState(
+          error: e,
+          onRetry: () => ref.read(accountsProvider.notifier).refresh(),
+        ),
         data: (accounts) {
           final account = accounts.where((a) => a.id == accountId).firstOrNull;
           if (account == null) {
@@ -51,7 +55,10 @@ class AccountDetailScreen extends ConsumerWidget {
                 const SizedBox(height: AppSpacing.md),
                 txnsAsync.when(
                   loading: () => const LoadingSkeleton(type: SkeletonType.list, count: 3),
-                  error: (e, _) => Text('Error: $e'),
+                  error: (e, _) => OfflineErrorState(
+                    error: e,
+                    onRetry: () => ref.read(transactionsProvider.notifier).refresh(),
+                  ),
                   data: (txns) {
                     final filtered = txns.where((t) => t.accountId == accountId).toList();
                     if (filtered.isEmpty) {

@@ -11,6 +11,7 @@ import 'package:luvverse/features/finance/budget_planner/planner_empty_state.dar
 import 'package:luvverse/models/budget_plan.dart';
 import 'package:luvverse/shared/widgets/app_card.dart';
 import 'package:luvverse/shared/widgets/loading_skeleton.dart';
+import 'package:luvverse/shared/widgets/offline_error_state.dart';
 import 'package:intl/intl.dart';
 
 /// Budget planner screen with card-based layout, swipe gestures, and FAB.
@@ -195,7 +196,11 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
                     child: planAsync.when(
                       loading: () =>
                           const LoadingSkeleton(type: SkeletonType.card),
-                      error: (e, _) => Center(child: Text('Error: $e')),
+                      error: (e, _) => OfflineErrorState(
+                        error: e,
+                        onRetry: () => ref.read(
+                            budgetPlanProvider.notifier).refresh(),
+                      ),
                       data: (plan) {
                         final planId = plan?.id;
                         if (planId != _loadedPlanId) {

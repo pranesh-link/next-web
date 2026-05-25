@@ -9,6 +9,7 @@ import 'package:luvverse/features/finance/providers/finance_providers.dart';
 import 'package:luvverse/models/loan.dart';
 import 'package:luvverse/shared/widgets/currency_display.dart';
 import 'package:luvverse/shared/widgets/loading_skeleton.dart';
+import 'package:luvverse/shared/widgets/offline_error_state.dart';
 
 final _fmt = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
 final _dateFormat = DateFormat('dd MMM yyyy');
@@ -35,7 +36,10 @@ class LoanDetailScreen extends ConsumerWidget {
           padding: EdgeInsets.all(AppSpacing.xl),
           child: LoadingSkeleton(type: SkeletonType.card, count: 3),
         ),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => OfflineErrorState(
+          error: e,
+          onRetry: () => ref.read(loansProvider.notifier).refresh(),
+        ),
         data: (loans) {
           final loan = loans.where((l) => l.id == loanId).firstOrNull;
           if (loan == null) return const Center(child: Text('Loan not found'));

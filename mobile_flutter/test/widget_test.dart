@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:luvverse/core/auth/auth_provider.dart';
-import 'package:luvverse/core/auth/auth_repository.dart';
 import 'package:luvverse/core/cache/cache_providers.dart';
 import 'package:luvverse/core/cache/cache_service.dart';
 import 'package:luvverse/core/cache/connectivity_service.dart';
@@ -16,12 +15,8 @@ import 'package:luvverse/app.dart';
 
 /// A no-op SyncManager that does not start timers.
 class _NoOpSyncManager extends SyncManager {
-  _NoOpSyncManager()
-      : super(
-          ApiClient(),
-          CacheService(CacheDatabase(NativeDatabase.memory())),
-          MutationQueueService(CacheDatabase(NativeDatabase.memory())),
-        );
+  _NoOpSyncManager(ApiClient client, CacheService cache, MutationQueueService queue)
+      : super(client, cache, queue);
 
   @override
   void startPolling() {
@@ -43,9 +38,15 @@ void main() {
           connectivityProvider.overrideWith(
             (ref) => Stream.value(true),
           ),
-          syncManagerProvider.overrideWithValue(_NoOpSyncManager()),
+          syncManagerProvider.overrideWith(
+            (ref) => _NoOpSyncManager(
+              ref.read(apiClientProvider),
+              cacheService,
+              MutationQueueService(db),
+            ),
+          ),
           authProvider.overrideWith(
-            (ref) => AuthNotifier(AuthRepository(ApiClient())),
+            (ref) => AuthNotifier(ref.read(authRepositoryProvider), ref),
           ),
         ],
         child: const LuvVerseApp(),

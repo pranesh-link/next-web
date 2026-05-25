@@ -12,6 +12,7 @@ import 'package:luvverse/shared/widgets/app_button.dart';
 import 'package:luvverse/shared/widgets/app_card.dart';
 import 'package:luvverse/shared/widgets/empty_state.dart';
 import 'package:luvverse/shared/widgets/loading_skeleton.dart';
+import 'package:luvverse/shared/widgets/offline_error_state.dart';
 
 /// Screen listing all investment holdings with summary cards.
 class InvestmentsScreen extends ConsumerWidget {
@@ -39,8 +40,9 @@ class InvestmentsScreen extends ConsumerWidget {
           Expanded(
             child: investmentsAsync.when(
               loading: () => const LoadingSkeleton(type: SkeletonType.list),
-              error: (e, _) => Center(
-                child: Text('Error: $e', style: AppTypography.body),
+              error: (e, _) => OfflineErrorState(
+                error: e,
+                onRetry: () => ref.read(investmentsProvider.notifier).refresh(),
               ),
               data: (investments) => investments.isEmpty
                   ? EmptyState(

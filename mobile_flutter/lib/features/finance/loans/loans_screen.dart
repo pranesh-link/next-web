@@ -11,6 +11,7 @@ import 'package:luvverse/models/loan.dart';
 import 'package:luvverse/shared/widgets/app_button.dart';
 import 'package:luvverse/shared/widgets/empty_state.dart';
 import 'package:luvverse/shared/widgets/loading_skeleton.dart';
+import 'package:luvverse/shared/widgets/offline_error_state.dart';
 import 'package:luvverse/features/finance/forms/add_loan_form.dart';
 
 class LoansScreen extends ConsumerWidget {
@@ -32,7 +33,10 @@ class LoansScreen extends ConsumerWidget {
           Expanded(
             child: asyncLoans.when(
               loading: () => const LoadingSkeleton(type: SkeletonType.card, count: 3),
-              error: (e, _) => Center(child: Text('Error: $e')),
+              error: (e, _) => OfflineErrorState(
+                error: e,
+                onRetry: () => ref.read(loansProvider.notifier).refresh(),
+              ),
               data: (loans) => loans.isEmpty
                   ? EmptyState(
                       icon: Icons.real_estate_agent,

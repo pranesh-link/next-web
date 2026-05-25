@@ -14,6 +14,7 @@ import 'package:luvverse/models/account.dart';
 import 'package:luvverse/shared/widgets/app_button.dart';
 import 'package:luvverse/shared/widgets/empty_state.dart';
 import 'package:luvverse/shared/widgets/loading_skeleton.dart';
+import 'package:luvverse/shared/widgets/offline_error_state.dart';
 import 'package:luvverse/features/finance/forms/add_account_form.dart';
 
 class AccountsScreen extends ConsumerWidget {
@@ -51,7 +52,10 @@ class AccountsScreen extends ConsumerWidget {
                 type: SkeletonType.card,
                 count: 3,
               ),
-              error: (e, _) => Center(child: Text('Error: $e')),
+              error: (e, _) => OfflineErrorState(
+                error: e,
+                onRetry: () => ref.read(accountsProvider.notifier).refresh(),
+              ),
               data: (accounts) => accounts.isEmpty
                   ? EmptyState(
                       icon: Icons.account_balance,

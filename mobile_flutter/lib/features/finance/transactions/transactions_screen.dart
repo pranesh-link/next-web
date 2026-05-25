@@ -10,6 +10,7 @@ import 'package:luvverse/features/finance/transactions/transaction_list_widgets.
 import 'package:luvverse/models/transaction.dart';
 import 'package:luvverse/shared/widgets/empty_state.dart';
 import 'package:luvverse/shared/widgets/loading_skeleton.dart';
+import 'package:luvverse/shared/widgets/offline_error_state.dart';
 import 'package:luvverse/features/finance/forms/add_transaction_form.dart';
 
 const _filterCategories = [
@@ -59,7 +60,10 @@ class TransactionsScreen extends ConsumerWidget {
                 child: asyncTxns.when(
                   loading: () => const LoadingSkeleton(
                       type: SkeletonType.list, count: 6),
-                  error: (e, _) => Center(child: Text('Error: $e')),
+                  error: (e, _) => OfflineErrorState(
+                  error: e,
+                  onRetry: () => ref.read(transactionsProvider.notifier).refresh(),
+                ),
                   data: (txns) {
                     final filtered =
                         _applyFilters(txns, categoryFilter, accountFilter);

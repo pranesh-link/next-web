@@ -1,7 +1,9 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:luvverse/core/network/api_client.dart';
+import 'package:luvverse/core/network/api_exceptions.dart';
 import 'package:luvverse/core/theme/app_colors.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
@@ -11,6 +13,7 @@ import 'package:luvverse/shared/widgets/app_button.dart';
 import 'package:luvverse/shared/widgets/app_card.dart';
 import 'package:luvverse/shared/widgets/app_input.dart';
 import 'package:luvverse/shared/widgets/loading_skeleton.dart';
+import 'package:luvverse/shared/widgets/offline_error_state.dart';
 
 final _coupleRepoProvider = Provider<CoupleRepository>((ref) {
   return CoupleRepository(ref.read(apiClientProvider));
@@ -59,7 +62,7 @@ class _CoupleManagementScreenState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(content: Text(e is NetworkException ? 'You\'re offline. Try again later.' : 'Failed to create couple')),
         );
       }
     } finally {
@@ -83,7 +86,7 @@ class _CoupleManagementScreenState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(content: Text(e is NetworkException ? 'You\'re offline. Try again later.' : 'Failed to send invite')),
         );
       }
     } finally {
@@ -122,7 +125,7 @@ class _CoupleManagementScreenState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(content: Text(e is NetworkException ? 'You\'re offline. Try again later.' : 'Failed to leave couple')),
         );
       }
     } finally {
@@ -161,7 +164,7 @@ class _CoupleManagementScreenState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(content: Text(e is NetworkException ? 'You\'re offline. Try again later.' : 'Failed to disband couple')),
         );
       }
     } finally {
@@ -189,7 +192,7 @@ class _CoupleManagementScreenState
         padding: const EdgeInsets.all(AppSpacing.xl),
         child: coupleAsync.when(
           loading: () => const LoadingSkeleton(type: SkeletonType.card),
-          error: (e, _) => Center(child: Text('Error: $e')),
+          error: (e, _) => OfflineErrorState(error: e, onRetry: () => ref.invalidate(_coupleProvider)),
           data: (couple) =>
               couple == null ? _buildCreateForm() : _buildCoupleInfo(couple),
         ),
@@ -255,7 +258,7 @@ class _CoupleManagementScreenState
                           CircleAvatar(
                             radius: 16,
                             backgroundImage: m.user.image != null
-                                ? NetworkImage(m.user.image!)
+                                ? CachedNetworkImageProvider(m.user.image!)
                                 : null,
                             child: m.user.image == null
                                 ? Text(m.user.name[0])

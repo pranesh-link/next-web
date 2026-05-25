@@ -8,6 +8,7 @@ import 'package:luvverse/models/notification_model.dart';
 import 'package:luvverse/shared/widgets/app_card.dart';
 import 'package:luvverse/shared/widgets/empty_state.dart';
 import 'package:luvverse/shared/widgets/loading_skeleton.dart';
+import 'package:luvverse/shared/widgets/offline_error_state.dart';
 import 'package:intl/intl.dart';
 
 /// Screen listing all notifications with mark-as-read.
@@ -40,9 +41,7 @@ class NotificationsScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: notifAsync.when(
           loading: () => const LoadingSkeleton(type: SkeletonType.list),
-          error: (e, _) => Center(
-            child: Text('Error: $e', style: AppTypography.body),
-          ),
+          error: (e, _) => OfflineErrorState(error: e, onRetry: () => ref.read(notificationsProvider.notifier).refresh()),
           data: (response) => response.notifications.isEmpty
               ? const EmptyState(
                   icon: Icons.notifications_none,

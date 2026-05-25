@@ -12,6 +12,7 @@ import 'package:luvverse/shared/widgets/app_button.dart';
 import 'package:luvverse/shared/widgets/app_card.dart';
 import 'package:luvverse/shared/widgets/empty_state.dart';
 import 'package:luvverse/shared/widgets/loading_skeleton.dart';
+import 'package:luvverse/shared/widgets/offline_error_state.dart';
 
 /// Screen listing all deposit instruments with summary cards.
 class DepositsScreen extends ConsumerWidget {
@@ -39,8 +40,9 @@ class DepositsScreen extends ConsumerWidget {
           Expanded(
             child: depositsAsync.when(
               loading: () => const LoadingSkeleton(type: SkeletonType.list),
-              error: (e, _) => Center(
-                child: Text('Error: $e', style: AppTypography.body),
+              error: (e, _) => OfflineErrorState(
+                error: e,
+                onRetry: () => ref.read(depositsProvider.notifier).refresh(),
               ),
               data: (deposits) => deposits.isEmpty
                   ? EmptyState(

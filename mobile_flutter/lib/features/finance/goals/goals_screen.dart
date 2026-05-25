@@ -14,6 +14,7 @@ import 'package:luvverse/shared/widgets/app_button.dart';
 import 'package:luvverse/shared/widgets/app_card.dart';
 import 'package:luvverse/shared/widgets/empty_state.dart';
 import 'package:luvverse/shared/widgets/loading_skeleton.dart';
+import 'package:luvverse/shared/widgets/offline_error_state.dart';
 
 final _currencyFormat =
     NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
@@ -45,7 +46,10 @@ class GoalsScreen extends ConsumerWidget {
             child: asyncGoals.when(
               loading: () =>
                   const LoadingSkeleton(type: SkeletonType.card, count: 3),
-              error: (e, _) => Center(child: Text('Error: $e')),
+              error: (e, _) => OfflineErrorState(
+                error: e,
+                onRetry: () => ref.read(goalsProvider.notifier).refresh(),
+              ),
               data: (goals) => goals.isEmpty
                   ? EmptyState(
                       icon: Icons.flag,
