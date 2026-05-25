@@ -165,11 +165,13 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
         elevation: 0,
         titleTextStyle: AppTypography.pageTitle,
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addItem,
-        backgroundColor: AppColors.accent,
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
+      floatingActionButton: _isDirty
+          ? null
+          : FloatingActionButton(
+              onPressed: _addItem,
+              backgroundColor: AppColors.accent,
+              child: const Icon(Icons.add, color: Colors.white),
+            ),
       body: Column(
         children: [
           Expanded(
@@ -314,21 +316,70 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
         // Items
         if (_items.isEmpty)
           PlannerEmptyState(onAdd: _addItem)
-        else
-          ..._items.asMap().entries.map((entry) => Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                child: PlannerItemCard(
-                  item: entry.value,
-                  index: entry.key,
-                  onTap: () => _openEditSheet(entry.key),
-                  onDelete: () => _removeItem(entry.key),
-                  onTogglePaid: () => _togglePaid(entry.key),
-                ),
-              )),
+        else ..._buildGroupedItems(),
         // Bottom spacer for FAB
         const SizedBox(height: 80),
       ],
     );
+  }
+
+  List<Widget> _buildGroupedItems() {
+    final unpaid = <MapEntry<int, LineItemEntry>>[];
+    final paid = <MapEntry<int, LineItemEntry>>[];
+
+    for (final entry in _items.asMap().entries) {
+      if (entry.value.paid) {
+        paid.add(entry);
+      } else {
+        unpaid.add(entry);
+      }
+    }
+
+    return [
+      // Unpaid items first
+      ...unpaid.map((entry) => Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: PlannerItemCard(
+              item: entry.value,
+              index: entry.key,
+              onTap: () => _openEditSheet(entry.key),
+              onDelete: () => _removeItem(entry.key),
+              onTogglePaid: () => _togglePaid(entry.key),
+            ),
+          )),
+      // Paid items in collapsible accordion
+      if (paid.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(top: AppSpacing.md),
+          child: Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              initiallyExpanded: false,
+              tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              title: Text(
+                'Paid (${paid.length})',
+                style: AppTypography.bodyMedium.copyWith(
+                  color: AppColors.success,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              leading: const Icon(Icons.check_circle, color: AppColors.success, size: 20),
+              children: paid
+                  .map((entry) => Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                        child: PlannerItemCard(
+                          item: entry.value,
+                          index: entry.key,
+                          onTap: () => _openEditSheet(entry.key),
+                          onDelete: () => _removeItem(entry.key),
+                          onTogglePaid: () => _togglePaid(entry.key),
+                        ),
+                      ))
+                  .toList(),
+            ),
+          ),
+        ),
+    ];
   }
 
   Widget _buildSaveBar() {

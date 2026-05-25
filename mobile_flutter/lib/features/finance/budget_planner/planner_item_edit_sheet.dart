@@ -35,9 +35,9 @@ class PlannerItemEditSheet extends StatefulWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => Padding(
+      builder: (sheetContext) => Padding(
         padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
+          bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
         ),
         child: PlannerItemEditSheet(
           item: item,
