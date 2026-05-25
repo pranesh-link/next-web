@@ -106,12 +106,13 @@ class CacheService {
     } catch (_) {}
   }
 
-  /// Invalidate all entries for an entity type (e.g. "accounts").
+  /// Soft-invalidate all entries for an entity type by setting TTL to 0.
+  /// The data remains available via [getStale] for offline fallback.
   Future<void> invalidateEntity(String entityType) async {
     try {
-      await (_db.delete(_db.cacheEntries)
+      await (_db.update(_db.cacheEntries)
             ..where((t) => t.key.like('$entityType%')))
-          .go();
+          .write(const CacheEntriesCompanion(ttlMs: Value(0)));
     } catch (_) {}
   }
 

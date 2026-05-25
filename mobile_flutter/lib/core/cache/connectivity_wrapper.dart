@@ -53,15 +53,21 @@ class _ConnectivityWrapperState extends ConsumerState<ConnectivityWrapper>
   }
 
   void _refreshAllProviders() {
-    ref.read(accountsProvider.notifier).refresh();
-    ref.read(transactionsProvider.notifier).refresh();
-    ref.read(budgetsProvider.notifier).refresh();
-    ref.read(loansProvider.notifier).refresh();
-    ref.read(goalsProvider.notifier).refresh();
-    ref.read(depositsProvider.notifier).refresh();
-    ref.read(investmentsProvider.notifier).refresh();
-    ref.read(dashboardInsightsProvider.notifier).refresh();
-    ref.read(notificationsProvider.notifier).refresh();
+    // Fire all refreshes concurrently — each preserves its own previous state
+    // so even if one fails, UI stays intact with stale data.
+    Future.wait([
+      ref.read(accountsProvider.notifier).refresh(),
+      ref.read(transactionsProvider.notifier).refresh(),
+      ref.read(budgetsProvider.notifier).refresh(),
+      ref.read(loansProvider.notifier).refresh(),
+      ref.read(goalsProvider.notifier).refresh(),
+      ref.read(depositsProvider.notifier).refresh(),
+      ref.read(investmentsProvider.notifier).refresh(),
+      ref.read(dashboardInsightsProvider.notifier).refresh(),
+      ref.read(notificationsProvider.notifier).refresh(),
+    ], eagerError: false);
+    // Also refresh the health score FutureProvider by invalidating it
+    ref.invalidate(healthScoreProvider);
   }
 
   @override

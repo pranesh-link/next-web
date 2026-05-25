@@ -101,7 +101,7 @@ class AccountsNotifier extends AsyncNotifier<List<Account>> {
   }
 
   Future<void> refresh() async {
-    state = const AsyncValue.loading();
+    state = const AsyncLoading<List<Account>>().copyWithPrevious(state);
     state = await AsyncValue.guard(() => _fetchAccounts());
   }
 
@@ -159,7 +159,7 @@ class TransactionsNotifier extends AsyncNotifier<List<Transaction>> {
   }
 
   Future<void> refresh() async {
-    state = const AsyncValue.loading();
+    state = const AsyncLoading<List<Transaction>>().copyWithPrevious(state);
     final month = ref.read(selectedMonthProvider);
     state = await AsyncValue.guard(
       () => ref.read(cachedTransactionsProvider).getTransactions(month: month),
@@ -227,7 +227,7 @@ class BudgetsNotifier extends AsyncNotifier<List<Budget>> {
   }
 
   Future<void> refresh() async {
-    state = const AsyncValue.loading();
+    state = const AsyncLoading<List<Budget>>().copyWithPrevious(state);
     final month = ref.read(selectedMonthProvider);
     state = await AsyncValue.guard(
       () => ref.read(cachedBudgetsProvider).getBudgets(month: month),
@@ -282,7 +282,7 @@ class LoansNotifier extends AsyncNotifier<List<Loan>> {
   }
 
   Future<void> refresh() async {
-    state = const AsyncValue.loading();
+    state = const AsyncLoading<List<Loan>>().copyWithPrevious(state);
     state = await AsyncValue.guard(
       () => ref.read(cachedLoansProvider).getLoans(),
     );
@@ -333,7 +333,7 @@ class GoalsNotifier extends AsyncNotifier<List<Goal>> {
   }
 
   Future<void> refresh() async {
-    state = const AsyncValue.loading();
+    state = const AsyncLoading<List<Goal>>().copyWithPrevious(state);
     state = await AsyncValue.guard(
       () => ref.read(cachedGoalsProvider).getGoals(),
     );
