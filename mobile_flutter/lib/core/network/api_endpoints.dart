@@ -10,9 +10,9 @@ abstract final class ApiEndpoints {
   static const investments = '/api/v1/finance/investments';
   static const insights = '/api/v1/finance/insights';
   static const budgetPlans = '/api/v1/finance/budget-plans';
-  static const couple = '/api/couple';
+  static const couple = '/api/v1/couple';
   static const notifications = '/api/v1/finance/notifications';
-  static const scanReceipt = '/api/finance/scan-receipt';
-  static const scanSchedule = '/api/finance/scan-schedule';
+  static const scanReceipt = '/api/v1/finance/scan-receipt';
+  static const scanSchedule = '/api/v1/finance/scan-schedule';
   static const syncStatus = '/api/v1/finance/sync-status';
 }

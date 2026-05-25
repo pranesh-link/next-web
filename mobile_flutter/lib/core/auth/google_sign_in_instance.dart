@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_sign_in/google_sign_in.dart';
 
 /// Web OAuth client ID from GCP project luvverse-pranaish (613218271037).
@@ -9,8 +10,9 @@ const _serverClientId =
 /// On Android: Play Services uses the Android OAuth client matched by
 /// package name + signing cert SHA-1 from google-services.json project.
 /// [serverClientId] requests an idToken for backend verification.
+/// On Web: serverClientId is not supported — client ID is set via meta tag
+/// in web/index.html instead.
 final googleSignInInstance = GoogleSignIn(
   scopes: ['email', 'profile'],
-  // TODO: restore serverClientId after debugging error 10
-  // serverClientId: _serverClientId,
+  serverClientId: kIsWeb ? null : _serverClientId,
 );

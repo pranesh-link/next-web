@@ -55,7 +55,7 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.xxl),
-          _SettingsTile(icon: Icons.people, title: 'Couple', onTap: () => context.go('/couple/details')),
+          _SettingsTile(icon: Icons.people, title: 'Couple', onTap: () => context.go('/couple/manage')),
           _SettingsTile(icon: Icons.notifications_outlined, title: 'Notifications', onTap: () => _showSnackbar(context, 'Coming soon')),
           _SettingsTile(icon: Icons.palette_outlined, title: 'Appearance', onTap: () => _showSnackbar(context, 'Coming soon')),
           _SettingsTile(

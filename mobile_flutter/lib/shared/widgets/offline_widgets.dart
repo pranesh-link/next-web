@@ -15,20 +15,23 @@ class OfflineBanner extends ConsumerWidget {
     return connectivity.when(
       data: (isOnline) {
         if (isOnline) return const SizedBox.shrink();
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
-          color: AppColors.warning,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.wifi_off, size: 16, color: Colors.black87),
-              const SizedBox(width: 8),
-              Text(
-                'You\'re offline — showing cached data',
-                style: AppTypography.xs.copyWith(color: Colors.black87),
-              ),
-            ],
+        return SafeArea(
+          bottom: false,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+            color: AppColors.warning,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.wifi_off, size: 16, color: Colors.black87),
+                const SizedBox(width: 8),
+                Text(
+                  'You\'re offline — showing cached data',
+                  style: AppTypography.xs.copyWith(color: Colors.black87),
+                ),
+              ],
+            ),
           ),
         );
       },

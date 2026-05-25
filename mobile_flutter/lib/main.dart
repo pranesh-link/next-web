@@ -12,12 +12,13 @@ void main() async {
   Intl.defaultLocale = 'en_IN';
   await initializeDateFormatting('en_IN');
 
-  // Initialize offline cache database
+  // Initialize offline cache database (web.dart has built-in fallback)
   final cacheDb = await openCacheDatabase();
-  final cacheService = CacheService(cacheDb);
 
-  // Prune old entries on startup
-  await cacheService.prune();
+  try {
+    final cacheService = CacheService(cacheDb);
+    await cacheService.prune();
+  } catch (_) {}
 
   runApp(
     ProviderScope(

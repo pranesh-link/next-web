@@ -45,10 +45,17 @@ class FinanceDashboardScreen extends ConsumerWidget {
     final txns = ref.watch(transactionsProvider);
     return RefreshIndicator(
       onRefresh: () async {
-        await ref.read(accountsProvider.notifier).refresh();
-        await ref.read(transactionsProvider.notifier).refresh();
-        ref.invalidate(healthScoreProvider);
-        ref.invalidate(dashboardInsightsProvider);
+        try {
+          await ref.read(accountsProvider.notifier).refresh();
+          await ref.read(transactionsProvider.notifier).refresh();
+          ref.invalidate(healthScoreProvider);
+          ref.invalidate(dashboardInsightsProvider);
+          ref.invalidate(loansProvider);
+          ref.invalidate(goalsProvider);
+          ref.invalidate(budgetsProvider);
+        } catch (_) {
+          // Offline — keep showing cached data, don't throw
+        }
       },
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),

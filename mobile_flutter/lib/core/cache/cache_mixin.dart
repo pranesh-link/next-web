@@ -66,7 +66,7 @@ mixin CacheMixin {
     // Try fresh cache first, then stale
     final cached = await cache.get(cacheKey) ?? await cache.getStale(cacheKey);
     if (cached != null) return deserialize(cached);
-    throw NetworkException('No internet connection and no cached data available');
+    throw NetworkException('No internet connection. No cached data available.');
   }
 
   /// Helper to serialize a list of models to JSON.
