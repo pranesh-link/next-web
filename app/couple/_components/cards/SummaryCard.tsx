@@ -3,7 +3,7 @@
 import React from "react";
 import styled from "styled-components";
 import { EASING } from "@/couple/_constants/theme";
-import { formatCurrency as formatCurrencyShared } from "@/_lib/formatters";
+import AnimatedNumber from "@/couple/_components/shared/AnimatedNumber";
 
 interface TrendData {
   value: number;
@@ -16,17 +16,6 @@ interface SummaryCardProps {
   subtitle?: string;
   icon?: React.ReactNode;
   trend?: TrendData;
-}
-
-/**
- * Format a card value: pass strings through unchanged; format numbers as INR.
- *
- * @param value - Pre-formatted display string or raw numeric amount.
- * @returns The string to render inside the card.
- */
-function formatCurrency(value: string | number): string {
-  if (typeof value === "string") return value;
-  return formatCurrencyShared(value);
 }
 
 const Card = styled.div`
@@ -141,14 +130,21 @@ export default function SummaryCard({
   icon,
   trend,
 }: SummaryCardProps) {
-  const displayValue = typeof value === "number" ? formatCurrency(value) : value;
+  const isNumeric = typeof value === "number";
+  const displayValue = isNumeric ? null : value;
 
   return (
     <Card>
       <CardInner>
         <Content>
           <CardTitle>{title}</CardTitle>
-          <Value>{displayValue}</Value>
+          <Value>
+            {isNumeric ? (
+              <AnimatedNumber value={value} duration={1200} />
+            ) : (
+              displayValue
+            )}
+          </Value>
           {(subtitle || trend) && (
             <MetaRow>
               {trend && (
