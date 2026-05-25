@@ -56,7 +56,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final token = await SecureStorage.getToken();
       state = AuthState(user: user, token: token);
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
+      final message = e.toString().replaceFirst('Exception: ', '');
+      state = state.copyWith(isLoading: false, error: message);
     }
   }
 
