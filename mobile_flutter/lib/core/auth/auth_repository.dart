@@ -15,8 +15,10 @@ class AuthRepository {
   final GoogleSignIn _googleSignIn = googleSignInInstance;
 
   Future<User> signInWithGoogle() async {
-    // Disconnect to force account picker on subsequent sign-ins.
-    await _googleSignIn.disconnect().catchError((_) => null);
+    // Sign out locally to force account picker on subsequent sign-ins.
+    // NOTE: Do NOT use disconnect() — on web (GIS 0.12+) it calls revoke()
+    // which can cause the credential callback to never fire, freezing the UI.
+    await _googleSignIn.signOut().catchError((_) => null);
 
     final googleUser = await _googleSignIn.signIn();
     if (googleUser == null) throw Exception('Google sign-in cancelled');
