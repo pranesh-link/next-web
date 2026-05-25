@@ -55,6 +55,9 @@ dependencies:
   # Web Platform
   web: ^1.1.0
 
+  # Quick Actions (3D Touch / long-press)
+  quick_actions: ^1.0.7
+
   # Icons
   cupertino_icons: ^1.0.8
 
