@@ -28,6 +28,8 @@ class TestPushResult {
   final bool success;
   final int sent;
   final int failed;
+  final int deviceCount;
+  final String reason;
   final String message;
   final bool rateLimited;
 
@@ -35,6 +37,8 @@ class TestPushResult {
     required this.success,
     required this.sent,
     required this.failed,
+    required this.deviceCount,
+    required this.reason,
     required this.message,
     this.rateLimited = false,
   });
@@ -145,12 +149,16 @@ class PushNotificationService {
       final data = response['data'] as Map<String, dynamic>?;
       final sent = (data?['sent'] as num?)?.toInt() ?? 0;
       final failed = (data?['failed'] as num?)?.toInt() ?? 0;
+      final deviceCount = (data?['deviceCount'] as num?)?.toInt() ?? 0;
+      final reason = (data?['reason'] as String?) ?? 'UNKNOWN';
       final message = (data?['message'] as String?) ?? 'Test notification sent';
 
       return TestPushResult(
         success: sent > 0,
         sent: sent,
         failed: failed,
+        deviceCount: deviceCount,
+        reason: reason,
         message: message,
       );
     } catch (e) {
@@ -159,6 +167,8 @@ class PushNotificationService {
           success: false,
           sent: 0,
           failed: 0,
+          deviceCount: 0,
+          reason: 'RATE_LIMITED',
           message: e.message, // "Rate limited. Try again in Ns."
           rateLimited: true,
         );
@@ -167,6 +177,8 @@ class PushNotificationService {
         success: false,
         sent: 0,
         failed: 0,
+        deviceCount: 0,
+        reason: 'EXCEPTION',
         message: 'Failed: ${e.toString()}',
       );
     }

@@ -237,13 +237,12 @@ class _TestNotificationTileState extends ConsumerState<_TestNotificationTile> {
 
     final String text;
     if (result.success) {
-      text = 'Test sent to ${result.sent} device(s)';
+      text = 'Test sent to ${result.sent}/${result.deviceCount} device(s)';
     } else if (result.rateLimited) {
-      text = '⏱  ${result.message}'; // "Rate limited. Try again in Ns."
-    } else if (result.sent == 0 && result.failed == 0) {
-      text = result.message; // Backend "No active devices found..." or network error
+      text = '⏱  ${result.message}';
     } else {
-      text = 'Failed: ${result.failed} device(s) rejected';
+      // Backend returns the precise reason — use its message directly
+      text = result.message;
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -289,7 +288,7 @@ class _RegisterDeviceTileState extends ConsumerState<_RegisterDeviceTile> {
     if (!granted) {
       text = 'Permission denied. Enable notifications in system Settings.';
     } else if (result.success) {
-      text = 'Device registered ✓  Token: ${result.token!.substring(0, 16)}…';
+      text = 'Device registered ✓';
     } else {
       text = 'Registration failed: ${result.error}';
     }

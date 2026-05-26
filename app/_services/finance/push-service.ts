@@ -227,6 +227,89 @@ export async function sendTestPush(
 }
 
 /**
+ * Diagnostic test-push variant. Bypasses the dedup window so users can repeat
+ * tests, and returns rich diagnostics (device count, fcm config status,
+ * circuit-breaker state) so the UI can show a precise failure reason.
+ */
+export async function sendTestPushDiagnostic(userId: string): Promise<{
+  sent: number;
+  failed: number;
+  deviceCount: number;
+  fcmConfigured: boolean;
+  circuitOpen: boolean;
+  reason: string;
+}> {
+  const tokens = await getActiveTokens(userId);
+  const deviceCount = tokens.length;
+
+  if (deviceCount === 0) {
+    return {
+      sent: 0,
+      failed: 0,
+      deviceCount: 0,
+      fcmConfigured: !!process.env.FIREBASE_SERVICE_ACCOUNT_JSON,
+      circuitOpen: false,
+      reason: 'NO_DEVICES',
+    };
+  }
+
+  if (isCircuitOpen()) {
+    return {
+      sent: 0,
+      failed: 0,
+      deviceCount,
+      fcmConfigured: !!process.env.FIREBASE_SERVICE_ACCOUNT_JSON,
+      circuitOpen: true,
+      reason: 'CIRCUIT_OPEN',
+    };
+  }
+
+  const messaging = await getMessaging();
+  if (!messaging) {
+    return {
+      sent: 0,
+      failed: 0,
+      deviceCount,
+      fcmConfigured: false,
+      circuitOpen: false,
+      reason: 'FCM_NOT_CONFIGURED',
+    };
+  }
+
+  try {
+    const { sent, failed } = await sendToTokens(
+      messaging,
+      tokens,
+      '🔔 LuvVerse Test',
+      'Push notifications are working! You will receive alerts for budgets, reminders, and more.',
+      { type: 'TEST', featureId: '', notificationId: '' }
+    );
+    let reason: string;
+    if (sent > 0 && failed === 0) reason = 'OK';
+    else if (sent > 0) reason = 'PARTIAL';
+    else reason = 'ALL_FAILED';
+    return {
+      sent,
+      failed,
+      deviceCount,
+      fcmConfigured: true,
+      circuitOpen: false,
+      reason,
+    };
+  } catch (err) {
+    console.error('[push-service] sendTestPushDiagnostic error:', err);
+    return {
+      sent: 0,
+      failed: deviceCount,
+      deviceCount,
+      fcmConfigured: true,
+      circuitOpen: false,
+      reason: 'EXCEPTION',
+    };
+  }
+}
+
+/**
  * Core send logic: batches tokens in groups of 500, handles stale token cleanup
  * and retries with exponential backoff.
  */

@@ -50,11 +50,15 @@ export async function POST(request: NextRequest) {
     const device = await prisma.deviceToken.upsert({
       where: { token },
       update: { userId, platform, active: true, updatedAt: new Date() },
-      create: { userId, token, platform },
+      create: { userId, token, platform, active: true },
     });
 
+    console.log(
+      `[v1/devices] POST OK userId=${userId} platform=${platform} tokenPrefix=${token.substring(0, 16)} deviceId=${device.id} active=${device.active}`,
+    );
+
     return NextResponse.json(
-      { success: true, data: { id: device.id } },
+      { success: true, data: { id: device.id, userId, active: device.active } },
       { headers: corsHeaders() },
     );
   } catch (error) {

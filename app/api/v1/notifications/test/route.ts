@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
-import { sendTestPush } from "@/_services/finance/push-service";
+import { sendTestPushDiagnostic } from "@/_services/finance/push-service";
 
 export async function OPTIONS() {
   return handleOptions();
@@ -9,7 +9,7 @@ export async function OPTIONS() {
 
 /** In-memory rate limit: userId → last test timestamp */
 const rateLimitMap = new Map<string, number>();
-const RATE_LIMIT_MS = 60_000;
+const RATE_LIMIT_MS = 15_000;
 
 /**
  * POST /api/v1/notifications/test
@@ -41,17 +41,34 @@ export async function POST(_request: NextRequest) {
 
     rateLimitMap.set(userId, Date.now());
 
-    const result = await sendTestPush(userId);
+    const result = await sendTestPushDiagnostic(userId);
+
+    const messageByReason: Record<string, string> = {
+      OK: `Test notification sent to ${result.sent} device(s)`,
+      PARTIAL: `Sent to ${result.sent}/${result.deviceCount} device(s); ${result.failed} failed`,
+      NO_DEVICES:
+        "No devices registered for this account. Tap 'Re-register this device' in Settings.",
+      FCM_NOT_CONFIGURED:
+        "Push service is not configured on the server (missing FCM credentials).",
+      CIRCUIT_OPEN:
+        "Push service is temporarily disabled due to repeated FCM failures. Try again in 60s.",
+      ALL_FAILED:
+        "All device tokens were rejected by FCM. They have been deactivated. Tap 'Re-register this device'.",
+      EXCEPTION: "An unexpected error occurred while sending the push.",
+    };
 
     return NextResponse.json(
       {
-        success: true,
+        success: result.sent > 0,
         data: {
           sent: result.sent,
           failed: result.failed,
-          message: result.sent > 0
-            ? "Test notification sent successfully"
-            : "No active devices found. Make sure the app has push permissions enabled.",
+          deviceCount: result.deviceCount,
+          fcmConfigured: result.fcmConfigured,
+          circuitOpen: result.circuitOpen,
+          reason: result.reason,
+          userId,
+          message: messageByReason[result.reason] ?? "Unknown result",
         },
       },
       { headers: corsHeaders() },
