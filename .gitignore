@@ -58,3 +58,4 @@ mobile/ios/
 mobile/android/
 mobile/node_modules/
 mobile/.env
+.envrc
