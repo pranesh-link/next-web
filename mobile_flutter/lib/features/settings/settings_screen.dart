@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:luvverse/core/auth/auth_provider.dart';
 import 'package:luvverse/core/auth/biometric_service.dart';
+import 'package:luvverse/core/notifications/push_providers.dart';
 import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
@@ -59,7 +60,10 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: AppSpacing.xxl),
           _SettingsTile(icon: Icons.people, title: 'Couple', onTap: () => context.push('/couple/manage')),
-          _SettingsTile(icon: Icons.notifications_outlined, title: 'Notifications', onTap: () => _showSnackbar(context, 'Coming soon')),
+          _SettingsTile(icon: Icons.notifications_outlined, title: 'Notifications', onTap: () => context.push('/finance/notifications')),
+          _TestNotificationTile(),
+          _RegisterDeviceTile(),
+          _ListDevicesTile(),
           const SizedBox(height: AppSpacing.lg),
           // Theme section
           Padding(
@@ -97,10 +101,6 @@ class SettingsScreen extends ConsumerWidget {
         ],
       ),
     );
-  }
-
-  void _showSnackbar(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), duration: const Duration(seconds: 2)));
   }
 
   void _confirmSignOut(BuildContext context, WidgetRef ref) {
@@ -188,5 +188,220 @@ class _BiometricToggle extends ConsumerWidget {
         );
       },
     );
+  }
+}
+
+class _TestNotificationTile extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_TestNotificationTile> createState() => _TestNotificationTileState();
+}
+
+class _TestNotificationTileState extends ConsumerState<_TestNotificationTile> {
+  bool _sending = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(Icons.send_outlined, color: context.colors.textDim),
+      title: Text('Test Push Notification', style: AppTypography.body),
+      trailing: _sending
+          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+          : Icon(Icons.chevron_right, color: context.colors.textMuted, size: 20),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onTap: _sending ? null : _sendTest,
+    );
+  }
+
+  Future<void> _sendTest() async {
+    setState(() => _sending = true);
+    final pushService = ref.read(pushNotificationServiceProvider);
+
+    // Guard: check permission first so we give a clear diagnosis
+    final hasPerm = await pushService.hasPermission();
+    if (!hasPerm) {
+      if (!mounted) return;
+      setState(() => _sending = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Notification permission denied. Enable it in system Settings → Apps → LuvVerse → Notifications.',
+          ),
+          duration: Duration(seconds: 5),
+        ),
+      );
+      return;
+    }
+
+    final result = await pushService.sendTestNotification();
+    if (!mounted) return;
+    setState(() => _sending = false);
+
+    final String text;
+    if (result.success) {
+      text = 'Test sent to ${result.sent}/${result.deviceCount} device(s)';
+    } else if (result.rateLimited) {
+      text = '⏱  ${result.message}';
+    } else {
+      // Backend returns the precise reason — use its message directly
+      text = result.message;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(text), duration: const Duration(seconds: 5)),
+    );
+  }
+}
+
+class _RegisterDeviceTile extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_RegisterDeviceTile> createState() => _RegisterDeviceTileState();
+}
+
+class _RegisterDeviceTileState extends ConsumerState<_RegisterDeviceTile> {
+  bool _busy = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(Icons.phonelink_setup, color: context.colors.textDim),
+      title: Text('Re-register this device', style: AppTypography.body),
+      subtitle: Text(
+        'Request permission & re-register FCM token',
+        style: AppTypography.small.copyWith(color: context.colors.textMuted),
+      ),
+      trailing: _busy
+          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+          : Icon(Icons.chevron_right, color: context.colors.textMuted, size: 20),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onTap: _busy ? null : _register,
+    );
+  }
+
+  Future<void> _register() async {
+    setState(() => _busy = true);
+    final pushService = ref.read(pushNotificationServiceProvider);
+    final granted = await pushService.requestPermission();
+    final result = await pushService.registerToken();
+    if (!mounted) return;
+    setState(() => _busy = false);
+
+    final String text;
+    if (!granted) {
+      text = 'Permission denied. Enable notifications in system Settings.';
+    } else if (result.success) {
+      // Backend now returns a message with userId prefix for debugging
+      text = result.message ?? 'Device registered ✓';
+    } else {
+      text = 'Registration failed: ${result.error}';
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(text), duration: const Duration(seconds: 6)),
+    );
+  }
+}
+
+class _ListDevicesTile extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_ListDevicesTile> createState() => _ListDevicesTileState();
+}
+
+class _ListDevicesTileState extends ConsumerState<_ListDevicesTile> {
+  bool _busy = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(Icons.devices, color: context.colors.textDim),
+      title: Text('List registered devices', style: AppTypography.body),
+      subtitle: Text(
+        'Show all devices registered for push notifications',
+        style: AppTypography.small.copyWith(color: context.colors.textMuted),
+      ),
+      trailing: _busy
+          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+          : Icon(Icons.chevron_right, color: context.colors.textMuted, size: 20),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onTap: _busy ? null : _listDevices,
+    );
+  }
+
+  Future<void> _listDevices() async {
+    setState(() => _busy = true);
+    final pushService = ref.read(pushNotificationServiceProvider);
+    final result = await pushService.listDevices();
+    if (!mounted) return;
+    setState(() => _busy = false);
+
+    if (result.success) {
+      // Show dialog with device list
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Registered Devices (${result.activeCount}/${result.totalCount} active)'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('User ID: ${result.userId}', style: AppTypography.small.copyWith(color: context.colors.textMuted)),
+                const SizedBox(height: 16),
+                if (result.devices.isEmpty)
+                  const Text('No devices registered.')
+                else
+                  ...result.devices.map((device) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  device.platform == 'ios' ? Icons.phone_iphone : Icons.phone_android,
+                                  size: 18,
+                                  color: context.colors.textMuted,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(device.platform.toUpperCase(), style: AppTypography.small.copyWith(fontWeight: FontWeight.w600)),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: device.active ? Colors.green.withValues(alpha: 0.2) : Colors.grey.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    device.active ? 'ACTIVE' : 'INACTIVE',
+                                    style: AppTypography.xs.copyWith(
+                                      color: device.active ? Colors.green : Colors.grey,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text('Token: ${device.tokenPrefix}', style: AppTypography.xs.copyWith(color: context.colors.textMuted)),
+                            Text('Created: ${device.createdAt}', style: AppTypography.xs.copyWith(color: context.colors.textMuted)),
+                            Text('Updated: ${device.updatedAt}', style: AppTypography.xs.copyWith(color: context.colors.textMuted)),
+                          ],
+                        ),
+                      )),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to list devices: ${result.error}'), duration: const Duration(seconds: 4)),
+      );
+    }
   }
 }

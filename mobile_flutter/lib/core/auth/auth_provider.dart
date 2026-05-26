@@ -4,6 +4,7 @@ import 'package:luvverse/core/auth/secure_storage.dart';
 import 'package:luvverse/core/cache/cache_providers.dart';
 import 'package:luvverse/core/cache/cache_warmer.dart';
 import 'package:luvverse/core/network/api_client.dart';
+import 'package:luvverse/core/notifications/push_providers.dart';
 import 'package:luvverse/models/user.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
@@ -47,7 +48,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final credentials = await _repository.getStoredCredentials();
       state = AuthState(user: credentials.user, token: credentials.token);
       // Warm cache in the background after restoring session
-      if (state.isAuthenticated) _warmCache();
+      if (state.isAuthenticated) {
+        _warmCache();
+        _initPush();
+      }
     } catch (_) {
       state = const AuthState();
     }
@@ -61,6 +65,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = AuthState(user: user, token: token);
       // Eagerly populate cache so offline mode works immediately.
       _warmCache();
+      _initPush();
     } catch (e) {
       final message = e.toString().replaceFirst('Exception: ', '');
       state = state.copyWith(isLoading: false, error: message);
@@ -72,7 +77,21 @@ class AuthNotifier extends StateNotifier<AuthState> {
     CacheWarmer.warmAll(_ref);
   }
 
+  void _initPush() {
+    // Fire-and-forget — register FCM token after sign-in.
+    final pushService = _ref.read(pushNotificationServiceProvider);
+    pushService.init().then((_) async {
+      await pushService.requestPermission();
+      await pushService.registerToken();
+    });
+  }
+
   Future<void> signOut() async {
+    // Unregister push token before clearing auth
+    try {
+      final pushService = _ref.read(pushNotificationServiceProvider);
+      await pushService.unregister();
+    } catch (_) {}
     await _repository.signOut();
     state = const AuthState();
   }
