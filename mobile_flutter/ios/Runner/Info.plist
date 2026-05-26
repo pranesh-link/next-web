@@ -53,6 +53,23 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Used to scan receipts for automatic transaction entry</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Used to select receipt images for transaction entry</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Authenticate to access your LuvVerse data</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.613218271037-f8n7hrmek69lde0s0o7cnu46vv2hg6qe</string>
+			</array>
+		</dict>
+	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

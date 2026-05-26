@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/forms/edit_deposit_form.dart';
@@ -24,12 +24,12 @@ class DepositCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeader(),
+          _buildHeader(context),
           if (deposit.provider != null) ...[
             const SizedBox(height: 4),
             Text(
               deposit.provider!,
-              style: AppTypography.small.copyWith(color: AppColors.textMuted),
+              style: AppTypography.small.copyWith(color: context.colors.textMuted),
             ),
           ],
           const SizedBox(height: AppSpacing.md),
@@ -38,7 +38,7 @@ class DepositCard extends ConsumerWidget {
           _buildMaturityRow(currencyFmt, dateFmt),
           if (isRD && deposit.totalInstallments != null) ...[
             const SizedBox(height: AppSpacing.md),
-            _buildInstallmentProgress(),
+            _buildInstallmentProgress(context),
           ],
           const SizedBox(height: AppSpacing.md),
           _buildActions(context, ref),
@@ -47,13 +47,13 @@ class DepositCard extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
     final isRD = deposit.isRecurring;
     return Row(
       children: [
         Icon(
           isRD ? Icons.repeat : Icons.lock_clock,
-          color: AppColors.accent,
+          color: context.colors.accent,
           size: 20,
         ),
         const SizedBox(width: AppSpacing.sm),
@@ -62,12 +62,12 @@ class DepositCard extends ConsumerWidget {
         ),
         _buildBadge(
           isRD ? 'RD' : 'FD',
-          AppColors.accent,
+          context.colors.accent,
         ),
         const SizedBox(width: 6),
         _buildBadge(
           deposit.isActive ? 'Active' : 'Matured',
-          deposit.isActive ? AppColors.success : AppColors.accent,
+          deposit.isActive ? context.colors.success : context.colors.accent,
         ),
       ],
     );
@@ -111,7 +111,7 @@ class DepositCard extends ConsumerWidget {
     );
   }
 
-  Widget _buildInstallmentProgress() {
+  Widget _buildInstallmentProgress(BuildContext context) {
     return Row(
       children: [
         Expanded(
@@ -119,8 +119,8 @@ class DepositCard extends ConsumerWidget {
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: deposit.installmentProgress,
-              backgroundColor: AppColors.border,
-              color: AppColors.accent,
+              backgroundColor: context.colors.border,
+              color: context.colors.accent,
               minHeight: 6,
             ),
           ),
@@ -128,7 +128,7 @@ class DepositCard extends ConsumerWidget {
         const SizedBox(width: AppSpacing.sm),
         Text(
           '${deposit.paidInstallments}/${deposit.totalInstallments} paid',
-          style: AppTypography.xs.copyWith(color: AppColors.textMuted),
+          style: AppTypography.xs.copyWith(color: context.colors.textMuted),
         ),
       ],
     );
@@ -140,14 +140,14 @@ class DepositCard extends ConsumerWidget {
       children: [
         IconButton(
           icon: const Icon(Icons.edit_outlined, size: 20),
-          color: AppColors.textMuted,
+          color: context.colors.textMuted,
           onPressed: () => EditDepositForm.show(context, deposit),
           tooltip: 'Edit',
           visualDensity: VisualDensity.compact,
         ),
         IconButton(
           icon: const Icon(Icons.delete_outline, size: 20),
-          color: AppColors.danger,
+          color: context.colors.danger,
           onPressed: () => _confirmDelete(context, ref),
           tooltip: 'Delete',
           visualDensity: VisualDensity.compact,
@@ -178,7 +178,7 @@ class DepositCard extends ConsumerWidget {
               }
             },
             child: Text('Delete',
-                style: TextStyle(color: AppColors.danger)),
+                style: TextStyle(color: context.colors.danger)),
           ),
         ],
       ),
@@ -197,7 +197,7 @@ class _InfoCol extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label,
-            style: AppTypography.xs.copyWith(color: AppColors.textMuted)),
+            style: AppTypography.xs.copyWith(color: context.colors.textMuted)),
         const SizedBox(height: 2),
         Text(value, style: AppTypography.bodyMedium),
       ],

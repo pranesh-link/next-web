@@ -24,6 +24,7 @@ class CachedAccountsRepository with CacheMixin {
       serialize: (data) => jsonEncode(data),
       deserialize: (cached) =>
           jsonDecode(cached) as Map<String, dynamic>,
+      defaultValue: {'data': [], 'currentUserId': null},
     );
   }
 
@@ -79,6 +80,7 @@ class CachedTransactionsRepository with CacheMixin {
       deserialize: (cached) => (jsonDecode(cached) as List)
           .map((e) => Transaction.fromJson(e as Map<String, dynamic>))
           .toList(),
+      defaultValue: [],
     );
   }
 
@@ -135,6 +137,7 @@ class CachedBudgetsRepository with CacheMixin {
       deserialize: (cached) => (jsonDecode(cached) as List)
           .map((e) => Budget.fromJson(e as Map<String, dynamic>))
           .toList(),
+      defaultValue: [],
     );
   }
 
@@ -177,6 +180,7 @@ class CachedLoansRepository with CacheMixin {
       deserialize: (cached) => (jsonDecode(cached) as List)
           .map((e) => Loan.fromJson(e as Map<String, dynamic>))
           .toList(),
+      defaultValue: [],
     );
   }
 
@@ -208,6 +212,7 @@ class CachedGoalsRepository with CacheMixin {
       deserialize: (cached) => (jsonDecode(cached) as List)
           .map((e) => Goal.fromJson(e as Map<String, dynamic>))
           .toList(),
+      defaultValue: [],
     );
   }
 

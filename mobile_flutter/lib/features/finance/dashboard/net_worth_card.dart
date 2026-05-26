@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/providers/extended_providers.dart';
@@ -43,10 +43,10 @@ class _NetWorthContent extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppColors.accent.withAlpha(20),
+                  color: context.colors.accent.withAlpha(20),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.pie_chart_outline, color: AppColors.accent, size: 20),
+                child: Icon(Icons.pie_chart_outline, color: context.colors.accent, size: 20),
               ),
               const SizedBox(width: AppSpacing.md),
               Text('Net Worth', style: AppTypography.cardTitle),
@@ -59,7 +59,7 @@ class _NetWorthContent extends StatelessWidget {
             child: Text(
               _currencyFormat.format(data.netWorth),
               style: AppTypography.summaryValue.copyWith(
-                color: isPositive ? AppColors.success : AppColors.danger,
+                color: isPositive ? context.colors.success : context.colors.danger,
               ),
             ),
           ),
@@ -101,13 +101,13 @@ class _BreakdownLine extends StatelessWidget {
           label,
           style: bold
               ? AppTypography.small.copyWith(fontWeight: FontWeight.w600)
-              : AppTypography.small.copyWith(color: AppColors.textMuted),
+              : AppTypography.small.copyWith(color: context.colors.textMuted),
         ),
         Text(
           _currencyFormat.format(amount.abs()),
           style: AppTypography.small.copyWith(
             fontWeight: bold ? FontWeight.w600 : FontWeight.w500,
-            color: isDanger ? AppColors.danger : AppColors.text,
+            color: isDanger ? context.colors.danger : context.colors.text,
           ),
         ),
       ],

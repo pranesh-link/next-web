@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 
 class FinanceShell extends StatelessWidget {
@@ -28,15 +28,15 @@ class FinanceShell extends StatelessWidget {
     final resolvedIndex = activeIndex == -1 ? 0 : activeIndex;
 
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: context.colors.bg,
       appBar: AppBar(
         title: const Text('Finance'),
-        backgroundColor: AppColors.bg,
+        backgroundColor: context.colors.bg,
         elevation: 0,
         titleTextStyle: AppTypography.pageTitle,
         actions: [
           PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, color: AppColors.textMuted),
+            icon: Icon(Icons.more_vert, color: context.colors.textMuted),
             onSelected: (route) => context.go(route),
             itemBuilder: (_) => const [
               PopupMenuItem(value: '/finance/scan-receipt', child: Text('Scan Receipt')),
@@ -62,18 +62,18 @@ class FinanceShell extends StatelessWidget {
                       duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
-                        color: isActive ? AppColors.accent : Colors.transparent,
+                        color: isActive ? context.colors.accent : Colors.transparent,
                         borderRadius: BorderRadius.circular(20),
-                        border: isActive ? null : Border.all(color: AppColors.border),
+                        border: isActive ? null : Border.all(color: context.colors.border),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(_tabs[i].icon, size: 16, color: isActive ? Colors.white : AppColors.textDim),
+                          Icon(_tabs[i].icon, size: 16, color: isActive ? Colors.white : context.colors.textDim),
                           const SizedBox(width: 6),
                           Text(
                             _tabs[i].label,
-                            style: AppTypography.small.copyWith(color: isActive ? Colors.white : AppColors.textDim, fontWeight: FontWeight.w600),
+                            style: AppTypography.small.copyWith(color: isActive ? Colors.white : context.colors.textDim, fontWeight: FontWeight.w600),
                           ),
                         ],
                       ),

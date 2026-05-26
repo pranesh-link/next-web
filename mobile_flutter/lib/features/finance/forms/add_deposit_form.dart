@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/shared/widgets/app_button.dart';
 import 'package:luvverse/shared/widgets/app_input.dart';
@@ -146,7 +147,7 @@ class _AddDepositFormState extends ConsumerState<AddDepositForm> {
           value: _type,
           decoration: InputDecoration(
             filled: true,
-            fillColor: Colors.white,
+            fillColor: context.colors.inputBg,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
@@ -200,7 +201,7 @@ class _AddDepositFormState extends ConsumerState<AddDepositForm> {
             value: _frequency,
             decoration: InputDecoration(
               filled: true,
-              fillColor: Colors.white,
+              fillColor: context.colors.inputBg,
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               border:

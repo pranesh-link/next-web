@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:luvverse/core/auth/google_sign_in_instance.dart';
 import 'package:luvverse/core/auth/secure_storage.dart';
@@ -14,56 +16,39 @@ class AuthRepository {
 
   final GoogleSignIn _googleSignIn = googleSignInInstance;
 
-  Future<User> signInWithGoogle() async {
-    // Disconnect to force account picker on subsequent sign-ins.
-    await _googleSignIn.disconnect().catchError((_) => null);
+  /// Timeout for the Google Sign-In popup flow.
+  static const _signInTimeout = Duration(seconds: 30);
 
-    final googleUser = await _googleSignIn.signIn();
+  Future<User> signInWithGoogle() async {
+    // Sign out locally to force account picker on subsequent sign-ins.
+    // NOTE: Do NOT use disconnect() — on web (GIS 0.12+) it calls revoke()
+    // which can cause the credential callback to never fire, freezing the UI.
+    await _googleSignIn.signOut().catchError((_) => null);
+
+    final googleUser = await _googleSignIn.signIn().timeout(
+      _signInTimeout,
+      onTimeout: () => throw TimeoutException('Google sign-in timed out'),
+    );
     if (googleUser == null) throw Exception('Google sign-in cancelled');
 
-    final googleAuth = await googleUser.authentication;
+    final googleAuth = await googleUser.authentication.timeout(
+      const Duration(seconds: 10),
+      onTimeout: () => throw TimeoutException('Token retrieval timed out'),
+    );
+
+    // Prefer idToken (available when serverClientId is set on Android, or
+    // via GIS credential response on web). Falls back to accessToken.
     final idToken = googleAuth.idToken;
-
-    // Prefer idToken exchange with backend (gives us a long-lived JWT).
-    // Falls back to accessToken if idToken is unavailable (e.g. web or
-    // when serverClientId isn't configured).
-    if (idToken != null) {
-      final response = await _api.post<Map<String, dynamic>>(
-        ApiEndpoints.auth,
-        data: {'idToken': idToken},
-      );
-
-      final token = response['token'] as String;
-      final refreshToken = response['refreshToken'] as String?;
-      final userData = User.fromJson(response['user'] as Map<String, dynamic>);
-
-      await SecureStorage.saveToken(token);
-      if (refreshToken != null) {
-        await SecureStorage.saveRefreshToken(refreshToken);
-      }
-      await SecureStorage.saveUser(userData);
-      return userData;
-    }
-
-    // Fallback: exchange Google access token with backend for our JWT pair.
-    final accessToken = googleAuth.accessToken;
-    if (accessToken == null) throw Exception('No access token received');
+    final data = idToken != null
+        ? {'idToken': idToken}
+        : {'accessToken': googleAuth.accessToken ?? (throw Exception('No credentials received'))};
 
     final response = await _api.post<Map<String, dynamic>>(
       ApiEndpoints.auth,
-      data: {'accessToken': accessToken},
+      data: data,
     );
 
-    final token = response['token'] as String;
-    final refreshToken = response['refreshToken'] as String?;
-    final userData = User.fromJson(response['user'] as Map<String, dynamic>);
-
-    await SecureStorage.saveToken(token);
-    if (refreshToken != null) {
-      await SecureStorage.saveRefreshToken(refreshToken);
-    }
-    await SecureStorage.saveUser(userData);
-    return userData;
+    return _saveCredentials(response);
   }
 
   Future<void> signOut() async {
@@ -76,5 +61,18 @@ class AuthRepository {
     final token = await SecureStorage.getToken();
     final user = await SecureStorage.getUser();
     return (user: user, token: token);
+  }
+
+  Future<User> _saveCredentials(Map<String, dynamic> response) async {
+    final token = response['token'] as String;
+    final refreshToken = response['refreshToken'] as String?;
+    final userData = User.fromJson(response['user'] as Map<String, dynamic>);
+
+    await SecureStorage.saveToken(token);
+    if (refreshToken != null) {
+      await SecureStorage.saveRefreshToken(refreshToken);
+    }
+    await SecureStorage.saveUser(userData);
+    return userData;
   }
 }

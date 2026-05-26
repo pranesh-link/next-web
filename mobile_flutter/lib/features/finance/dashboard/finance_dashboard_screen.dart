@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/dashboard/account_breakdown_widget.dart';
@@ -17,6 +17,7 @@ import 'package:luvverse/features/finance/providers/extended_providers.dart';
 import 'package:luvverse/models/transaction.dart';
 import 'package:luvverse/shared/widgets/currency_display.dart';
 import 'package:luvverse/shared/widgets/loading_skeleton.dart';
+import 'package:luvverse/shared/widgets/offline_error_state.dart';
 import 'package:luvverse/shared/widgets/section_header.dart';
 import 'package:luvverse/shared/widgets/summary_card.dart';
 
@@ -45,10 +46,17 @@ class FinanceDashboardScreen extends ConsumerWidget {
     final txns = ref.watch(transactionsProvider);
     return RefreshIndicator(
       onRefresh: () async {
-        await ref.read(accountsProvider.notifier).refresh();
-        await ref.read(transactionsProvider.notifier).refresh();
-        ref.invalidate(healthScoreProvider);
-        ref.invalidate(dashboardInsightsProvider);
+        try {
+          await ref.read(accountsProvider.notifier).refresh();
+          await ref.read(transactionsProvider.notifier).refresh();
+          ref.invalidate(healthScoreProvider);
+          ref.invalidate(dashboardInsightsProvider);
+          ref.invalidate(loansProvider);
+          ref.invalidate(goalsProvider);
+          ref.invalidate(budgetsProvider);
+        } catch (_) {
+          // Offline — keep showing cached data, don't throw
+        }
       },
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -80,8 +88,8 @@ class FinanceDashboardScreen extends ConsumerWidget {
             const SizedBox(height: AppSpacing.sm),
             txns.when(
               loading: () => const LoadingSkeleton(type: SkeletonType.chart),
-              error: (e, _) => Text('Error: $e'),
-              data: (items) => _buildPieChart(items),
+              error: (e, _) => OfflineErrorState(error: e, onRetry: () => ref.read(transactionsProvider.notifier).refresh()),
+              data: (items) => _buildPieChart(context, items),
             ),
             const SizedBox(height: AppSpacing.xxl),
             // 8. Budgets Status
@@ -98,13 +106,13 @@ class FinanceDashboardScreen extends ConsumerWidget {
             const SizedBox(height: AppSpacing.sm),
             txns.when(
               loading: () => const LoadingSkeleton(type: SkeletonType.list, count: 5),
-              error: (e, _) => Center(child: Text('Error: $e')),
+              error: (e, _) => OfflineErrorState(error: e, onRetry: () => ref.read(transactionsProvider.notifier).refresh()),
               data: (items) => items.isEmpty
                   ? Padding(
                       padding: const EdgeInsets.all(AppSpacing.lg),
-                      child: Center(child: Text('No transactions yet', style: TextStyle(color: AppColors.textMuted))),
+                      child: Center(child: Text('No transactions yet', style: TextStyle(color: context.colors.textMuted))),
                     )
-                  : Column(children: items.take(5).map(_buildTxTile).toList()),
+                  : Column(children: items.take(5).map((tx) => _buildTxTile(context, tx)).toList()),
             ),
           ],
         ),
@@ -117,8 +125,8 @@ class FinanceDashboardScreen extends ConsumerWidget {
       children: [
         balance.when(
           loading: () => const LoadingSkeleton(type: SkeletonType.card, count: 1),
-          error: (e, _) => Text('Error: $e'),
-          data: (val) => SummaryCard(title: 'Total Balance', value: _currencyFormat.format(val), icon: Icons.account_balance_wallet),
+          error: (_, __) => const SizedBox.shrink(),
+          data: (val) => _AnimatedSummaryCard(title: 'Total Balance', value: val, icon: Icons.account_balance_wallet),
         ),
         const SizedBox(height: AppSpacing.md),
         Row(
@@ -126,16 +134,16 @@ class FinanceDashboardScreen extends ConsumerWidget {
             Expanded(
               child: income.when(
                 loading: () => const LoadingSkeleton(type: SkeletonType.card, count: 1),
-                error: (e, _) => Text('$e'),
-                data: (val) => SummaryCard(title: 'Income', value: _currencyFormat.format(val), icon: Icons.trending_up),
+                error: (_, __) => const SizedBox.shrink(),
+                data: (val) => _AnimatedSummaryCard(title: 'Income', value: val, icon: Icons.trending_up),
               ),
             ),
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: expense.when(
                 loading: () => const LoadingSkeleton(type: SkeletonType.card, count: 1),
-                error: (e, _) => Text('$e'),
-                data: (val) => SummaryCard(title: 'Expenses', value: _currencyFormat.format(val), icon: Icons.trending_down),
+                error: (_, __) => const SizedBox.shrink(),
+                data: (val) => _AnimatedSummaryCard(title: 'Expenses', value: val, icon: Icons.trending_down),
               ),
             ),
           ],
@@ -146,12 +154,12 @@ class FinanceDashboardScreen extends ConsumerWidget {
             Expanded(
               child: income.when(
                 loading: () => const LoadingSkeleton(type: SkeletonType.card, count: 1),
-                error: (e, _) => Text('$e'),
+                error: (_, __) => const SizedBox.shrink(),
                 data: (incVal) {
                   final expVal = expense.valueOrNull ?? 0.0;
-                  return SummaryCard(
+                  return _AnimatedSummaryCard(
                     title: 'Cash Flow',
-                    value: _currencyFormat.format(incVal - expVal),
+                    value: incVal - expVal,
                     icon: Icons.swap_vert,
                   );
                 },
@@ -161,10 +169,10 @@ class FinanceDashboardScreen extends ConsumerWidget {
             Expanded(
               child: savingsRate.when(
                 loading: () => const LoadingSkeleton(type: SkeletonType.card, count: 1),
-                error: (e, _) => Text('$e'),
-                data: (val) => SummaryCard(
+                error: (_, __) => const SizedBox.shrink(),
+                data: (val) => _AnimatedPercentCard(
                   title: 'Savings Rate',
-                  value: '${val.toStringAsFixed(1)}%',
+                  value: val,
                   icon: Icons.savings_outlined,
                 ),
               ),
@@ -175,12 +183,12 @@ class FinanceDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildPieChart(List<Transaction> transactions) {
+  Widget _buildPieChart(BuildContext context, List<Transaction> transactions) {
     final expenses = transactions.where((t) => t.type == TransactionType.expense).toList();
     if (expenses.isEmpty) {
       return Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Center(child: Text('No expenses this month', style: TextStyle(color: AppColors.textMuted))),
+        child: Center(child: Text('No expenses this month', style: TextStyle(color: context.colors.textMuted))),
       );
     }
     final grouped = <String, double>{};
@@ -221,7 +229,7 @@ class FinanceDashboardScreen extends ConsumerWidget {
                 const SizedBox(width: AppSpacing.xs),
                 Text(e.key, style: AppTypography.small),
                 const SizedBox(width: AppSpacing.xs),
-                Text(_currencyFormat.format(e.value), style: AppTypography.xs.copyWith(color: AppColors.textMuted)),
+                Text(_currencyFormat.format(e.value), style: AppTypography.xs.copyWith(color: context.colors.textMuted)),
               ],
             );
           }).toList(),
@@ -230,17 +238,69 @@ class FinanceDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTxTile(Transaction tx) {
+  Widget _buildTxTile(BuildContext context, Transaction tx) {
     final isIncome = tx.type == TransactionType.income;
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Icon(
         isIncome ? Icons.arrow_downward : Icons.arrow_upward,
-        color: isIncome ? AppColors.success : AppColors.danger,
+        color: isIncome ? context.colors.success : context.colors.danger,
       ),
       title: Text(tx.description ?? tx.category, style: AppTypography.body),
       subtitle: Text(DateFormat('dd MMM yyyy').format(tx.date), style: AppTypography.small),
       trailing: CurrencyDisplay(amount: isIncome ? tx.amount : -tx.amount, colorCoded: true, showSign: true, style: AppTypography.body),
+    );
+  }
+}
+
+class _AnimatedSummaryCard extends StatelessWidget {
+  final String title;
+  final double value;
+  final IconData icon;
+
+  const _AnimatedSummaryCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: value),
+      duration: const Duration(milliseconds: 800),
+      curve: Curves.easeOutCubic,
+      builder: (context, animatedValue, _) => SummaryCard(
+        title: title,
+        value: _currencyFormat.format(animatedValue),
+        icon: icon,
+      ),
+    );
+  }
+}
+
+class _AnimatedPercentCard extends StatelessWidget {
+  final String title;
+  final double value;
+  final IconData icon;
+
+  const _AnimatedPercentCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: value),
+      duration: const Duration(milliseconds: 800),
+      curve: Curves.easeOutCubic,
+      builder: (context, animatedValue, _) => SummaryCard(
+        title: title,
+        value: '${animatedValue.toStringAsFixed(1)}%',
+        icon: icon,
+      ),
     );
   }
 }

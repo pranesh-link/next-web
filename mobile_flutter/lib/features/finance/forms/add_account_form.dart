@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/shared/widgets/app_button.dart';
 import 'package:luvverse/shared/widgets/app_input.dart';
@@ -95,16 +96,16 @@ class _AddAccountFormState extends ConsumerState<AddAccountForm> {
         const SizedBox(height: AppSpacing.lg),
         AppInput(label: 'Nickname (optional)', hint: 'Short label', controller: _nicknameCtrl),
         const SizedBox(height: AppSpacing.lg),
-        const Text('Type', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF374151))),
+        Text('Type', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: context.colors.textDim)),
         const SizedBox(height: 6),
         DropdownButtonFormField<String>(
           value: _type,
           decoration: InputDecoration(
             filled: true,
-            fillColor: Colors.white,
+            fillColor: context.colors.inputBg,
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFD1D5DB))),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFD1D5DB))),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: context.colors.cardBorder)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: context.colors.cardBorder)),
           ),
           items: _accountTypes.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
           onChanged: (v) => setState(() => _type = v!),

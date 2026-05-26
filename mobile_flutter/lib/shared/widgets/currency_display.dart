@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 
 class CurrencyDisplay extends StatelessWidget {
@@ -21,10 +21,10 @@ class CurrencyDisplay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color color = AppColors.text;
+    Color color = context.colors.text;
     if (colorCoded) {
-      if (amount > 0) color = AppColors.success;
-      if (amount < 0) color = AppColors.danger;
+      if (amount > 0) color = context.colors.success;
+      if (amount < 0) color = context.colors.danger;
     }
     final prefix = showSign && amount > 0 ? '+' : '';
     final text = '$prefix${_formatter.format(amount)}';

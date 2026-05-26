@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
-import 'app_colors.dart';
 
+/// App-wide typography presets.
+///
+/// Colors are intentionally omitted so each style inherits from the active
+/// theme's `TextTheme`/`DefaultTextStyle`. This is what makes typography
+/// adapt to light/dark mode automatically. Call sites that want a non-default
+/// color should do `AppTypography.body.copyWith(color: context.colors.x)`.
 abstract final class AppTypography {
   static const _fontFamily = 'Inter';
 
@@ -9,7 +14,6 @@ abstract final class AppTypography {
     fontSize: 20,
     fontWeight: FontWeight.w700,
     letterSpacing: -0.5,
-    color: AppColors.text,
   );
 
   static const cardTitle = TextStyle(
@@ -17,7 +21,6 @@ abstract final class AppTypography {
     fontSize: 18,
     fontWeight: FontWeight.w700,
     letterSpacing: 1.5,
-    color: AppColors.text,
   );
 
   static const sectionTitle = TextStyle(
@@ -25,7 +28,6 @@ abstract final class AppTypography {
     fontSize: 14,
     fontWeight: FontWeight.w600,
     letterSpacing: 3.0,
-    color: AppColors.textMuted,
   );
 
   static const summaryValue = TextStyle(
@@ -33,21 +35,18 @@ abstract final class AppTypography {
     fontSize: 28,
     fontWeight: FontWeight.w800,
     letterSpacing: -1.0,
-    color: AppColors.text,
   );
 
   static const body = TextStyle(
     fontFamily: _fontFamily,
     fontSize: 14,
     fontWeight: FontWeight.w400,
-    color: AppColors.text,
   );
 
   static const bodyMedium = TextStyle(
     fontFamily: _fontFamily,
     fontSize: 14,
     fontWeight: FontWeight.w500,
-    color: AppColors.text,
   );
 
   static const label = TextStyle(
@@ -55,7 +54,6 @@ abstract final class AppTypography {
     fontSize: 13,
     fontWeight: FontWeight.w600,
     letterSpacing: 0.3,
-    color: AppColors.textDim,
   );
 
   static const small = TextStyle(
@@ -63,27 +61,23 @@ abstract final class AppTypography {
     fontSize: 12,
     fontWeight: FontWeight.w500,
     letterSpacing: 0.2,
-    color: AppColors.textMuted,
   );
 
   static const xs = TextStyle(
     fontFamily: _fontFamily,
     fontSize: 11,
     fontWeight: FontWeight.w600,
-    color: AppColors.textMuted,
   );
 
   static const moduleName = TextStyle(
     fontFamily: _fontFamily,
     fontSize: 16,
     fontWeight: FontWeight.w600,
-    color: AppColors.text,
   );
 
   static const moduleDesc = TextStyle(
     fontFamily: _fontFamily,
     fontSize: 13,
     fontWeight: FontWeight.w400,
-    color: AppColors.textDim,
   );
 }

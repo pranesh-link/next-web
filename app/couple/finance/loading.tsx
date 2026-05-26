@@ -2,6 +2,7 @@
 
 import React from "react";
 import styled from "styled-components";
+import SkeletonCard from "@/couple/_components/shared/SkeletonCard";
 import LoadingSkeleton from "@/couple/_components/shared/LoadingSkeleton";
 
 const Wrapper = styled.div`
@@ -25,7 +26,7 @@ const ChartRow = styled.div`
 export default function FinanceLoading() {
   return (
     <Wrapper>
-      <LoadingSkeleton type="card" count={4} />
+      <SkeletonCard count={7} />
       <ChartRow>
         <LoadingSkeleton type="chart" />
         <LoadingSkeleton type="chart" />

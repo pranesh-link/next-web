@@ -19,6 +19,7 @@ import RecentTransactionsSection from "./dashboard/RecentTransactionsSection";
 import AlertsBanner from "./dashboard/AlertsBanner";
 import AccountBreakdownSection from "./dashboard/AccountBreakdownSection";
 import BudgetVsActualsWidget from "./BudgetVsActualsWidget";
+import KeyboardShortcuts from "@/couple/_components/shared/KeyboardShortcuts";
 import type { DashboardData } from "./dashboard/types";
 
 export default function DashboardClient({
@@ -78,6 +79,7 @@ export default function DashboardClient({
   return (
     <>
       <FinanceHeader title="Dashboard" onRefresh={handleRefresh} />
+      <KeyboardShortcuts />
       <PageWrapper $pending={isPending}>
         <AlertsBanner alerts={alerts} />
 

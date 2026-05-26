@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/forms/edit_investment_form.dart';
@@ -44,18 +44,18 @@ class InvestmentCard extends ConsumerWidget {
     }
   }
 
-  Color get _assetColor {
+  Color _assetColor(BuildContext context) {
     switch (investment.assetType) {
       case 'GOLD':
         return const Color(0xFFD4A017);
       case 'SILVER':
         return const Color(0xFFC0C0C0);
       case 'STOCK':
-        return AppColors.accent;
+        return context.colors.accent;
       case 'MUTUAL_FUND':
         return const Color(0xFF8B5CF6);
       default:
-        return AppColors.textMuted;
+        return context.colors.textMuted;
     }
   }
 
@@ -63,26 +63,26 @@ class InvestmentCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currencyFmt = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
     final gainLoss = investment.gainLoss;
-    final gainColor = gainLoss >= 0 ? AppColors.success : AppColors.danger;
+    final gainColor = gainLoss >= 0 ? context.colors.success : context.colors.danger;
 
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeader(),
+          _buildHeader(context),
           if (investment.ticker != null) ...[
             const SizedBox(height: 4),
             Text(
               '${investment.ticker}${investment.exchange != null ? ' · ${investment.exchange}' : ''}',
               style:
-                  AppTypography.small.copyWith(color: AppColors.textMuted),
+                  AppTypography.small.copyWith(color: context.colors.textMuted),
             ),
           ],
           const SizedBox(height: AppSpacing.md),
-          _buildMetrics(currencyFmt, gainLoss, gainColor),
+          _buildMetrics(context, currencyFmt, gainLoss, gainColor),
           if (investment.isSip && investment.sipAmount != null) ...[
             const SizedBox(height: AppSpacing.sm),
-            _buildSipInfo(currencyFmt),
+            _buildSipInfo(context, currencyFmt),
           ],
           const SizedBox(height: AppSpacing.md),
           _buildActions(context, ref),
@@ -91,7 +91,7 @@ class InvestmentCard extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
     return Row(
       children: [
         Text(_assetEmoji, style: const TextStyle(fontSize: 18)),
@@ -99,11 +99,11 @@ class InvestmentCard extends ConsumerWidget {
         Expanded(
           child: Text(investment.name, style: AppTypography.cardTitle),
         ),
-        _buildBadge(_assetLabel, _assetColor),
+        _buildBadge(_assetLabel, _assetColor(context)),
         const SizedBox(width: 6),
         _buildBadge(
           investment.isSip ? 'SIP' : 'Lumpsum',
-          investment.isSip ? AppColors.accent : AppColors.textMuted,
+          investment.isSip ? context.colors.accent : context.colors.textMuted,
         ),
       ],
     );
@@ -126,7 +126,7 @@ class InvestmentCard extends ConsumerWidget {
     );
   }
 
-  Widget _buildMetrics(NumberFormat fmt, double gainLoss, Color gainColor) {
+  Widget _buildMetrics(BuildContext context, NumberFormat fmt, double gainLoss, Color gainColor) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -140,7 +140,7 @@ class InvestmentCard extends ConsumerWidget {
           children: [
             Text('Gain/Loss',
                 style:
-                    AppTypography.xs.copyWith(color: AppColors.textMuted)),
+                    AppTypography.xs.copyWith(color: context.colors.textMuted)),
             const SizedBox(height: 2),
             Text(
               '${gainLoss >= 0 ? '+' : ''}${fmt.format(gainLoss)}',
@@ -152,17 +152,17 @@ class InvestmentCard extends ConsumerWidget {
     );
   }
 
-  Widget _buildSipInfo(NumberFormat currencyFmt) {
+  Widget _buildSipInfo(BuildContext context, NumberFormat currencyFmt) {
     final dateFmt = DateFormat('dd MMM yyyy');
     return Row(
       children: [
-        Icon(Icons.autorenew, size: 14, color: AppColors.textMuted),
+        Icon(Icons.autorenew, size: 14, color: context.colors.textMuted),
         const SizedBox(width: 4),
         Expanded(
           child: Text(
             'SIP ${currencyFmt.format(investment.sipAmount)} on day ${investment.sipDayOfMonth}'
             '${investment.nextSipDate != null ? ' · Next: ${dateFmt.format(investment.nextSipDate!)}' : ''}',
-            style: AppTypography.xs.copyWith(color: AppColors.textMuted),
+            style: AppTypography.xs.copyWith(color: context.colors.textMuted),
           ),
         ),
       ],
@@ -175,14 +175,14 @@ class InvestmentCard extends ConsumerWidget {
       children: [
         IconButton(
           icon: const Icon(Icons.edit_outlined, size: 20),
-          color: AppColors.textMuted,
+          color: context.colors.textMuted,
           onPressed: () => EditInvestmentForm.show(context, investment),
           tooltip: 'Edit',
           visualDensity: VisualDensity.compact,
         ),
         IconButton(
           icon: const Icon(Icons.delete_outline, size: 20),
-          color: AppColors.danger,
+          color: context.colors.danger,
           onPressed: () => _confirmDelete(context, ref),
           tooltip: 'Delete',
           visualDensity: VisualDensity.compact,
@@ -216,7 +216,7 @@ class InvestmentCard extends ConsumerWidget {
               }
             },
             child:
-                Text('Delete', style: TextStyle(color: AppColors.danger)),
+                Text('Delete', style: TextStyle(color: context.colors.danger)),
           ),
         ],
       ),
@@ -235,7 +235,7 @@ class _InfoCol extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label,
-            style: AppTypography.xs.copyWith(color: AppColors.textMuted)),
+            style: AppTypography.xs.copyWith(color: context.colors.textMuted)),
         const SizedBox(height: 2),
         Text(value, style: AppTypography.bodyMedium),
       ],

@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/providers/extended_providers.dart';
 import 'package:luvverse/features/finance/budget_planner/budget_planner_widgets.dart';
+import 'package:luvverse/features/finance/budget_planner/planner_item_card.dart';
+import 'package:luvverse/features/finance/budget_planner/planner_item_edit_sheet.dart';
+import 'package:luvverse/features/finance/budget_planner/planner_empty_state.dart';
 import 'package:luvverse/models/budget_plan.dart';
-import 'package:luvverse/shared/widgets/app_button.dart';
 import 'package:luvverse/shared/widgets/app_card.dart';
 import 'package:luvverse/shared/widgets/loading_skeleton.dart';
+import 'package:luvverse/shared/widgets/offline_error_state.dart';
 import 'package:intl/intl.dart';
 
-/// Budget planner screen for monthly/yearly planning.
+/// Budget planner screen with card-based layout, swipe gestures, and FAB.
 class BudgetPlannerScreen extends ConsumerStatefulWidget {
   const BudgetPlannerScreen({super.key});
 
@@ -24,6 +27,7 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
   final _incomeCtrl = TextEditingController();
   final List<LineItemEntry> _items = [];
   bool _saving = false;
+  bool _isDirty = false;
   String? _loadedPlanId;
 
   @override
@@ -43,6 +47,7 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
       }
       _items.clear();
       _loadedPlanId = null;
+      _isDirty = false;
       setState(() {});
       return;
     }
@@ -55,16 +60,54 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
       _items.add(LineItemEntry.fromLineItem(item));
     }
     _loadedPlanId = plan.id;
+    _isDirty = false;
     setState(() {});
   }
 
+  void _markDirty() {
+    if (!_isDirty) setState(() => _isDirty = true);
+  }
+
   void _addItem() {
-    setState(() => _items.add(LineItemEntry()));
+    setState(() {
+      _items.add(LineItemEntry());
+      _isDirty = true;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _openEditSheet(_items.length - 1);
+    });
   }
 
   void _removeItem(int index) {
     _items[index].dispose();
-    setState(() => _items.removeAt(index));
+    setState(() {
+      _items.removeAt(index);
+      _isDirty = true;
+    });
+  }
+
+  void _togglePaid(int index) {
+    setState(() {
+      _items[index].paid = !_items[index].paid;
+      _isDirty = true;
+    });
+  }
+
+  void _openEditSheet(int index) {
+    PlannerItemEditSheet.show(
+      context,
+      item: _items[index],
+      onSave: () {
+        _markDirty();
+        setState(() {});
+      },
+      onDelete: () => _removeItem(index),
+    );
+  }
+
+  void _discard() {
+    final plan = ref.read(budgetPlanProvider).valueOrNull;
+    _loadFromPlan(plan);
   }
 
   Future<void> _save() async {
@@ -91,6 +134,7 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
             lineItems: lineItems,
           );
       if (mounted) {
+        setState(() => _isDirty = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Budget plan saved')),
         );
@@ -111,136 +155,282 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
     final planAsync = ref.watch(budgetPlanProvider);
     final month = ref.watch(budgetPlanMonthProvider);
     final mode = ref.watch(budgetPlanModeProvider);
-    final currencyFmt = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
+    final currencyFmt =
+        NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
 
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: context.colors.bg,
       appBar: AppBar(
         title: const Text('Budget Planner'),
-        backgroundColor: AppColors.bg,
+        backgroundColor: context.colors.bg,
         elevation: 0,
         titleTextStyle: AppTypography.pageTitle,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Column(
-          children: [
-            // Month + mode selector
-            Row(
-              children: [
-                Expanded(child: PlannerMonthSelector(month: month, ref: ref)),
-                const SizedBox(width: AppSpacing.sm),
-                SegmentedButton<String>(
-                  segments: const [
-                    ButtonSegment(value: 'monthly', label: Text('Monthly')),
-                    ButtonSegment(value: 'yearly', label: Text('Yearly')),
-                  ],
-                  selected: {mode},
-                  onSelectionChanged: (v) =>
-                      ref.read(budgetPlanModeProvider.notifier).state =
-                          v.first,
-                  style: ButtonStyle(
-                    textStyle: WidgetStatePropertyAll(AppTypography.xs),
-                  ),
-                ),
-              ],
+      floatingActionButton: _isDirty
+          ? null
+          : FloatingActionButton(
+              onPressed: _addItem,
+              backgroundColor: context.colors.accent,
+              child: const Icon(Icons.add, color: Colors.white),
             ),
-            const SizedBox(height: AppSpacing.lg),
-            // Content
-            Expanded(
-              child: planAsync.when(
-                loading: () => const LoadingSkeleton(type: SkeletonType.card),
-                error: (e, _) => Center(child: Text('Error: $e')),
-                data: (plan) {
-                  // Re-populate form when plan changes (new month/mode)
-                  final planId = plan?.id;
-                  if (planId != _loadedPlanId) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      _loadFromPlan(plan);
-                    });
-                  }
-                  return _buildForm(currencyFmt);
-                },
+      body: Column(
+        children: [
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Column(
+                children: [
+                  // Month + mode selector
+                  Row(
+                    children: [
+                      Expanded(
+                          child:
+                              PlannerMonthSelector(month: month, ref: ref)),
+                      const SizedBox(width: AppSpacing.sm),
+                      _buildSegmentedControl(mode),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  // Content
+                  Expanded(
+                    child: planAsync.when(
+                      loading: () =>
+                          const LoadingSkeleton(type: SkeletonType.card),
+                      error: (e, _) => OfflineErrorState(
+                        error: e,
+                        onRetry: () => ref.read(
+                            budgetPlanProvider.notifier).refresh(),
+                      ),
+                      data: (plan) {
+                        final planId = plan?.id;
+                        if (planId != _loadedPlanId) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            _loadFromPlan(plan);
+                          });
+                        }
+                        return _buildContent(currencyFmt);
+                      },
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+          if (_isDirty) _buildSaveBar(),
+        ],
       ),
     );
   }
 
-  Widget _buildForm(NumberFormat currencyFmt) {
+  Widget _buildSegmentedControl(String mode) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        color: context.colors.bg,
+        border: Border.all(color: context.colors.cardBorder),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: ['monthly', 'yearly'].map((m) {
+          final isSelected = mode == m;
+          return GestureDetector(
+            onTap: () =>
+                ref.read(budgetPlanModeProvider.notifier).state = m,
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: isSelected ? context.colors.accent : Colors.transparent,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                m == 'monthly' ? 'Monthly' : 'Yearly',
+                style: AppTypography.xs.copyWith(
+                  color: isSelected ? Colors.white : context.colors.textMuted,
+                  fontWeight:
+                      isSelected ? FontWeight.w600 : FontWeight.w400,
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildContent(NumberFormat currencyFmt) {
     final totalPlanned = _items.fold(0.0, (sum, i) => sum + i.amount);
-    final totalPaid = _items
-        .where((i) => i.paid)
-        .fold(0.0, (sum, i) => sum + i.amount);
+    final totalPaid =
+        _items.where((i) => i.paid).fold(0.0, (sum, i) => sum + i.amount);
     final income = double.tryParse(_incomeCtrl.text) ?? 0;
     final remaining = income - totalPaid;
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Monthly Income', style: AppTypography.label),
-                const SizedBox(height: AppSpacing.sm),
-                TextField(
-                  controller: _incomeCtrl,
-                  keyboardType: TextInputType.number,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    prefixText: '₹ ',
-                    hintText: '0',
-                    isDense: true,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          // Summary row
-          Row(
+    return ListView(
+      children: [
+        // Income card
+        AppCard(
+          child: Row(
             children: [
-              PlannerSummaryChip(
-                  'Planned', currencyFmt.format(totalPlanned), AppColors.accent),
-              const SizedBox(width: AppSpacing.sm),
-              PlannerSummaryChip(
-                  'Paid', currencyFmt.format(totalPaid), AppColors.success),
-              const SizedBox(width: AppSpacing.sm),
-              PlannerSummaryChip(
-                'Remaining',
-                currencyFmt.format(remaining),
-                remaining >= 0 ? AppColors.success : AppColors.danger,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Monthly Income',
+                        style: AppTypography.xs
+                            .copyWith(color: context.colors.textMuted)),
+                    const SizedBox(height: 4),
+                    TextField(
+                      controller: _incomeCtrl,
+                      keyboardType: TextInputType.number,
+                      onChanged: (_) {
+                        _markDirty();
+                        setState(() {});
+                      },
+                      style: AppTypography.cardTitle,
+                      decoration: const InputDecoration(
+                        prefixText: '₹ ',
+                        hintText: '0',
+                        isDense: true,
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.lg),
-          // Line items
-          ..._items.asMap().entries.map((entry) => Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                child: PlannerLineItemRow(
-                  item: entry.value,
-                  onRemove: () => _removeItem(entry.key),
-                  onChanged: () => setState(() {}),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        // Summary row
+        Row(
+          children: [
+            PlannerSummaryChip(
+                'Planned', currencyFmt.format(totalPlanned), context.colors.accent),
+            const SizedBox(width: AppSpacing.sm),
+            PlannerSummaryChip(
+                'Paid', currencyFmt.format(totalPaid), context.colors.success),
+            const SizedBox(width: AppSpacing.sm),
+            PlannerSummaryChip(
+              'Remaining',
+              currencyFmt.format(remaining),
+              remaining >= 0 ? context.colors.success : context.colors.danger,
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        // Items
+        if (_items.isEmpty)
+          PlannerEmptyState(onAdd: _addItem)
+        else ..._buildGroupedItems(),
+        // Bottom spacer for FAB
+        const SizedBox(height: 80),
+      ],
+    );
+  }
+
+  List<Widget> _buildGroupedItems() {
+    final unpaid = <MapEntry<int, LineItemEntry>>[];
+    final paid = <MapEntry<int, LineItemEntry>>[];
+
+    for (final entry in _items.asMap().entries) {
+      if (entry.value.paid) {
+        paid.add(entry);
+      } else {
+        unpaid.add(entry);
+      }
+    }
+
+    return [
+      // Unpaid items first
+      ...unpaid.map((entry) => Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: PlannerItemCard(
+              item: entry.value,
+              index: entry.key,
+              onTap: () => _openEditSheet(entry.key),
+              onDelete: () => _removeItem(entry.key),
+              onTogglePaid: () => _togglePaid(entry.key),
+            ),
+          )),
+      // Paid items in collapsible accordion
+      if (paid.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(top: AppSpacing.md),
+          child: Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              initiallyExpanded: false,
+              tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              title: Text(
+                'Paid (${paid.length})',
+                style: AppTypography.bodyMedium.copyWith(
+                  color: context.colors.success,
+                  fontWeight: FontWeight.w600,
                 ),
-              )),
-          const SizedBox(height: AppSpacing.sm),
-          OutlinedButton.icon(
-            onPressed: _addItem,
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('Add Item'),
+              ),
+              leading: Icon(Icons.check_circle, color: context.colors.success, size: 20),
+              children: paid
+                  .map((entry) => Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                        child: PlannerItemCard(
+                          item: entry.value,
+                          index: entry.key,
+                          onTap: () => _openEditSheet(entry.key),
+                          onDelete: () => _removeItem(entry.key),
+                          onTogglePaid: () => _togglePaid(entry.key),
+                        ),
+                      ))
+                  .toList(),
+            ),
           ),
-          const SizedBox(height: AppSpacing.xl),
-          AppButton(
-            label: 'Save Plan',
-            onPressed: _save,
-            isLoading: _saving,
-            fullWidth: true,
+        ),
+    ];
+  }
+
+  Widget _buildSaveBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+      decoration: BoxDecoration(
+        color: context.colors.bgElevated,
+        border: Border(top: BorderSide(color: context.colors.cardBorder)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(10),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
           ),
         ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Unsaved changes',
+                style:
+                    AppTypography.small.copyWith(color: context.colors.textMuted),
+              ),
+            ),
+            TextButton(
+              onPressed: _discard,
+              child: Text('Discard',
+                  style: TextStyle(color: context.colors.textMuted)),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            FilledButton(
+              onPressed: _saving ? null : _save,
+              child: _saving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Save'),
+            ),
+          ],
+        ),
       ),
     );
   }

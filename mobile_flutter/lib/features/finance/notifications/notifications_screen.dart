@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/providers/extended_providers.dart';
@@ -8,6 +8,7 @@ import 'package:luvverse/models/notification_model.dart';
 import 'package:luvverse/shared/widgets/app_card.dart';
 import 'package:luvverse/shared/widgets/empty_state.dart';
 import 'package:luvverse/shared/widgets/loading_skeleton.dart';
+import 'package:luvverse/shared/widgets/offline_error_state.dart';
 import 'package:intl/intl.dart';
 
 /// Screen listing all notifications with mark-as-read.
@@ -19,10 +20,10 @@ class NotificationsScreen extends ConsumerWidget {
     final notifAsync = ref.watch(notificationsProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: context.colors.bg,
       appBar: AppBar(
         title: const Text('Notifications'),
-        backgroundColor: AppColors.bg,
+        backgroundColor: context.colors.bg,
         elevation: 0,
         titleTextStyle: AppTypography.pageTitle,
         actions: [
@@ -31,7 +32,7 @@ class NotificationsScreen extends ConsumerWidget {
                 ref.read(notificationsProvider.notifier).markAllAsRead(),
             child: Text(
               'Mark all read',
-              style: AppTypography.small.copyWith(color: AppColors.accent),
+              style: AppTypography.small.copyWith(color: context.colors.accent),
             ),
           ),
         ],
@@ -40,9 +41,7 @@ class NotificationsScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: notifAsync.when(
           loading: () => const LoadingSkeleton(type: SkeletonType.list),
-          error: (e, _) => Center(
-            child: Text('Error: $e', style: AppTypography.body),
-          ),
+          error: (e, _) => OfflineErrorState(error: e, onRetry: () => ref.read(notificationsProvider.notifier).refresh()),
           data: (response) => response.notifications.isEmpty
               ? const EmptyState(
                   icon: Icons.notifications_none,
@@ -98,20 +97,21 @@ class _NotificationCard extends StatelessWidget {
     }
   }
 
-  Color get _iconColor {
+  Color _iconColor(BuildContext context) {
     switch (notification.type) {
       case NotificationType.budgetExceeded:
-        return AppColors.danger;
+        return context.colors.danger;
       case NotificationType.goalReached:
-        return AppColors.success;
+        return context.colors.success;
       default:
-        return AppColors.accent;
+        return context.colors.accent;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final dateFmt = DateFormat('dd MMM, h:mm a');
+    final iconColor = _iconColor(context);
 
     return AppCard(
       child: Row(
@@ -120,10 +120,10 @@ class _NotificationCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: _iconColor.withAlpha(25),
+              color: iconColor.withAlpha(25),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(_icon, color: _iconColor, size: 20),
+            child: Icon(_icon, color: iconColor, size: 20),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
@@ -146,8 +146,8 @@ class _NotificationCard extends StatelessWidget {
                       Container(
                         width: 8,
                         height: 8,
-                        decoration: const BoxDecoration(
-                          color: AppColors.accent,
+                        decoration: BoxDecoration(
+                          color: context.colors.accent,
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -157,12 +157,12 @@ class _NotificationCard extends StatelessWidget {
                 Text(
                   notification.message,
                   style: AppTypography.small.copyWith(
-                      color: AppColors.textMuted),
+                      color: context.colors.textMuted),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   dateFmt.format(notification.createdAt),
-                  style: AppTypography.xs.copyWith(color: AppColors.textDim),
+                  style: AppTypography.xs.copyWith(color: context.colors.textDim),
                 ),
               ],
             ),
@@ -171,7 +171,7 @@ class _NotificationCard extends StatelessWidget {
             IconButton(
               onPressed: onMarkRead,
               icon: const Icon(Icons.check_circle_outline, size: 20),
-              color: AppColors.textMuted,
+              color: context.colors.textMuted,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
             ),

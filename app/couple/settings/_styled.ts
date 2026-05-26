@@ -171,3 +171,32 @@ export const SuccessBanner = styled.div`
   font-size: 13px;
   color: var(--accent);
 `;
+
+/** Segmented control container for theme preference toggle. */
+export const SegmentedControl = styled.div`
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 2px;
+`;
+
+/** Individual segment option in the theme toggle. */
+export const SegmentOption = styled.button<{ $active: boolean }>`
+  flex: 1;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ${EASING};
+  background: ${(p) => (p.$active ? "var(--accent)" : "transparent")};
+  color: ${(p) => (p.$active ? "#ffffff" : "var(--text-dim)")};
+
+  &:hover:not([disabled]) {
+    background: ${(p) => (p.$active ? "var(--accent)" : "var(--surface-hover)")};
+  }
+`;

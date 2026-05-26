@@ -12,6 +12,7 @@ mixin CacheMixin {
     required Future<T> Function() apiFetch,
     required String Function(T data) serialize,
     required T Function(String cached) deserialize,
+    T? defaultValue,
   }) async {
     try {
       final data = await apiFetch();
@@ -20,12 +21,13 @@ mixin CacheMixin {
       return data;
     } on NetworkException {
       // Network error — fallback to cache
-      return _fallbackToCache(cacheKey, deserialize);
+      return _fallbackToCache(cacheKey, deserialize, defaultValue: defaultValue);
     } catch (e) {
       // For non-network errors (401, 422), try stale cache
       if (e is UnauthorizedException) rethrow;
       final cached = await cache.getStale(cacheKey);
       if (cached != null) return deserialize(cached);
+      if (defaultValue is T) return defaultValue;
       rethrow;
     }
   }
@@ -61,12 +63,15 @@ mixin CacheMixin {
 
   Future<T> _fallbackToCache<T>(
     String cacheKey,
-    T Function(String cached) deserialize,
-  ) async {
+    T Function(String cached) deserialize, {
+    T? defaultValue,
+  }) async {
     // Try fresh cache first, then stale
     final cached = await cache.get(cacheKey) ?? await cache.getStale(cacheKey);
     if (cached != null) return deserialize(cached);
-    throw NetworkException('No internet connection and no cached data available');
+    // Return default value (e.g. empty list) instead of crashing with an error.
+    if (defaultValue is T) return defaultValue;
+    throw const NetworkException('No internet connection. No cached data available.');
   }
 
   /// Helper to serialize a list of models to JSON.

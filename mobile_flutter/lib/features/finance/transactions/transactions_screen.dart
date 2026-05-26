@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';
@@ -10,6 +11,7 @@ import 'package:luvverse/features/finance/transactions/transaction_list_widgets.
 import 'package:luvverse/models/transaction.dart';
 import 'package:luvverse/shared/widgets/empty_state.dart';
 import 'package:luvverse/shared/widgets/loading_skeleton.dart';
+import 'package:luvverse/shared/widgets/offline_error_state.dart';
 import 'package:luvverse/features/finance/forms/add_transaction_form.dart';
 
 const _filterCategories = [
@@ -59,7 +61,10 @@ class TransactionsScreen extends ConsumerWidget {
                 child: asyncTxns.when(
                   loading: () => const LoadingSkeleton(
                       type: SkeletonType.list, count: 6),
-                  error: (e, _) => Center(child: Text('Error: $e')),
+                  error: (e, _) => OfflineErrorState(
+                  error: e,
+                  onRetry: () => ref.read(transactionsProvider.notifier).refresh(),
+                ),
                   data: (txns) {
                     final filtered =
                         _applyFilters(txns, categoryFilter, accountFilter);
@@ -84,15 +89,21 @@ class TransactionsScreen extends ConsumerWidget {
         children: [
           FloatingActionButton.small(
             heroTag: 'scan',
-            onPressed: () => _scanReceipt(context),
-            backgroundColor: AppColors.accent,
+            onPressed: () {
+              HapticFeedback.mediumImpact();
+              _scanReceipt(context);
+            },
+            backgroundColor: context.colors.accent,
             child: const Icon(Icons.document_scanner, color: Colors.white),
           ),
           const SizedBox(height: AppSpacing.sm),
           FloatingActionButton(
             heroTag: 'add',
-            onPressed: () => AddTransactionForm.show(context),
-            backgroundColor: AppColors.accent,
+            onPressed: () {
+              HapticFeedback.mediumImpact();
+              AddTransactionForm.show(context);
+            },
+            backgroundColor: context.colors.accent,
             child: const Icon(Icons.add, color: Colors.white),
           ),
         ],
@@ -147,12 +158,13 @@ class TransactionsScreen extends ConsumerWidget {
               child: const Text('Cancel')),
           TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Delete',
-                  style: TextStyle(color: AppColors.danger))),
+              child: Text('Delete',
+                  style: TextStyle(color: context.colors.danger))),
         ],
       ),
     );
     if (confirmed == true) {
+      HapticFeedback.mediumImpact();
       try {
         await ref.read(transactionsProvider.notifier).delete(tx.id);
         if (context.mounted) {
@@ -191,6 +203,7 @@ class _FilterBar extends StatelessWidget {
       children: [
         Expanded(
           child: _chipDropdown(
+            context: context,
             value: categoryFilter,
             items: _filterCategories,
             onChanged: (v) => onCategoryChanged(v ?? 'All'),
@@ -200,6 +213,7 @@ class _FilterBar extends StatelessWidget {
         const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: _chipDropdown(
+            context: context,
             value: accountFilter ?? 'All',
             items: ['All', ...accounts.map((a) => a.id as String)],
             labels: {
@@ -215,6 +229,7 @@ class _FilterBar extends StatelessWidget {
   }
 
   Widget _chipDropdown({
+    required BuildContext context,
     required String value,
     required List<String> items,
     required ValueChanged<String?> onChanged,
@@ -226,16 +241,16 @@ class _FilterBar extends StatelessWidget {
       isExpanded: true,
       decoration: InputDecoration(
         filled: true,
-        fillColor: AppColors.bgElevated,
+        fillColor: context.colors.bgElevated,
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide(color: context.colors.border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide(color: context.colors.border),
         ),
       ),
       style: AppTypography.small,

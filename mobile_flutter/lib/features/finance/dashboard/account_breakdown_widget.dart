@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';
@@ -78,7 +78,7 @@ class _BreakdownContent extends StatelessWidget {
           final subtotal = list.fold(0.0, (sum, a) => sum + a.balance);
           final label = _typeLabels[type] ?? type;
           final icon = _typeIcons[type] ?? Icons.account_balance;
-          final color = _typeColors[type] ?? AppColors.accent;
+          final color = _typeColors[type] ?? context.colors.accent;
 
           return Padding(
             padding: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -100,7 +100,7 @@ class _BreakdownContent extends StatelessWidget {
                       children: [
                         Text(label, style: AppTypography.body.copyWith(fontWeight: FontWeight.w600)),
                         Text('${list.length} account${list.length > 1 ? 's' : ''}',
-                            style: AppTypography.xs.copyWith(color: AppColors.textMuted)),
+                            style: AppTypography.xs.copyWith(color: context.colors.textMuted)),
                       ],
                     ),
                   ),

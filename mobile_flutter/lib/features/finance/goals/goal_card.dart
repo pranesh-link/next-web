@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/models/goal.dart';
@@ -39,14 +39,14 @@ class GoalCard extends StatelessWidget {
               Expanded(child: Text(goal.name, style: AppTypography.cardTitle)),
               IconButton(
                 icon: const Icon(Icons.edit_outlined, size: 18),
-                color: AppColors.textMuted,
+                color: context.colors.textMuted,
                 onPressed: onEdit,
                 constraints: const BoxConstraints(),
                 padding: const EdgeInsets.all(AppSpacing.xs),
               ),
               IconButton(
                 icon: const Icon(Icons.delete_outline, size: 18),
-                color: AppColors.danger,
+                color: context.colors.danger,
                 onPressed: onDelete,
                 constraints: const BoxConstraints(),
                 padding: const EdgeInsets.all(AppSpacing.xs),
@@ -65,13 +65,13 @@ class GoalCard extends StatelessWidget {
                     CircularProgressIndicator(
                       value: progress,
                       strokeWidth: 5,
-                      backgroundColor: AppColors.border,
-                      color: goal.isComplete ? AppColors.success : AppColors.accent,
+                      backgroundColor: context.colors.border,
+                      color: goal.isComplete ? context.colors.success : context.colors.accent,
                     ),
                     Text(
                       '$percent%',
                       style: AppTypography.xs.copyWith(
-                        color: AppColors.text,
+                        color: context.colors.text,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -90,7 +90,7 @@ class GoalCard extends StatelessWidget {
                     const SizedBox(height: AppSpacing.xs),
                     Text(
                       '${_currencyFormat.format(remaining > 0 ? remaining : 0)} remaining',
-                      style: AppTypography.small.copyWith(color: AppColors.textMuted),
+                      style: AppTypography.small.copyWith(color: context.colors.textMuted),
                     ),
                     if (goal.deadline != null) ...[
                       const SizedBox(height: AppSpacing.xs),
@@ -126,7 +126,7 @@ class _DeadlineBadge extends StatelessWidget {
     final months = _monthsDiff(now, deadline);
 
     final text = isOverdue ? 'Overdue!' : '$months months left';
-    final color = isOverdue ? AppColors.danger : AppColors.accent;
+    final color = isOverdue ? context.colors.danger : context.colors.accent;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),

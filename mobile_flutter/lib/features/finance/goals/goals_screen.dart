@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/goals/contribute_modal.dart';
@@ -14,6 +15,7 @@ import 'package:luvverse/shared/widgets/app_button.dart';
 import 'package:luvverse/shared/widgets/app_card.dart';
 import 'package:luvverse/shared/widgets/empty_state.dart';
 import 'package:luvverse/shared/widgets/loading_skeleton.dart';
+import 'package:luvverse/shared/widgets/offline_error_state.dart';
 
 final _currencyFormat =
     NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
@@ -36,7 +38,10 @@ class GoalsScreen extends ConsumerWidget {
                 label: 'Add Goal',
                 icon: Icons.add,
                 size: ButtonSize.sm,
-                onPressed: () => AddGoalForm.show(context),
+                onPressed: () {
+                  HapticFeedback.mediumImpact();
+                  AddGoalForm.show(context);
+                },
               ),
             ],
           ),
@@ -45,7 +50,10 @@ class GoalsScreen extends ConsumerWidget {
             child: asyncGoals.when(
               loading: () =>
                   const LoadingSkeleton(type: SkeletonType.card, count: 3),
-              error: (e, _) => Center(child: Text('Error: $e')),
+              error: (e, _) => OfflineErrorState(
+                error: e,
+                onRetry: () => ref.read(goalsProvider.notifier).refresh(),
+              ),
               data: (goals) => goals.isEmpty
                   ? EmptyState(
                       icon: Icons.flag,
@@ -112,10 +120,11 @@ class _GoalsList extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () {
+              HapticFeedback.mediumImpact();
               Navigator.pop(ctx);
               ref.read(goalsProvider.notifier).delete(goal.id);
             },
-            child: const Text('Delete', style: TextStyle(color: AppColors.danger)),
+            child: Text('Delete', style: TextStyle(color: context.colors.danger)),
           ),
         ],
       ),
@@ -145,7 +154,7 @@ class _SummaryRow extends StatelessWidget {
           child: _SummaryCard(
             label: 'SAVED',
             value: _currencyFormat.format(totalSaved),
-            color: AppColors.success,
+            color: context.colors.success,
           ),
         ),
         const SizedBox(width: AppSpacing.sm),
@@ -177,7 +186,7 @@ class _SummaryCard extends StatelessWidget {
           Text(
             value,
             style: AppTypography.bodyMedium.copyWith(
-              color: color ?? AppColors.text,
+              color: color ?? context.colors.text,
               fontWeight: FontWeight.w700,
             ),
           ),

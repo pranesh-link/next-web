@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/providers/extended_providers.dart';
@@ -92,12 +92,12 @@ class PlannerLineItemRow extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               margin: const EdgeInsets.only(right: 8),
               decoration: BoxDecoration(
-                color: AppColors.accent.withAlpha(20),
+                color: context.colors.accent.withAlpha(20),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
                 item.category,
-                style: AppTypography.xs.copyWith(color: AppColors.accent),
+                style: AppTypography.xs.copyWith(color: context.colors.accent),
               ),
             ),
           Expanded(
@@ -111,7 +111,7 @@ class PlannerLineItemRow extends StatelessWidget {
               ),
               style: AppTypography.small.copyWith(
                 decoration: isPaid ? TextDecoration.lineThrough : null,
-                color: isPaid ? AppColors.textMuted : null,
+                color: isPaid ? context.colors.textMuted : null,
               ),
               onChanged: (_) => onChanged(),
             ),
@@ -144,7 +144,7 @@ class PlannerLineItemRow extends StatelessWidget {
                 isPaid ? Icons.check_circle : Icons.circle_outlined,
                 size: 22,
               ),
-              color: isPaid ? AppColors.success : AppColors.textMuted,
+              color: isPaid ? context.colors.success : context.colors.textMuted,
               padding: EdgeInsets.zero,
             ),
           ),
@@ -155,7 +155,7 @@ class PlannerLineItemRow extends StatelessWidget {
             child: IconButton(
               onPressed: onRemove,
               icon: const Icon(Icons.delete_outline, size: 20),
-              color: AppColors.danger,
+              color: context.colors.danger,
               padding: EdgeInsets.zero,
             ),
           ),

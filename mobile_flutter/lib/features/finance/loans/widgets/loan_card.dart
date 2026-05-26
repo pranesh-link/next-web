@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/models/loan.dart';
@@ -33,23 +33,23 @@ class LoanCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeader(),
+          _buildHeader(context),
           if (loan.loanAccountNumber != null) ...[
             const SizedBox(height: AppSpacing.xs),
-            Text('A/C: ${loan.loanAccountNumber}', style: AppTypography.xs.copyWith(color: AppColors.textMuted), maxLines: 1, overflow: TextOverflow.ellipsis),
+            Text('A/C: ${loan.loanAccountNumber}', style: AppTypography.xs.copyWith(color: context.colors.textMuted), maxLines: 1, overflow: TextOverflow.ellipsis),
           ],
           const SizedBox(height: AppSpacing.md),
-          _buildProgressBar(progress, percent),
+          _buildProgressBar(context, progress, percent),
           const SizedBox(height: AppSpacing.md),
-          _buildDetails(),
+          _buildDetails(context),
           const SizedBox(height: AppSpacing.md),
-          _buildActions(),
+          _buildActions(context),
         ],
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
     return Row(
       children: [
         Expanded(
@@ -58,33 +58,33 @@ class LoanCard extends StatelessWidget {
             children: [
               Text(loan.name, style: AppTypography.cardTitle),
               if (loan.loanProvider != null)
-                Text(loan.loanProvider!, style: AppTypography.small.copyWith(color: AppColors.textMuted)),
+                Text(loan.loanProvider!, style: AppTypography.small.copyWith(color: context.colors.textMuted)),
             ],
           ),
         ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
           decoration: BoxDecoration(
-            color: AppColors.accent.withOpacity(0.1),
+            color: context.colors.accent.withOpacity(0.1),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Text('${loan.interestRate}%', style: AppTypography.small.copyWith(color: AppColors.accent)),
+          child: Text('${loan.interestRate}%', style: AppTypography.small.copyWith(color: context.colors.accent)),
         ),
       ],
     );
   }
 
-  Widget _buildProgressBar(double progress, String percent) {
+  Widget _buildProgressBar(BuildContext context, double progress, String percent) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('$percent% repaid', style: AppTypography.small.copyWith(color: AppColors.accent)),
+            Text('$percent% repaid', style: AppTypography.small.copyWith(color: context.colors.accent)),
             Text(
               '${_currencyFormat.format(loan.principal - loan.remainingBalance)} / ${_currencyFormat.format(loan.principal)}',
-              style: AppTypography.xs.copyWith(color: AppColors.textMuted),
+              style: AppTypography.xs.copyWith(color: context.colors.textMuted),
             ),
           ],
         ),
@@ -93,8 +93,8 @@ class LoanCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
             value: progress,
-            backgroundColor: AppColors.border,
-            color: progress >= 1.0 ? AppColors.success : AppColors.accent,
+            backgroundColor: context.colors.border,
+            color: progress >= 1.0 ? context.colors.success : context.colors.accent,
             minHeight: 8,
           ),
         ),
@@ -102,48 +102,48 @@ class LoanCard extends StatelessWidget {
     );
   }
 
-  Widget _buildDetails() {
+  Widget _buildDetails(BuildContext context) {
     return Wrap(
       spacing: AppSpacing.lg,
       runSpacing: AppSpacing.sm,
       children: [
-        _detail('EMI', _currencyFormat.format(loan.emiAmount)),
-        _detail('Remaining', _currencyFormat.format(loan.remainingBalance)),
-        _detail('Start', _dateFormat.format(loan.startDate)),
-        _detail('Tenure', '${loan.tenureMonths} months'),
+        _detail(context, 'EMI', _currencyFormat.format(loan.emiAmount)),
+        _detail(context, 'Remaining', _currencyFormat.format(loan.remainingBalance)),
+        _detail(context, 'Start', _dateFormat.format(loan.startDate)),
+        _detail(context, 'Tenure', '${loan.tenureMonths} months'),
       ],
     );
   }
 
-  Widget _detail(String label, String value) {
+  Widget _detail(BuildContext context, String label, String value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: AppTypography.xs.copyWith(color: AppColors.textMuted)),
+        Text(label, style: AppTypography.xs.copyWith(color: context.colors.textMuted)),
         Text(value, style: AppTypography.small),
       ],
     );
   }
 
-  Widget _buildActions() {
+  Widget _buildActions(BuildContext context) {
     return Row(
       children: [
-        _actionButton(Icons.edit_outlined, 'Edit', onEdit),
+        _actionButton(context, Icons.edit_outlined, 'Edit', onEdit),
         const SizedBox(width: AppSpacing.sm),
-        _actionButton(Icons.delete_outline, 'Delete', onDelete, color: AppColors.danger),
+        _actionButton(context, Icons.delete_outline, 'Delete', onDelete, color: context.colors.danger),
         const Spacer(),
         TextButton.icon(
           onPressed: onView,
           icon: const Icon(Icons.schedule, size: 16),
           label: const Text('View Schedule'),
-          style: TextButton.styleFrom(foregroundColor: AppColors.accent, textStyle: AppTypography.small),
+          style: TextButton.styleFrom(foregroundColor: context.colors.accent, textStyle: AppTypography.small),
         ),
       ],
     );
   }
 
-  Widget _actionButton(IconData icon, String label, VoidCallback onTap, {Color? color}) {
-    final c = color ?? AppColors.textMuted;
+  Widget _actionButton(BuildContext context, IconData icon, String label, VoidCallback onTap, {Color? color}) {
+    final c = color ?? context.colors.textMuted;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),

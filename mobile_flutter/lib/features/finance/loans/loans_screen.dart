@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/features/finance/loans/widgets/edit_loan_form.dart';
 import 'package:luvverse/features/finance/loans/widgets/loan_card.dart';
@@ -11,6 +12,7 @@ import 'package:luvverse/models/loan.dart';
 import 'package:luvverse/shared/widgets/app_button.dart';
 import 'package:luvverse/shared/widgets/empty_state.dart';
 import 'package:luvverse/shared/widgets/loading_skeleton.dart';
+import 'package:luvverse/shared/widgets/offline_error_state.dart';
 import 'package:luvverse/features/finance/forms/add_loan_form.dart';
 
 class LoansScreen extends ConsumerWidget {
@@ -26,13 +28,16 @@ class LoansScreen extends ConsumerWidget {
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
-            children: [AppButton(label: 'Add Loan', icon: Icons.add, size: ButtonSize.sm, onPressed: () => AddLoanForm.show(context))],
+            children: [AppButton(label: 'Add Loan', icon: Icons.add, size: ButtonSize.sm, onPressed: () { HapticFeedback.mediumImpact(); AddLoanForm.show(context); })],
           ),
           const SizedBox(height: AppSpacing.lg),
           Expanded(
             child: asyncLoans.when(
               loading: () => const LoadingSkeleton(type: SkeletonType.card, count: 3),
-              error: (e, _) => Center(child: Text('Error: $e')),
+              error: (e, _) => OfflineErrorState(
+                error: e,
+                onRetry: () => ref.read(loansProvider.notifier).refresh(),
+              ),
               data: (loans) => loans.isEmpty
                   ? EmptyState(
                       icon: Icons.real_estate_agent,
@@ -42,7 +47,7 @@ class LoansScreen extends ConsumerWidget {
                       onAction: () => AddLoanForm.show(context),
                     )
                   : RefreshIndicator(
-                      color: AppColors.accent,
+                      color: context.colors.accent,
                       onRefresh: () => ref.read(loansProvider.notifier).refresh(),
                       child: ListView(
                         children: [
@@ -77,12 +82,13 @@ class LoansScreen extends ConsumerWidget {
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text('Delete', style: TextStyle(color: AppColors.danger)),
+            child: Text('Delete', style: TextStyle(color: context.colors.danger)),
           ),
         ],
       ),
     );
     if (confirm == true) {
+      HapticFeedback.mediumImpact();
       await ref.read(loansProvider.notifier).delete(loan.id);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Loan deleted')));

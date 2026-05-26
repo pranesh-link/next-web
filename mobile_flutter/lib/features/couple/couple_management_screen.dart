@@ -1,7 +1,10 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:luvverse/core/network/api_client.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/network/api_exceptions.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/repositories/couple_repository.dart';
@@ -10,6 +13,7 @@ import 'package:luvverse/shared/widgets/app_button.dart';
 import 'package:luvverse/shared/widgets/app_card.dart';
 import 'package:luvverse/shared/widgets/app_input.dart';
 import 'package:luvverse/shared/widgets/loading_skeleton.dart';
+import 'package:luvverse/shared/widgets/offline_error_state.dart';
 
 final _coupleRepoProvider = Provider<CoupleRepository>((ref) {
   return CoupleRepository(ref.read(apiClientProvider));
@@ -58,7 +62,7 @@ class _CoupleManagementScreenState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(content: Text(e is NetworkException ? 'You\'re offline. Try again later.' : 'Failed to create couple')),
         );
       }
     } finally {
@@ -82,7 +86,7 @@ class _CoupleManagementScreenState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(content: Text(e is NetworkException ? 'You\'re offline. Try again later.' : 'Failed to send invite')),
         );
       }
     } finally {
@@ -103,8 +107,8 @@ class _CoupleManagementScreenState
               child: const Text('Cancel')),
           TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Leave',
-                  style: TextStyle(color: AppColors.danger))),
+              child: Text('Leave',
+                  style: TextStyle(color: context.colors.danger))),
         ],
       ),
     );
@@ -121,7 +125,7 @@ class _CoupleManagementScreenState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(content: Text(e is NetworkException ? 'You\'re offline. Try again later.' : 'Failed to leave couple')),
         );
       }
     } finally {
@@ -142,8 +146,8 @@ class _CoupleManagementScreenState
               child: const Text('Cancel')),
           TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Disband',
-                  style: TextStyle(color: AppColors.danger))),
+              child: Text('Disband',
+                  style: TextStyle(color: context.colors.danger))),
         ],
       ),
     );
@@ -160,7 +164,7 @@ class _CoupleManagementScreenState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(content: Text(e is NetworkException ? 'You\'re offline. Try again later.' : 'Failed to disband couple')),
         );
       }
     } finally {
@@ -173,18 +177,22 @@ class _CoupleManagementScreenState
     final coupleAsync = ref.watch(_coupleProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: context.colors.bg,
       appBar: AppBar(
         title: const Text('Couple'),
-        backgroundColor: AppColors.bg,
+        backgroundColor: context.colors.bg,
         elevation: 0,
         titleTextStyle: AppTypography.pageTitle,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.pop(),
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(AppSpacing.xl),
         child: coupleAsync.when(
           loading: () => const LoadingSkeleton(type: SkeletonType.card),
-          error: (e, _) => Center(child: Text('Error: $e')),
+          error: (e, _) => OfflineErrorState(error: e, onRetry: () => ref.invalidate(_coupleProvider)),
           data: (couple) =>
               couple == null ? _buildCreateForm() : _buildCoupleInfo(couple),
         ),
@@ -199,11 +207,11 @@ class _CoupleManagementScreenState
         AppCard(
           child: Column(
             children: [
-              const Icon(Icons.favorite, size: 48, color: AppColors.accent),
+              Icon(Icons.favorite, size: 48, color: context.colors.accent),
               const SizedBox(height: AppSpacing.md),
               Text(
                 'Create a couple to share finances',
-                style: AppTypography.body.copyWith(color: AppColors.textMuted),
+                style: AppTypography.body.copyWith(color: context.colors.textMuted),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.xl),
@@ -237,7 +245,7 @@ class _CoupleManagementScreenState
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.favorite, color: AppColors.accent),
+                    Icon(Icons.favorite, color: context.colors.accent),
                     const SizedBox(width: AppSpacing.sm),
                     Text(couple.name, style: AppTypography.cardTitle),
                   ],
@@ -250,7 +258,7 @@ class _CoupleManagementScreenState
                           CircleAvatar(
                             radius: 16,
                             backgroundImage: m.user.image != null
-                                ? NetworkImage(m.user.image!)
+                                ? CachedNetworkImageProvider(m.user.image!)
                                 : null,
                             child: m.user.image == null
                                 ? Text(m.user.name[0])
@@ -264,7 +272,7 @@ class _CoupleManagementScreenState
                                 Text(m.user.name, style: AppTypography.bodyMedium),
                                 Text(m.role,
                                     style: AppTypography.xs
-                                        .copyWith(color: AppColors.textMuted)),
+                                        .copyWith(color: context.colors.textMuted)),
                               ],
                             ),
                           ),
@@ -305,7 +313,7 @@ class _CoupleManagementScreenState
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Danger Zone',
-                    style: AppTypography.cardTitle.copyWith(color: AppColors.danger)),
+                    style: AppTypography.cardTitle.copyWith(color: context.colors.danger)),
                 const SizedBox(height: AppSpacing.md),
                 AppButton(
                   label: 'Leave Couple',

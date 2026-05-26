@@ -2,6 +2,7 @@
 
 import { FinanceThemeProvider } from "@/couple/_components/theme/FinanceThemeProvider";
 import { NotificationProvider } from "@/couple/_components/notifications/NotificationProvider";
+import ToastProvider from "@/couple/_components/shared/ToastProvider";
 import { useSession } from "next-auth/react";
 
 export default function CoupleProviders({
@@ -14,7 +15,7 @@ export default function CoupleProviders({
   return (
     <FinanceThemeProvider>
       <NotificationProvider hasUser={!!session?.user}>
-        {children}
+        <ToastProvider>{children}</ToastProvider>
       </NotificationProvider>
     </FinanceThemeProvider>
   );

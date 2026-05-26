@@ -1,10 +1,13 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:luvverse/core/auth/auth_provider.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/auth/biometric_service.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
+import 'package:luvverse/core/theme/theme_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -12,10 +15,10 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authProvider).user;
+    final currentTheme = ref.watch(themeProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.bg,
-      appBar: AppBar(title: const Text('Settings'), backgroundColor: AppColors.bg, elevation: 0),
+      appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.xl),
         children: [
@@ -23,20 +26,20 @@ class SettingsScreen extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(AppSpacing.xl),
             decoration: BoxDecoration(
-              color: AppColors.bgElevated,
+              color: Theme.of(context).cardTheme.color,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.cardBorder),
+              border: Border.all(color: Theme.of(context).dividerColor),
             ),
             child: Row(
               children: [
                 CircleAvatar(
                   radius: 28,
-                  backgroundColor: AppColors.accent.withValues(alpha: 0.1),
-                  backgroundImage: user?.image != null ? NetworkImage(user!.image!) : null,
+                  backgroundColor: context.colors.accent.withValues(alpha: 0.1),
+                  backgroundImage: user?.image != null ? CachedNetworkImageProvider(user!.image!) : null,
                   child: user?.image == null
                       ? Text(
                           (user?.name ?? 'U')[0].toUpperCase(),
-                          style: TextStyle(color: AppColors.accent, fontSize: 20, fontWeight: FontWeight.w700),
+                          style: TextStyle(color: context.colors.accent, fontSize: 20, fontWeight: FontWeight.w700),
                         )
                       : null,
                 ),
@@ -47,7 +50,7 @@ class SettingsScreen extends ConsumerWidget {
                     children: [
                       Text(user?.name ?? 'User', style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
                       const SizedBox(height: 2),
-                      Text(user?.email ?? '', style: AppTypography.small.copyWith(color: AppColors.textMuted)),
+                      Text(user?.email ?? '', style: AppTypography.small.copyWith(color: context.colors.textMuted)),
                     ],
                   ),
                 ),
@@ -55,9 +58,30 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.xxl),
-          _SettingsTile(icon: Icons.people, title: 'Couple', onTap: () => context.go('/couple/details')),
+          _SettingsTile(icon: Icons.people, title: 'Couple', onTap: () => context.push('/couple/manage')),
           _SettingsTile(icon: Icons.notifications_outlined, title: 'Notifications', onTap: () => _showSnackbar(context, 'Coming soon')),
-          _SettingsTile(icon: Icons.palette_outlined, title: 'Appearance', onTap: () => _showSnackbar(context, 'Coming soon')),
+          const SizedBox(height: AppSpacing.lg),
+          // Theme section
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Text('Theme', style: AppTypography.small.copyWith(color: context.colors.textMuted, fontWeight: FontWeight.w600)),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          SegmentedButton<ThemeMode>(
+            segments: const [
+              ButtonSegment(value: ThemeMode.light, label: Text('Light'), icon: Icon(Icons.light_mode)),
+              ButtonSegment(value: ThemeMode.system, label: Text('System'), icon: Icon(Icons.settings_brightness)),
+              ButtonSegment(value: ThemeMode.dark, label: Text('Dark'), icon: Icon(Icons.dark_mode)),
+            ],
+            selected: {currentTheme},
+            onSelectionChanged: (selected) {
+              ref.read(themeProvider.notifier).setTheme(selected.first);
+            },
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          // Biometric lock section
+          _BiometricToggle(),
+          const SizedBox(height: AppSpacing.lg),
           _SettingsTile(
             icon: Icons.info_outline,
             title: 'About',
@@ -65,8 +89,8 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const Divider(height: 32),
           ListTile(
-            leading: const Icon(Icons.logout, color: AppColors.danger),
-            title: Text('Sign Out', style: AppTypography.body.copyWith(color: AppColors.danger)),
+            leading: Icon(Icons.logout, color: context.colors.danger),
+            title: Text('Sign Out', style: AppTypography.body.copyWith(color: context.colors.danger)),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             onTap: () => _confirmSignOut(context, ref),
           ),
@@ -92,7 +116,7 @@ class SettingsScreen extends ConsumerWidget {
               Navigator.pop(ctx);
               ref.read(authProvider.notifier).signOut();
             },
-            child: const Text('Sign Out', style: TextStyle(color: AppColors.danger)),
+            child: Text('Sign Out', style: TextStyle(color: context.colors.danger)),
           ),
         ],
       ),
@@ -110,11 +134,59 @@ class _SettingsTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: Icon(icon, color: AppColors.textDim),
+      leading: Icon(icon, color: context.colors.textDim),
       title: Text(title, style: AppTypography.body),
-      trailing: const Icon(Icons.chevron_right, color: AppColors.textMuted, size: 20),
+      trailing: Icon(Icons.chevron_right, color: context.colors.textMuted, size: 20),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       onTap: onTap,
+    );
+  }
+}
+
+class _BiometricToggle extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final biometricEnabled = ref.watch(biometricEnabledProvider);
+    final biometricService = ref.read(biometricServiceProvider);
+
+    return FutureBuilder<bool>(
+      future: biometricService.isAvailable(),
+      builder: (context, snapshot) {
+        if (snapshot.data != true) return const SizedBox.shrink();
+        return SwitchListTile(
+          title: const Text('Biometric Lock'),
+          subtitle: const Text('Require authentication on app resume'),
+          secondary: const Icon(Icons.fingerprint),
+          value: biometricEnabled,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          onChanged: (value) async {
+            final messenger = ScaffoldMessenger.of(context);
+            if (value) {
+              final hasEnrolled = await biometricService.hasEnrolledBiometrics();
+              if (!hasEnrolled) {
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'No biometrics enrolled. Set up Face ID / fingerprint in device settings first.',
+                    ),
+                  ),
+                );
+                return;
+              }
+              final success = await biometricService.authenticate();
+              if (success) {
+                await ref.read(biometricEnabledProvider.notifier).toggle(true);
+              } else {
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('Authentication failed.')),
+                );
+              }
+            } else {
+              await ref.read(biometricEnabledProvider.notifier).toggle(false);
+            }
+          },
+        );
+      },
     );
   }
 }

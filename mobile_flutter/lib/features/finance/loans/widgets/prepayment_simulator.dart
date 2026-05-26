@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/models/loan.dart';
@@ -52,9 +52,9 @@ class _PrepaymentSimulatorState extends State<PrepaymentSimulator> {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: AppColors.bgElevated,
+        color: context.colors.bgElevated,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.colors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -63,7 +63,7 @@ class _PrepaymentSimulatorState extends State<PrepaymentSimulator> {
           const SizedBox(height: AppSpacing.sm),
           Text(
             'Enter an amount to see how much time and interest you could save.',
-            style: AppTypography.small.copyWith(color: AppColors.textMuted),
+            style: AppTypography.small.copyWith(color: context.colors.textMuted),
           ),
           const SizedBox(height: AppSpacing.md),
           Row(
@@ -74,16 +74,16 @@ class _PrepaymentSimulatorState extends State<PrepaymentSimulator> {
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
                     hintText: 'Enter amount (₹)',
-                    hintStyle: AppTypography.small.copyWith(color: AppColors.textMuted),
+                    hintStyle: AppTypography.small.copyWith(color: context.colors.textMuted),
                     filled: true,
-                    fillColor: AppColors.bg,
+                    fillColor: context.colors.bg,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: AppColors.border),
+                      borderSide: BorderSide(color: context.colors.border),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: AppColors.border),
+                      borderSide: BorderSide(color: context.colors.border),
                     ),
                     contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
                   ),
@@ -94,7 +94,7 @@ class _PrepaymentSimulatorState extends State<PrepaymentSimulator> {
               ElevatedButton(
                 onPressed: _calculate,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accent,
+                  backgroundColor: context.colors.accent,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
@@ -108,7 +108,7 @@ class _PrepaymentSimulatorState extends State<PrepaymentSimulator> {
             Container(
               padding: const EdgeInsets.all(AppSpacing.md),
               decoration: BoxDecoration(
-                color: AppColors.success.withOpacity(0.08),
+                color: context.colors.success.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -116,17 +116,17 @@ class _PrepaymentSimulatorState extends State<PrepaymentSimulator> {
                   Expanded(
                     child: Column(
                       children: [
-                        Text('~${_monthsSaved!.toStringAsFixed(1)}', style: AppTypography.cardTitle.copyWith(color: AppColors.success)),
-                        Text('months saved', style: AppTypography.xs.copyWith(color: AppColors.textMuted)),
+                        Text('~${_monthsSaved!.toStringAsFixed(1)}', style: AppTypography.cardTitle.copyWith(color: context.colors.success)),
+                        Text('months saved', style: AppTypography.xs.copyWith(color: context.colors.textMuted)),
                       ],
                     ),
                   ),
-                  Container(width: 1, height: 36, color: AppColors.border),
+                  Container(width: 1, height: 36, color: context.colors.border),
                   Expanded(
                     child: Column(
                       children: [
-                        Text(_fmt.format(_interestSaved!), style: AppTypography.cardTitle.copyWith(color: AppColors.success)),
-                        Text('interest saved', style: AppTypography.xs.copyWith(color: AppColors.textMuted)),
+                        Text(_fmt.format(_interestSaved!), style: AppTypography.cardTitle.copyWith(color: context.colors.success)),
+                        Text('interest saved', style: AppTypography.xs.copyWith(color: context.colors.textMuted)),
                       ],
                     ),
                   ),

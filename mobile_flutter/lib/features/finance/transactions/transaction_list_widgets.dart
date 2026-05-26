@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/models/transaction.dart';
@@ -73,17 +74,20 @@ class TransactionTile extends StatelessWidget {
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: AppSpacing.xl),
-        color: AppColors.danger,
+        color: context.colors.danger,
         child: const Icon(Icons.delete, color: Colors.white),
       ),
       confirmDismiss: (_) async => true,
-      onDismissed: (_) => onDismissed(),
+      onDismissed: (_) {
+        HapticFeedback.mediumImpact();
+        onDismissed();
+      },
       child: ListTile(
         contentPadding: EdgeInsets.zero,
         onTap: onTap,
         leading: Icon(
           isIncome ? Icons.arrow_downward : Icons.arrow_upward,
-          color: isIncome ? AppColors.success : AppColors.danger,
+          color: isIncome ? context.colors.success : context.colors.danger,
         ),
         title: Text(transaction.description ?? transaction.category,
             style: AppTypography.body, maxLines: 1, overflow: TextOverflow.ellipsis),

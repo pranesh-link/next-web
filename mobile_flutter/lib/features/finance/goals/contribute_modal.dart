@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';
@@ -96,7 +96,7 @@ class _ContributeModalState extends ConsumerState<ContributeModal> {
               '${_currencyFormat.format(goal.currentAmount)} / ${_currencyFormat.format(goal.targetAmount)}',
               style: AppTypography.small,
             ),
-            Text('$percent%', style: AppTypography.body.copyWith(color: AppColors.accent)),
+            Text('$percent%', style: AppTypography.body.copyWith(color: context.colors.accent)),
           ],
         ),
         const SizedBox(height: AppSpacing.sm),
@@ -104,15 +104,15 @@ class _ContributeModalState extends ConsumerState<ContributeModal> {
           borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
             value: goal.progress.clamp(0.0, 1.0),
-            backgroundColor: AppColors.bgElevated,
-            color: AppColors.accent,
+            backgroundColor: context.colors.bgElevated,
+            color: context.colors.accent,
             minHeight: 6,
           ),
         ),
         const SizedBox(height: AppSpacing.xs),
         Text(
           '${_currencyFormat.format(remaining > 0 ? remaining : 0)} remaining',
-          style: AppTypography.small.copyWith(color: AppColors.textMuted),
+          style: AppTypography.small.copyWith(color: context.colors.textMuted),
         ),
         const SizedBox(height: AppSpacing.xl),
         AppInput(

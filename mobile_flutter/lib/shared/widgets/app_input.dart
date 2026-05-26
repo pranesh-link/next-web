@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 
 class AppInput extends StatelessWidget {
   final String? label;
@@ -31,6 +31,7 @@ class AppInput extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -38,7 +39,15 @@ class AppInput extends StatelessWidget {
         if (label != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 6),
-            child: Text(label!, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF374151), letterSpacing: 0.3)),
+            child: Text(
+              label!,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: colors.textDim,
+                letterSpacing: 0.3,
+              ),
+            ),
           ),
         TextField(
           controller: controller,
@@ -47,21 +56,21 @@ class AppInput extends StatelessWidget {
           maxLines: maxLines,
           onChanged: onChanged,
           readOnly: readOnly,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.text),
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: colors.text),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
+            hintStyle: TextStyle(color: colors.textMuted),
             prefixIcon: prefix,
             suffixIcon: suffix,
             filled: true,
-            fillColor: Colors.white,
+            fillColor: colors.inputBg,
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFD1D5DB))),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFD1D5DB))),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.accent, width: 2)),
-            errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.danger)),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: colors.cardBorder)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: colors.cardBorder)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: colors.accent, width: 2)),
+            errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: colors.danger)),
             errorText: error,
-            errorStyle: const TextStyle(fontSize: 12, color: AppColors.danger),
+            errorStyle: TextStyle(fontSize: 12, color: colors.danger),
           ),
         ),
       ],

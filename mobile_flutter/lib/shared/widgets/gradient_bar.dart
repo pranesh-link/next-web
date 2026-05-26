@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 
 class GradientBar extends StatelessWidget {
   final double width;
@@ -14,10 +14,10 @@ class GradientBar extends StatelessWidget {
       height: height,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(2),
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment(-0.7, -0.7),
           end: Alignment(0.7, 0.7),
-          colors: [AppColors.gradientStart, AppColors.gradientEnd],
+          colors: [context.colors.gradientStart, context.colors.gradientEnd],
         ),
       ),
     );

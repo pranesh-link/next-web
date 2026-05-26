@@ -32,6 +32,7 @@ class CachedDepositsRepository with CacheMixin {
       deserialize: (cached) => (jsonDecode(cached) as List)
           .map((e) => Deposit.fromJson(e as Map<String, dynamic>))
           .toList(),
+      defaultValue: [],
     );
   }
 }
@@ -58,6 +59,7 @@ class CachedInvestmentsRepository with CacheMixin {
       deserialize: (cached) => (jsonDecode(cached) as List)
           .map((e) => Investment.fromJson(e as Map<String, dynamic>))
           .toList(),
+      defaultValue: [],
     );
   }
 }
@@ -111,6 +113,8 @@ class CachedNotificationsRepository with CacheMixin {
       }),
       deserialize: (cached) => NotificationsResponse.fromJson(
           jsonDecode(cached) as Map<String, dynamic>),
+      defaultValue: const NotificationsResponse(
+          notifications: [], unreadCount: 0),
     );
   }
 
@@ -124,6 +128,7 @@ class CachedNotificationsRepository with CacheMixin {
       },
       serialize: (data) => data.toString(),
       deserialize: (cached) => int.tryParse(cached) ?? 0,
+      defaultValue: 0,
     );
   }
 }
@@ -156,6 +161,16 @@ class CachedInsightsRepository with CacheMixin {
       serialize: (_) => jsonEncode(_lastInsightsJson[cacheKey]),
       deserialize: (cached) => DashboardInsights.fromJson(
           jsonDecode(cached) as Map<String, dynamic>),
+      defaultValue: const DashboardInsights(
+        totalBalance: 0,
+        cashFlow: CashFlow(income: 0, expenses: 0, net: 0),
+        savingsRate: 0,
+        expenseBreakdown: {},
+        budgetStatus: [],
+        monthlyTrends: [],
+        accountBreakdown: [],
+        alerts: [],
+      ),
     );
   }
 
@@ -174,6 +189,16 @@ class CachedInsightsRepository with CacheMixin {
       serialize: (_) => jsonEncode(_lastHealthJson),
       deserialize: (cached) =>
           HealthScore.fromJson(jsonDecode(cached) as Map<String, dynamic>),
+      defaultValue: const HealthScore(
+        score: 0,
+        rating: 'Unknown',
+        breakdown: HealthScoreBreakdown(
+          savingsRate: 0,
+          debtToIncomeRatio: 0,
+          emergencyFundMonths: 0,
+          budgetAdherence: 0,
+        ),
+      ),
     );
   }
 

@@ -17,6 +17,8 @@ import {
   ToggleKnob,
   ErrorBanner,
   SuccessBanner,
+  SegmentedControl,
+  SegmentOption,
 } from "./_styled";
 import {
   getUserSettings,
@@ -24,6 +26,7 @@ import {
   getNotificationPreferences,
   type NotificationPreferences,
 } from "./_actions/settings";
+import { useFinanceTheme } from "@/couple/_components/theme/FinanceThemeProvider";
 
 const CURRENCIES = ["INR", "USD", "EUR", "GBP", "SGD", "AED"] as const;
 
@@ -33,6 +36,7 @@ const CURRENCIES = ["INR", "USD", "EUR", "GBP", "SGD", "AED"] as const;
  * @returns The settings page component.
  */
 export default function SettingsPage() {
+  const { themePreference, setThemePreference } = useFinanceTheme();
   const [notifPrefs, setNotifPrefs] = useState<NotificationPreferences>({
     budgetAlerts: true,
     sipReminders: true,
@@ -143,6 +147,33 @@ export default function SettingsPage() {
           <SaveButton onClick={handleSave} disabled={saving}>
             {saving ? "Saving…" : "Save Changes"}
           </SaveButton>
+        </Section>
+
+        <Section>
+          <SectionTitle>Appearance</SectionTitle>
+          <FormGroup>
+            <Label>Theme</Label>
+            <SegmentedControl>
+              <SegmentOption
+                $active={themePreference === "light"}
+                onClick={() => setThemePreference("light")}
+              >
+                Light
+              </SegmentOption>
+              <SegmentOption
+                $active={themePreference === "dark"}
+                onClick={() => setThemePreference("dark")}
+              >
+                Dark
+              </SegmentOption>
+              <SegmentOption
+                $active={themePreference === "system"}
+                onClick={() => setThemePreference("system")}
+              >
+                System
+              </SegmentOption>
+            </SegmentedControl>
+          </FormGroup>
         </Section>
 
         <Section>

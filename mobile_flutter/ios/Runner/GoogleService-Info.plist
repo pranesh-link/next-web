@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>613218271037-f8n7hrmek69lde0s0o7cnu46vv2hg6qe.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.613218271037-f8n7hrmek69lde0s0o7cnu46vv2hg6qe</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>613218271037-8g6oaitfvi61gce8u8lkuka803lb2re5.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyCSrMbeK5sR5ICG3wC21yEnDAwjqnG4a1I</string>
+	<key>GCM_SENDER_ID</key>
+	<string>613218271037</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>link.pranaish.luvverse</string>
+	<key>PROJECT_ID</key>
+	<string>luvverse-pranaish</string>
+	<key>STORAGE_BUCKET</key>
+	<string>luvverse-pranaish.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:613218271037:ios:184c0bfa4075ec500ecf54</string>
+</dict>
+</plist>

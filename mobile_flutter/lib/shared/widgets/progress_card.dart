@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/shared/widgets/app_card.dart';
@@ -24,7 +24,7 @@ class ProgressCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final percent = (_progress * 100).toStringAsFixed(0);
-    final badgeColor = _isOver ? AppColors.danger : AppColors.accent;
+    final badgeColor = _isOver ? context.colors.danger : context.colors.accent;
 
     return AppCard(
       child: Column(
@@ -32,7 +32,7 @@ class ProgressCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Expanded(child: Text(title, style: AppTypography.label.copyWith(color: AppColors.text))),
+              Expanded(child: Text(title, style: AppTypography.label.copyWith(color: context.colors.text))),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(color: badgeColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(9999)),
@@ -47,12 +47,12 @@ class ProgressCard extends StatelessWidget {
               height: 4,
               child: Stack(
                 children: [
-                  Container(color: AppColors.surface),
+                  Container(color: context.colors.surface),
                   FractionallySizedBox(
                     widthFactor: _progress.clamp(0.0, 1.0),
                     child: Container(
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(colors: [AppColors.gradientStart, AppColors.gradientEnd]),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(colors: [context.colors.gradientStart, context.colors.gradientEnd]),
                       ),
                     ),
                   ),
@@ -64,13 +64,13 @@ class ProgressCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('₹${current.toStringAsFixed(0)}', style: AppTypography.small.copyWith(color: AppColors.textDim)),
-              Text('₹${target.toStringAsFixed(0)}', style: AppTypography.small.copyWith(color: AppColors.textMuted)),
+              Text('₹${current.toStringAsFixed(0)}', style: AppTypography.small.copyWith(color: context.colors.textDim)),
+              Text('₹${target.toStringAsFixed(0)}', style: AppTypography.small.copyWith(color: context.colors.textMuted)),
             ],
           ),
           if (deadline != null) ...[
             const SizedBox(height: AppSpacing.xs),
-            Text(deadline!, style: AppTypography.xs.copyWith(color: AppColors.textMuted)),
+            Text(deadline!, style: AppTypography.xs.copyWith(color: context.colors.textMuted)),
           ],
         ],
       ),

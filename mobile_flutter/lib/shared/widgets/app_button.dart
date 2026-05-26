@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_animations.dart';
 
 enum ButtonVariant { primary, secondary, danger }
@@ -47,14 +47,14 @@ class _AppButtonState extends State<AppButton> with SingleTickerProviderStateMix
   }
 
   Color get _bg => switch (widget.variant) {
-    ButtonVariant.primary => AppColors.accent,
+    ButtonVariant.primary => context.colors.accent,
     ButtonVariant.secondary => Colors.transparent,
-    ButtonVariant.danger => AppColors.danger,
+    ButtonVariant.danger => context.colors.danger,
   };
 
   Color get _fg => switch (widget.variant) {
     ButtonVariant.primary => Colors.white,
-    ButtonVariant.secondary => AppColors.text,
+    ButtonVariant.secondary => context.colors.text,
     ButtonVariant.danger => Colors.white,
   };
 
@@ -91,7 +91,7 @@ class _AppButtonState extends State<AppButton> with SingleTickerProviderStateMix
                 decoration: widget.variant == ButtonVariant.secondary
                     ? BoxDecoration(
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppColors.borderStrong),
+                        border: Border.all(color: context.colors.borderStrong),
                       )
                     : null,
                 child: Row(

@@ -1,5 +1,6 @@
 {
   "name": "next-web",
+  "description": "Personal monorepo: portfolio site + LuvVerse couple platform (web & Flutter mobile)",
   "version": "3.22.0",
   "private": true,
   "scripts": {

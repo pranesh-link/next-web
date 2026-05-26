@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:luvverse/core/theme/app_colors.dart';
+import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/accounts/account_card.dart';
@@ -14,6 +15,7 @@ import 'package:luvverse/models/account.dart';
 import 'package:luvverse/shared/widgets/app_button.dart';
 import 'package:luvverse/shared/widgets/empty_state.dart';
 import 'package:luvverse/shared/widgets/loading_skeleton.dart';
+import 'package:luvverse/shared/widgets/offline_error_state.dart';
 import 'package:luvverse/features/finance/forms/add_account_form.dart';
 
 class AccountsScreen extends ConsumerWidget {
@@ -40,7 +42,10 @@ class AccountsScreen extends ConsumerWidget {
                 label: 'Add Account',
                 icon: Icons.add,
                 size: ButtonSize.sm,
-                onPressed: () => AddAccountForm.show(context),
+                onPressed: () {
+                  HapticFeedback.mediumImpact();
+                  AddAccountForm.show(context);
+                },
               ),
             ],
           ),
@@ -51,7 +56,10 @@ class AccountsScreen extends ConsumerWidget {
                 type: SkeletonType.card,
                 count: 3,
               ),
-              error: (e, _) => Center(child: Text('Error: $e')),
+              error: (e, _) => OfflineErrorState(
+                error: e,
+                onRetry: () => ref.read(accountsProvider.notifier).refresh(),
+              ),
               data: (accounts) => accounts.isEmpty
                   ? EmptyState(
                       icon: Icons.account_balance,
@@ -90,36 +98,54 @@ class AccountsScreen extends ConsumerWidget {
       onRefresh: () => ref.read(accountsProvider.notifier).refresh(),
       child: ListView(
         children: [
-          _buildTotalBalanceBar(totalBalance),
+          _buildTotalBalanceBar(context, totalBalance),
           const SizedBox(height: AppSpacing.lg),
           ...sorted.map(
             (account) => Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.md),
-              child: AccountCard(
-                account: account,
-                currentUserId: currentUserId,
-                onTap: () =>
-                    context.go('/finance/accounts/${account.id}'),
-                onTogglePin: () => ref
-                    .read(accountsProvider.notifier)
-                    .togglePin(account.id, account.isPinned),
-                onEditNickname: () => EditNicknameModal.show(
-                  context: context,
-                  account: account,
-                  onSuccess: () =>
-                      ref.read(accountsProvider.notifier).refresh(),
+              child: Dismissible(
+                key: Key(account.id),
+                direction: DismissDirection.endToStart,
+                background: Container(
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.only(right: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(Icons.delete, color: Colors.white),
                 ),
-                onUpdateBalance: () => UpdateBalanceModal.show(
-                  context: context,
+                confirmDismiss: (_) => _confirmDeleteAccount(context, account),
+                onDismissed: (_) {
+                  HapticFeedback.mediumImpact();
+                  ref.read(accountsProvider.notifier).delete(account.id);
+                },
+                child: AccountCard(
                   account: account,
-                  onSuccess: () =>
-                      ref.read(accountsProvider.notifier).refresh(),
-                ),
-                onAddIncome: () => AddIncomeModal.show(
-                  context: context,
-                  account: account,
-                  onSuccess: () =>
-                      ref.read(accountsProvider.notifier).refresh(),
+                  currentUserId: currentUserId,
+                  onTap: () =>
+                      context.go('/finance/accounts/${account.id}'),
+                  onTogglePin: () => ref
+                      .read(accountsProvider.notifier)
+                      .togglePin(account.id, account.isPinned),
+                  onEditNickname: () => EditNicknameModal.show(
+                    context: context,
+                    account: account,
+                    onSuccess: () =>
+                        ref.read(accountsProvider.notifier).refresh(),
+                  ),
+                  onUpdateBalance: () => UpdateBalanceModal.show(
+                    context: context,
+                    account: account,
+                    onSuccess: () =>
+                        ref.read(accountsProvider.notifier).refresh(),
+                  ),
+                  onAddIncome: () => AddIncomeModal.show(
+                    context: context,
+                    account: account,
+                    onSuccess: () =>
+                        ref.read(accountsProvider.notifier).refresh(),
+                  ),
                 ),
               ),
             ),
@@ -129,15 +155,37 @@ class AccountsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTotalBalanceBar(double total) {
+  Future<bool?> _confirmDeleteAccount(
+      BuildContext context, Account account) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Account'),
+        content: Text('Delete "${account.name}"? This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete',
+                style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTotalBalanceBar(BuildContext context, double total) {
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.xxl,
         vertical: AppSpacing.lg,
       ),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.gradientStart, AppColors.gradientEnd],
+        gradient: LinearGradient(
+          colors: [context.colors.gradientStart, context.colors.gradientEnd],
         ),
         borderRadius: BorderRadius.circular(12),
       ),
