@@ -117,10 +117,22 @@ export async function POST(request: NextRequest) {
       create: { userId, token, platform, active: true },
     });
 
+    // Immediately verify: count active devices for this user
+    const activeCount = await prisma.deviceToken.count({
+      where: { userId, active: true },
+    });
+
     const tokenPrefix = token.substring(0, 16);
     console.log(
       `[v1/devices] POST OK`,
-      JSON.stringify({ userId, platform, tokenPrefix, deviceId: device.id, active: device.active }),
+      JSON.stringify({
+        userId,
+        platform,
+        tokenPrefix,
+        deviceId: device.id,
+        active: device.active,
+        activeCount,
+      }),
     );
 
     return NextResponse.json(
@@ -132,7 +144,8 @@ export async function POST(request: NextRequest) {
           platform,
           active: device.active,
           tokenPrefix,
-          message: `Device registered ✓ [userId: ${userId.substring(0, 8)}...]`,
+          activeCount,
+          message: `Device registered ✓ [userId: ${userId.substring(0, 8)}...] — You now have ${activeCount} active device(s)`,
         },
       },
       { headers: corsHeaders() },

@@ -239,8 +239,15 @@ export async function sendTestPushDiagnostic(userId: string): Promise<{
   circuitOpen: boolean;
   reason: string;
 }> {
+  console.log(`[sendTestPushDiagnostic] START userId=${userId.substring(0, 8)}...`);
+  
   const tokens = await getActiveTokens(userId);
   const deviceCount = tokens.length;
+
+  console.log(
+    `[sendTestPushDiagnostic] Found ${deviceCount} active device(s) for userId=${userId.substring(0, 8)}...`,
+    deviceCount > 0 ? { tokenPrefixes: tokens.map((t) => t.substring(0, 16)) } : {},
+  );
 
   if (deviceCount === 0) {
     return {
