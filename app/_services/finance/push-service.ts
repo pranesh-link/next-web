@@ -1,8 +1,6 @@
 import prisma from '@/_lib/prisma';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let firebaseAdmin: any = null;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let messagingInstance: any = null;
 let circuitOpen = false;
 let consecutiveFailures = 0;
@@ -32,8 +30,8 @@ async function getMessaging() {
   }
 
   if (!firebaseAdmin) {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    firebaseAdmin = await (import('firebase-admin') as Promise<any>);
+    const moduleName = 'firebase-admin';
+    firebaseAdmin = await (import(/* webpackIgnore: true */ moduleName) as Promise<any>);
     if (firebaseAdmin.apps.length === 0) {
       const credential = JSON.parse(
         Buffer.from(serviceAccountJson, 'base64').toString('utf-8')
@@ -254,7 +252,6 @@ async function sendToTokens(
       tokens: batch,
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let response: any = null; // firebase-admin BatchResponse
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
