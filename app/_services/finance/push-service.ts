@@ -32,11 +32,11 @@ async function getMessaging() {
   if (!firebaseAdmin) {
     try {
       const moduleName = 'firebase-admin';
-      const module = await (import(/* webpackIgnore: true */ moduleName) as Promise<any>);
-      // Handle both ESM (module.default) and CJS (module itself) exports
-      firebaseAdmin = module.default || module;
+      const adminModule = await (import(/* webpackIgnore: true */ moduleName) as Promise<any>);
+      // Handle both ESM (adminModule.default) and CJS (adminModule itself) exports
+      firebaseAdmin = adminModule.default || adminModule;
       console.log('[push-service] firebase-admin module loaded', {
-        hasDefault: !!module.default,
+        hasDefault: !!adminModule.default,
         hasApps: !!firebaseAdmin?.apps,
         appsLength: firebaseAdmin?.apps?.length,
       });
