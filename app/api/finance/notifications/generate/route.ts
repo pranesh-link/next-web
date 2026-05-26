@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/_lib/prisma";
+import { sendPushToUser } from "@/_services/finance/push-service";
 
 /** Current month string in "YYYY-MM" format. */
 function currentMonthKey(): string {
@@ -236,7 +237,25 @@ export async function GET(request: NextRequest) {
       generateDepositReminders(user.id, ids, now),
     ]);
 
-    totalCreated += budgetCount + sipCount + depositCount;
+    const userCreated = budgetCount + sipCount + depositCount;
+    totalCreated += userCreated;
+
+    // Fire push notifications for newly generated alerts
+    if (budgetCount > 0) {
+      sendPushToUser(user.id, 'Budget Alert', 'You\'re close to exceeding your budget.', {
+        type: 'BUDGET_ALERT', featureId: '', notificationId: '',
+      }).catch(() => {});
+    }
+    if (sipCount > 0) {
+      sendPushToUser(user.id, 'SIP Reminder', 'Your SIP payment is due in the next few days.', {
+        type: 'SIP_REMINDER', featureId: '', notificationId: '',
+      }).catch(() => {});
+    }
+    if (depositCount > 0) {
+      sendPushToUser(user.id, 'Deposit Reminder', 'A deposit installment is due soon.', {
+        type: 'DEPOSIT_REMINDER', featureId: '', notificationId: '',
+      }).catch(() => {});
+    }
   }
 
   return NextResponse.json({ created: totalCreated });
