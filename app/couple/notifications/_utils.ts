@@ -170,6 +170,112 @@ export function getNotificationContent(
       linkLabel: "View Deposits",
     };
   }
+  // Push notification types
+  if (notif.type === "PUSH_BUDGET_ALERT") {
+    const p = isRecord(notif.payload)
+      ? (notif.payload as { category?: string; message?: string })
+      : null;
+    return {
+      icon: "⚠️",
+      title: p?.message || "Budget alert",
+      meta: "Budget notification",
+      hasActions: false,
+      token: undefined,
+      inviteId: undefined,
+      linkTo: "/couple/finance/budgets",
+      linkLabel: "View Budget",
+    };
+  }
+  if (notif.type === "PUSH_SIP_REMINDER") {
+    const p = isRecord(notif.payload)
+      ? (notif.payload as { message?: string })
+      : null;
+    return {
+      icon: "📈",
+      title: p?.message || "SIP installment due",
+      meta: "Investment notification",
+      hasActions: false,
+      token: undefined,
+      inviteId: undefined,
+      linkTo: "/couple/finance/investments",
+      linkLabel: "View Investments",
+    };
+  }
+  if (notif.type === "PUSH_DEPOSIT_REMINDER") {
+    const p = isRecord(notif.payload)
+      ? (notif.payload as { message?: string })
+      : null;
+    return {
+      icon: "🏦",
+      title: p?.message || "Deposit installment due",
+      meta: "Deposit notification",
+      hasActions: false,
+      token: undefined,
+      inviteId: undefined,
+      linkTo: "/couple/finance/deposits",
+      linkLabel: "View Deposits",
+    };
+  }
+  if (notif.type === "PUSH_LOAN_REMINDER") {
+    const p = isRecord(notif.payload)
+      ? (notif.payload as { message?: string })
+      : null;
+    return {
+      icon: "💳",
+      title: p?.message || "Loan EMI due soon",
+      meta: "Loan notification",
+      hasActions: false,
+      token: undefined,
+      inviteId: undefined,
+      linkTo: "/couple/finance/loans",
+      linkLabel: "View Loans",
+    };
+  }
+  if (notif.type === "PUSH_GOAL_REMINDER") {
+    const p = isRecord(notif.payload)
+      ? (notif.payload as { message?: string })
+      : null;
+    return {
+      icon: "🎯",
+      title: p?.message || "Goal progress update",
+      meta: "Goal notification",
+      hasActions: false,
+      token: undefined,
+      inviteId: undefined,
+      linkTo: "/couple/finance/goals",
+      linkLabel: "View Goals",
+    };
+  }
+  if (notif.type === "PUSH_TRANSACTION_ALERT") {
+    const p = isRecord(notif.payload)
+      ? (notif.payload as { message?: string })
+      : null;
+    return {
+      icon: "💰",
+      title: p?.message || "Transaction alert",
+      meta: "Transaction notification",
+      hasActions: false,
+      token: undefined,
+      inviteId: undefined,
+      linkTo: "/couple/finance/transactions",
+      linkLabel: "View Transactions",
+    };
+  }
+  if (notif.type === "PUSH_ACCOUNT_SYNC") {
+    const p = isRecord(notif.payload)
+      ? (notif.payload as { message?: string })
+      : null;
+    return {
+      icon: "🔄",
+      title: p?.message || "Account sync update",
+      meta: "Account notification",
+      hasActions: false,
+      token: undefined,
+      inviteId: undefined,
+      linkTo: "/couple/finance/accounts",
+      linkLabel: "View Accounts",
+    };
+  }
   return {
     icon: "🔔",
     title: "New notification",

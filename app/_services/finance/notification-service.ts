@@ -57,9 +57,9 @@ export async function createNotification(
   return notification;
 }
 
-export async function getNotificationsForUser(userId: string) {
+export async function getNotificationsForUser(userId: string, includeArchived = false) {
   return prisma.notification.findMany({
-    where: { userId },
+    where: includeArchived ? { userId } : { userId, archived: false },
     orderBy: { createdAt: 'desc' },
     take: 50,
   });
@@ -67,7 +67,7 @@ export async function getNotificationsForUser(userId: string) {
 
 export async function getUnreadCount(userId: string) {
   return prisma.notification.count({
-    where: { userId, read: false },
+    where: { userId, read: false, archived: false },
   });
 }
 
@@ -87,6 +87,45 @@ export async function markAllAsRead(userId: string) {
   return prisma.notification.updateMany({
     where: { userId, read: false },
     data: { read: true },
+  });
+}
+
+export async function archiveNotification(notificationId: string, userId: string) {
+  const notification = await prisma.notification.findFirst({
+    where: { id: notificationId, userId },
+  });
+  if (!notification) throw new Error('Notification not found');
+
+  return prisma.notification.update({
+    where: { id: notificationId },
+    data: { archived: true, archivedAt: new Date() },
+  });
+}
+
+export async function unarchiveNotification(notificationId: string, userId: string) {
+  const notification = await prisma.notification.findFirst({
+    where: { id: notificationId, userId },
+  });
+  if (!notification) throw new Error('Notification not found');
+
+  return prisma.notification.update({
+    where: { id: notificationId },
+    data: { archived: false, archivedAt: null },
+  });
+}
+
+export async function archiveAllRead(userId: string) {
+  return prisma.notification.updateMany({
+    where: { userId, read: true, archived: false },
+    data: { archived: true, archivedAt: new Date() },
+  });
+}
+
+export async function getArchivedNotifications(userId: string) {
+  return prisma.notification.findMany({
+    where: { userId, archived: true },
+    orderBy: { archivedAt: 'desc' },
+    take: 50,
   });
 }
 
