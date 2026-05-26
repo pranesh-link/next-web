@@ -1,5 +1,34 @@
 import prisma from '@/_lib/prisma';
 import { getUserIdsForCouple } from '@/_services/finance/couple-service';
+import { sendPushToUser } from '@/_services/finance/push-service';
+
+/** Maps notification type to a human-readable title for push. */
+function getPushTitle(type: string): string {
+  const titles: Record<string, string> = {
+    COUPLE_INVITE: 'New Couple Invite',
+    INCOME_REMINDER: 'Income Reminder',
+    BUDGET_ALERT: 'Budget Alert',
+    SIP_REMINDER: 'SIP Due Soon',
+    DEPOSIT_REMINDER: 'Deposit Due Soon',
+    GOAL_REACHED: 'Goal Reached! 🎉',
+    LOAN_EMI_REMINDER: 'EMI Due Soon',
+  };
+  return titles[type] ?? 'LuvVerse Notification';
+}
+
+/** Maps notification type to a push body message. */
+function getPushBody(type: string): string {
+  const bodies: Record<string, string> = {
+    COUPLE_INVITE: 'You have a new couple invite waiting.',
+    INCOME_REMINDER: 'Don\'t forget to log last month\'s income.',
+    BUDGET_ALERT: 'You\'re close to exceeding your budget.',
+    SIP_REMINDER: 'Your SIP payment is due in the next few days.',
+    DEPOSIT_REMINDER: 'A deposit installment is due soon.',
+    GOAL_REACHED: 'Congratulations! You\'ve reached your savings goal.',
+    LOAN_EMI_REMINDER: 'Your loan EMI is due in the next few days.',
+  };
+  return bodies[type] ?? 'You have a new notification.';
+}
 
 export async function createNotification(
   userId: string,
@@ -14,9 +43,18 @@ export async function createNotification(
     if (existing) return existing;
   }
 
-  return prisma.notification.create({
+  const notification = await prisma.notification.create({
     data: { userId, type, featureId },
   });
+
+  // Fire-and-forget push notification
+  sendPushToUser(userId, getPushTitle(type), getPushBody(type), {
+    type,
+    featureId: featureId ?? '',
+    notificationId: notification.id,
+  }).catch(() => {});
+
+  return notification;
 }
 
 export async function getNotificationsForUser(userId: string) {
