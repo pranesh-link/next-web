@@ -506,10 +506,10 @@ class _NotificationCard extends StatelessWidget {
         children: [
           SlidableAction(
             onPressed: (_) => onToggleRead(),
-            backgroundColor: isUnread ? Colors.blue.shade400 : Colors.green.shade400,
+            backgroundColor: isUnread ? Colors.blue.shade400 : Colors.orange.shade400,
             foregroundColor: Colors.white,
-            icon: isUnread ? Icons.check : Icons.check_circle,
-            label: isUnread ? 'Read' : 'Read',
+            icon: isUnread ? Icons.mark_email_read : Icons.mark_email_unread,
+            label: isUnread ? 'Mark Read' : 'Unread',
             borderRadius: BorderRadius.circular(12),
           ),
         ],

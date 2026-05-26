@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import FinanceHeader from "@/couple/_components/layout/FinanceHeader";
 import { useNotifications } from "@/couple/_components/notifications/NotificationProvider";
 import { acceptInviteByToken, declineInviteAction, getMyPendingInvites } from "@/couple/finance/_actions/couples";
 import { archiveNotification, archiveAllRead, unarchiveNotification } from "@/couple/finance/_actions/notifications";
@@ -10,6 +9,9 @@ import EmptyState from "@/couple/_components/shared/EmptyState";
 import LoadingSkeleton from "@/couple/_components/shared/LoadingSkeleton";
 import {
   PageWrapper,
+  PageHeader,
+  PageTitle,
+  RefreshButton,
   Content,
   TopBar,
   TopBarLeft,
@@ -195,9 +197,10 @@ export default function NotificationsPage() {
   const handleMarkAllRead = useCallback(async () => {
     setMarkingAll(true);
     await markAllRead();
+    await refresh();
     setMarkingAll(false);
     setToast({ message: "All notifications marked as read", show: true });
-  }, [markAllRead]);
+  }, [markAllRead, refresh]);
 
   const handleArchiveAllRead = useCallback(async () => {
     setArchivingAll(true);
@@ -238,17 +241,14 @@ export default function NotificationsPage() {
 
       const content = getNotificationContent(notif, inviteDetails);
 
-      // If it has a linkTo, navigate
+      // Mark as read first (always, if not already read)
+      if (!isRead) {
+        await markRead(notifId);
+      }
+
+      // Then navigate if it has a linkTo
       if ("linkTo" in content && content.linkTo) {
-        if (!isRead) {
-          await markRead(notifId);
-        }
         router.push(content.linkTo as string);
-      } else {
-        // Otherwise just mark as read
-        if (!isRead) {
-          await markRead(notifId);
-        }
       }
     },
     [notifications, inviteDetails, markRead, router]
@@ -259,7 +259,10 @@ export default function NotificationsPage() {
   if (loading && notifications.length === 0) {
     return (
       <PageWrapper>
-        <FinanceHeader title="Notifications" onRefresh={refresh} />
+        <PageHeader>
+          <PageTitle>Notifications</PageTitle>
+          <RefreshButton onClick={refresh}>↻</RefreshButton>
+        </PageHeader>
         <Content>
           <LoadingSkeleton type="card" count={3} />
         </Content>
@@ -269,7 +272,10 @@ export default function NotificationsPage() {
 
   return (
     <PageWrapper>
-      <FinanceHeader title="Notifications" onRefresh={refresh} />
+      <PageHeader>
+        <PageTitle>Notifications</PageTitle>
+        <RefreshButton onClick={refresh}>↻</RefreshButton>
+      </PageHeader>
       <Content>
         {notifications.length === 0 ? (
           <EmptyState

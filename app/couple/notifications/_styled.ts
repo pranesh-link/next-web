@@ -15,6 +15,50 @@ export const PageWrapper = styled.div`
   background: var(--bg);
 `;
 
+export const PageHeader = styled.header`
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+
+  @media (max-width: 480px) {
+    padding: 12px 16px;
+  }
+`;
+
+export const PageTitle = styled.h1`
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+`;
+
+export const RefreshButton = styled.button`
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ${EASING};
+
+  &:hover {
+    background: var(--accent);
+    color: #ffffff;
+    border-color: var(--accent);
+  }
+`;
+
 export const Content = styled.div`
   max-width: 720px;
   margin: 0 auto;
