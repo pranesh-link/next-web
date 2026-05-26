@@ -346,6 +346,21 @@ class NotificationsNotifier extends AsyncNotifier<NotificationsResponse> {
     await ref.read(notificationsRepositoryProvider).markAllAsRead();
     await refresh();
   }
+
+  Future<void> archiveNotification(String id) async {
+    await ref.read(notificationsRepositoryProvider).archiveNotification(id);
+    await refresh();
+  }
+
+  Future<void> unarchiveNotification(String id) async {
+    await ref.read(notificationsRepositoryProvider).unarchiveNotification(id);
+    await refresh();
+  }
+
+  Future<void> archiveAllRead() async {
+    await ref.read(notificationsRepositoryProvider).archiveAllRead();
+    await refresh();
+  }
 }
 
 final unreadNotificationCountProvider = Provider<AsyncValue<int>>((ref) {
