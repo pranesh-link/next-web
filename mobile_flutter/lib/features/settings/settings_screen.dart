@@ -238,6 +238,8 @@ class _TestNotificationTileState extends ConsumerState<_TestNotificationTile> {
     final String text;
     if (result.success) {
       text = 'Test sent to ${result.sent} device(s)';
+    } else if (result.rateLimited) {
+      text = '⏱  ${result.message}'; // "Rate limited. Try again in Ns."
     } else if (result.sent == 0 && result.failed == 0) {
       text = result.message; // Backend "No active devices found..." or network error
     } else {

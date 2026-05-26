@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:luvverse/core/network/api_client.dart';
 import 'package:luvverse/core/network/api_endpoints.dart';
+import 'package:luvverse/core/network/api_exceptions.dart';
 import 'package:luvverse/core/notifications/notification_channel.dart';
 
 /// Top-level background message handler (must be top-level function).
@@ -28,12 +29,14 @@ class TestPushResult {
   final int sent;
   final int failed;
   final String message;
+  final bool rateLimited;
 
   const TestPushResult({
     required this.success,
     required this.sent,
     required this.failed,
     required this.message,
+    this.rateLimited = false,
   });
 }
 
@@ -151,6 +154,15 @@ class PushNotificationService {
         message: message,
       );
     } catch (e) {
+      if (e is ApiException && e.statusCode == 429) {
+        return TestPushResult(
+          success: false,
+          sent: 0,
+          failed: 0,
+          message: e.message, // "Rate limited. Try again in Ns."
+          rateLimited: true,
+        );
+      }
       return TestPushResult(
         success: false,
         sent: 0,
