@@ -4,6 +4,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useCallback, useState } from "react";
 import { useFinanceTheme } from "@/couple/_components/theme/FinanceThemeProvider";
+import { useNotifications } from "@/couple/_components/notifications/NotificationProvider";
 import {
   coupleNavItems,
   financeNavItems,
@@ -165,6 +166,7 @@ export default function Sidebar({ user }: SidebarProps) {
                   {item.iconPath}
                 </svg>
                 <NavLinkLabel $visible={expanded}>{item.label}</NavLinkLabel>
+                {item.href === "/couple/notifications" && <NotificationBadge expanded={expanded} />}
               </NavLink>
             );
           })}
@@ -268,5 +270,35 @@ export default function Sidebar({ user }: SidebarProps) {
         onConfirm={() => setSigningOut(true)}
       />
     </>
+  );
+}
+
+function NotificationBadge({ expanded }: { expanded: boolean }) {
+  const { unreadCount } = useNotifications();
+  if (unreadCount === 0) return null;
+
+  return (
+    <span
+      style={{
+        position: expanded ? "static" : "absolute",
+        top: expanded ? undefined : "4px",
+        right: expanded ? undefined : "4px",
+        minWidth: "18px",
+        height: "18px",
+        padding: "0 5px",
+        borderRadius: "9px",
+        background: "#ef4444",
+        color: "#ffffff",
+        fontSize: "11px",
+        fontWeight: 700,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        marginLeft: expanded ? "auto" : undefined,
+        lineHeight: 1,
+      }}
+    >
+      {unreadCount > 99 ? "99+" : unreadCount}
+    </span>
   );
 }

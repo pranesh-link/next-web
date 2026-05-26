@@ -3,11 +3,24 @@ import 'package:flutter/foundation.dart';
 /// Notification type constants.
 abstract class NotificationType {
   static const coupleInvite = 'COUPLE_INVITE';
+  static const incomeReminder = 'INCOME_REMINDER';
+  static const budgetAlert = 'BUDGET_ALERT';
+  static const sipReminder = 'SIP_REMINDER';
+  static const depositReminder = 'DEPOSIT_REMINDER';
   static const investmentSipReminder = 'INVESTMENT_SIP_REMINDER';
+  static const depositMaturityReminder = 'DEPOSIT_MATURITY_REMINDER';
   static const depositInstallmentReminder = 'DEPOSIT_INSTALLMENT_REMINDER';
   static const budgetExceeded = 'BUDGET_EXCEEDED';
   static const goalReached = 'GOAL_REACHED';
   static const loanEmiReminder = 'LOAN_EMI_REMINDER';
+  // Push notification types
+  static const pushBudgetAlert = 'PUSH_BUDGET_ALERT';
+  static const pushSipReminder = 'PUSH_SIP_REMINDER';
+  static const pushDepositReminder = 'PUSH_DEPOSIT_REMINDER';
+  static const pushLoanReminder = 'PUSH_LOAN_REMINDER';
+  static const pushGoalReminder = 'PUSH_GOAL_REMINDER';
+  static const pushTransactionAlert = 'PUSH_TRANSACTION_ALERT';
+  static const pushAccountSync = 'PUSH_ACCOUNT_SYNC';
 }
 
 /// A notification for the current user.
@@ -18,8 +31,10 @@ class AppNotification {
   final String type;
   final String? featureId;
   final bool read;
+  final bool archived;
   final Map<String, dynamic>? payload;
   final DateTime createdAt;
+  final DateTime? archivedAt;
 
   const AppNotification({
     required this.id,
@@ -27,8 +42,10 @@ class AppNotification {
     required this.type,
     this.featureId,
     required this.read,
+    this.archived = false,
     this.payload,
     required this.createdAt,
+    this.archivedAt,
   });
 
   factory AppNotification.fromJson(Map<String, dynamic> json) {
@@ -38,8 +55,12 @@ class AppNotification {
       type: json['type'] as String,
       featureId: json['featureId'] as String?,
       read: json['read'] as bool? ?? false,
+      archived: json['archived'] as bool? ?? false,
       payload: json['payload'] as Map<String, dynamic>?,
       createdAt: DateTime.parse(json['createdAt'] as String),
+      archivedAt: json['archivedAt'] != null
+          ? DateTime.parse(json['archivedAt'] as String)
+          : null,
     );
   }
 
@@ -50,8 +71,10 @@ class AppNotification {
       'type': type,
       'featureId': featureId,
       'read': read,
+      'archived': archived,
       'payload': payload,
       'createdAt': createdAt.toIso8601String(),
+      'archivedAt': archivedAt?.toIso8601String(),
     };
   }
 
@@ -60,16 +83,36 @@ class AppNotification {
     switch (type) {
       case NotificationType.coupleInvite:
         return 'Couple Invite';
+      case NotificationType.incomeReminder:
+        return 'Income Reminder';
+      case NotificationType.budgetAlert:
+      case NotificationType.pushBudgetAlert:
+        return 'Budget Alert';
+      case NotificationType.sipReminder:
+      case NotificationType.pushSipReminder:
+        return 'SIP Reminder';
+      case NotificationType.depositReminder:
+      case NotificationType.pushDepositReminder:
+        return 'Deposit Reminder';
       case NotificationType.investmentSipReminder:
         return 'SIP Reminder';
       case NotificationType.depositInstallmentReminder:
         return 'Installment Reminder';
+      case NotificationType.depositMaturityReminder:
+        return 'Deposit Maturity';
       case NotificationType.budgetExceeded:
         return 'Budget Exceeded';
       case NotificationType.goalReached:
         return 'Goal Reached!';
       case NotificationType.loanEmiReminder:
+      case NotificationType.pushLoanReminder:
         return 'EMI Reminder';
+      case NotificationType.pushGoalReminder:
+        return 'Goal Update';
+      case NotificationType.pushTransactionAlert:
+        return 'Transaction Alert';
+      case NotificationType.pushAccountSync:
+        return 'Account Sync';
       default:
         return 'Notification';
     }

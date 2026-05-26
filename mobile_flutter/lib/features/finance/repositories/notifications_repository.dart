@@ -33,4 +33,32 @@ class NotificationsRepository {
       data: {},
     );
   }
+
+  Future<void> archiveNotification(String id) async {
+    await _api.put<Map<String, dynamic>>(
+      '${ApiEndpoints.notifications}/$id/archive',
+      data: {},
+    );
+  }
+
+  Future<void> unarchiveNotification(String id) async {
+    await _api.put<Map<String, dynamic>>(
+      '${ApiEndpoints.notifications}/$id/unarchive',
+      data: {},
+    );
+  }
+
+  Future<void> markAsUnread(String id) async {
+    await _api.put<Map<String, dynamic>>(
+      '${ApiEndpoints.notifications}/$id/unread',
+      data: {},
+    );
+  }
+
+  Future<void> archiveAllRead() async {
+    await _api.put<Map<String, dynamic>>(
+      '${ApiEndpoints.notifications}/archive-all-read',
+      data: {},
+    );
+  }
 }

@@ -10,6 +10,7 @@ import {
   ReadDot,
   ActionRow,
   ActionButton,
+  ArchiveButton,
 } from "../_styled";
 import { formatTime, type NotificationContent } from "../_utils";
 
@@ -28,7 +29,7 @@ type Props = {
   onCardClick: (notifId: string, isRead: boolean) => void;
   onAccept: (token: string, notifId: string) => void;
   onDecline: (inviteId: string, notifId: string) => void;
-  onLink: (notifId: string, linkTo: string) => void;
+  onArchive: (notifId: string) => void;
 };
 
 export default function NotificationCard({
@@ -38,12 +39,28 @@ export default function NotificationCard({
   onCardClick,
   onAccept,
   onDecline,
-  onLink,
+  onArchive,
 }: Props) {
+  const hasActions = content.hasActions && content.token && content.inviteId;
+  const hasLink = "linkTo" in content && content.linkTo;
+  const isClickable: boolean = !!hasLink && !hasActions;
+
+  const handleCardClick = () => {
+    if (isClickable) {
+      onCardClick(notif.id, notif.read);
+    } else if (!hasActions) {
+      // Just mark as read if no other action
+      if (!notif.read) {
+        onCardClick(notif.id, notif.read);
+      }
+    }
+  };
+
   return (
     <Card
       $unread={!notif.read}
-      onClick={() => onCardClick(notif.id, notif.read)}
+      $clickable={isClickable}
+      onClick={handleCardClick}
     >
       <CardTop>
         <IconCircle $type={notif.type}>{content.icon}</IconCircle>
@@ -56,7 +73,18 @@ export default function NotificationCard({
         {!notif.read && <ReadDot />}
       </CardTop>
 
-      {content.hasActions && content.token && content.inviteId && (
+      <ArchiveButton
+        onClick={(e) => {
+          e.stopPropagation();
+          onArchive(notif.id);
+        }}
+        aria-label="Archive notification"
+        title="Archive"
+      >
+        📥
+      </ArchiveButton>
+
+      {hasActions && (
         <ActionRow>
           <ActionButton
             $variant="decline"
@@ -77,20 +105,6 @@ export default function NotificationCard({
             }}
           >
             {processingId === notif.id ? "Accepting…" : "Accept"}
-          </ActionButton>
-        </ActionRow>
-      )}
-
-      {"linkTo" in content && content.linkTo && (
-        <ActionRow>
-          <ActionButton
-            $variant="accept"
-            onClick={(e) => {
-              e.stopPropagation();
-              onLink(notif.id, content.linkTo as string);
-            }}
-          >
-            {content.linkLabel ?? "View"}
           </ActionButton>
         </ActionRow>
       )}

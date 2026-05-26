@@ -495,18 +495,21 @@ model BudgetPlan {
 // ─── Notification Models ────────────────────────────────────
 
 model Notification {
-  id        String   @id @default(uuid())
-  userId    String
-  type      String   @default("COUPLE_INVITE")
-  featureId String?
-  read      Boolean  @default(false)
-  payload   Json?
-  createdAt DateTime @default(now())
+  id         String    @id @default(uuid())
+  userId     String
+  type       String    @default("COUPLE_INVITE")
+  featureId  String?
+  read       Boolean   @default(false)
+  archived   Boolean   @default(false)
+  payload    Json?
+  createdAt  DateTime  @default(now())
+  archivedAt DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([featureId])
+  @@index([userId, archived])
   @@map("notifications")
 }
 
