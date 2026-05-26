@@ -289,7 +289,8 @@ class _RegisterDeviceTileState extends ConsumerState<_RegisterDeviceTile> {
     if (!granted) {
       text = 'Permission denied. Enable notifications in system Settings.';
     } else if (result.success) {
-      text = 'Device registered ✓';
+      // Backend now returns a message with userId prefix for debugging
+      text = result.message ?? 'Device registered ✓';
     } else {
       text = 'Registration failed: ${result.error}';
     }

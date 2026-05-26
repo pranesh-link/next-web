@@ -46,8 +46,7 @@ export async function POST(_request: NextRequest) {
     const messageByReason: Record<string, string> = {
       OK: `Test notification sent to ${result.sent} device(s)`,
       PARTIAL: `Sent to ${result.sent}/${result.deviceCount} device(s); ${result.failed} failed`,
-      NO_DEVICES:
-        "No devices registered for this account. Tap 'Re-register this device' in Settings.",
+      NO_DEVICES: `No active devices found for userId ${userId.substring(0, 8)}... — Tap 'Re-register this device' in Settings.`,
       FCM_NOT_CONFIGURED:
         "Push service is not configured on the server (missing FCM credentials).",
       CIRCUIT_OPEN:

@@ -18,9 +18,10 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 class TokenRegistrationResult {
   final bool success;
   final String? token;
+  final String? message;
   final String? error;
 
-  const TokenRegistrationResult({required this.success, this.token, this.error});
+  const TokenRegistrationResult({required this.success, this.token, this.message, this.error});
 }
 
 /// Result of sending a test push notification.
@@ -157,15 +158,18 @@ class PushNotificationService {
       _currentToken = token;
       final platform = Platform.isIOS ? 'ios' : 'android';
 
-      await _apiClient.post(
+      final response = await _apiClient.post<Map<String, dynamic>>(
         ApiEndpoints.devices,
         data: {'token': token, 'platform': platform},
       );
 
+      final data = response['data'] as Map<String, dynamic>?;
+      final message = (data?['message'] as String?) ?? 'Device registered ✓';
+
       if (kDebugMode) {
         debugPrint('[Push] Token registered: ${token.substring(0, 20)}...');
       }
-      return TokenRegistrationResult(success: true, token: token);
+      return TokenRegistrationResult(success: true, token: token, message: message);
     } catch (e) {
       if (kDebugMode) debugPrint('[Push] Token registration failed: $e');
       return TokenRegistrationResult(success: false, error: e.toString());

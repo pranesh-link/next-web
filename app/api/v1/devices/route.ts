@@ -117,12 +117,24 @@ export async function POST(request: NextRequest) {
       create: { userId, token, platform, active: true },
     });
 
+    const tokenPrefix = token.substring(0, 16);
     console.log(
-      `[v1/devices] POST OK userId=${userId} platform=${platform} tokenPrefix=${token.substring(0, 16)} deviceId=${device.id} active=${device.active}`,
+      `[v1/devices] POST OK`,
+      JSON.stringify({ userId, platform, tokenPrefix, deviceId: device.id, active: device.active }),
     );
 
     return NextResponse.json(
-      { success: true, data: { id: device.id, userId, active: device.active } },
+      {
+        success: true,
+        data: {
+          id: device.id,
+          userId,
+          platform,
+          active: device.active,
+          tokenPrefix,
+          message: `Device registered ✓ [userId: ${userId.substring(0, 8)}...]`,
+        },
+      },
       { headers: corsHeaders() },
     );
   } catch (error) {
