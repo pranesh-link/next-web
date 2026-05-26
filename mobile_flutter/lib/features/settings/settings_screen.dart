@@ -344,8 +344,6 @@ class _ListDevicesTileState extends ConsumerState<_ListDevicesTile> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('User ID: ${result.userId}', style: AppTypography.small.copyWith(color: context.colors.textMuted)),
-                const SizedBox(height: 16),
                 if (result.devices.isEmpty)
                   const Text('No devices registered.')
                 else
@@ -381,7 +379,6 @@ class _ListDevicesTileState extends ConsumerState<_ListDevicesTile> {
                               ],
                             ),
                             const SizedBox(height: 4),
-                            Text('Token: ${device.tokenPrefix}', style: AppTypography.xs.copyWith(color: context.colors.textMuted)),
                             Text('Created: ${device.createdAt}', style: AppTypography.xs.copyWith(color: context.colors.textMuted)),
                             Text('Updated: ${device.updatedAt}', style: AppTypography.xs.copyWith(color: context.colors.textMuted)),
                           ],

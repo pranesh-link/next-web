@@ -30,20 +30,34 @@ async function getMessaging() {
   }
 
   if (!firebaseAdmin) {
-    const moduleName = 'firebase-admin';
-    firebaseAdmin = await (import(/* webpackIgnore: true */ moduleName) as Promise<any>);
-    if (firebaseAdmin.apps.length === 0) {
-      const credential = JSON.parse(
-        Buffer.from(serviceAccountJson, 'base64').toString('utf-8')
-      );
-      firebaseAdmin.initializeApp({
-        credential: firebaseAdmin.credential.cert(credential),
-      });
+    try {
+      const moduleName = 'firebase-admin';
+      firebaseAdmin = await (import(/* webpackIgnore: true */ moduleName) as Promise<any>);
+      console.log('[push-service] firebase-admin module loaded');
+      
+      if (firebaseAdmin.apps.length === 0) {
+        const credential = JSON.parse(
+          Buffer.from(serviceAccountJson, 'base64').toString('utf-8')
+        );
+        firebaseAdmin.initializeApp({
+          credential: firebaseAdmin.credential.cert(credential),
+        });
+        console.log('[push-service] firebase-admin app initialized');
+      }
+    } catch (error) {
+      console.error('[push-service] Failed to load/init firebase-admin:', error);
+      return null;
     }
   }
 
-  messagingInstance = firebaseAdmin.messaging();
-  return messagingInstance;
+  try {
+    messagingInstance = firebaseAdmin.messaging();
+    console.log('[push-service] messaging instance created');
+    return messagingInstance;
+  } catch (error) {
+    console.error('[push-service] Failed to get messaging instance:', error);
+    return null;
+  }
 }
 
 /**

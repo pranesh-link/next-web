@@ -140,12 +140,10 @@ export async function POST(request: NextRequest) {
         success: true,
         data: {
           id: device.id,
-          userId,
           platform,
           active: device.active,
-          tokenPrefix,
           activeCount,
-          message: `Device registered ✓ [userId: ${userId.substring(0, 8)}...] — You now have ${activeCount} active device(s)`,
+          message: `Device registered ✓ — You now have ${activeCount} active device(s)`,
         },
       },
       { headers: corsHeaders() },
