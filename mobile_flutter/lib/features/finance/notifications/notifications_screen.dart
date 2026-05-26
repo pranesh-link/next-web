@@ -29,10 +29,6 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   NotificationFilter _filter = NotificationFilter.all;
   String? _toastMessage;
 
-class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
-  NotificationFilter _filter = NotificationFilter.all;
-  String? _toastMessage;
-
   void _showToast(String message) {
     setState(() => _toastMessage = message);
     Future.delayed(const Duration(seconds: 3), () {
