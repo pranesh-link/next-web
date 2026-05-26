@@ -13,6 +13,30 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   if (kDebugMode) debugPrint('[Push] Background message: ${message.messageId}');
 }
 
+/// Result of registering a device token with the backend.
+class TokenRegistrationResult {
+  final bool success;
+  final String? token;
+  final String? error;
+
+  const TokenRegistrationResult({required this.success, this.token, this.error});
+}
+
+/// Result of sending a test push notification.
+class TestPushResult {
+  final bool success;
+  final int sent;
+  final int failed;
+  final String message;
+
+  const TestPushResult({
+    required this.success,
+    required this.sent,
+    required this.failed,
+    required this.message,
+  });
+}
+
 /// Manages FCM token lifecycle, permission requests, and message handling.
 class PushNotificationService {
   final ApiClient _apiClient;
@@ -31,7 +55,9 @@ class PushNotificationService {
     await _setupInitialMessage();
   }
 
-  /// Request notification permission (iOS always, Android 13+).
+  /// Request notification permission.
+  /// Handles iOS APNs prompt and Android 13+ POST_NOTIFICATIONS.
+  /// Returns true if the user granted permission.
   Future<bool> requestPermission() async {
     final settings = await FirebaseMessaging.instance.requestPermission(
       alert: true,
@@ -39,14 +65,38 @@ class PushNotificationService {
       sound: true,
       provisional: false,
     );
-    return settings.authorizationStatus == AuthorizationStatus.authorized;
+    final fcmGranted = settings.authorizationStatus == AuthorizationStatus.authorized ||
+        settings.authorizationStatus == AuthorizationStatus.provisional;
+
+    // Belt-and-braces: explicitly request via flutter_local_notifications on Android.
+    // Required for displaying notifications even when FCM permission is granted.
+    if (Platform.isAndroid) {
+      final androidImpl = _localNotifications
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      await androidImpl?.requestNotificationsPermission();
+    }
+
+    return fcmGranted;
+  }
+
+  /// Check current permission status without prompting the user.
+  Future<bool> hasPermission() async {
+    final settings = await FirebaseMessaging.instance.getNotificationSettings();
+    return settings.authorizationStatus == AuthorizationStatus.authorized ||
+        settings.authorizationStatus == AuthorizationStatus.provisional;
   }
 
   /// Get FCM token and register with the backend.
-  Future<void> registerToken() async {
+  /// Returns detailed result for UI feedback.
+  Future<TokenRegistrationResult> registerToken() async {
     try {
       final token = await FirebaseMessaging.instance.getToken();
-      if (token == null) return;
+      if (token == null) {
+        return const TokenRegistrationResult(
+          success: false,
+          error: 'FCM token is null. Permission may be denied or Firebase not configured.',
+        );
+      }
 
       _currentToken = token;
       final platform = Platform.isIOS ? 'ios' : 'android';
@@ -56,9 +106,13 @@ class PushNotificationService {
         data: {'token': token, 'platform': platform},
       );
 
-      if (kDebugMode) debugPrint('[Push] Token registered: ${token.substring(0, 20)}...');
+      if (kDebugMode) {
+        debugPrint('[Push] Token registered: ${token.substring(0, 20)}...');
+      }
+      return TokenRegistrationResult(success: true, token: token);
     } catch (e) {
       if (kDebugMode) debugPrint('[Push] Token registration failed: $e');
+      return TokenRegistrationResult(success: false, error: e.toString());
     }
   }
 
@@ -78,14 +132,36 @@ class PushNotificationService {
   }
 
   /// Send a test notification to this device via backend.
-  Future<bool> sendTestNotification() async {
+  /// Returns detailed result including device count for UI feedback.
+  Future<TestPushResult> sendTestNotification() async {
     try {
-      await _apiClient.post(ApiEndpoints.notificationsTest);
-      return true;
-    } catch (_) {
-      return false;
+      final response = await _apiClient.post<Map<String, dynamic>>(
+        ApiEndpoints.notificationsTest,
+      );
+
+      final data = response['data'] as Map<String, dynamic>?;
+      final sent = (data?['sent'] as num?)?.toInt() ?? 0;
+      final failed = (data?['failed'] as num?)?.toInt() ?? 0;
+      final message = (data?['message'] as String?) ?? 'Test notification sent';
+
+      return TestPushResult(
+        success: sent > 0,
+        sent: sent,
+        failed: failed,
+        message: message,
+      );
+    } catch (e) {
+      return TestPushResult(
+        success: false,
+        sent: 0,
+        failed: 0,
+        message: 'Failed: ${e.toString()}',
+      );
     }
   }
+
+  /// Returns the currently cached FCM token (or null if never registered).
+  String? get currentToken => _currentToken;
 
   Future<void> _initLocalNotifications() async {
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -102,11 +178,20 @@ class PushNotificationService {
 
     // Create Android notification channel
     await NotificationChannel.create(_localNotifications);
+
+    // iOS: show notifications even when app is in foreground
+    await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
   }
 
   void _setupForegroundHandler() {
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      if (kDebugMode) debugPrint('[Push] Foreground message: ${message.notification?.title}');
+      if (kDebugMode) {
+        debugPrint('[Push] Foreground message: ${message.notification?.title}');
+      }
       _showLocalNotification(message);
     });
   }

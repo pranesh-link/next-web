@@ -62,6 +62,7 @@ class SettingsScreen extends ConsumerWidget {
           _SettingsTile(icon: Icons.people, title: 'Couple', onTap: () => context.push('/couple/manage')),
           _SettingsTile(icon: Icons.notifications_outlined, title: 'Notifications', onTap: () => context.push('/finance/notifications')),
           _TestNotificationTile(),
+          _RegisterDeviceTile(),
           const SizedBox(height: AppSpacing.lg),
           // Theme section
           Padding(
@@ -213,14 +214,86 @@ class _TestNotificationTileState extends ConsumerState<_TestNotificationTile> {
   Future<void> _sendTest() async {
     setState(() => _sending = true);
     final pushService = ref.read(pushNotificationServiceProvider);
-    final success = await pushService.sendTestNotification();
+
+    // Guard: check permission first so we give a clear diagnosis
+    final hasPerm = await pushService.hasPermission();
+    if (!hasPerm) {
+      if (!mounted) return;
+      setState(() => _sending = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Notification permission denied. Enable it in system Settings → Apps → LuvVerse → Notifications.',
+          ),
+          duration: Duration(seconds: 5),
+        ),
+      );
+      return;
+    }
+
+    final result = await pushService.sendTestNotification();
     if (!mounted) return;
     setState(() => _sending = false);
+
+    final String text;
+    if (result.success) {
+      text = 'Test sent to ${result.sent} device(s)';
+    } else if (result.sent == 0 && result.failed == 0) {
+      text = result.message; // Backend "No active devices found..." or network error
+    } else {
+      text = 'Failed: ${result.failed} device(s) rejected';
+    }
+
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(success ? 'Test notification sent!' : 'Failed to send test notification'),
-        duration: const Duration(seconds: 2),
+      SnackBar(content: Text(text), duration: const Duration(seconds: 5)),
+    );
+  }
+}
+
+class _RegisterDeviceTile extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_RegisterDeviceTile> createState() => _RegisterDeviceTileState();
+}
+
+class _RegisterDeviceTileState extends ConsumerState<_RegisterDeviceTile> {
+  bool _busy = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(Icons.phonelink_setup, color: context.colors.textDim),
+      title: Text('Re-register this device', style: AppTypography.body),
+      subtitle: Text(
+        'Request permission & re-register FCM token',
+        style: AppTypography.small.copyWith(color: context.colors.textMuted),
       ),
+      trailing: _busy
+          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+          : Icon(Icons.chevron_right, color: context.colors.textMuted, size: 20),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onTap: _busy ? null : _register,
+    );
+  }
+
+  Future<void> _register() async {
+    setState(() => _busy = true);
+    final pushService = ref.read(pushNotificationServiceProvider);
+    final granted = await pushService.requestPermission();
+    final result = await pushService.registerToken();
+    if (!mounted) return;
+    setState(() => _busy = false);
+
+    final String text;
+    if (!granted) {
+      text = 'Permission denied. Enable notifications in system Settings.';
+    } else if (result.success) {
+      text = 'Device registered ✓  Token: ${result.token!.substring(0, 16)}…';
+    } else {
+      text = 'Registration failed: ${result.error}';
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(text), duration: const Duration(seconds: 6)),
     );
   }
 }
