@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:luvverse/core/auth/auth_provider.dart';
 import 'package:luvverse/core/auth/biometric_service.dart';
+import 'package:luvverse/core/notifications/push_providers.dart';
 import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
@@ -59,7 +60,8 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: AppSpacing.xxl),
           _SettingsTile(icon: Icons.people, title: 'Couple', onTap: () => context.push('/couple/manage')),
-          _SettingsTile(icon: Icons.notifications_outlined, title: 'Notifications', onTap: () => _showSnackbar(context, 'Coming soon')),
+          _SettingsTile(icon: Icons.notifications_outlined, title: 'Notifications', onTap: () => context.push('/finance/notifications')),
+          _TestNotificationTile(),
           const SizedBox(height: AppSpacing.lg),
           // Theme section
           Padding(
@@ -187,6 +189,42 @@ class _BiometricToggle extends ConsumerWidget {
           },
         );
       },
+    );
+  }
+}
+
+class _TestNotificationTile extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_TestNotificationTile> createState() => _TestNotificationTileState();
+}
+
+class _TestNotificationTileState extends ConsumerState<_TestNotificationTile> {
+  bool _sending = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(Icons.send_outlined, color: context.colors.textDim),
+      title: Text('Test Push Notification', style: AppTypography.body),
+      trailing: _sending
+          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+          : Icon(Icons.chevron_right, color: context.colors.textMuted, size: 20),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onTap: _sending ? null : _sendTest,
+    );
+  }
+
+  Future<void> _sendTest() async {
+    setState(() => _sending = true);
+    final pushService = ref.read(pushNotificationServiceProvider);
+    final success = await pushService.sendTestNotification();
+    if (!mounted) return;
+    setState(() => _sending = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(success ? 'Test notification sent!' : 'Failed to send test notification'),
+        duration: const Duration(seconds: 2),
+      ),
     );
   }
 }
