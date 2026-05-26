@@ -63,6 +63,7 @@ class SettingsScreen extends ConsumerWidget {
           _SettingsTile(icon: Icons.notifications_outlined, title: 'Notifications', onTap: () => context.push('/finance/notifications')),
           _TestNotificationTile(),
           _RegisterDeviceTile(),
+          _ListDevicesTile(),
           const SizedBox(height: AppSpacing.lg),
           // Theme section
           Padding(
@@ -296,5 +297,110 @@ class _RegisterDeviceTileState extends ConsumerState<_RegisterDeviceTile> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(text), duration: const Duration(seconds: 6)),
     );
+  }
+}
+
+class _ListDevicesTile extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_ListDevicesTile> createState() => _ListDevicesTileState();
+}
+
+class _ListDevicesTileState extends ConsumerState<_ListDevicesTile> {
+  bool _busy = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(Icons.devices, color: context.colors.textDim),
+      title: Text('List registered devices', style: AppTypography.body),
+      subtitle: Text(
+        'Show all devices registered for push notifications',
+        style: AppTypography.small.copyWith(color: context.colors.textMuted),
+      ),
+      trailing: _busy
+          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+          : Icon(Icons.chevron_right, color: context.colors.textMuted, size: 20),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onTap: _busy ? null : _listDevices,
+    );
+  }
+
+  Future<void> _listDevices() async {
+    setState(() => _busy = true);
+    final pushService = ref.read(pushNotificationServiceProvider);
+    final result = await pushService.listDevices();
+    if (!mounted) return;
+    setState(() => _busy = false);
+
+    if (result.success) {
+      // Show dialog with device list
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Registered Devices (${result.activeCount}/${result.totalCount} active)'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('User ID: ${result.userId}', style: AppTypography.small.copyWith(color: context.colors.textMuted)),
+                const SizedBox(height: 16),
+                if (result.devices.isEmpty)
+                  const Text('No devices registered.')
+                else
+                  ...result.devices.map((device) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  device.platform == 'ios' ? Icons.phone_iphone : Icons.phone_android,
+                                  size: 18,
+                                  color: context.colors.textMuted,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(device.platform.toUpperCase(), style: AppTypography.small.copyWith(fontWeight: FontWeight.w600)),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: device.active ? Colors.green.withValues(alpha: 0.2) : Colors.grey.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    device.active ? 'ACTIVE' : 'INACTIVE',
+                                    style: AppTypography.xs.copyWith(
+                                      color: device.active ? Colors.green : Colors.grey,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text('Token: ${device.tokenPrefix}', style: AppTypography.xs.copyWith(color: context.colors.textMuted)),
+                            Text('Created: ${device.createdAt}', style: AppTypography.xs.copyWith(color: context.colors.textMuted)),
+                            Text('Updated: ${device.updatedAt}', style: AppTypography.xs.copyWith(color: context.colors.textMuted)),
+                          ],
+                        ),
+                      )),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to list devices: ${result.error}'), duration: const Duration(seconds: 4)),
+      );
+    }
   }
 }

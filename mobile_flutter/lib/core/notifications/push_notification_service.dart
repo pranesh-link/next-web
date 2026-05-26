@@ -44,6 +44,55 @@ class TestPushResult {
   });
 }
 
+/// Represents a registered device token.
+class DeviceInfo {
+  final String id;
+  final String platform;
+  final bool active;
+  final String createdAt;
+  final String updatedAt;
+  final String tokenPrefix;
+
+  const DeviceInfo({
+    required this.id,
+    required this.platform,
+    required this.active,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.tokenPrefix,
+  });
+
+  factory DeviceInfo.fromJson(Map<String, dynamic> json) {
+    return DeviceInfo(
+      id: json['id'] as String,
+      platform: json['platform'] as String,
+      active: json['active'] as bool,
+      createdAt: json['createdAt'] as String,
+      updatedAt: json['updatedAt'] as String,
+      tokenPrefix: json['tokenPrefix'] as String,
+    );
+  }
+}
+
+/// Result of fetching registered devices.
+class DeviceListResult {
+  final bool success;
+  final String userId;
+  final List<DeviceInfo> devices;
+  final int activeCount;
+  final int totalCount;
+  final String? error;
+
+  const DeviceListResult({
+    required this.success,
+    required this.userId,
+    required this.devices,
+    required this.activeCount,
+    required this.totalCount,
+    this.error,
+  });
+}
+
 /// Manages FCM token lifecycle, permission requests, and message handling.
 class PushNotificationService {
   final ApiClient _apiClient;
@@ -180,6 +229,53 @@ class PushNotificationService {
         deviceCount: 0,
         reason: 'EXCEPTION',
         message: 'Failed: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Fetch the list of registered devices for the authenticated user.
+  /// Returns detailed device info for debugging.
+  Future<DeviceListResult> listDevices() async {
+    try {
+      final response = await _apiClient.get<Map<String, dynamic>>(
+        ApiEndpoints.devices,
+      );
+
+      final data = response['data'] as Map<String, dynamic>?;
+      if (data == null) {
+        return const DeviceListResult(
+          success: false,
+          userId: '',
+          devices: [],
+          activeCount: 0,
+          totalCount: 0,
+          error: 'No data in response',
+        );
+      }
+
+      final userId = data['userId'] as String;
+      final deviceList = (data['devices'] as List<dynamic>?)
+              ?.map((e) => DeviceInfo.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [];
+      final activeCount = (data['activeCount'] as num?)?.toInt() ?? 0;
+      final totalCount = (data['totalCount'] as num?)?.toInt() ?? 0;
+
+      return DeviceListResult(
+        success: true,
+        userId: userId,
+        devices: deviceList,
+        activeCount: activeCount,
+        totalCount: totalCount,
+      );
+    } catch (e) {
+      return DeviceListResult(
+        success: false,
+        userId: '',
+        devices: [],
+        activeCount: 0,
+        totalCount: 0,
+        error: e.toString(),
       );
     }
   }

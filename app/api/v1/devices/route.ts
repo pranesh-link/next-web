@@ -18,6 +18,70 @@ export async function OPTIONS() {
 }
 
 /**
+ * GET /api/v1/devices
+ *
+ * Lists all device tokens for the authenticated user (for debugging).
+ * Returns active status, platform, creation time, and token prefix.
+ *
+ * @remarks GET · auth: JWT Bearer token
+ */
+export async function GET() {
+  try {
+    const userId = await getAuthUserId();
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "Not authenticated" },
+        { status: 401, headers: corsHeaders() },
+      );
+    }
+
+    const devices = await prisma.deviceToken.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        platform: true,
+        active: true,
+        createdAt: true,
+        updatedAt: true,
+        token: true,
+      },
+    });
+
+    const sanitizedDevices = devices.map((d) => ({
+      id: d.id,
+      platform: d.platform,
+      active: d.active,
+      createdAt: d.createdAt.toISOString(),
+      updatedAt: d.updatedAt.toISOString(),
+      tokenPrefix: d.token.substring(0, 20) + "...",
+    }));
+
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          userId,
+          devices: sanitizedDevices,
+          activeCount: sanitizedDevices.filter((d) => d.active).length,
+          totalCount: sanitizedDevices.length,
+        },
+      },
+      { headers: corsHeaders() },
+    );
+  } catch (error) {
+    console.error("[v1/devices] GET error:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to list devices",
+      },
+      { status: 500, headers: corsHeaders() },
+    );
+  }
+}
+
+/**
  * POST /api/v1/devices
  *
  * Registers or reassigns a device token for push notifications.
