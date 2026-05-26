@@ -201,7 +201,22 @@ export async function sendPushToUser(
     const tokens = await getActiveTokens(userId);
     if (tokens.length === 0) return { sent: 0, failed: 0 };
 
-    return await sendToTokens(messaging, tokens, title, body, data);
+    const result = await sendToTokens(messaging, tokens, title, body, data);
+
+    // Create a DB notification record for the push (non-blocking)
+    if (result.sent > 0 && type) {
+      prisma.notification.create({
+        data: {
+          userId,
+          type,
+          featureId: featureId || null,
+        },
+      }).catch((err) => {
+        console.error('[push-service] Failed to create DB notification:', err);
+      });
+    }
+
+    return result;
   } catch (error) {
     console.error('[push-service] sendPushToUser error:', error);
     return { sent: 0, failed: 0 };

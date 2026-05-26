@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateRequest } from "@/_lib/auth-utils";
+import { getAuthUserId } from "@/api/v1/_lib/auth";
 import { unarchiveNotification as unarchiveNotificationService } from "@/_services/finance/notification-service";
 
 /**
@@ -11,7 +11,7 @@ export async function PUT(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = await authenticateRequest(request);
+    const userId = await getAuthUserId();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

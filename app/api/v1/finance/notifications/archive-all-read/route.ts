@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateRequest } from "@/_lib/auth-utils";
+import { getAuthUserId } from "@/api/v1/_lib/auth";
 import { archiveAllRead as archiveAllReadService } from "@/_services/finance/notification-service";
 
 /**
@@ -8,7 +8,7 @@ import { archiveAllRead as archiveAllReadService } from "@/_services/finance/not
  */
 export async function PUT(request: NextRequest) {
   try {
-    const userId = await authenticateRequest(request);
+    const userId = await getAuthUserId();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

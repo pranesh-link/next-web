@@ -154,6 +154,38 @@ export const NotificationList = styled.div`
   display: flex;
   flex-direction: column;
   gap: 8px;
+
+  & > * {
+    animation: fadeIn 0.3s ${EASING} both;
+  }
+
+  @for $i from 1 through 20 {
+    & > *:nth-child(#{$i}) {
+      animation-delay: #{$i * 0.03}s;
+    }
+  }
+
+  & > *:nth-child(1) { animation-delay: 0.03s; }
+  & > *:nth-child(2) { animation-delay: 0.06s; }
+  & > *:nth-child(3) { animation-delay: 0.09s; }
+  & > *:nth-child(4) { animation-delay: 0.12s; }
+  & > *:nth-child(5) { animation-delay: 0.15s; }
+  & > *:nth-child(6) { animation-delay: 0.18s; }
+  & > *:nth-child(7) { animation-delay: 0.21s; }
+  & > *:nth-child(8) { animation-delay: 0.24s; }
+  & > *:nth-child(9) { animation-delay: 0.27s; }
+  & > *:nth-child(10) { animation-delay: 0.30s; }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 `;
 
 export const NotificationCard = styled.div<{ $unread: boolean; $clickable: boolean }>`
@@ -168,9 +200,9 @@ export const NotificationCard = styled.div<{ $unread: boolean; $clickable: boole
   border-radius: 12px;
   padding: 16px 20px;
   min-height: 76px;
-  transition: all 0.2s ${EASING};
+  transition: all 0.3s ${EASING};
   cursor: ${(p) => (p.$clickable ? "pointer" : "default")};
-  opacity: ${(p) => (p.$unread ? 1 : 0.55)};
+  opacity: ${(p) => (p.$unread ? 1 : 0.68)};
 
   &:hover {
     background: ${(p) => 

@@ -342,6 +342,11 @@ class NotificationsNotifier extends AsyncNotifier<NotificationsResponse> {
     await refresh();
   }
 
+  Future<void> markAsUnread(String id) async {
+    await ref.read(notificationsRepositoryProvider).markAsUnread(id);
+    await refresh();
+  }
+
   Future<void> markAllAsRead() async {
     await ref.read(notificationsRepositoryProvider).markAllAsRead();
     await refresh();

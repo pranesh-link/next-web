@@ -48,6 +48,13 @@ class NotificationsRepository {
     );
   }
 
+  Future<void> markAsUnread(String id) async {
+    await _api.put<Map<String, dynamic>>(
+      '${ApiEndpoints.notifications}/$id/unread',
+      data: {},
+    );
+  }
+
   Future<void> archiveAllRead() async {
     await _api.put<Map<String, dynamic>>(
       '${ApiEndpoints.notifications}/archive-all-read',

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import { archiveNotification as archiveNotificationService } from "@/_services/finance/notification-service";
+import { markAsUnread } from "@/_services/finance/notification-service";
 
 /**
- * PUT /api/v1/finance/notifications/[id]/archive
- * Archive a single notification
+ * PUT /api/v1/finance/notifications/[id]/unread
+ * Mark a notification as unread
  */
 export async function PUT(
   request: NextRequest,
@@ -19,16 +19,16 @@ export async function PUT(
     const params = await context.params;
     const notificationId = params.id;
 
-    await archiveNotificationService(notificationId, userId);
+    await markAsUnread(notificationId, userId);
 
     return NextResponse.json({
       success: true,
-      message: "Notification archived",
+      message: "Notification marked as unread",
     });
   } catch (error) {
-    console.error("[v1/finance/notifications/[id]/archive] PUT error:", error);
+    console.error("[v1/finance/notifications/[id]/unread] PUT error:", error);
     const message =
-      error instanceof Error ? error.message : "Failed to archive notification";
+      error instanceof Error ? error.message : "Failed to mark as unread";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

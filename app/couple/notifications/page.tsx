@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import FinanceHeader from "@/couple/_components/layout/FinanceHeader";
 import { useNotifications } from "@/couple/_components/notifications/NotificationProvider";
 import { acceptInviteByToken, declineInviteAction, getMyPendingInvites } from "@/couple/finance/_actions/couples";
-import { archiveNotification, archiveAllRead } from "@/couple/finance/_actions/notifications";
+import { archiveNotification, archiveAllRead, unarchiveNotification } from "@/couple/finance/_actions/notifications";
 import EmptyState from "@/couple/_components/shared/EmptyState";
 import LoadingSkeleton from "@/couple/_components/shared/LoadingSkeleton";
 import {
@@ -95,7 +95,7 @@ export default function NotificationsPage() {
   const [inviteDetails, setInviteDetails] = useState<Record<string, InviteDetail>>({});
   const [loading, setLoading] = useState(true);
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
-  const [toast, setToast] = useState<{ message: string; show: boolean }>({
+  const [toast, setToast] = useState<{ message: string; show: boolean; undoId?: string }>({
     message: "",
     show: false,
   });
@@ -214,11 +214,21 @@ export default function NotificationsPage() {
       const res = await archiveNotification(notifId);
       if (res.success) {
         await refresh();
-        setToast({ message: "Notification archived", show: true });
+        setToast({ message: "Notification archived", show: true, undoId: notifId });
       }
     },
     [refresh]
   );
+
+  const handleUndoArchive = useCallback(async () => {
+    const id = toast.undoId;
+    if (!id) return;
+    setToast((prev) => ({ ...prev, show: false }));
+    const res = await unarchiveNotification(id);
+    if (res.success) {
+      await refresh();
+    }
+  }, [toast.undoId, refresh]);
 
   const handleCardClick = useCallback(
     async (notifId: string, isRead: boolean) => {
@@ -350,6 +360,7 @@ export default function NotificationsPage() {
       <Toast
         message={toast.message}
         show={toast.show}
+        onUndo={toast.undoId ? handleUndoArchive : undefined}
         onClose={() => setToast({ ...toast, show: false })}
       />
     </PageWrapper>

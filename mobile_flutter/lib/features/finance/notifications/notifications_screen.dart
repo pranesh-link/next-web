@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:go_router/go_router.dart';
+import 'package:luvverse/core/notifications/notification_router.dart';
 import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
@@ -47,8 +49,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   Future<void> _handleToggleRead(AppNotification notification) async {
     HapticFeedback.lightImpact();
     if (notification.read) {
-      // Can't un-mark as read via API, just provide feedback
-      _showToast('Already marked as read');
+      await ref.read(notificationsProvider.notifier).markAsUnread(notification.id);
+      _showToast('Marked as unread');
     } else {
       await ref.read(notificationsProvider.notifier).markAsRead(notification.id);
       _showToast('Marked as read');
@@ -264,7 +266,11 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                                     if (!notif.read) {
                                       ref.read(notificationsProvider.notifier).markAsRead(notif.id);
                                     }
-                                    // TODO: Navigate based on notification type
+                                    // Navigate to the relevant screen
+                                    NotificationRouter.navigate(
+                                      GoRouter.of(context),
+                                      notif.type,
+                                    );
                                   },
                                 ),
                               );

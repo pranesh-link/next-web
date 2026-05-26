@@ -83,6 +83,18 @@ export async function markAsRead(notificationId: string, userId: string) {
   });
 }
 
+export async function markAsUnread(notificationId: string, userId: string) {
+  const notification = await prisma.notification.findFirst({
+    where: { id: notificationId, userId },
+  });
+  if (!notification) throw new Error('Notification not found');
+
+  return prisma.notification.update({
+    where: { id: notificationId },
+    data: { read: false },
+  });
+}
+
 export async function markAllAsRead(userId: string) {
   return prisma.notification.updateMany({
     where: { userId, read: false },
@@ -127,6 +139,27 @@ export async function getArchivedNotifications(userId: string) {
     orderBy: { archivedAt: 'desc' },
     take: 50,
   });
+}
+
+/**
+ * Auto-archive read notifications older than 30 days.
+ * Called during sync or as a cron-like background task.
+ */
+export async function autoArchiveOldNotifications(userId: string) {
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const result = await prisma.notification.updateMany({
+    where: {
+      userId,
+      read: true,
+      archived: false,
+      createdAt: { lt: thirtyDaysAgo },
+    },
+    data: { archived: true, archivedAt: new Date() },
+  });
+
+  return { archivedCount: result.count };
 }
 
 /**

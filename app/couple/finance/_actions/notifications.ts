@@ -7,6 +7,7 @@ import {
   getNotificationsForUser,
   getUnreadCount,
   markAsRead,
+  markAsUnread,
   markAllAsRead,
   syncMissingInviteNotifications,
   syncIncomeReminder as syncIncomeReminderService,
@@ -14,6 +15,7 @@ import {
   unarchiveNotification as unarchiveNotificationService,
   archiveAllRead as archiveAllReadService,
   getArchivedNotifications,
+  autoArchiveOldNotifications,
 } from '@/_services/finance/notification-service';
 
 export async function getMyNotifications() {
@@ -64,6 +66,7 @@ export async function syncNotifications() {
       syncDepositReminders(user.id),
       syncInvestmentReminders(user.id),
       syncIncomeReminderService(user.id),
+      autoArchiveOldNotifications(user.id),
     ]);
 
     return {
@@ -102,6 +105,19 @@ export async function markNotificationRead(notificationId: string) {
     return { success: true as const, data: null };
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Failed to mark as read';
+    return { success: false as const, error: message };
+  }
+}
+
+export async function markNotificationUnread(notificationId: string) {
+  const user = await requireAuthForAction();
+  if (!user) return { success: false as const, error: 'Not authenticated' };
+
+  try {
+    await markAsUnread(notificationId, user.id);
+    return { success: true as const, data: null };
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Failed to mark as unread';
     return { success: false as const, error: message };
   }
 }
