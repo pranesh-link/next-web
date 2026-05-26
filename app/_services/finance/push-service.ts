@@ -32,10 +32,16 @@ async function getMessaging() {
   if (!firebaseAdmin) {
     try {
       const moduleName = 'firebase-admin';
-      firebaseAdmin = await (import(/* webpackIgnore: true */ moduleName) as Promise<any>);
-      console.log('[push-service] firebase-admin module loaded');
+      const module = await (import(/* webpackIgnore: true */ moduleName) as Promise<any>);
+      // Handle both ESM (module.default) and CJS (module itself) exports
+      firebaseAdmin = module.default || module;
+      console.log('[push-service] firebase-admin module loaded', {
+        hasDefault: !!module.default,
+        hasApps: !!firebaseAdmin?.apps,
+        appsLength: firebaseAdmin?.apps?.length,
+      });
       
-      if (firebaseAdmin.apps.length === 0) {
+      if (!firebaseAdmin.apps || firebaseAdmin.apps.length === 0) {
         const credential = JSON.parse(
           Buffer.from(serviceAccountJson, 'base64').toString('utf-8')
         );
@@ -43,19 +49,34 @@ async function getMessaging() {
           credential: firebaseAdmin.credential.cert(credential),
         });
         console.log('[push-service] firebase-admin app initialized');
+      } else {
+        console.log('[push-service] firebase-admin app already initialized');
       }
     } catch (error) {
       console.error('[push-service] Failed to load/init firebase-admin:', error);
+      firebaseAdmin = null;
       return null;
     }
   }
 
   try {
+    if (!firebaseAdmin) {
+      console.error('[push-service] firebaseAdmin is null, cannot get messaging');
+      return null;
+    }
+    if (typeof firebaseAdmin.messaging !== 'function') {
+      console.error('[push-service] firebaseAdmin.messaging is not a function', {
+        type: typeof firebaseAdmin.messaging,
+        keys: Object.keys(firebaseAdmin),
+      });
+      return null;
+    }
     messagingInstance = firebaseAdmin.messaging();
     console.log('[push-service] messaging instance created');
     return messagingInstance;
   } catch (error) {
     console.error('[push-service] Failed to get messaging instance:', error);
+    messagingInstance = null;
     return null;
   }
 }
@@ -286,7 +307,15 @@ export async function sendTestPushDiagnostic(userId: string): Promise<{
   }
 
   const messaging = await getMessaging();
+  console.log('[sendTestPushDiagnostic] getMessaging result:', {
+    isNull: messaging === null,
+    isUndefined: messaging === undefined,
+    type: typeof messaging,
+    hasMethod: messaging ? typeof messaging.sendEachForMulticast : 'N/A',
+  });
+  
   if (!messaging) {
+    console.error('[sendTestPushDiagnostic] getMessaging returned null/undefined');
     return {
       sent: 0,
       failed: 0,
@@ -341,6 +370,23 @@ async function sendToTokens(
   body: string,
   data?: Record<string, string>
 ): Promise<{ sent: number; failed: number }> {
+  // Validate inputs
+  if (!messaging) {
+    console.error('[sendToTokens] messaging is null/undefined');
+    return { sent: 0, failed: tokens.length };
+  }
+  if (typeof messaging.sendEachForMulticast !== 'function') {
+    console.error('[sendToTokens] messaging.sendEachForMulticast is not a function', {
+      type: typeof messaging.sendEachForMulticast,
+      messagingKeys: Object.keys(messaging),
+    });
+    return { sent: 0, failed: tokens.length };
+  }
+  if (!Array.isArray(tokens) || tokens.length === 0) {
+    console.warn('[sendToTokens] tokens is not an array or is empty');
+    return { sent: 0, failed: 0 };
+  }
+
   const truncatedBody = truncateBody(body);
   let totalSent = 0;
   let totalFailed = 0;
