@@ -650,48 +650,66 @@ class _NotificationActionSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 12),
-            Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
+    return Semantics(
+      container: true,
+      label: 'Notification actions menu',
+      child: SafeArea(
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              ExcludeSemantics(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            ListTile(
-              leading: Icon(
-                isUnread ? Icons.mark_email_read : Icons.mark_email_unread,
-                color: isUnread ? Colors.blue.shade600 : Colors.orange.shade600,
+              const SizedBox(height: 16),
+              Semantics(
+                label: isUnread ? 'Mark notification as read' : 'Mark notification as unread',
+                hint: isUnread
+                    ? 'Double tap to mark this notification as read'
+                    : 'Double tap to mark this notification as unread',
+                button: true,
+                child: ListTile(
+                  leading: Icon(
+                    isUnread ? Icons.mark_email_read : Icons.mark_email_unread,
+                    color: isUnread ? Colors.blue.shade600 : Colors.orange.shade600,
+                  ),
+                  title: Text(
+                    isUnread ? 'Mark as read' : 'Mark as unread',
+                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  onTap: onToggleRead,
+                ),
               ),
-              title: Text(
-                isUnread ? 'Mark as read' : 'Mark as unread',
-                style: const TextStyle(fontWeight: FontWeight.w500),
+              const Divider(height: 1, indent: 16, endIndent: 16),
+              Semantics(
+                label: 'Archive notification',
+                hint: 'Double tap to archive and remove this notification from the list',
+                button: true,
+                child: ListTile(
+                  leading: Icon(Icons.archive_outlined, color: Colors.red.shade400),
+                  title: const Text(
+                    'Archive',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  onTap: onArchive,
+                ),
               ),
-              onTap: onToggleRead,
-            ),
-            const Divider(height: 1, indent: 16, endIndent: 16),
-            ListTile(
-              leading: Icon(Icons.archive_outlined, color: Colors.red.shade400),
-              title: const Text(
-                'Archive',
-                style: TextStyle(fontWeight: FontWeight.w500),
-              ),
-              onTap: onArchive,
-            ),
-            const SizedBox(height: 8),
-          ],
+              const SizedBox(height: 8),
+            ],
+          ),
         ),
       ),
     );

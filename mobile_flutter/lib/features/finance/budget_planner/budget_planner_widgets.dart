@@ -4,6 +4,7 @@ import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/providers/extended_providers.dart';
+import 'package:luvverse/features/finance/budget_planner/budget_planner_strings.dart';
 import 'package:luvverse/models/budget_plan.dart';
 import 'package:luvverse/shared/widgets/app_card.dart';
 
@@ -120,7 +121,7 @@ class PlannerLineItemRow extends StatelessWidget {
             child: TextField(
               controller: item.noteCtrl,
               decoration: const InputDecoration(
-                hintText: 'Note',
+                hintText: BudgetPlannerStrings.note,
                 isDense: true,
                 border: InputBorder.none,
               ),
@@ -138,7 +139,7 @@ class PlannerLineItemRow extends StatelessWidget {
               controller: item.amountCtrl,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
-                hintText: '₹0',
+                hintText: BudgetPlannerStrings.defaultAmountHint,
                 isDense: true,
                 border: InputBorder.none,
               ),

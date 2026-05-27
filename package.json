@@ -6,7 +6,7 @@
   "scripts": {
     "postinstall": "prisma generate",
     "dev": "tsc --noEmit && next dev -p 3737 --hostname 0.0.0.0",
-    "build": "node scripts/validate-env.mjs && prisma migrate resolve --applied 20260317174619_init || true && prisma migrate deploy && rm -rf .next && next build",
+    "build": "node scripts/validate-env.mjs && prisma migrate deploy && rm -rf .next && next build",
     "build:analyze": "ANALYZE=true npm run build",
     "start": "next start -p 3737",
     "lint": "next lint",
