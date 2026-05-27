@@ -507,6 +507,7 @@ model Notification {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, type, featureId])
   @@index([userId])
   @@index([featureId])
   @@index([userId, archived])

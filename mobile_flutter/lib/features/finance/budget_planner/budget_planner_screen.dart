@@ -77,7 +77,16 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
       _isDirty = true;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _openEditSheet(_items.length - 1);
+      PlannerItemEditSheet.show(
+        context,
+        item: _items[_items.length - 1],
+        onSave: () {
+          _markDirty();
+          setState(() {});
+        },
+        onDelete: () => _removeItem(_items.length - 1),
+        isNew: true,
+      );
     });
   }
 
@@ -105,6 +114,7 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
         setState(() {});
       },
       onDelete: () => _removeItem(index),
+      isNew: false,
     );
   }
 
@@ -398,9 +408,9 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
             i.category.toLowerCase() == loan.name.toLowerCase());
         if (!alreadyExists) {
           final entry = LineItemEntry()
-            ..categoryCtrl.text = loan.name
+            ..categoryCtrl.text = 'EMI'
             ..amountCtrl.text = loan.emiAmount.toStringAsFixed(0)
-            ..noteCtrl.text = loan.loanProvider ?? 'EMI';
+            ..noteCtrl.text = '${loan.name}${loan.loanProvider != null ? ' - ${loan.loanProvider}' : ''}';
           _items.add(entry);
           added++;
         }

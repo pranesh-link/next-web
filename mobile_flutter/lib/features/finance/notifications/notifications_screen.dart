@@ -263,9 +263,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                                           .read(notificationsProvider.notifier)
                                           .markAsRead(notif.id);
                                     }
-                                    // Navigate, preserving back stack so user
-                                    // returns to notifications on back swipe.
-                                    if (context.mounted) {
+                                    // Navigate after async operation
+                                    if (mounted) {
                                       NotificationRouter.navigate(
                                         GoRouter.of(context),
                                         notif.type,

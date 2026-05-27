@@ -59,6 +59,22 @@ class _AddIncomeModalState extends ConsumerState<AddIncomeModal> {
     super.dispose();
   }
 
+  /// Retry API call with exponential backoff.
+  Future<T> _retryApiCall<T>(
+    Future<T> Function() apiCall, {
+    int maxAttempts = 3,
+  }) async {
+    for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        return await apiCall();
+      } catch (e) {
+        if (attempt == maxAttempts) rethrow;
+        await Future.delayed(Duration(seconds: attempt));
+      }
+    }
+    throw Exception('Max retries exceeded');
+  }
+
   Future<void> _submit() async {
     final amount = double.tryParse(_amountCtrl.text.trim());
     final note = _noteCtrl.text.trim();
@@ -75,13 +91,27 @@ class _AddIncomeModalState extends ConsumerState<AddIncomeModal> {
       _noteError = null;
       _loading = true;
     });
+
+    // Store original balance for rollback
+    final originalBalance = widget.account.balance;
+    final newBalance = originalBalance + amount;
+
     try {
-      final newBalance = widget.account.balance + amount;
-      final data = <String, dynamic>{'balance': newBalance, 'note': note};
-      await ref.read(accountsProvider.notifier).updateAccountData(
+      // Optimistic update: UI updates immediately
+      ref.read(accountsProvider.notifier).updateAccountOptimistic(
         widget.account.id,
-        data,
+        {'balance': newBalance},
       );
+
+      // API call with retry in background
+      final data = <String, dynamic>{'balance': newBalance, 'note': note};
+      await _retryApiCall(() =>
+        ref.read(accountsProvider.notifier).updateAccountData(
+          widget.account.id,
+          data,
+        ),
+      );
+
       widget.onSuccess();
       if (mounted) {
         Navigator.pop(context);
@@ -90,6 +120,11 @@ class _AddIncomeModalState extends ConsumerState<AddIncomeModal> {
         );
       }
     } catch (e) {
+      // Rollback on failure after retries
+      ref.read(accountsProvider.notifier).revertAccountOptimistic(
+        widget.account.id,
+        {'balance': originalBalance},
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e')),

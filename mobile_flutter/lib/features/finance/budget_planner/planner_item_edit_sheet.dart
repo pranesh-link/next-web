@@ -5,17 +5,19 @@ import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/budget_planner/planner_constants.dart';
 import 'package:luvverse/features/finance/budget_planner/budget_planner_widgets.dart';
 
-/// Bottom sheet for editing a budget planner line item.
+/// Bottom sheet for adding or editing a budget planner line item.
 class PlannerItemEditSheet extends StatefulWidget {
   final LineItemEntry item;
   final VoidCallback onSave;
-  final VoidCallback onDelete;
+  final VoidCallback? onDelete;
+  final bool isNew;
 
   const PlannerItemEditSheet({
     super.key,
     required this.item,
     required this.onSave,
-    required this.onDelete,
+    this.onDelete,
+    this.isNew = false,
   });
 
   @override
@@ -26,7 +28,8 @@ class PlannerItemEditSheet extends StatefulWidget {
     BuildContext context, {
     required LineItemEntry item,
     required VoidCallback onSave,
-    required VoidCallback onDelete,
+    VoidCallback? onDelete,
+    bool isNew = false,
   }) {
     return showModalBottomSheet(
       context: context,
@@ -40,6 +43,7 @@ class PlannerItemEditSheet extends StatefulWidget {
         item: item,
         onSave: onSave,
         onDelete: onDelete,
+        isNew: isNew,
       ),
     );
   }
@@ -75,43 +79,43 @@ class _PlannerItemEditSheetState extends State<PlannerItemEditSheet> {
           ),
           const SizedBox(height: AppSpacing.xl),
           // Title
-          Text('Edit Item', style: AppTypography.pageTitle),
+          Text(widget.isNew ? 'Add Item' : 'Edit Item', style: AppTypography.pageTitle),
           const SizedBox(height: AppSpacing.xl),
-          // Category chips
+          // Category dropdown
           Text('Category', style: AppTypography.label),
           const SizedBox(height: AppSpacing.sm),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: categories.map((cat) {
-              final isSelected = widget.item.category == cat;
+          DropdownButtonFormField<String>(
+            value: widget.item.category.isEmpty ? null : widget.item.category,
+            decoration: const InputDecoration(
+              hintText: 'Select category',
+              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            ),
+            items: categories.map((cat) {
               final color = getCategoryColor(cat);
-              return GestureDetector(
-                onTap: () {
-                  setState(() => widget.item.categoryCtrl.text = cat);
-                },
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color:
-                        isSelected ? color.withAlpha(30) : Colors.transparent,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: isSelected ? color : context.colors.cardBorder,
+              return DropdownMenuItem(
+                value: cat,
+                child: Row(
+                  children: [
+                    Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                      ),
                     ),
-                  ),
-                  child: Text(
-                    cat,
-                    style: AppTypography.small.copyWith(
-                      color: isSelected ? color : context.colors.textMuted,
-                      fontWeight:
-                          isSelected ? FontWeight.w600 : FontWeight.w400,
-                    ),
-                  ),
+                    const SizedBox(width: 8),
+                    Text(cat),
+                  ],
                 ),
               );
             }).toList(),
+            onChanged: (val) {
+              if (val != null) {
+                setState(() => widget.item.categoryCtrl.text = val);
+              }
+            },
           ),
           const SizedBox(height: AppSpacing.lg),
           // Note/title field
@@ -149,20 +153,30 @@ class _PlannerItemEditSheetState extends State<PlannerItemEditSheet> {
           // Action buttons
           Row(
             children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {
-                    widget.onDelete();
-                    Navigator.pop(context);
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: context.colors.danger,
-                    side: BorderSide(color: context.colors.danger),
+              if (!widget.isNew && widget.onDelete != null) ...[
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      widget.onDelete!();
+                      Navigator.pop(context);
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: context.colors.danger,
+                      side: BorderSide(color: context.colors.danger),
+                    ),
+                    child: const Text('Delete'),
                   ),
-                  child: const Text('Delete'),
                 ),
-              ),
-              const SizedBox(width: AppSpacing.md),
+                const SizedBox(width: AppSpacing.md),
+              ] else ...[
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Close'),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+              ],
               Expanded(
                 child: FilledButton(
                   onPressed: () {
