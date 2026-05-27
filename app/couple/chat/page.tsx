@@ -129,6 +129,11 @@ export default function ChatPage() {
               {showDate && (
                 <DateDivider>{formatDateLabel(msg.createdAt)}</DateDivider>
               )}
+              {!showDate && prevMsg && prevMsg.encrypted !== msg.encrypted && (
+                <EncryptionBanner $active={msg.encrypted}>
+                  {msg.encrypted ? "🔒 Messages are now end-to-end encrypted" : "⚠️ Messages sent without encryption"}
+                </EncryptionBanner>
+              )}
               <MessageBubble
                 message={msg}
                 isMine={msg.senderId === userId}

@@ -1,5 +1,5 @@
-import styled from "styled-components";
 import { EASING } from "@/couple/_constants/theme";
+import styled from "styled-components";
 
 // ─── Page layout ──────────────────────────────────────────────────────────────
 
@@ -161,7 +161,7 @@ export const BubbleTime = styled.span`
 `;
 
 /** The visible bubble background. */
-export const BubbleBox = styled.div<{ $isMine: boolean; $isAI?: boolean; $encrypted?: boolean }>`
+export const BubbleBox = styled.div<{ $isMine: boolean; $isAI?: boolean }>`
   padding: 10px 14px;
   border-radius: ${(p) => (p.$isMine ? "18px 18px 4px 18px" : "18px 18px 18px 4px")};
   background: ${(p) => {
@@ -172,11 +172,6 @@ export const BubbleBox = styled.div<{ $isMine: boolean; $isAI?: boolean; $encryp
   font-size: 14px;
   line-height: 1.5;
   border: 1px solid ${(p) => (p.$isMine ? "transparent" : "var(--border)")};
-  border-left: ${(p) => {
-    if (p.$encrypted === true) return "3px solid rgba(16, 185, 129, 0.55)";
-    if (p.$encrypted === false) return "3px solid rgba(234, 179, 8, 0.45)";
-    return p.$isMine ? "1px solid transparent" : "1px solid var(--border)";
-  }};
   word-break: break-word;
   transition: transform 0.15s ease;
   &:hover { transform: translateY(-1px); }

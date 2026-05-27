@@ -1,29 +1,28 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import type { CoupleMessage } from "@prisma/client";
-import {
-  BubbleRow,
-  AvatarCircle,
-  BubbleColumn,
-  BubbleMeta,
-  BubbleSender,
-  BubbleTime,
-  BubbleBox,
-  BubbleText,
-  BulletList,
-  BulletItem,
-  ReminderWrapper,
-} from "./_chat.styled";
-import {
-  ReactionBar,
-  ReactionBarBtn,
-  ReactionBarWrapper,
-  ReactionPill,
-  ReactionRow,
-  EncryptionIcon,
-} from "./_chat-extras.styled";
 import { linkify } from "@/_utils/common/linkify";
+import type { CoupleMessage } from "@prisma/client";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+    ReactionBar,
+    ReactionBarBtn,
+    ReactionBarWrapper,
+    ReactionPill,
+    ReactionRow,
+} from "./_chat-extras.styled";
+import {
+    AvatarCircle,
+    BubbleBox,
+    BubbleColumn,
+    BubbleMeta,
+    BubbleRow,
+    BubbleSender,
+    BubbleText,
+    BubbleTime,
+    BulletItem,
+    BulletList,
+    ReminderWrapper,
+} from "./_chat.styled";
 
 /** Quick-reaction emojis shown in the long-press / right-click bar. */
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮"];
@@ -178,10 +177,6 @@ export default function MessageBubble({
         <BubbleMeta>
           <BubbleSender>{senderName}</BubbleSender>
           <BubbleTime>{formatTime(message.createdAt)}</BubbleTime>
-          {message.encrypted
-            ? <EncryptionIcon title="End-to-end encrypted">🔒</EncryptionIcon>
-            : <EncryptionIcon title="Not encrypted" style={{ filter: "grayscale(1)" }}>🔓</EncryptionIcon>
-          }
         </BubbleMeta>
 
         {showReactionBar && (
@@ -204,7 +199,6 @@ export default function MessageBubble({
         <BubbleBox
           $isMine={isMine}
           $isAI={isAI}
-          $encrypted={message.encrypted}
           onContextMenu={handleContextMenu}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
