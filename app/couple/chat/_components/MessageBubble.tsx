@@ -21,6 +21,7 @@ import {
   ReactionBarWrapper,
   ReactionPill,
   ReactionRow,
+  EncryptionIcon,
 } from "./_chat-extras.styled";
 import { linkify } from "@/_utils/common/linkify";
 
@@ -177,6 +178,10 @@ export default function MessageBubble({
         <BubbleMeta>
           <BubbleSender>{senderName}</BubbleSender>
           <BubbleTime>{formatTime(message.createdAt)}</BubbleTime>
+          {message.encrypted
+            ? <EncryptionIcon title="End-to-end encrypted">🔒</EncryptionIcon>
+            : <EncryptionIcon title="Not encrypted" style={{ filter: "grayscale(1)" }}>🔓</EncryptionIcon>
+          }
         </BubbleMeta>
 
         {showReactionBar && (
@@ -199,6 +204,7 @@ export default function MessageBubble({
         <BubbleBox
           $isMine={isMine}
           $isAI={isAI}
+          $encrypted={message.encrypted}
           onContextMenu={handleContextMenu}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
