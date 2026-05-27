@@ -144,10 +144,6 @@ final routerProvider = Provider<GoRouter>((ref) {
                     builder: (context, state) => const BudgetPlannerScreen(),
                   ),
                   GoRoute(
-                    path: 'notifications',
-                    builder: (context, state) => const NotificationsScreen(),
-                  ),
-                  GoRoute(
                     path: 'scan-receipt',
                     builder: (context, state) => const ScanReceiptScreen(),
                   ),
@@ -173,6 +169,12 @@ final routerProvider = Provider<GoRouter>((ref) {
             ),
           ),
         ],
+      ),
+
+      // Notifications (outside FinanceShell to avoid double header)
+      GoRoute(
+        path: '/notifications',
+        builder: (context, state) => const NotificationsScreen(),
       ),
 
       // Couple management

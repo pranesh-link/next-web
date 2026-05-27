@@ -125,6 +125,24 @@ class AccountsNotifier extends AsyncNotifier<List<Account>> {
     await refresh();
   }
 
+  /// Update account optimistically (UI-only, no API call).
+  void updateAccountOptimistic(String id, Map<String, dynamic> data) {
+    state.whenData((accounts) {
+      final updated = accounts.map((acc) {
+        if (acc.id != id) return acc;
+        final json = acc.toJson();
+        json.addAll(data);
+        return Account.fromJson(json);
+      }).toList();
+      state = AsyncData(updated);
+    });
+  }
+
+  /// Revert account to original state (rollback after failed update).
+  void revertAccountOptimistic(String id, Map<String, dynamic> originalData) {
+    updateAccountOptimistic(id, originalData);
+  }
+
   Future<void> togglePin(String id, bool currentPinned) async {
     await ref.read(accountsRepositoryProvider).updateAccountData(
       id,

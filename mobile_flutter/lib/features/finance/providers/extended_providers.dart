@@ -317,6 +317,19 @@ class BudgetPlanNotifier extends AsyncNotifier<BudgetPlan?> {
   }
 }
 
+/// Fetches the budget plan for the month prior to [budgetPlanMonthProvider].
+final prevBudgetPlanProvider = FutureProvider<BudgetPlan?>((ref) async {
+  final monthAndYear = ref.watch(budgetPlanMonthProvider);
+  final mode = ref.watch(budgetPlanModeProvider);
+  final parts = monthAndYear.split('-');
+  final date = DateTime(int.parse(parts[0]), int.parse(parts[1]) - 1);
+  final prevMonth = '${date.year}-${date.month.toString().padLeft(2, '0')}';
+  return ref.read(cachedBudgetPlansProvider).getBudgetPlan(
+        monthAndYear: prevMonth,
+        mode: mode,
+      );
+});
+
 // -- Notifications --
 
 final notificationsProvider =

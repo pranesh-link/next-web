@@ -57,6 +57,22 @@ class _UpdateBalanceModalState extends ConsumerState<UpdateBalanceModal> {
     super.dispose();
   }
 
+  /// Retry API call with exponential backoff.
+  Future<T> _retryApiCall<T>(
+    Future<T> Function() apiCall, {
+    int maxAttempts = 3,
+  }) async {
+    for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        return await apiCall();
+      } catch (e) {
+        if (attempt == maxAttempts) rethrow;
+        await Future.delayed(Duration(seconds: attempt));
+      }
+    }
+    throw Exception('Max retries exceeded');
+  }
+
   Future<void> _submit() async {
     final parsed = double.tryParse(_balanceCtrl.text.trim());
     if (parsed == null) {
@@ -67,14 +83,29 @@ class _UpdateBalanceModalState extends ConsumerState<UpdateBalanceModal> {
       _error = null;
       _loading = true;
     });
+
+    // Store original balance for rollback
+    final originalBalance = widget.account.balance;
+
     try {
+      // Optimistic update: UI updates immediately
+      ref.read(accountsProvider.notifier).updateAccountOptimistic(
+        widget.account.id,
+        {'balance': parsed},
+      );
+
+      // API call with retry in background
       final data = <String, dynamic>{'balance': parsed};
       final note = _noteCtrl.text.trim();
       if (note.isNotEmpty) data['note'] = note;
-      await ref.read(accountsProvider.notifier).updateAccountData(
-        widget.account.id,
-        data,
+
+      await _retryApiCall(() =>
+        ref.read(accountsProvider.notifier).updateAccountData(
+          widget.account.id,
+          data,
+        ),
       );
+
       widget.onSuccess();
       if (mounted) {
         Navigator.pop(context);
@@ -83,6 +114,11 @@ class _UpdateBalanceModalState extends ConsumerState<UpdateBalanceModal> {
         );
       }
     } catch (e) {
+      // Rollback on failure after retries
+      ref.read(accountsProvider.notifier).revertAccountOptimistic(
+        widget.account.id,
+        {'balance': originalBalance},
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e')),

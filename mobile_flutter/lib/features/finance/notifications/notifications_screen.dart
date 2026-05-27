@@ -1,7 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:go_router/go_router.dart';
 import 'package:luvverse/core/notifications/notification_router.dart';
 import 'package:luvverse/core/theme/app_colors_extension.dart';
@@ -257,15 +257,19 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                                   notification: notif,
                                   onArchive: () => _handleArchive(notif.id),
                                   onToggleRead: () => _handleToggleRead(notif),
-                                  onTap: () {
+                                  onTap: () async {
                                     if (!notif.read) {
-                                      ref.read(notificationsProvider.notifier).markAsRead(notif.id);
+                                      await ref
+                                          .read(notificationsProvider.notifier)
+                                          .markAsRead(notif.id);
                                     }
-                                    // Navigate to the relevant screen
-                                    NotificationRouter.navigate(
-                                      GoRouter.of(context),
-                                      notif.type,
-                                    );
+                                    // Navigate after async operation
+                                    if (mounted) {
+                                      NotificationRouter.navigate(
+                                        GoRouter.of(context),
+                                        notif.type,
+                                      );
+                                    }
                                   },
                                 ),
                               );
@@ -420,7 +424,7 @@ class _NotificationCard extends StatelessWidget {
   final AppNotification notification;
   final VoidCallback onArchive;
   final VoidCallback onToggleRead;
-  final VoidCallback onTap;
+  final Future<void> Function() onTap;
 
   const _NotificationCard({
     required this.notification,
@@ -484,39 +488,27 @@ class _NotificationCard extends StatelessWidget {
     final iconColor = _iconColor(context);
     final isUnread = !notification.read;
 
-    return Slidable(
-      key: ValueKey(notification.id),
-      endActionPane: ActionPane(
-        motion: const DrawerMotion(),
-        extentRatio: 0.25,
-        children: [
-          SlidableAction(
-            onPressed: (_) => onArchive(),
-            backgroundColor: Colors.red.shade400,
-            foregroundColor: Colors.white,
-            icon: Icons.archive,
-            label: 'Archive',
-            borderRadius: BorderRadius.circular(12),
+    return GestureDetector(
+      onTap: onTap,
+      onLongPress: () {
+        HapticFeedback.mediumImpact();
+        showModalBottomSheet<void>(
+          context: context,
+          backgroundColor: Colors.transparent,
+          builder: (_) => _NotificationActionSheet(
+            isUnread: isUnread,
+            onToggleRead: () {
+              Navigator.pop(context);
+              onToggleRead();
+            },
+            onArchive: () {
+              Navigator.pop(context);
+              onArchive();
+            },
           ),
-        ],
-      ),
-      startActionPane: ActionPane(
-        motion: const DrawerMotion(),
-        extentRatio: 0.25,
-        children: [
-          SlidableAction(
-            onPressed: (_) => onToggleRead(),
-            backgroundColor: isUnread ? Colors.blue.shade400 : Colors.orange.shade400,
-            foregroundColor: Colors.white,
-            icon: isUnread ? Icons.mark_email_read : Icons.mark_email_unread,
-            label: isUnread ? 'Mark Read' : 'Unread',
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ],
-      ),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
+        );
+      },
+      child: Container(
           decoration: BoxDecoration(
             gradient: isUnread
                 ? LinearGradient(
@@ -640,6 +632,66 @@ class _NotificationCard extends StatelessWidget {
               ),
             ],
           ),
+        ),
+    );
+  }
+}
+
+class _NotificationActionSheet extends StatelessWidget {
+  final bool isUnread;
+  final VoidCallback onToggleRead;
+  final VoidCallback onArchive;
+
+  const _NotificationActionSheet({
+    required this.isUnread,
+    required this.onToggleRead,
+    required this.onArchive,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: Icon(
+                isUnread ? Icons.mark_email_read : Icons.mark_email_unread,
+                color: isUnread ? Colors.blue.shade600 : Colors.orange.shade600,
+              ),
+              title: Text(
+                isUnread ? 'Mark as read' : 'Mark as unread',
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
+              onTap: onToggleRead,
+            ),
+            const Divider(height: 1, indent: 16, endIndent: 16),
+            ListTile(
+              leading: Icon(Icons.archive_outlined, color: Colors.red.shade400),
+              title: const Text(
+                'Archive',
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
+              onTap: onArchive,
+            ),
+            const SizedBox(height: 8),
+          ],
         ),
       ),
     );
