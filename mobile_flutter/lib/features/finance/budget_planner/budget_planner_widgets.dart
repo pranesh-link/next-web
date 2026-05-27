@@ -38,12 +38,17 @@ class PlannerMonthSelector extends StatelessWidget {
   }
 }
 
-/// Small colored chip displaying a label and value.
+/// Small colored chip displaying a label, value, and optional period delta.
 class PlannerSummaryChip extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
-  const PlannerSummaryChip(this.label, this.value, this.color, {super.key});
+
+  /// Optional delta vs previous period, e.g. '↑5%' or '↓8%'.
+  final String? delta;
+
+  const PlannerSummaryChip(this.label, this.value, this.color,
+      {super.key, this.delta});
 
   @override
   Widget build(BuildContext context) {
@@ -61,6 +66,16 @@ class PlannerSummaryChip extends StatelessWidget {
             const SizedBox(height: 4),
             Text(value,
                 style: AppTypography.bodyMedium.copyWith(color: color)),
+            if (delta != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                delta!,
+                style: AppTypography.xs.copyWith(
+                  color: color.withAlpha(180),
+                  fontSize: 10,
+                ),
+              ),
+            ],
           ],
         ),
       ),

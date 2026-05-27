@@ -142,7 +142,7 @@ class _PlannerItemEditSheetState extends State<PlannerItemEditSheet> {
           SwitchListTile(
             value: widget.item.paid,
             onChanged: (v) => setState(() => widget.item.paid = v),
-            title: const Text('Marked as paid'),
+            title: const Text('Mark as paid'),
             contentPadding: EdgeInsets.zero,
           ),
           const SizedBox(height: AppSpacing.xl),
