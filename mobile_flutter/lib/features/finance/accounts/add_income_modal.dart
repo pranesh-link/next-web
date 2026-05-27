@@ -42,6 +42,7 @@ class _AddIncomeModalState extends ConsumerState<AddIncomeModal> {
   bool _loading = false;
   String? _error;
   String? _noteError;
+  bool _disposed = false;
 
   @override
   void initState() {
@@ -54,6 +55,7 @@ class _AddIncomeModalState extends ConsumerState<AddIncomeModal> {
 
   @override
   void dispose() {
+    _disposed = true;
     _amountCtrl.dispose();
     _noteCtrl.dispose();
     super.dispose();
@@ -65,10 +67,12 @@ class _AddIncomeModalState extends ConsumerState<AddIncomeModal> {
     int maxAttempts = 3,
   }) async {
     for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+      if (_disposed) throw Exception('Widget disposed');
       try {
         return await apiCall();
       } catch (e) {
         if (attempt == maxAttempts) rethrow;
+        if (_disposed) throw Exception('Widget disposed');
         await Future.delayed(Duration(seconds: attempt));
       }
     }
@@ -120,11 +124,13 @@ class _AddIncomeModalState extends ConsumerState<AddIncomeModal> {
         );
       }
     } catch (e) {
-      // Rollback on failure after retries
-      ref.read(accountsProvider.notifier).revertAccountOptimistic(
-        widget.account.id,
-        {'balance': originalBalance},
-      );
+      // Rollback on failure after retries (only if not disposed)
+      if (!_disposed) {
+        ref.read(accountsProvider.notifier).revertAccountOptimistic(
+          widget.account.id,
+          {'balance': originalBalance},
+        );
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e')),

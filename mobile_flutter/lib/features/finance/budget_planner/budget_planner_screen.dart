@@ -404,8 +404,10 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
     int added = 0;
     setState(() {
       for (final loan in loans) {
+        // Check if EMI for this loan already exists by checking note field
         final alreadyExists = _items.any((i) =>
-            i.category.toLowerCase() == loan.name.toLowerCase());
+            i.category.toLowerCase() == 'emi' &&
+            i.note.toLowerCase().contains(loan.name.toLowerCase()));
         if (!alreadyExists) {
           final entry = LineItemEntry()
             ..categoryCtrl.text = 'EMI'
@@ -694,15 +696,15 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
     final income = double.tryParse(_incomeCtrl.text) ?? 0;
     final remaining = income - totalPaid;
 
-    // Deltas vs previous period
-    final prevPlanned = prevPlan?.lineItems
+    // Deltas vs previous period (null when no previous plan exists)
+    final prevPlanned = prevPlan == null ? null : prevPlan.lineItems
         .fold(0.0, (sum, i) => sum + i.amount);
-    final prevPaid = prevPlan?.lineItems
+    final prevPaid = prevPlan == null ? null : prevPlan.lineItems
         .where((i) => i.paid)
         .fold(0.0, (sum, i) => sum + i.amount);
     final prevIncome = prevPlan?.income;
     final prevRemaining =
-        prevIncome != null && prevPaid != null ? prevIncome - prevPaid : null;
+        (prevIncome != null && prevPaid != null) ? prevIncome - prevPaid : null;
 
     final suggestions = _computeSuggestions(prevPlan, loans, income);
 

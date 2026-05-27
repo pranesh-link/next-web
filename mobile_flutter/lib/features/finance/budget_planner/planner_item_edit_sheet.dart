@@ -84,37 +84,48 @@ class _PlannerItemEditSheetState extends State<PlannerItemEditSheet> {
           // Category dropdown
           Text('Category', style: AppTypography.label),
           const SizedBox(height: AppSpacing.sm),
-          DropdownButtonFormField<String>(
-            value: widget.item.category.isEmpty ? null : widget.item.category,
-            decoration: const InputDecoration(
-              hintText: 'Select category',
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            ),
-            items: categories.map((cat) {
-              final color = getCategoryColor(cat);
-              return DropdownMenuItem(
-                value: cat,
-                child: Row(
-                  children: [
-                    Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(cat),
-                  ],
-                ),
-              );
-            }).toList(),
-            onChanged: (val) {
-              if (val != null) {
-                setState(() => widget.item.categoryCtrl.text = val);
+          Builder(
+            builder: (context) {
+              // Ensure current category is in the list
+              final displayCategories = [...categories];
+              final currentCategory = widget.item.category;
+              if (currentCategory.isNotEmpty &&
+                  !displayCategories.contains(currentCategory)) {
+                displayCategories.add(currentCategory);
               }
+              return DropdownButtonFormField<String>(
+                value: currentCategory.isEmpty ? null : currentCategory,
+                decoration: const InputDecoration(
+                  hintText: 'Select category',
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
+                items: displayCategories.map((cat) {
+                  final color = getCategoryColor(cat);
+                  return DropdownMenuItem(
+                    value: cat,
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(cat),
+                      ],
+                    ),
+                  );
+                }).toList(),
+                onChanged: (val) {
+                  if (val != null) {
+                    setState(() => widget.item.categoryCtrl.text = val);
+                  }
+                },
+              );
             },
           ),
           const SizedBox(height: AppSpacing.lg),
