@@ -5,8 +5,10 @@ import prisma from "@/_lib/prisma";
 import { MessageType } from "@prisma/client";
 
 const sendMessageSchema = z.object({
-  content: z.string().min(1).max(5000),
+  content: z.string().min(1).max(20_000),
   type: z.nativeEnum(MessageType).optional().default(MessageType.TEXT),
+  iv: z.string().optional(),
+  encrypted: z.boolean().optional().default(false),
 });
 
 /**
@@ -69,7 +71,9 @@ export async function POST(request: Request) {
         coupleId: member.coupleId,
         senderId: userId,
         type: validated.type,
-        content: validated.content.trim(),
+        content: validated.encrypted ? validated.content : validated.content.trim(),
+        iv: validated.encrypted ? validated.iv : undefined,
+        encrypted: validated.encrypted,
         readBy: [userId],
       },
     });

@@ -61,6 +61,8 @@ model User {
   image          String?
   currency       String   @default("INR")
   monthlyIncome  Float?
+  /// Base64-encoded JWK ECDH public key for E2E message encryption.
+  publicKey      String?  @db.Text
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -636,6 +638,10 @@ model CoupleMessage {
   senderId   String
   type       MessageType @default(TEXT)
   content    String      @db.Text
+  /// Base64-encoded AES-GCM IV — present only when `encrypted` is true.
+  iv         String?
+  /// True when `content` is AES-256-GCM ciphertext rather than plaintext.
+  encrypted  Boolean     @default(false)
   payload    Json?       // structured data for LIST/REMINDER types
   reminderAt DateTime?
   readBy     String[]    @default([])
@@ -756,6 +762,10 @@ model CoupleChatMsg {
   chatId    String
   role      String     // "user" | "assistant"
   content   String     @db.Text
+  /// Base64-encoded AES-GCM IV — present only when `encrypted` is true.
+  iv        String?
+  /// True when `content` is AES-256-GCM ciphertext rather than plaintext.
+  encrypted Boolean    @default(false)
   createdAt DateTime   @default(now())
 
   chat CoupleChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
