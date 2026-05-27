@@ -5,7 +5,6 @@ import prisma from "@/_lib/prisma";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { depositInstallmentSchema } from "@/_lib/validations/finance";
 import { getUserIdsForCouple } from "@/_services/finance/couple-service";
-import { createNotification } from "@/_services/finance/notification-service";
 import { invalidateAfterDepositChange } from "@/_lib/cache";
 import {
   monthKey,
@@ -100,49 +99,15 @@ export async function addDepositInstallment(data: {
 }
 
 /**
- * Create reminders for upcoming deposit maturities and pending RD installments due within 7 days.
+ * NOTE: Deposit reminders have been disabled.
+ * Notifications are now only created for COUPLE_INVITE and BUDGET_ALERT types.
+ * Deposit-related notifications are no longer generated.
  *
- * Idempotency is delegated to {@link createNotification}, which uses a deterministic
- * key per deposit (and per month for RD installments).
- *
- * @param userId - The user the reminders should be addressed to (couple data is expanded internally).
- * @returns An object containing `created`: the number of notifications created.
+ * @deprecated This function no longer creates notifications.
  */
 export async function syncDepositReminders(userId: string) {
   noStore();
-  const coupleUserIds = await getUserIdsForCouple(userId);
-  const now = toStartOfDay(new Date());
-  const sevenDaysFromNow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7);
-
-  const [maturing, pendingRd] = await Promise.all([
-    prisma.depositInstrument.findMany({
-      where: {
-        userId: { in: coupleUserIds },
-        status: "ACTIVE",
-        maturityDate: { lte: new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7) },
-      },
-      select: { id: true },
-    }),
-    prisma.depositInstrument.findMany({
-      where: {
-        userId: { in: coupleUserIds },
-        type: "RECURRING_DEPOSIT",
-        status: "ACTIVE",
-        nextInstallmentDate: { not: null, gte: now, lte: sevenDaysFromNow },
-      },
-      select: { id: true },
-    }),
-  ]);
-
-  const month = monthKey(now);
-
-  for (const deposit of maturing) {
-    await createNotification(userId, "DEPOSIT_MATURITY_REMINDER", deposit.id);
-  }
-
-  for (const deposit of pendingRd) {
-    await createNotification(userId, "DEPOSIT_INSTALLMENT_REMINDER", `${deposit.id}:${month}`);
-  }
-
-  return { created: maturing.length + pendingRd.length };
+  // Notifications are disabled for deposits.
+  // Just return empty result.
+  return { created: 0 };
 }
