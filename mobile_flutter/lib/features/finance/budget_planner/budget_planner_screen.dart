@@ -172,12 +172,13 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
   void _showImportFromLastMonthSheet(List<BudgetPlanLineItem> prevItems) {
     final currencyFmt =
         NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
-    // Pre-deselect items whose category already exists in the current plan.
+    // Track existing categories to disable duplicates.
     final existingCategories =
         _items.map((i) => i.category.toLowerCase()).toSet();
+    // Start with all items unselected.
     final selected = List<bool>.generate(
       prevItems.length,
-      (i) => !existingCategories.contains(prevItems[i].category.toLowerCase()),
+      (i) => false,
     );
 
     showModalBottomSheet<void>(
@@ -276,8 +277,11 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
                     itemBuilder: (ctx, i) {
                       final item = prevItems[i];
                       final color = getCategoryColor(item.category);
+                      final alreadyExists = existingCategories
+                          .contains(item.category.toLowerCase());
                       return CheckboxListTile(
                         value: selected[i],
+                        enabled: !alreadyExists,
                         onChanged: (v) =>
                             setSheetState(() => selected[i] = v ?? false),
                         activeColor: ctx.colors.accent,
@@ -317,12 +321,10 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
                                     .copyWith(color: ctx.colors.textMuted),
                               )
                             : null,
-                        secondary: existingCategories
-                                .contains(item.category.toLowerCase())
-                            ? Tooltip(
-                                message: 'Already in plan',
-                                child: Icon(Icons.info_outline,
-                                    size: 16, color: ctx.colors.textMuted),
+                        secondary: alreadyExists
+                            ? const Tooltip(
+                                message: 'Already in plan - cannot add',
+                                child: Text('❌', style: TextStyle(fontSize: 16)),
                               )
                             : null,
                       );
@@ -398,7 +400,7 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
           final entry = LineItemEntry()
             ..categoryCtrl.text = loan.name
             ..amountCtrl.text = loan.emiAmount.toStringAsFixed(0)
-            ..noteCtrl.text = 'EMI';
+            ..noteCtrl.text = loan.loanProvider ?? 'EMI';
           _items.add(entry);
           added++;
         }

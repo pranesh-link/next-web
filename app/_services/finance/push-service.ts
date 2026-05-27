@@ -203,18 +203,8 @@ export async function sendPushToUser(
 
     const result = await sendToTokens(messaging, tokens, title, body, data);
 
-    // Create a DB notification record for the push (non-blocking)
-    if (result.sent > 0 && type) {
-      prisma.notification.create({
-        data: {
-          userId,
-          type,
-          featureId: featureId || null,
-        },
-      }).catch((err) => {
-        console.error('[push-service] Failed to create DB notification:', err);
-      });
-    }
+    // DB notification is created by the caller (notification generator)
+    // to avoid duplicate entries. Push service only sends notifications.
 
     return result;
   } catch (error) {
