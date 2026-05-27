@@ -19,7 +19,8 @@ abstract final class NotificationRouter {
   }
 
   /// Navigate to the appropriate screen based on notification type.
+  /// Uses push() so the back button always returns to the notifications screen.
   static void navigate(GoRouter router, String type) {
-    router.go(routeForType(type));
+    router.push(routeForType(type));
   }
 }
