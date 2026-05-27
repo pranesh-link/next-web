@@ -8,6 +8,7 @@ import 'package:luvverse/features/finance/budget_planner/budget_planner_widgets.
 import 'package:luvverse/features/finance/budget_planner/planner_item_card.dart';
 import 'package:luvverse/features/finance/budget_planner/planner_item_edit_sheet.dart';
 import 'package:luvverse/features/finance/budget_planner/planner_empty_state.dart';
+import 'package:luvverse/features/finance/budget_planner/planner_constants.dart';
 import 'package:luvverse/models/budget_plan.dart';
 import 'package:luvverse/shared/widgets/app_card.dart';
 import 'package:luvverse/shared/widgets/loading_skeleton.dart';
@@ -165,23 +166,220 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
       );
       return;
     }
-    setState(() {
-      for (final item in _items) {
-        item.dispose();
-      }
-      _items.clear();
-      for (final item in prevPlan.lineItems) {
-        _items.add(LineItemEntry.fromLineItem(item.copyWith(paid: false)));
-      }
-      _isDirty = true;
-    });
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(
-                'Imported \${prevPlan.lineItems.length} items from last month')),
-      );
-    }
+    _showImportFromLastMonthSheet(prevPlan.lineItems);
+  }
+
+  void _showImportFromLastMonthSheet(List<BudgetPlanLineItem> prevItems) {
+    final currencyFmt =
+        NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
+    // Pre-deselect items whose category already exists in the current plan.
+    final existingCategories =
+        _items.map((i) => i.category.toLowerCase()).toSet();
+    final selected = List<bool>.generate(
+      prevItems.length,
+      (i) => !existingCategories.contains(prevItems[i].category.toLowerCase()),
+    );
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: context.colors.bgElevated,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          final selectedCount = selected.where((v) => v).length;
+          final allSelected = selected.every((v) => v);
+
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.viewInsetsOf(ctx).bottom,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ── Handle bar ──────────────────────────────────────────
+                Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(top: AppSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: ctx.colors.cardBorder,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                // ── Header ──────────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg, AppSpacing.md, AppSpacing.sm, 0),
+                  child: Row(
+                    children: [
+                      const Text('📋', style: TextStyle(fontSize: 20)),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          'Import from last month',
+                          style: AppTypography.cardTitle,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 20),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                ),
+                // ── Select All row ───────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg),
+                  child: Row(
+                    children: [
+                      Checkbox(
+                        value: allSelected,
+                        tristate: true,
+                        onChanged: (_) {
+                          setSheetState(() {
+                            final next = !allSelected;
+                            for (var i = 0; i < selected.length; i++) {
+                              selected[i] = next;
+                            }
+                          });
+                        },
+                        activeColor: ctx.colors.accent,
+                      ),
+                      Text(
+                        allSelected ? 'Deselect all' : 'Select all',
+                        style: AppTypography.small
+                            .copyWith(color: ctx.colors.textMuted),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '$selectedCount / ${prevItems.length} selected',
+                        style: AppTypography.xs
+                            .copyWith(color: ctx.colors.textMuted),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                // ── Item list ────────────────────────────────────────────
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.sizeOf(ctx).height * 0.45,
+                  ),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: prevItems.length,
+                    itemBuilder: (ctx, i) {
+                      final item = prevItems[i];
+                      final color = getCategoryColor(item.category);
+                      return CheckboxListTile(
+                        value: selected[i],
+                        onChanged: (v) =>
+                            setSheetState(() => selected[i] = v ?? false),
+                        activeColor: ctx.colors.accent,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.lg,
+                          vertical: 0,
+                        ),
+                        dense: true,
+                        title: Row(
+                          children: [
+                            Container(
+                              width: 10,
+                              height: 10,
+                              margin: const EdgeInsets.only(right: AppSpacing.sm),
+                              decoration: BoxDecoration(
+                                color: color,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                item.category,
+                                style: AppTypography.bodyMedium,
+                              ),
+                            ),
+                            Text(
+                              currencyFmt.format(item.amount),
+                              style: AppTypography.small
+                                  .copyWith(color: ctx.colors.textMuted),
+                            ),
+                          ],
+                        ),
+                        subtitle: item.note != null && item.note!.isNotEmpty
+                            ? Text(
+                                item.note!,
+                                style: AppTypography.xs
+                                    .copyWith(color: ctx.colors.textMuted),
+                              )
+                            : null,
+                        secondary: existingCategories
+                                .contains(item.category.toLowerCase())
+                            ? Tooltip(
+                                message: 'Already in plan',
+                                child: Icon(Icons.info_outline,
+                                    size: 16, color: ctx.colors.textMuted),
+                              )
+                            : null,
+                      );
+                    },
+                  ),
+                ),
+                const Divider(height: 1),
+                // ── Action button ────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: selectedCount == 0
+                          ? null
+                          : () {
+                              Navigator.pop(ctx);
+                              setState(() {
+                                for (var i = 0; i < prevItems.length; i++) {
+                                  if (!selected[i]) continue;
+                                  _items.add(LineItemEntry.fromLineItem(
+                                      prevItems[i].copyWith(paid: false)));
+                                }
+                                _isDirty = true;
+                              });
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                      'Added $selectedCount item${selectedCount > 1 ? 's' : ''} from last month'),
+                                ),
+                              );
+                            },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: context.colors.accent,
+                        disabledBackgroundColor:
+                            context.colors.accent.withAlpha(80),
+                        padding:
+                            const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: Text(
+                        selectedCount == 0
+                            ? 'Select items to add'
+                            : 'Add $selectedCount item${selectedCount > 1 ? 's' : ''}',
+                        style: AppTypography.bodyMedium
+                            .copyWith(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 
   void _importLoanEMIs(List<Loan> loans) {
