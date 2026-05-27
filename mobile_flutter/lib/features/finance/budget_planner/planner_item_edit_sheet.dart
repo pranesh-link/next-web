@@ -91,50 +91,50 @@ class _PlannerItemEditSheetState extends State<PlannerItemEditSheet> {
             Text(BudgetPlannerStrings.category, style: AppTypography.label),
             const SizedBox(height: AppSpacing.sm),
             Builder(
-            builder: (context) {
-              // Ensure current category is in the list
-              final displayCategories = [...categories];
-              final currentCategory = widget.item.category;
-              if (currentCategory.isNotEmpty &&
-                  !displayCategories.contains(currentCategory)) {
-                displayCategories.add(currentCategory);
-              }
-              return DropdownButtonFormField<String>(
-                value: currentCategory.isEmpty ? null : currentCategory,
-                decoration: const InputDecoration(
-                  hintText: BudgetPlannerStrings.selectCategory,
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                ),
-                items: displayCategories.map((cat) {
-                  final color = getCategoryColor(cat);
-                  return DropdownMenuItem(
-                    value: cat,
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
+              builder: (context) {
+                // Ensure current category is in the list
+                final displayCategories = [...categories];
+                final currentCategory = widget.item.category;
+                if (currentCategory.isNotEmpty &&
+                    !displayCategories.contains(currentCategory)) {
+                  displayCategories.add(currentCategory);
+                }
+                return DropdownButtonFormField<String>(
+                  value: currentCategory.isEmpty ? null : currentCategory,
+                  decoration: const InputDecoration(
+                    hintText: BudgetPlannerStrings.selectCategory,
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  ),
+                  items: displayCategories.map((cat) {
+                    final color = getCategoryColor(cat);
+                    return DropdownMenuItem(
+                      value: cat,
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 12,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              color: color,
+                              shape: BoxShape.circle,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(cat),
-                      ],
-                    ),
-                  );
-                }).toList(),
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() => widget.item.categoryCtrl.text = val);
-                  }
-                },
-              );
-            },
-          ),
-          const SizedBox(height: AppSpacing.lg),
+                          const SizedBox(width: 8),
+                          Text(cat),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() => widget.item.categoryCtrl.text = val);
+                    }
+                  },
+                );
+              },
+            ),
+            const SizedBox(height: AppSpacing.lg),
           // Note/title field
           Text(BudgetPlannerStrings.titleNote, style: AppTypography.label),
           const SizedBox(height: AppSpacing.sm),
@@ -190,7 +190,7 @@ class _PlannerItemEditSheetState extends State<PlannerItemEditSheet> {
                   ),
                 ),
                 const SizedBox(width: AppSpacing.md),
-                            ] else ...[
+              ] else ...[
                 Expanded(
                   child: Semantics(
                     label: 'Close without saving',
@@ -223,6 +223,7 @@ class _PlannerItemEditSheetState extends State<PlannerItemEditSheet> {
           const SizedBox(height: AppSpacing.md),
         ],
       ),
-    );
+    ),
+  );
   }
 }

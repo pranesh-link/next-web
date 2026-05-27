@@ -17,6 +17,7 @@ import 'package:luvverse/shared/widgets/app_card.dart';
 import 'package:luvverse/shared/widgets/loading_skeleton.dart';
 import 'package:luvverse/shared/widgets/offline_error_state.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';
+import 'package:luvverse/models/budget_plan.dart';
 import 'package:luvverse/models/loan.dart';
 import 'package:intl/intl.dart';
 
