@@ -624,7 +624,8 @@ class _NotificationCardState extends State<_NotificationCard> {
                                 ),
                               ),
                             ),
-                            if (isUnread) ...[\n                              const SizedBox(width: 8),
+                            if (isUnread) ...[
+                              const SizedBox(width: 8),
                               Container(
                                 width: 12,
                                 height: 12,
