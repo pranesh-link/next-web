@@ -3,6 +3,7 @@ import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/budget_planner/planner_constants.dart';
+import 'package:luvverse/features/finance/budget_planner/budget_planner_strings.dart';
 import 'package:luvverse/features/finance/budget_planner/budget_planner_widgets.dart';
 
 /// Bottom sheet for adding or editing a budget planner line item.
@@ -55,36 +56,41 @@ class _PlannerItemEditSheetState extends State<PlannerItemEditSheet> {
     final categories = plannerCategoryColors.keys.toList();
     final viewInsets = MediaQuery.viewInsetsOf(context);
 
-    return SingleChildScrollView(
-      padding: EdgeInsets.only(
-        left: AppSpacing.xl,
-        right: AppSpacing.xl,
-        top: AppSpacing.xl,
-        bottom: AppSpacing.xl + viewInsets.bottom,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Drag handle
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: context.colors.border,
-                borderRadius: BorderRadius.circular(2),
+    return Semantics(
+      container: true,
+      label: widget.isNew ? 'Add budget item' : 'Edit budget item',
+      child: SingleChildScrollView(
+        padding: EdgeInsets.only(
+          left: AppSpacing.xl,
+          right: AppSpacing.xl,
+          top: AppSpacing.xl,
+          bottom: AppSpacing.xl + viewInsets.bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Drag handle
+            ExcludeSemantics(
+              child: Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: context.colors.border,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          // Title
-          Text(widget.isNew ? 'Add Item' : 'Edit Item', style: AppTypography.pageTitle),
-          const SizedBox(height: AppSpacing.xl),
-          // Category dropdown
-          Text('Category', style: AppTypography.label),
-          const SizedBox(height: AppSpacing.sm),
-          Builder(
+            const SizedBox(height: AppSpacing.xl),
+            // Title
+            Text(widget.isNew ? BudgetPlannerStrings.addItem : BudgetPlannerStrings.editItem, style: AppTypography.pageTitle),
+            const SizedBox(height: AppSpacing.xl),
+            // Category dropdown
+            Text(BudgetPlannerStrings.category, style: AppTypography.label),
+            const SizedBox(height: AppSpacing.sm),
+            Builder(
             builder: (context) {
               // Ensure current category is in the list
               final displayCategories = [...categories];
@@ -96,7 +102,7 @@ class _PlannerItemEditSheetState extends State<PlannerItemEditSheet> {
               return DropdownButtonFormField<String>(
                 value: currentCategory.isEmpty ? null : currentCategory,
                 decoration: const InputDecoration(
-                  hintText: 'Select category',
+                  hintText: BudgetPlannerStrings.selectCategory,
                   border: OutlineInputBorder(),
                   contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 ),
@@ -130,25 +136,25 @@ class _PlannerItemEditSheetState extends State<PlannerItemEditSheet> {
           ),
           const SizedBox(height: AppSpacing.lg),
           // Note/title field
-          Text('Title / Note', style: AppTypography.label),
+          Text(BudgetPlannerStrings.titleNote, style: AppTypography.label),
           const SizedBox(height: AppSpacing.sm),
           TextField(
             controller: widget.item.noteCtrl,
             decoration: const InputDecoration(
-              hintText: 'e.g. Insurance Premium',
+              hintText: BudgetPlannerStrings.insurancePremiumExample,
               border: OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
           // Amount field
-          Text('Amount', style: AppTypography.label),
+          Text(BudgetPlannerStrings.amount, style: AppTypography.label),
           const SizedBox(height: AppSpacing.sm),
           TextField(
             controller: widget.item.amountCtrl,
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(
-              prefixText: '₹ ',
-              hintText: '0',
+              prefixText: BudgetPlannerStrings.rupeePrefix,
+              hintText: BudgetPlannerStrings.zeroAmount,
               border: OutlineInputBorder(),
             ),
           ),
@@ -157,7 +163,7 @@ class _PlannerItemEditSheetState extends State<PlannerItemEditSheet> {
           SwitchListTile(
             value: widget.item.paid,
             onChanged: (v) => setState(() => widget.item.paid = v),
-            title: const Text('Mark as paid'),
+            title: const Text(BudgetPlannerStrings.markAsPaid),
             contentPadding: EdgeInsets.zero,
           ),
           const SizedBox(height: AppSpacing.xl),
@@ -166,35 +172,50 @@ class _PlannerItemEditSheetState extends State<PlannerItemEditSheet> {
             children: [
               if (!widget.isNew && widget.onDelete != null) ...[
                 Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      widget.onDelete!();
-                      Navigator.pop(context);
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: context.colors.danger,
-                      side: BorderSide(color: context.colors.danger),
+                  child: Semantics(
+                    label: 'Delete budget item',
+                    hint: 'Double tap to delete this budget item permanently',
+                    button: true,
+                    child: OutlinedButton(
+                      onPressed: () {
+                        widget.onDelete!();
+                        Navigator.pop(context);
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: context.colors.danger,
+                        side: BorderSide(color: context.colors.danger),
+                      ),
+                      child: const Text(BudgetPlannerStrings.delete),
                     ),
-                    child: const Text('Delete'),
                   ),
                 ),
                 const SizedBox(width: AppSpacing.md),
-              ] else ...[
+                            ] else ...[
                 Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Close'),
+                  child: Semantics(
+                    label: 'Close without saving',
+                    hint: 'Double tap to close and discard changes',
+                    button: true,
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text(BudgetPlannerStrings.close),
+                    ),
                   ),
                 ),
                 const SizedBox(width: AppSpacing.md),
               ],
               Expanded(
-                child: FilledButton(
-                  onPressed: () {
-                    widget.onSave();
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Done'),
+                child: Semantics(
+                  label: 'Save budget item',
+                  hint: 'Double tap to save changes and close',
+                  button: true,
+                  child: FilledButton(
+                    onPressed: () {
+                      widget.onSave();
+                      Navigator.pop(context);
+                    },
+                    child: const Text(BudgetPlannerStrings.done),
+                  ),
                 ),
               ),
             ],

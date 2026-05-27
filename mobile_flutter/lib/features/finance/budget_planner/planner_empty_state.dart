@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
+import 'package:luvverse/features/finance/budget_planner/budget_planner_strings.dart';
 
 /// Empty state shown when no budget plan items exist.
 class PlannerEmptyState extends StatelessWidget {
@@ -33,25 +34,25 @@ class PlannerEmptyState extends StatelessWidget {
                 size: 56, color: context.colors.textMuted.withAlpha(100)),
             const SizedBox(height: AppSpacing.lg),
             Text(
-              'No plans yet',
+              BudgetPlannerStrings.noPlansYet,
               style:
                   AppTypography.cardTitle.copyWith(color: context.colors.textMuted),
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              'Start planning your month',
+              BudgetPlannerStrings.startPlanningYourMonth,
               style: AppTypography.small.copyWith(color: context.colors.textMuted),
             ),
             const SizedBox(height: AppSpacing.xl),
             FilledButton.icon(
               onPressed: onAdd,
               icon: const Icon(Icons.add, size: 18),
-              label: const Text('Add first item'),
+              label: const Text(BudgetPlannerStrings.addFirstItem),
             ),
-            if (hasQuickImport) ...[
+                        if (hasQuickImport) ...[
               const SizedBox(height: AppSpacing.lg),
               Text(
-                'or quickly add from:',
+                BudgetPlannerStrings.quicklyAddFrom,
                 style: AppTypography.xs.copyWith(color: context.colors.textMuted),
               ),
               const SizedBox(height: AppSpacing.sm),
@@ -61,14 +62,14 @@ class PlannerEmptyState extends StatelessWidget {
                 children: [
                   if (onImportLastMonth != null)
                     ActionChip(
-                      avatar: const Text('📋'),
-                      label: const Text('Last month'),
+                      avatar: const Text(BudgetPlannerStrings.clipboardIcon),
+                      label: const Text(BudgetPlannerStrings.lastMonth),
                       onPressed: onImportLastMonth,
                     ),
                   if (onImportLoans != null)
                     ActionChip(
-                      avatar: const Text('💳'),
-                      label: const Text('Loan EMIs'),
+                      avatar: const Text(BudgetPlannerStrings.creditCardIcon),
+                      label: const Text(BudgetPlannerStrings.loanEmis),
                       onPressed: onImportLoans,
                     ),
                 ],
