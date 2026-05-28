@@ -5,10 +5,13 @@
  * Orchestrates database migrations with automatic backup and rollback.
  *
  * Flow:
- *   1. Create database backup with pg_dump
- *   2. Run prisma migrate deploy
- *   3. On success: delete backup, exit 0
- *   4. On failure: restore from backup, exit 1
+ *   1. Pre-flight checks (DATABASE_URL, Prisma CLI)
+ *   2. Check for pending migrations
+ *   3. If no migrations → exit 0 (skip backup)
+ *   4. If migrations exist → create backup
+ *   5. Run prisma migrate deploy
+ *   6. On success: delete backup, exit 0
+ *   7. On failure: restore from backup, exit 1
  *
  * Usage:
  *   npx tsx scripts/safe-migrate.ts
@@ -21,7 +24,7 @@
  *   DB_BACKUP_DIR             - Backup directory (default: /tmp/db-backups)
  *
  * Exit Codes:
- *   0 - Migration successful
+ *   0 - No migrations needed OR migration successful
  *   1 - Migration failed (after rollback)
  *   2 - Pre-migration checks failed
  */
@@ -121,6 +124,56 @@ function verifyPreMigrationChecks(): boolean {
 }
 
 /**
+ * Check if there are pending migrations
+ */
+function hasPendingMigrations(): boolean {
+  try {
+    const output = execSync('npx prisma migrate status', {
+      encoding: 'utf-8',
+      stdio: 'pipe',
+    });
+5] Pre-migration checks...');
+  if (!verifyPreMigrationChecks()) {
+    console.error('[FAILED] Pre-migration checks failed');
+    process.exit(2);
+  }
+  console.log('[SUCCESS] Pre-migration checks passed\n');
+
+  // Step 2: Check for pending migrations
+  console.log('[STEP 2/5] Checking for pending migrations...');
+  const needsMigration = hasPendingMigrations();
+  
+  if (!needsMigration) {
+    console.log('[INFO] No pending migrations found');
+    console.log('[SUCCESS] Database is already up to date');
+    console.log('\n========================================');
+    console.log('✅ Migration check complete (no changes needed)');
+    console.log('========================================\n');
+    process.exit(0);
+  }
+  
+  console.log('[INFO] Pending migrations detected\n');
+
+  // Step 3: Create backup
+  console.log('[STEP 3/5
+    // Check for pending migrations indicators
+    if (
+      output.includes('migration(s) have not yet been applied') ||
+      output.includes('migration(s) have not been applied')
+    ) {
+      return true;
+    }
+
+    // If unclear, assume there might be migrations (safer to backup)
+    return true;
+  } catch (error: any) {
+    // If migrate status fails, assume we need to check (safer to backup)
+    console.warn('[WARN] Could not determine migration status, proceeding with backup');
+    return true;
+  }
+}
+
+/**
  * Main workflow
  */
 async function main() {
@@ -133,14 +186,14 @@ async function main() {
   if (!verifyPreMigrationChecks()) {
     console.error('[FAILED] Pre-migration checks failed');
     process.exit(2);
-  }
-  console.log('[SUCCESS] Pre-migration checks passed\n');
+  }4: Run migrations
+  console.log('[STEP 4/5] Applying migrations...');
+  const migrationResult = await runMigrations();
+  console.log('');
 
-  // Step 2: Create backup
-  console.log('[STEP 2/4] Creating database backup...');
-  const backupResult = await createBackup({ keepLast: 1 });
-
-  if (!backupResult.success) {
+  if (migrationResult.success) {
+    // Step 5a: Cleanup on success
+    console.log('[STEP 5/5s) {
     console.error(`[ERROR] Backup failed: ${backupResult.error}`);
     process.exit(2);
   }
@@ -168,8 +221,8 @@ async function main() {
     console.log('========================================\n');
     process.exit(0);
   } else {
-    // Step 4b: Rollback on failure
-    console.log('[STEP 4/4] Rolling back...');
+    // Step 5b: Rollback on failure
+    console.log('[STEP 5/5] Rolling back...');
 
     if (!backupPath) {
       console.error('[ERROR] Cannot rollback: No backup available');
