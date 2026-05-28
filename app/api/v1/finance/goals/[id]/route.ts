@@ -183,4 +183,3 @@ async function deleteHandler(_request: NextRequest, context: RouteContext) {
 }
 
 export const DELETE = withRateLimit(deleteHandler, { max: 30, window: 60 });
-}
