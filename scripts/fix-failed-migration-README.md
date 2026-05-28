@@ -5,6 +5,25 @@ The migration `20260527185953_add_notification_unique_constraint` failed in prod
 
 ## Solution
 
+### Step 0: Create Backup (REQUIRED)
+
+**Before making any changes, create a backup:**
+
+```bash
+# Make sure DATABASE_URL points to production
+npx tsx scripts/backup-before-migration-fix.ts
+```
+
+This will:
+- ✅ Backup all migration records
+- ✅ Backup all notification records
+- ✅ Analyze and report duplicate notifications
+- ✅ Save backup to `backups/migration-fix-backup-{timestamp}.json`
+
+**Do not proceed without a successful backup!**
+
+---
+
 ### Step 1: Mark the Failed Migration as Resolved
 
 You need to mark the failed migration as "rolled back" in the production database. Choose one of these methods:

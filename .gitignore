@@ -38,6 +38,10 @@ yarn-error.log*
 .env*.local
 *.backup.txt
 
+# database backups
+/backups/
+*.backup.json
+
 # vercel
 .vercel
 
