@@ -5,7 +5,7 @@ abstract final class NotificationRouter {
   /// Returns the route path for a given notification type.
   static String routeForType(String type) {
     return switch (type) {
-      'COUPLE_INVITE' => '/finance/notifications',
+      'COUPLE_INVITE' => '/notifications',
       'BUDGET_ALERT' || 'PUSH_BUDGET_ALERT' || 'BUDGET_EXCEEDED' => '/finance/budgets',
       'SIP_REMINDER' || 'PUSH_SIP_REMINDER' || 'INVESTMENT_SIP_REMINDER' => '/finance/investments',
       'DEPOSIT_REMINDER' || 'PUSH_DEPOSIT_REMINDER' || 'DEPOSIT_INSTALLMENT_REMINDER' || 'DEPOSIT_MATURITY_REMINDER' => '/finance/deposits',
@@ -14,11 +14,12 @@ abstract final class NotificationRouter {
       'INCOME_REMINDER' => '/finance/transactions',
       'PUSH_TRANSACTION_ALERT' => '/finance/transactions',
       'PUSH_ACCOUNT_SYNC' => '/finance/accounts',
-      _ => '/finance/notifications',
+      _ => '/notifications',
     };
   }
 
   /// Navigate to the appropriate screen based on notification type.
+  /// Uses go() to replace navigation instead of stacking.
   static void navigate(GoRouter router, String type) {
     router.go(routeForType(type));
   }

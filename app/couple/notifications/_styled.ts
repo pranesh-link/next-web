@@ -448,6 +448,72 @@ export const ActionButton = styled.button<{ $variant: "accept" | "decline" }>`
   }
 `;
 
+export const ActionSheetOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  animation: fadeIn 0.15s ease;
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+`;
+
+export const ActionSheetContainer = styled.div`
+  width: 100%;
+  background: var(--bg-elevated);
+  border-radius: 20px 20px 0 0;
+  padding: 12px 0 32px;
+  animation: slideUp 0.2s ease;
+
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+`;
+
+export const ActionSheetHandle = styled.div`
+  width: 36px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 0 auto 16px;
+`;
+
+export const ActionSheetItem = styled.button<{ $danger?: boolean }>`
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 24px;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 500;
+  color: ${(p) => (p.$danger ? "var(--danger, #ef4444)" : "var(--text)")};
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s;
+
+  &:hover {
+    background: var(--surface);
+  }
+  &:active {
+    background: var(--border);
+  }
+`;
+
+export const ActionSheetDivider = styled.div`
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+`;
+
 export const ArchivedSection = styled.div`
   margin-top: 40px;
   padding-top: 24px;

@@ -8,10 +8,16 @@ import 'package:luvverse/features/finance/budget_planner/budget_planner_widgets.
 import 'package:luvverse/features/finance/budget_planner/planner_item_card.dart';
 import 'package:luvverse/features/finance/budget_planner/planner_item_edit_sheet.dart';
 import 'package:luvverse/features/finance/budget_planner/planner_empty_state.dart';
-import 'package:luvverse/models/budget_plan.dart';
+import 'package:luvverse/features/finance/budget_planner/budget_planner_strings.dart';
+import 'package:luvverse/features/finance/budget_planner/budget_planner_import_helpers.dart';
+import 'package:luvverse/features/finance/budget_planner/budget_planner_suggestions.dart';
+import 'package:luvverse/features/finance/budget_planner/budget_planner_stats.dart';
 import 'package:luvverse/shared/widgets/app_card.dart';
 import 'package:luvverse/shared/widgets/loading_skeleton.dart';
 import 'package:luvverse/shared/widgets/offline_error_state.dart';
+import 'package:luvverse/features/finance/providers/finance_providers.dart';
+import 'package:luvverse/models/budget_plan.dart';
+import 'package:luvverse/models/loan.dart';
 import 'package:intl/intl.dart';
 
 /// Budget planner screen with card-based layout, swipe gestures, and FAB.
@@ -74,7 +80,16 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
       _isDirty = true;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _openEditSheet(_items.length - 1);
+      PlannerItemEditSheet.show(
+        context,
+        item: _items[_items.length - 1],
+        onSave: () {
+          _markDirty();
+          setState(() {});
+        },
+        onDelete: () => _removeItem(_items.length - 1),
+        isNew: true,
+      );
     });
   }
 
@@ -102,6 +117,7 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
         setState(() {});
       },
       onDelete: () => _removeItem(index),
+      isNew: false,
     );
   }
 
@@ -114,7 +130,7 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
     final income = double.tryParse(_incomeCtrl.text);
     if (income == null || income <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter valid income')),
+        const SnackBar(content: Text(BudgetPlannerStrings.enterValidIncome)),
       );
       return;
     }
@@ -136,13 +152,13 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
       if (mounted) {
         setState(() => _isDirty = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Budget plan saved')),
+          const SnackBar(content: Text(BudgetPlannerStrings.budgetPlanSaved)),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(content: Text('${BudgetPlannerStrings.errorPrefix}$e')),
         );
       }
     } finally {
@@ -150,11 +166,104 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Import helpers
+  // ---------------------------------------------------------------------------
+
+  Future<void> _importFromLastMonth() async {
+    await ImportHelper.importFromLastMonth(
+      context,
+      ref,
+      _items,
+      (newItems) {
+        setState(() {
+          _items.addAll(newItems);
+          _isDirty = true;
+        });
+      },
+    );
+  }
+
+  void _importLoanEMIs(List<Loan> loans) {
+    ImportHelper.importLoanEMIs(
+      context,
+      loans,
+      _items,
+      (newItems) {
+        setState(() {
+          _items.addAll(newItems);
+          _isDirty = true;
+        });
+      },
+    );
+  }
+
+  Future<void> _deletePlan(String planId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text(BudgetPlannerStrings.deletePlan),
+        content: const Text(BudgetPlannerStrings.deletePlanConfirmation),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text(BudgetPlannerStrings.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text(BudgetPlannerStrings.delete),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await ref.read(budgetPlanProvider.notifier).delete(planId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text(BudgetPlannerStrings.budgetPlanDeleted)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${BudgetPlannerStrings.errorPrefix}$e')),
+        );
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Suggestions & delta helpers
+  // ---------------------------------------------------------------------------
+
+  String? _computeDelta(double current, double? previous) {
+    return StatsHelper.computeDelta(current, previous);
+  }
+
+  List<String> _computeSuggestions(
+      BudgetPlan? prevPlan, List<Loan> loans, double income) {
+    return SuggestionsHelper.computeSuggestions(
+      prevPlan,
+      loans,
+      _items,
+      income,
+    );
+  }
+
+  void _showSuggestionsSheet(List<String> suggestions) {
+    SuggestionsHelper.showSuggestionsSheet(context, suggestions);
+  }
+
   @override
   Widget build(BuildContext context) {
     final planAsync = ref.watch(budgetPlanProvider);
     final month = ref.watch(budgetPlanMonthProvider);
     final mode = ref.watch(budgetPlanModeProvider);
+    final prevPlanAsync = ref.watch(prevBudgetPlanProvider);
+    final loansAsync = ref.watch(loansProvider);
+    final loans = loansAsync.valueOrNull ?? [];
     final currencyFmt =
         NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
 
@@ -165,6 +274,39 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
         backgroundColor: context.colors.bg,
         elevation: 0,
         titleTextStyle: AppTypography.pageTitle,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.content_copy_outlined),
+            tooltip: 'Import last month',
+            onPressed: _importFromLastMonth,
+          ),
+          IconButton(
+            icon: const Icon(Icons.credit_card_outlined),
+            tooltip: 'Import loan EMIs',
+            onPressed: () => _importLoanEMIs(loans),
+          ),
+          if (planAsync.valueOrNull?.id != null)
+            PopupMenuButton<String>(
+              onSelected: (v) {
+                if (v == 'delete') {
+                  _deletePlan(planAsync.valueOrNull!.id);
+                }
+              },
+              itemBuilder: (_) => [
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                      SizedBox(width: 8),
+                      Text('Delete plan',
+                          style: TextStyle(color: Colors.red)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+        ],
       ),
       floatingActionButton: _isDirty
           ? null
@@ -208,7 +350,11 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
                             _loadFromPlan(plan);
                           });
                         }
-                        return _buildContent(currencyFmt);
+                        return _buildContent(
+                          currencyFmt,
+                          prevPlan: prevPlanAsync.valueOrNull,
+                          loans: loans,
+                        );
                       },
                     ),
                   ),
@@ -258,12 +404,28 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
     );
   }
 
-  Widget _buildContent(NumberFormat currencyFmt) {
+  Widget _buildContent(
+    NumberFormat currencyFmt, {
+    BudgetPlan? prevPlan,
+    List<Loan> loans = const [],
+  }) {
     final totalPlanned = _items.fold(0.0, (sum, i) => sum + i.amount);
     final totalPaid =
         _items.where((i) => i.paid).fold(0.0, (sum, i) => sum + i.amount);
     final income = double.tryParse(_incomeCtrl.text) ?? 0;
     final remaining = income - totalPaid;
+
+    // Deltas vs previous period (null when no previous plan exists)
+    final prevPlanned = prevPlan == null ? null : prevPlan.lineItems
+        .fold(0.0, (sum, i) => sum + i.amount);
+    final prevPaid = prevPlan == null ? null : prevPlan.lineItems
+        .where((i) => i.paid)
+        .fold(0.0, (sum, i) => sum + i.amount);
+    final prevIncome = prevPlan?.income;
+    final prevRemaining =
+        (prevIncome != null && prevPaid != null) ? prevIncome - prevPaid : null;
+
+    final suggestions = _computeSuggestions(prevPlan, loans, income);
 
     return ListView(
       children: [
@@ -305,23 +467,53 @@ class _BudgetPlannerScreenState extends ConsumerState<BudgetPlannerScreen> {
         Row(
           children: [
             PlannerSummaryChip(
-                'Planned', currencyFmt.format(totalPlanned), context.colors.accent),
+              'Planned',
+              currencyFmt.format(totalPlanned),
+              context.colors.accent,
+              delta: _computeDelta(totalPlanned, prevPlanned),
+            ),
             const SizedBox(width: AppSpacing.sm),
             PlannerSummaryChip(
-                'Paid', currencyFmt.format(totalPaid), context.colors.success),
+              'Paid',
+              currencyFmt.format(totalPaid),
+              context.colors.success,
+              delta: _computeDelta(totalPaid, prevPaid),
+            ),
             const SizedBox(width: AppSpacing.sm),
             PlannerSummaryChip(
               'Remaining',
               currencyFmt.format(remaining),
               remaining >= 0 ? context.colors.success : context.colors.danger,
+              delta: _computeDelta(remaining, prevRemaining),
             ),
           ],
         ),
+        // Suggestions chip — only when suggestions exist
+        if (suggestions.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Align(
+            alignment: Alignment.centerRight,
+            child: ActionChip(
+              avatar: const Text('💡'),
+              label: Text('${suggestions.length}'),
+              onPressed: () => _showSuggestionsSheet(suggestions),
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+        ],
         const SizedBox(height: AppSpacing.lg),
         // Items
         if (_items.isEmpty)
-          PlannerEmptyState(onAdd: _addItem)
-        else ..._buildGroupedItems(),
+          PlannerEmptyState(
+            onAdd: _addItem,
+            onImportLastMonth:
+                prevPlan != null && prevPlan.lineItems.isNotEmpty
+                    ? _importFromLastMonth
+                    : null,
+            onImportLoans: loans.isNotEmpty ? () => _importLoanEMIs(loans) : null,
+          )
+        else
+          ..._buildGroupedItems(),
         // Bottom spacer for FAB
         const SizedBox(height: 80),
       ],

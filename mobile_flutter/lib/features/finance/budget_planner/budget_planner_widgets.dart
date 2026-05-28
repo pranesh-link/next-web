@@ -4,6 +4,7 @@ import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/providers/extended_providers.dart';
+import 'package:luvverse/features/finance/budget_planner/budget_planner_strings.dart';
 import 'package:luvverse/models/budget_plan.dart';
 import 'package:luvverse/shared/widgets/app_card.dart';
 
@@ -38,12 +39,17 @@ class PlannerMonthSelector extends StatelessWidget {
   }
 }
 
-/// Small colored chip displaying a label and value.
+/// Small colored chip displaying a label, value, and optional period delta.
 class PlannerSummaryChip extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
-  const PlannerSummaryChip(this.label, this.value, this.color, {super.key});
+
+  /// Optional delta vs previous period, e.g. '↑5%' or '↓8%'.
+  final String? delta;
+
+  const PlannerSummaryChip(this.label, this.value, this.color,
+      {super.key, this.delta});
 
   @override
   Widget build(BuildContext context) {
@@ -61,6 +67,16 @@ class PlannerSummaryChip extends StatelessWidget {
             const SizedBox(height: 4),
             Text(value,
                 style: AppTypography.bodyMedium.copyWith(color: color)),
+            if (delta != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                delta!,
+                style: AppTypography.xs.copyWith(
+                  color: color.withAlpha(180),
+                  fontSize: 10,
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -105,7 +121,7 @@ class PlannerLineItemRow extends StatelessWidget {
             child: TextField(
               controller: item.noteCtrl,
               decoration: const InputDecoration(
-                hintText: 'Note',
+                hintText: BudgetPlannerStrings.note,
                 isDense: true,
                 border: InputBorder.none,
               ),
@@ -123,7 +139,7 @@ class PlannerLineItemRow extends StatelessWidget {
               controller: item.amountCtrl,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
-                hintText: '₹0',
+                hintText: BudgetPlannerStrings.defaultAmountHint,
                 isDense: true,
                 border: InputBorder.none,
               ),

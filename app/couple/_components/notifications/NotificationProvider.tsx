@@ -12,6 +12,7 @@ import {
   getMyNotificationsSnapshot,
   markNotificationRead,
   markAllNotificationsRead,
+  markNotificationUnread,
   syncNotifications,
 } from "@/couple/finance/_actions/notifications";
 
@@ -27,6 +28,7 @@ interface NotificationContextValue {
   unreadCount: number;
   refresh: () => Promise<void>;
   markRead: (id: string) => Promise<void>;
+  markUnread: (id: string) => Promise<void>;
   markAllRead: () => Promise<void>;
   incomePopup: { month: string } | null;
   dismissIncomePopup: () => void;
@@ -108,6 +110,17 @@ export function NotificationProvider({
     []
   );
 
+  const markUnread = useCallback(
+    async (id: string) => {
+      await markNotificationUnread(id);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, read: false } : n))
+      );
+      setUnreadCount((prev) => prev + 1);
+    },
+    []
+  );
+
   const markAllRead = useCallback(async () => {
     await markAllNotificationsRead();
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
@@ -120,7 +133,7 @@ export function NotificationProvider({
 
   return (
     <NotificationContext.Provider
-      value={{ notifications, unreadCount, refresh, markRead, markAllRead, incomePopup, dismissIncomePopup }}
+      value={{ notifications, unreadCount, refresh, markRead, markUnread, markAllRead, incomePopup, dismissIncomePopup }}
     >
       {children}
     </NotificationContext.Provider>

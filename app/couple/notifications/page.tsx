@@ -88,7 +88,7 @@ function groupNotificationsByDate(
 }
 
 export default function NotificationsPage() {
-  const { notifications, unreadCount, refresh, markRead, markAllRead } =
+  const { notifications, unreadCount, refresh, markRead, markUnread, markAllRead } =
     useNotifications();
   const router = useRouter();
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -160,6 +160,17 @@ export default function NotificationsPage() {
       cancelled = true;
     };
   }, [notifications]);
+
+  // Refresh when page regains visibility (e.g. after back-swipe from linked page)
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void refresh();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [refresh]);
 
   const handleAccept = useCallback(
     async (token: string, notifId: string) => {
@@ -252,6 +263,13 @@ export default function NotificationsPage() {
       }
     },
     [notifications, inviteDetails, markRead, router]
+  );
+
+  const handleMarkUnread = useCallback(
+    async (notifId: string) => {
+      await markUnread(notifId);
+    },
+    [markUnread]
   );
 
   const readCount = notifications.filter((n) => n.read).length;
@@ -352,6 +370,7 @@ export default function NotificationsPage() {
                           onAccept={handleAccept}
                           onDecline={handleDecline}
                           onArchive={handleArchive}
+                          onMarkUnread={handleMarkUnread}
                         />
                       );
                     })}

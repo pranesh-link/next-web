@@ -41,6 +41,7 @@ class _UpdateBalanceModalState extends ConsumerState<UpdateBalanceModal> {
   final _noteCtrl = TextEditingController();
   bool _loading = false;
   String? _error;
+  bool _disposed = false;
 
   @override
   void initState() {
@@ -52,9 +53,28 @@ class _UpdateBalanceModalState extends ConsumerState<UpdateBalanceModal> {
 
   @override
   void dispose() {
+    _disposed = true;
     _balanceCtrl.dispose();
     _noteCtrl.dispose();
     super.dispose();
+  }
+
+  /// Retry API call with exponential backoff.
+  Future<T> _retryApiCall<T>(
+    Future<T> Function() apiCall, {
+    int maxAttempts = 3,
+  }) async {
+    for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+      if (_disposed) throw Exception('Widget disposed');
+      try {
+        return await apiCall();
+      } catch (e) {
+        if (attempt == maxAttempts) rethrow;
+        if (_disposed) throw Exception('Widget disposed');
+        await Future.delayed(Duration(seconds: attempt));
+      }
+    }
+    throw Exception('Max retries exceeded');
   }
 
   Future<void> _submit() async {
@@ -67,14 +87,29 @@ class _UpdateBalanceModalState extends ConsumerState<UpdateBalanceModal> {
       _error = null;
       _loading = true;
     });
+
+    // Store original balance for rollback
+    final originalBalance = widget.account.balance;
+
     try {
+      // Optimistic update: UI updates immediately
+      ref.read(accountsProvider.notifier).updateAccountOptimistic(
+        widget.account.id,
+        {'balance': parsed},
+      );
+
+      // API call with retry in background
       final data = <String, dynamic>{'balance': parsed};
       final note = _noteCtrl.text.trim();
       if (note.isNotEmpty) data['note'] = note;
-      await ref.read(accountsProvider.notifier).updateAccountData(
-        widget.account.id,
-        data,
+
+      await _retryApiCall(() =>
+        ref.read(accountsProvider.notifier).updateAccountData(
+          widget.account.id,
+          data,
+        ),
       );
+
       widget.onSuccess();
       if (mounted) {
         Navigator.pop(context);
@@ -83,6 +118,13 @@ class _UpdateBalanceModalState extends ConsumerState<UpdateBalanceModal> {
         );
       }
     } catch (e) {
+      // Rollback on failure after retries (only if not disposed)
+      if (!_disposed) {
+        ref.read(accountsProvider.notifier).revertAccountOptimistic(
+          widget.account.id,
+          {'balance': originalBalance},
+        );
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e')),
