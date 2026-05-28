@@ -2,9 +2,13 @@
  * Backup production database before fixing failed migration
  * 
  * This script creates a backup of critical tables before making any changes.
+ * Safe to run multiple times - will skip if already backed up recently.
  * 
  * Usage:
  *   npx tsx scripts/backup-before-migration-fix.ts
+ * 
+ * Environment:
+ *   SKIP_BACKUP=true - Skip backup (not recommended)
  */
 
 import { PrismaClient } from '@prisma/client';
@@ -14,6 +18,12 @@ import * as path from 'path';
 const prisma = new PrismaClient();
 
 async function main() {
+  // Allow skipping backup via env var (for CI/CD if needed)
+  if (process.env.SKIP_BACKUP === 'true') {
+    console.log('⏭️  SKIP_BACKUP=true - Skipping backup');
+    return;
+  }
+
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const backupDir = path.join(process.cwd(), 'backups');
   const backupFile = path.join(backupDir, `migration-fix-backup-${timestamp}.json`);

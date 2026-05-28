@@ -6,6 +6,9 @@
   "scripts": {
     "postinstall": "prisma generate",
     "dev": "tsc --noEmit && next dev -p 3737 --hostname 0.0.0.0",
+    "db:fix-migration": "npx tsx scripts/fix-failed-migration.ts",
+    "db:backup": "npx tsx scripts/backup-before-migration-fix.ts",
+    "prebuild": "npm run db:fix-migration",
     "build": "node scripts/validate-env.mjs && prisma migrate deploy && rm -rf .next && next build",
     "build:analyze": "ANALYZE=true npm run build",
     "start": "next start -p 3737",
@@ -96,6 +99,7 @@
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
     "postcss": "^8",
+    "tsx": "^4.19.2",
     "turbo": "^2",
     "typescript": "~5.8"
   },

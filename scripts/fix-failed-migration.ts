@@ -2,10 +2,13 @@
  * Script to resolve the failed notification unique constraint migration.
  * 
  * This script marks the failed migration as rolled back so new migrations can proceed.
- * Run this ONCE against the production database before deploying.
+ * Safe to run multiple times - will skip if already resolved.
  * 
  * Usage:
  *   npx tsx scripts/fix-failed-migration.ts
+ * 
+ * Environment:
+ *   SKIP_MIGRATION_FIX=true - Skip fix (not recommended)
  */
 
 import { PrismaClient } from '@prisma/client';
@@ -13,22 +16,28 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
+  // Allow skipping via env var
+  if (process.env.SKIP_MIGRATION_FIX === 'true') {
+    console.log('⏭️  SKIP_MIGRATION_FIX=true - Skipping migration fix');
+    return;
+  }
+
   console.log('🔍 Checking for failed migration...');
 
   // Check if the failed migration exists
-  const failedMigration = await prisma.$queryRaw<Array<{ migration_name: string; finished_at: Date | null }>>`
-    SELECT migration_name, finished_at
+  const failedMigration = await prisma.$queryRaw<Array<{ migration_name: string; finished_at: Date | null; rolled_back_at: Date | null }>>`
+    SELECT migration_name, finished_at, rolled_back_at
     FROM _prisma_migrations
     WHERE migration_name = '20260527185953_add_notification_unique_constraint'
   `;
 
   if (failedMigration.length === 0) {
-    console.log('✅ Migration not found - already resolved or never existed');
+    console.log('✅ Migration not found - never existed or already cleaned up');
     return;
   }
 
-  if (failedMigration[0].finished_at !== null) {
-    console.log('✅ Migration already completed successfully');
+  if (failedMigration[0].finished_at !== null || failedMigration[0].rolled_back_at !== null) {
+    console.log('✅ Migration already resolved');
     return;
   }
 
