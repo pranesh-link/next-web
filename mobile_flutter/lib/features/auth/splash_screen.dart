@@ -22,7 +22,6 @@ class SplashScreen extends ConsumerStatefulWidget {
 class _SplashScreenState extends ConsumerState<SplashScreen> {
   PrefetchResult? _prefetchResult;
   bool _isNavigating = false;
-  bool _isStaleResume = false;
 
   @override
   void initState() {
@@ -39,7 +38,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   void _checkResumeType() async {
     final elapsed = await AppLifecycleManager.getTimeSinceBackground();
     if (elapsed != null && elapsed >= AppLifecycleManager.staleThreshold) {
-      _isStaleResume = true;
       debugPrint('[Splash] Stale resume detected: ${elapsed.inMinutes} min');
     }
   }
@@ -138,7 +136,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: Colors.white70, letterSpacing: 0.3),
               ),
               const SizedBox(height: 32),
-              if (progress != null && progress.currentItem != null) ...[
+              if (progress.currentItem.isNotEmpty) ...[
                 SizedBox(
                   width: 200,
                   child: LinearProgressIndicator(
@@ -149,7 +147,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  progress.currentItem!,
+                  progress.currentItem,
                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: Colors.white60),
                 ),
               ] else
