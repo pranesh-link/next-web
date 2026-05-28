@@ -29,7 +29,7 @@ async function main() {
     process.exit(1);
   }
 
-  console.log('🔍 Checking for failed migration...');
+  console.log('🔍 Checking for failed migrations...');
 
   let prisma: PrismaClient | undefined;
   
@@ -39,41 +39,38 @@ async function main() {
       adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
     });
     
-    // Check if the failed migration exists
-    const failedMigration = await prisma.$queryRaw<Array<{ migration_name: string; finished_at: Date | null; rolled_back_at: Date | null }>>`
-      SELECT migration_name, finished_at, rolled_back_at
+    // Check for any failed migrations (not finished and not rolled back)
+    const failedMigrations = await prisma.$queryRaw<Array<{ migration_name: string; started_at: Date; finished_at: Date | null; rolled_back_at: Date | null }>>`
+      SELECT migration_name, started_at, finished_at, rolled_back_at
       FROM _prisma_migrations
-      WHERE migration_name = '20260527185953_add_notification_unique_constraint'
+      WHERE finished_at IS NULL AND rolled_back_at IS NULL
     `;
 
-    if (failedMigration.length === 0) {
-      console.log('✅ Migration not found - never existed or already cleaned up');
+    if (failedMigrations.length === 0) {
+      console.log('✅ No failed migrations found');
       return;
     }
 
-    if (failedMigration[0].finished_at !== null || failedMigration[0].rolled_back_at !== null) {
-      console.log('✅ Migration already resolved');
-      return;
+    console.log(`❌ Found ${failedMigrations.length} failed migration(s):`);
+    for (const m of failedMigrations) {
+      console.log(`   - ${m.migration_name} (started ${m.started_at})`);
     }
-
-    console.log('❌ Found failed migration:', failedMigration[0].migration_name);
     console.log('🔧 Marking as rolled back...');
 
-    // Mark the migration as rolled back
+    // Mark all failed migrations as rolled back
     await prisma.$executeRaw`
       UPDATE _prisma_migrations
       SET rolled_back_at = NOW(),
           finished_at = NOW()
-      WHERE migration_name = '20260527185953_add_notification_unique_constraint'
-        AND finished_at IS NULL
+      WHERE finished_at IS NULL AND rolled_back_at IS NULL
     `;
 
-    console.log('✅ Failed migration marked as rolled back');
+    console.log('✅ All failed migrations marked as rolled back');
     console.log('');
     console.log('Next steps:');
-    console.log('1. The 3 fix migrations will now be applied');
-    console.log('2. Duplicate notifications will be cleaned up');
-    console.log('3. Unique constraint will be added successfully');
+    console.log('1. Clean migrations will now be applied');
+    console.log('2. Database will reach consistent state');
+    console.log('3. Application will deploy successfully');
     
   } catch (error) {
     console.error('❌ Error connecting to database or executing query:', error);
