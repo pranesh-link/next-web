@@ -15,13 +15,17 @@ import { PrismaClient } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const prisma = new PrismaClient();
-
 async function main() {
   // Allow skipping backup via env var (for CI/CD if needed)
   if (process.env.SKIP_BACKUP === 'true') {
     console.log('⏭️  SKIP_BACKUP=true - Skipping backup');
     return;
+  }
+
+  // Check for DATABASE_URL
+  if (!process.env.DATABASE_URL) {
+    console.error('❌ DATABASE_URL environment variable is not set');
+    process.exit(1);
   }
 
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -36,6 +40,15 @@ async function main() {
   console.log('🔄 Starting backup...');
   console.log(`📁 Backup location: ${backupFile}`);
   console.log('');
+
+  // Initialize PrismaClient with explicit datasource config
+  const prisma = new PrismaClient({
+    datasources: {
+      db: {
+        url: process.env.DATABASE_URL
+      }
+    }
+  });
 
   const backup: any = {
     timestamp: new Date().toISOString(),
@@ -107,6 +120,8 @@ async function main() {
   } catch (error) {
     console.error('❌ Backup failed:', error);
     throw error;
+  } finally {
+    await prisma.$disconnect();
   }
 }
 
@@ -114,7 +129,4 @@ main()
   .catch((e) => {
     console.error('❌ Error:', e);
     process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
   });
