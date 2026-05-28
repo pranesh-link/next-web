@@ -12,6 +12,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -41,8 +42,10 @@ async function main() {
   console.log(`📁 Backup location: ${backupFile}`);
   console.log('');
 
-  // Initialize PrismaClient with empty options (required in some environments)
-  const prisma = new PrismaClient({});
+  // Initialize PrismaClient with PostgreSQL adapter
+  const prisma = new PrismaClient({
+    adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+  });
 
   const backup: any = {
     timestamp: new Date().toISOString(),

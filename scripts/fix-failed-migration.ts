@@ -13,6 +13,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 
 async function main() {
   // Allow skipping via env var
@@ -33,8 +34,10 @@ async function main() {
   let prisma: PrismaClient | undefined;
   
   try {
-    // Initialize PrismaClient with empty options (required in some environments)
-    prisma = new PrismaClient({});
+    // Initialize PrismaClient with PostgreSQL adapter
+    prisma = new PrismaClient({
+      adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+    });
     
     // Check if the failed migration exists
     const failedMigration = await prisma.$queryRaw<Array<{ migration_name: string; finished_at: Date | null; rolled_back_at: Date | null }>>`
