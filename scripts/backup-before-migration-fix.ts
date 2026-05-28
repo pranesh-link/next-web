@@ -41,14 +41,8 @@ async function main() {
   console.log(`📁 Backup location: ${backupFile}`);
   console.log('');
 
-  // Initialize PrismaClient with explicit datasource config
-  const prisma = new PrismaClient({
-    datasources: {
-      db: {
-        url: process.env.DATABASE_URL
-      }
-    }
-  });
+  // Initialize PrismaClient (DATABASE_URL from env)
+  const prisma = new PrismaClient();
 
   const backup: any = {
     timestamp: new Date().toISOString(),

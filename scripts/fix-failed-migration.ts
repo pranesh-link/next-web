@@ -33,14 +33,8 @@ async function main() {
   let prisma: PrismaClient | undefined;
   
   try {
-    // Initialize PrismaClient with explicit datasource config for Vercel compatibility
-    prisma = new PrismaClient({
-      datasources: {
-        db: {
-          url: process.env.DATABASE_URL
-        }
-      }
-    });
+    // Initialize PrismaClient (DATABASE_URL from environment)
+    prisma = new PrismaClient();
     
     // Check if the failed migration exists
     const failedMigration = await prisma.$queryRaw<Array<{ migration_name: string; finished_at: Date | null; rolled_back_at: Date | null }>>`
