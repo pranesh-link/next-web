@@ -8,7 +8,7 @@
     "dev": "tsc --noEmit && next dev -p 3737 --hostname 0.0.0.0",
     "db:fix-migration": "npx tsx scripts/fix-failed-migration.ts",
     "db:backup": "npx tsx scripts/backup-before-migration-fix.ts",
-    "build": "node scripts/validate-env.mjs && npx tsx scripts/fix-failed-migration.ts && prisma migrate deploy && rm -rf .next && next build",
+    "build": "node scripts/validate-env.mjs && prisma migrate deploy && rm -rf .next && next build",
     "build:analyze": "ANALYZE=true npm run build",
     "start": "next start -p 3737",
     "lint": "next lint",
