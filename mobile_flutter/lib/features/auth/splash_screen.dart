@@ -22,6 +22,7 @@ class SplashScreen extends ConsumerStatefulWidget {
 class _SplashScreenState extends ConsumerState<SplashScreen> {
   PrefetchResult? _prefetchResult;
   bool _isNavigating = false;
+  Timer? _minWaitTimer;
 
   @override
   void initState() {
@@ -32,6 +33,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   @override
   void dispose() {
+    _minWaitTimer?.cancel();
     super.dispose();
   }
 
@@ -47,19 +49,22 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
     // Only prefetch if authenticated
     if (!auth.isAuthenticated) {
-      await Future.delayed(const Duration(seconds: 3));
-      _navigate();
+      final completer = Completer<void>();
+      _minWaitTimer = Timer(const Duration(seconds: 3), completer.complete);
+      await completer.future;
+      _minWaitTimer = null;
+      if (mounted) _navigate();
       return;
     }
 
     // Start prefetch + minimum 3s wait
     final prefetchFuture = _prefetchData();
-    await Future.wait([
-      prefetchFuture,
-      Future.delayed(const Duration(seconds: 3)),
-    ]);
+    final completer = Completer<void>();
+    _minWaitTimer = Timer(const Duration(seconds: 3), completer.complete);
+    await Future.wait([prefetchFuture, completer.future]);
+    _minWaitTimer = null;
 
-    _navigate();
+    if (mounted) _navigate();
   }
 
   Future<void> _prefetchData() async {

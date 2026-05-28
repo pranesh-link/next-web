@@ -81,6 +81,15 @@ async function checkRateLimit(
   max: number,
   window: number
 ): Promise<RateLimitResult> {
+  // Gracefully degrade when Redis is not configured
+  if (!redis) {
+    return {
+      exceeded: false,
+      remaining: max,
+      limit: max,
+      reset: Math.floor(Date.now() / 1000) + window,
+    };
+  }
   try {
     // Increment the counter
     const count = await redis.incr(key);
