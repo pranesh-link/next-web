@@ -128,15 +128,23 @@ async function checkRateLimit(
  * @param config - Rate limiting configuration.
  * @return A wrapped handler function with rate limiting applied.
  */
+/**
+ * Route handler type that supports both plain handlers and context-aware handlers
+ * (e.g. dynamic [id] routes that receive params via context).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type RouteHandler = (req: NextRequest, context?: any) => Promise<NextResponse>;
+
 export function withRateLimit(
-  handler: (req: NextRequest) => Promise<NextResponse>,
+  handler: RouteHandler,
   config: RateLimitConfig
-): (req: NextRequest) => Promise<NextResponse> {
-  return async (req: NextRequest): Promise<NextResponse> => {
+): RouteHandler {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return async (req: NextRequest, context?: any): Promise<NextResponse> => {
     // Check if rate limiting is disabled globally
     const enableRateLimit = process.env.ENABLE_RATE_LIMIT !== 'false';
     if (!enableRateLimit) {
-      return handler(req);
+      return handler(req, context);
     }
 
     // Apply rate limit multiplier
@@ -173,7 +181,7 @@ export function withRateLimit(
 
     // If no checks are configured, allow the request
     if (checks.length === 0) {
-      return handler(req);
+      return handler(req, context);
     }
 
     // Wait for all rate limit checks
@@ -208,7 +216,7 @@ export function withRateLimit(
     }
 
     // Add rate limit headers to the response
-    const response = await handler(req);
+    const response = await handler(req, context);
     response.headers.set('X-RateLimit-Limit', limitingResult.limit.toString());
     response.headers.set('X-RateLimit-Remaining', limitingResult.remaining.toString());
     response.headers.set('X-RateLimit-Reset', limitingResult.reset.toString());

@@ -37,10 +37,17 @@ export interface CacheConfig {
  * );
  * ```
  */
+/**
+ * Route handler type that supports both plain handlers and context-aware handlers
+ * (e.g. dynamic [id] routes that receive params via context).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type RouteHandler = (req: NextRequest, context?: any) => Promise<NextResponse>;
+
 export function withCache(
-  handler: (req: NextRequest) => Promise<NextResponse>,
+  handler: RouteHandler,
   config: CacheConfig
-): (req: NextRequest) => Promise<NextResponse> {
+): RouteHandler {
   const {
     ttl,
     keyPrefix = 'api-cache',
@@ -48,7 +55,8 @@ export function withCache(
     varyByQuery = true,
   } = config;
 
-  return async (req: NextRequest): Promise<NextResponse> => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return async (req: NextRequest, context?: any): Promise<NextResponse> => {
     const cacheEnabled = process.env.ENABLE_API_CACHE !== 'false';
     const debugEnabled = process.env.CACHE_DEBUG === 'true';
 
@@ -57,7 +65,7 @@ export function withCache(
       if (debugEnabled) {
         console.log('[Cache] Disabled globally via ENABLE_API_CACHE=false');
       }
-      const response = await handler(req);
+      const response = await handler(req, context);
       response.headers.set('X-Cache', 'DISABLED');
       return response;
     }
@@ -67,7 +75,7 @@ export function withCache(
       if (debugEnabled) {
         console.log(`[Cache] Skipping cache for non-GET method: ${req.method}`);
       }
-      return handler(req);
+      return handler(req, context);
     }
 
     try {
@@ -117,7 +125,7 @@ export function withCache(
         console.log(`[Cache] MISS: ${cacheKey}`);
       }
 
-      const response = await handler(req);
+      const response = await handler(req, context);
 
       // Only cache successful responses (2xx status codes)
       if (response.ok && response.status >= 200 && response.status < 300) {
@@ -148,7 +156,7 @@ export function withCache(
       if (debugEnabled) {
         console.error('[Cache] Unexpected error in cache middleware, bypassing cache:', error);
       }
-      return handler(req);
+      return handler(req, context);
     }
   };
 }
