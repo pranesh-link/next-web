@@ -4,12 +4,15 @@ import prisma from "@/_lib/prisma";
 import { budgetSchema } from "@/_lib/validations/finance";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
+import { withCache } from "@/_lib/middleware/cache";
+import { withRateLimit } from "@/_lib/middleware/rate-limit";
+import { CacheInvalidation } from "@/_lib/cache-invalidation";
 
 export async function OPTIONS() {
   return handleOptions();
 }
 
-export async function GET(request: NextRequest) {
+async function getHandler(request: NextRequest) {
   try {
     const userId = await getAuthUserId();
     console.log('[budgets/GET] userId:', userId);
@@ -78,7 +81,12 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: Request) {
+export const GET = withRateLimit(
+  withCache(getHandler, { ttl: 600, keyPrefix: 'finance:budgets' }),
+  { max: 100, window: 60 }
+);
+
+async function postHandler(request: Request) {
   try {
     const userId = await getAuthUserId();
     if (!userId) {
@@ -111,6 +119,8 @@ export async function POST(request: Request) {
       },
     });
 
+    await CacheInvalidation.onBudgetChange(userId);
+
     return NextResponse.json(
       { success: true, data: budget },
       { status: 201, headers: corsHeaders() },
@@ -134,6 +144,8 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export const POST = withRateLimit(postHandler, { max: 30, window: 60 });
 
 function currentMonth(): string {
   const now = new Date();

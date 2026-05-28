@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
 import prisma from "@/_lib/prisma";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
+import { withCache } from "@/_lib/middleware/cache";
+import { withRateLimit } from "@/_lib/middleware/rate-limit";
 
 export async function OPTIONS() {
   return handleOptions();
 }
 
-export async function GET(_request: NextRequest) {
+async function getHandler(_request: NextRequest) {
   try {
     const userId = await getAuthUserId();
     if (!userId) {
@@ -47,3 +49,8 @@ export async function GET(_request: NextRequest) {
     );
   }
 }
+
+export const GET = withRateLimit(
+  withCache(getHandler, { ttl: 60, keyPrefix: 'finance:notifications' }),
+  { max: 100, window: 60 }
+);
