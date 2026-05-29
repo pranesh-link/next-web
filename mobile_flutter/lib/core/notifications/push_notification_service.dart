@@ -99,6 +99,10 @@ class PushNotificationService {
   final ApiClient _apiClient;
   final FlutterLocalNotificationsPlugin _localNotifications;
 
+  /// Set to true when the chat screen is active to suppress foreground
+  /// CHAT_MESSAGE notifications.
+  static bool isChatActive = false;
+
   String? _currentToken;
 
   PushNotificationService(this._apiClient)
@@ -316,6 +320,9 @@ class PushNotificationService {
       if (kDebugMode) {
         debugPrint('[Push] Foreground message: ${message.notification?.title}');
       }
+      // Suppress local notification when user is already in chat
+      final type = message.data['type'] as String?;
+      if (type == 'CHAT_MESSAGE' && isChatActive) return;
       _showLocalNotification(message);
     });
   }
@@ -352,6 +359,23 @@ class PushNotificationService {
     final notification = message.notification;
     if (notification == null) return;
 
+    final type = message.data['type'] as String?;
+
+    // For chat messages on Android, add quick reply action
+    List<AndroidNotificationAction>? actions;
+    if (type == 'CHAT_MESSAGE' && Platform.isAndroid) {
+      actions = [
+        const AndroidNotificationAction(
+          'reply_action',
+          'Reply',
+          inputs: [
+            AndroidNotificationActionInput(label: 'Type a reply...'),
+          ],
+          showsUserInterface: false,
+        ),
+      ];
+    }
+
     _localNotifications.show(
       message.hashCode,
       notification.title,
@@ -363,6 +387,7 @@ class PushNotificationService {
           channelDescription: NotificationChannel.description,
           importance: Importance.high,
           priority: Priority.high,
+          actions: actions,
         ),
         iOS: const DarwinNotificationDetails(
           presentAlert: true,
@@ -375,6 +400,14 @@ class PushNotificationService {
   }
 
   void _onNotificationTap(NotificationResponse response) {
+    // Handle quick reply from notification
+    if (response.actionId == 'reply_action' && response.input != null) {
+      final replyText = response.input!.trim();
+      if (replyText.isNotEmpty) {
+        _onQuickReplyCallback?.call(replyText);
+      }
+      return;
+    }
     // Handled by the router via the navigation callback
     _tapPayload = response.payload;
     _onTapCallback?.call(response.payload ?? '');
@@ -396,5 +429,12 @@ class PushNotificationService {
       callback(_tapPayload!);
       _tapPayload = null;
     }
+  }
+
+  void Function(String text)? _onQuickReplyCallback;
+
+  /// Register a callback for quick reply from notifications.
+  void setOnQuickReplyCallback(void Function(String text) callback) {
+    _onQuickReplyCallback = callback;
   }
 }

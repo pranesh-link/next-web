@@ -5,6 +5,7 @@ abstract final class NotificationRouter {
   /// Returns the route path for a given notification type.
   static String routeForType(String type) {
     return switch (type) {
+      'CHAT_MESSAGE' => '/chat',
       'COUPLE_INVITE' => '/notifications',
       'BUDGET_ALERT' || 'PUSH_BUDGET_ALERT' || 'BUDGET_EXCEEDED' => '/finance/budgets',
       'SIP_REMINDER' || 'PUSH_SIP_REMINDER' || 'INVESTMENT_SIP_REMINDER' => '/finance/investments',

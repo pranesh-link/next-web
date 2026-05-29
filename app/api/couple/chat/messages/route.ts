@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
 import prisma from "@/_lib/prisma";
 import { MessageType } from "@prisma/client";
+import { sendChatPushNotification } from "@/_services/chat/push-service";
 
 const sendMessageSchema = z.object({
   content: z.string().min(1).max(20_000),
@@ -12,12 +13,13 @@ const sendMessageSchema = z.object({
 });
 
 /**
- * GET — Return the last 50 messages for the current user's couple.
+ * GET — Return messages for the current user's couple with cursor-based pagination.
  *
  * @returns JSON `{ success, data: CoupleMessage[] }`.
  * @remarks GET · auth: NextAuth session or Bearer JWT.
+ * Query params: `?cursor=<messageId>&limit=50`
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const userId = await getAuthUserId();
     if (!userId) {
@@ -29,10 +31,17 @@ export async function GET() {
       return NextResponse.json({ success: true, data: [] });
     }
 
+    const { searchParams } = new URL(request.url);
+    const cursor = searchParams.get("cursor");
+    const limit = Math.min(Number(searchParams.get("limit")) || 50, 100);
+
     const messages = await prisma.coupleMessage.findMany({
       where: { coupleId: member.coupleId },
       orderBy: { createdAt: "desc" },
-      take: 50,
+      take: limit,
+      ...(cursor
+        ? { skip: 1, cursor: { id: cursor } }
+        : {}),
     });
 
     return NextResponse.json({ success: true, data: messages });
@@ -77,6 +86,9 @@ export async function POST(request: Request) {
         readBy: [userId],
       },
     });
+
+    // Fire-and-forget push notification to partner
+    sendChatPushNotification(userId, member.coupleId).catch(() => {});
 
     return NextResponse.json({ success: true, data: message }, { status: 201 });
   } catch (error) {

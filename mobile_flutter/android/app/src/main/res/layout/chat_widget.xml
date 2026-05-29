@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/white"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_centerVertical="true">
+
+        <!-- Partner name -->
+        <TextView
+            android:id="@+id/tv_partner_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Partner"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="#1A1A1A"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <!-- Last message -->
+        <TextView
+            android:id="@+id/tv_last_message"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="No messages yet"
+            android:textSize="14sp"
+            android:textColor="#666666"
+            android:maxLines="2"
+            android:ellipsize="end" />
+
+        <!-- Time -->
+        <TextView
+            android:id="@+id/tv_message_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text=""
+            android:textSize="12sp"
+            android:textColor="#999999"
+            android:maxLines="1" />
+
+    </LinearLayout>
+
+    <!-- LuvVerse branding -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentEnd="true"
+        android:text="💕 LuvVerse"
+        android:textSize="10sp"
+        android:textColor="#CC99CC" />
+
+</RelativeLayout>
