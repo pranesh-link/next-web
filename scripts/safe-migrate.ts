@@ -84,6 +84,31 @@ function resolveAndRetryMigrations(failedMigrationName: string): MigrationResult
 }
 
 /**
+ * After migrate deploy, verify critical tables exist and force-push schema if
+ * any are missing. This handles the case where migration history is recorded
+ * but actual tables were dropped or never created (e.g. partial apply + rollback).
+ */
+function ensureSchemaSync(): void {
+  console.log('[INFO] Verifying schema integrity...');
+  try {
+    // Use prisma db push (no data-loss flag) to create any missing tables.
+    // This is a no-op when schema is already in sync, and will fail safely
+    // (non-zero exit) if it would need to DROP anything (which we never want).
+    const pushOutput = execSync('npx prisma db push', {
+      encoding: 'utf-8',
+      stdio: 'pipe',
+    });
+    console.log('[INFO] Schema sync output:', pushOutput.trim().split('\n').pop());
+  } catch (pushError: any) {
+    const errText = pushError.stdout?.toString() || pushError.stderr?.toString() || pushError.message;
+    // If db push fails because it would cause data loss (e.g. drop columns), log
+    // a warning but do NOT abort — migrate deploy already ran successfully.
+    // Table creation failures are unexpected and logged for investigation.
+    console.warn('[WARN] prisma db push during schema sync:', errText.slice(0, 300));
+  }
+}
+
+/**
  * Run Prisma migrations
  */
 async function runMigrations(): Promise<MigrationResult> {
@@ -256,7 +281,11 @@ async function main() {
   console.log('');
 
   if (migrationResult.success) {
-    // Step 5a: Cleanup on success
+    // Step 5a: Ensure schema is fully in sync (creates any missing tables)
+    ensureSchemaSync();
+    console.log('');
+
+    // Step 5b: Cleanup on success
     console.log('[STEP 5/5] Cleaning up...');
 
     if (process.env.KEEP_BACKUP_ON_SUCCESS === 'true') {
