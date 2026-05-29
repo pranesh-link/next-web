@@ -197,6 +197,15 @@ class ApiClient {
     }
   }
 
+  Future<T> patch<T>(String path, {dynamic data, T Function(dynamic)? fromJson}) async {
+    try {
+      final response = await _dio.patch(path, data: data);
+      return fromJson != null ? fromJson(response.data) : response.data as T;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   ApiException _handleError(DioException e) {
     if (e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.receiveTimeout) {
       return NetworkException('Connection timed out');

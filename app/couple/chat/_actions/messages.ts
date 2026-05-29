@@ -4,6 +4,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import prisma from "@/_lib/prisma";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { MessageType } from "@prisma/client";
+import { sendChatPushNotification } from "@/_services/chat/push-service";
 
 /**
  * Get the coupleId for a given user via the CoupleMember table.
@@ -18,12 +19,14 @@ async function getMemberCoupleId(userId: string): Promise<string | null> {
 
 /**
  * Fetch recent messages for the current user's couple, ordered newest first.
+ * Supports cursor-based pagination.
  *
- * @param limit - Maximum number of messages to return (default 50).
+ * @param limit - Maximum number of messages to return (default 50, max 100).
+ * @param cursor - Message ID to paginate from (returns messages older than this).
  * @returns Result with message array (newest first), or an error.
  * @remarks Auth: requires session.
  */
-export async function getMessages(limit = 50) {
+export async function getMessages(limit = 50, cursor?: string) {
   noStore();
   try {
     const user = await requireAuthForAction();
@@ -32,10 +35,13 @@ export async function getMessages(limit = 50) {
     const coupleId = await getMemberCoupleId(user.id);
     if (!coupleId) return { success: false as const, error: "No couple found" };
 
+    const take = Math.min(limit, 100);
+
     const messages = await prisma.coupleMessage.findMany({
       where: { coupleId },
       orderBy: { createdAt: "desc" },
-      take: limit,
+      take,
+      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
     });
 
     return { success: true as const, data: messages };
@@ -87,6 +93,9 @@ export async function sendMessage(
         readBy: [user.id],
       },
     });
+
+    // Fire-and-forget push notification to partner
+    sendChatPushNotification(user.id, coupleId).catch(() => {});
 
     return { success: true as const, data: message };
   } catch (error) {

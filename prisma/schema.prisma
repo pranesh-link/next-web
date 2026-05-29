@@ -639,6 +639,8 @@ enum MessageType {
   LIST
   REMINDER
   AI_RESPONSE
+  IMAGE
+  VOICE
 }
 
 model CoupleMessage {

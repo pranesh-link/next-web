@@ -8,6 +8,7 @@ import 'package:luvverse/core/prefetch/background_prefetch_service.dart';
 import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
+import 'package:luvverse/features/chat/providers/chat_providers.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';
 import 'package:luvverse/shared/widgets/app_card.dart';
 
@@ -33,6 +34,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final user = ref.watch(authProvider).user;
     final firstName = user?.name.split(' ').first;
     final balance = ref.watch(totalBalanceProvider);
+    final unreadCount = ref.watch(unreadCountProvider);
 
     return Scaffold(
       backgroundColor: context.colors.bg,
@@ -78,7 +80,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     _ModuleCard(icon: Icons.account_balance_wallet, title: 'Finance', subtitle: 'Track money together', color: context.colors.accent, onTap: () => context.go('/finance')),
                     _ModuleCard(icon: Icons.flight, title: 'Travel', subtitle: 'Plan trips', color: const Color(0xFF8B5CF6), onTap: () => _snackbar(context, 'Coming soon')),
                     _ModuleCard(icon: Icons.favorite, title: 'Lifestyle', subtitle: 'Health & wellness', color: const Color(0xFFEC4899), onTap: () => context.go('/lifestyle')),
-                    _ModuleCard(icon: Icons.chat_bubble, title: 'Chat', subtitle: 'Stay connected', color: context.colors.success, onTap: () => _snackbar(context, 'Coming soon')),
+                    _ModuleCard(icon: Icons.chat_bubble, title: 'Chat', subtitle: 'Stay connected', color: context.colors.success, badge: unreadCount, onTap: () => context.go('/chat')),
                   ],
                 ),
               ),
@@ -123,8 +125,9 @@ class _ModuleCard extends StatelessWidget {
   final String subtitle;
   final Color color;
   final VoidCallback onTap;
+  final int badge;
 
-  const _ModuleCard({required this.icon, required this.title, required this.subtitle, required this.color, required this.onTap});
+  const _ModuleCard({required this.icon, required this.title, required this.subtitle, required this.color, required this.onTap, this.badge = 0});
 
   @override
   Widget build(BuildContext context) {
@@ -135,11 +138,35 @@ class _ModuleCard extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
-            child: Icon(icon, color: color, size: 20),
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              if (badge > 0)
+                Positioned(
+                  top: -4,
+                  right: -6,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                    child: Center(
+                      child: Text(
+                        badge > 99 ? '99+' : '$badge',
+                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(title, style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),

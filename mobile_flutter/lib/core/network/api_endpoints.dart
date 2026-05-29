@@ -17,4 +17,13 @@ abstract final class ApiEndpoints {
   static const syncStatus = '/api/v1/finance/sync-status';
   static const devices = '/api/v1/devices';
   static const notificationsTest = '/api/v1/notifications/test';
+
+  // Chat
+  static const chatMessages = '/api/couple/chat/messages';
+  static const chatTyping = '/api/couple/chat/typing';
+  static const chatStream = '/api/couple/chat/stream';
+  static const userPublicKey = '/api/v1/user/public-key';
+  static const partnerPublicKey = '/api/v1/couple/partner-public-key';
+  static const chatEncryptBatch = '/api/v1/couple/chat/encrypt-batch';
+  static const coupleMembers = '/api/v1/couple/members';
 }

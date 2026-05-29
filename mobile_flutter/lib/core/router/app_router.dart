@@ -22,6 +22,7 @@ import 'package:luvverse/features/finance/scanning/scan_schedule_screen.dart';
 import 'package:luvverse/features/finance/finance_shell.dart';
 import 'package:luvverse/features/couple/couple_management_screen.dart';
 import 'package:luvverse/features/lifestyle/lifestyle_screen.dart';
+import 'package:luvverse/features/chat/chat_screen.dart';
 import 'package:luvverse/features/settings/settings_screen.dart';
 import 'package:luvverse/features/couple/invite_screen.dart';
 import 'package:luvverse/features/onboarding/onboarding_screen.dart';
@@ -160,6 +161,12 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/lifestyle',
             pageBuilder: (context, state) => const NoTransitionPage(
               child: LifestyleScreen(),
+            ),
+          ),
+          GoRoute(
+            path: '/chat',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: ChatScreen(),
             ),
           ),
           GoRoute(

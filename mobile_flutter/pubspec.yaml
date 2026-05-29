@@ -73,6 +73,23 @@ dependencies:
   # Icons
   cupertino_icons: ^1.0.8
 
+  # Chat & Crypto
+  cryptography: ^2.7.0
+
+  # Media
+  record: ^5.1.2
+  audioplayers: ^6.1.0
+  any_link_preview: ^3.0.2
+
+  # Firebase Storage (for images/voice uploads)
+  firebase_storage: ^12.4.0
+
+  # Home Widget
+  home_widget: ^0.7.0
+
+  # App Badge
+  flutter_app_badger: ^1.5.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -89,6 +106,7 @@ flutter:
 
   assets:
     - assets/fonts/
+    - assets/sounds/
 
   fonts:
     - family: Inter
