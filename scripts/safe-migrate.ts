@@ -126,6 +126,52 @@ async function resolveP3009(failedMigrationName: string): Promise<MigrationResul
 }
 
 /**
+ * Fallback resolver: queries _prisma_migrations for any rows with a NULL
+ * finished_at (indicating a failed/in-progress migration), deletes them,
+ * and retries deploy.
+ *
+ * @returns MigrationResult if failed rows were found and retry succeeded/failed, or null if no rows.
+ */
+async function resolveAnyFailedMigrations(): Promise<MigrationResult | null> {
+  const client = new Client({ connectionString: process.env.DATABASE_URL });
+  try {
+    await client.connect();
+    const { rows } = await client.query(
+      `SELECT migration_name FROM _prisma_migrations WHERE finished_at IS NULL OR rolled_back_at IS NOT NULL`,
+    );
+    if (rows.length === 0) return null;
+
+    const names = rows.map((r: any) => r.migration_name);
+    console.warn(`[WARN] Found ${rows.length} failed/incomplete migration(s): ${names.join(', ')}`);
+
+    await client.query(
+      `DELETE FROM _prisma_migrations WHERE finished_at IS NULL OR rolled_back_at IS NOT NULL`,
+    );
+    console.log(`[INFO] Deleted ${rows.length} failed migration row(s)`);
+  } catch (err: any) {
+    console.error(`[ERROR] Could not query/clean _prisma_migrations: ${err.message}`);
+    return null;
+  } finally {
+    await client.end().catch(() => {});
+  }
+
+  // Retry deploy
+  try {
+    const retryOutput = execSync('npx prisma migrate deploy', {
+      encoding: 'utf-8',
+      stdio: 'pipe',
+    });
+    console.log(retryOutput);
+    console.log('[SUCCESS] Migrations applied successfully after cleaning failed rows');
+    return { success: true, output: retryOutput };
+  } catch (retryError: any) {
+    const retryOutput = retryError.stdout?.toString() || retryError.stderr?.toString() || retryError.message;
+    console.error(`[ERROR] Migration still failing after cleanup: ${retryOutput}`);
+    return { success: false, error: retryOutput };
+  }
+}
+
+/**
  * Directly create the `couples` table if it is missing from the DB.
  *
  * This handles the edge-case where `prisma migrate deploy` reports
@@ -233,6 +279,10 @@ async function runMigrations(): Promise<MigrationResult> {
       console.error('[ERROR] Database does not exist (P3005)');
     } else {
       console.error('[ERROR] Migration failed with unknown error');
+      console.error(errorOutput);
+      // Fallback: check for any failed migration rows blocking deploy
+      const resolved = await resolveAnyFailedMigrations();
+      if (resolved) return resolved;
     }
 
     console.error(errorOutput);
