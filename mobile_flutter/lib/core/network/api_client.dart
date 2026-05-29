@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:luvverse/core/auth/google_sign_in_instance.dart';
 import 'package:luvverse/core/auth/secure_storage.dart';
+import 'package:luvverse/core/network/api_endpoints.dart';
 import 'package:luvverse/core/network/api_exceptions.dart';
 
 final apiClientProvider = Provider<ApiClient>((ref) {
