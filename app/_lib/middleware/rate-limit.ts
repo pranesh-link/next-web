@@ -148,6 +148,13 @@ export function withRateLimit(
       return handler(req, context);
     }
 
+    // Skip rate limiting entirely for mobile Bearer token requests —
+    // avoids Redis calls that can timeout due to DNS issues on cold starts.
+    const authHeader = req.headers.get('authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      return handler(req, context);
+    }
+
     // Apply rate limit multiplier
     const multiplier = parseFloat(process.env.RATE_LIMIT_MULTIPLIER || '1.0');
     const actualMax = Math.floor(config.max * multiplier);
