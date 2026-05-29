@@ -132,30 +132,7 @@ function hasPendingMigrations(): boolean {
       encoding: 'utf-8',
       stdio: 'pipe',
     });
-5] Pre-migration checks...');
-  if (!verifyPreMigrationChecks()) {
-    console.error('[FAILED] Pre-migration checks failed');
-    process.exit(2);
-  }
-  console.log('[SUCCESS] Pre-migration checks passed\n');
 
-  // Step 2: Check for pending migrations
-  console.log('[STEP 2/5] Checking for pending migrations...');
-  const needsMigration = hasPendingMigrations();
-  
-  if (!needsMigration) {
-    console.log('[INFO] No pending migrations found');
-    console.log('[SUCCESS] Database is already up to date');
-    console.log('\n========================================');
-    console.log('✅ Migration check complete (no changes needed)');
-    console.log('========================================\n');
-    process.exit(0);
-  }
-  
-  console.log('[INFO] Pending migrations detected\n');
-
-  // Step 3: Create backup
-  console.log('[STEP 3/5
     // Check for pending migrations indicators
     if (
       output.includes('migration(s) have not yet been applied') ||
@@ -182,18 +159,33 @@ async function main() {
   console.log('========================================\n');
 
   // Step 1: Pre-migration checks
-  console.log('[STEP 1/4] Pre-migration checks...');
+  console.log('[STEP 1/5] Pre-migration checks...');
   if (!verifyPreMigrationChecks()) {
     console.error('[FAILED] Pre-migration checks failed');
     process.exit(2);
-  }4: Run migrations
-  console.log('[STEP 4/5] Applying migrations...');
-  const migrationResult = await runMigrations();
-  console.log('');
+  }
+  console.log('[SUCCESS] Pre-migration checks passed\n');
 
-  if (migrationResult.success) {
-    // Step 5a: Cleanup on success
-    console.log('[STEP 5/5s) {
+  // Step 2: Check for pending migrations
+  console.log('[STEP 2/5] Checking for pending migrations...');
+  const needsMigration = hasPendingMigrations();
+
+  if (!needsMigration) {
+    console.log('[INFO] No pending migrations found');
+    console.log('[SUCCESS] Database is already up to date');
+    console.log('\n========================================');
+    console.log('✅ Migration check complete (no changes needed)');
+    console.log('========================================\n');
+    process.exit(0);
+  }
+
+  console.log('[INFO] Pending migrations detected\n');
+
+  // Step 3: Create backup
+  console.log('[STEP 3/5] Creating backup...');
+  const backupResult = await createBackup();
+
+  if (!backupResult.success) {
     console.error(`[ERROR] Backup failed: ${backupResult.error}`);
     process.exit(2);
   }
@@ -201,14 +193,14 @@ async function main() {
   const backupPath = backupResult.backupPath;
   console.log('');
 
-  // Step 3: Run migrations
-  console.log('[STEP 3/4] Applying migrations...');
+  // Step 4: Run migrations
+  console.log('[STEP 4/5] Applying migrations...');
   const migrationResult = await runMigrations();
   console.log('');
 
   if (migrationResult.success) {
-    // Step 4a: Cleanup on success
-    console.log('[STEP 4/4] Cleaning up...');
+    // Step 5a: Cleanup on success
+    console.log('[STEP 5/5] Cleaning up...');
 
     if (process.env.KEEP_BACKUP_ON_SUCCESS === 'true') {
       console.log('[INFO] KEEP_BACKUP_ON_SUCCESS=true, preserving backup');

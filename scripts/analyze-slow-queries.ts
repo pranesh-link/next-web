@@ -109,19 +109,15 @@ async function testFinanceQueries(prisma: PrismaClient): Promise<void> {
   console.log('📊 Test 3: BudgetPlan.findMany with ordering');
   await prisma.budgetPlan.findMany({
     where: { userId },
-    orderBy: { month: 'desc' },
+    orderBy: { monthAndYear: 'desc' },
     take: 12,
   });
 
-  // Test 4: Loans with pending payment schedules
-  console.log('📊 Test 4: Loan.findMany with nested include filter');
+  // Test 4: Loans ordered by creation
+  console.log('📊 Test 4: Loan.findMany with ordering');
   await prisma.loan.findMany({
     where: { userId },
-    include: {
-      paymentSchedules: {
-        where: { status: 'PENDING' },
-      },
-    },
+    orderBy: { createdAt: 'desc' },
   });
 
   // Test 5: Active notifications

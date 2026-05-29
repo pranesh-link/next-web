@@ -19,7 +19,6 @@
 
 import { execSync } from 'child_process';
 import * as fs from 'fs';
-import * as path from 'path';
 import { getLatestBackup } from './db-backup';
 
 interface RestoreOptions {
@@ -72,7 +71,7 @@ function checkPsqlAvailable(): boolean {
 export async function restoreBackup(
   options: RestoreOptions
 ): Promise<RestoreResult> {
-  const { backupPath, skipConfirmation } = options;
+  const { backupPath, skipConfirmation: _skipConfirmation } = options;
 
   const databaseUrl = process.env.DATABASE_URL;
 
