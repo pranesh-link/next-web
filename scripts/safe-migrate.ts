@@ -85,6 +85,47 @@ function resolveAndRetryMigrations(failedMigrationName: string): MigrationResult
 }
 
 /**
+ * Resolve a P3009 error by deleting the failed migration row and retrying deploy.
+ *
+ * P3009 occurs when a previous migration attempt failed and left a "failed" row
+ * in `_prisma_migrations`. Prisma refuses to continue until it's cleared.
+ *
+ * @param failedMigrationName - The migration name to remove from the history table.
+ * @returns MigrationResult after retry.
+ */
+async function resolveP3009(failedMigrationName: string): Promise<MigrationResult> {
+  const client = new Client({ connectionString: process.env.DATABASE_URL });
+  try {
+    await client.connect();
+    const result = await client.query(
+      `DELETE FROM _prisma_migrations WHERE migration_name = $1`,
+      [failedMigrationName],
+    );
+    console.log(`[INFO] Deleted ${result.rowCount} failed migration row(s) for: ${failedMigrationName}`);
+  } catch (err: any) {
+    console.error(`[ERROR] Could not delete failed migration row: ${err.message}`);
+    return { success: false, error: err.message, errorCode: 'P3009' };
+  } finally {
+    await client.end().catch(() => {});
+  }
+
+  // Retry deploy
+  try {
+    const retryOutput = execSync('npx prisma migrate deploy', {
+      encoding: 'utf-8',
+      stdio: 'pipe',
+    });
+    console.log(retryOutput);
+    console.log('[SUCCESS] Migrations applied successfully after P3009 resolve');
+    return { success: true, output: retryOutput };
+  } catch (retryError: any) {
+    const retryOutput = retryError.stdout?.toString() || retryError.stderr?.toString() || retryError.message;
+    console.error(`[ERROR] Migration failed after P3009 resolve: ${retryOutput}`);
+    return { success: false, error: retryOutput };
+  }
+}
+
+/**
  * Directly create the `couples` table if it is missing from the DB.
  *
  * This handles the edge-case where `prisma migrate deploy` reports
@@ -168,6 +209,14 @@ async function runMigrations(): Promise<MigrationResult> {
     if (errorOutput.includes('P3009')) {
       errorCode = 'P3009';
       console.error('[ERROR] Migration failed (P3009): Failed migrations detected');
+      // P3009: A previously failed migration is blocking deploy.
+      // Auto-fix by deleting the failed row from _prisma_migrations and retrying.
+      const failedMigration = extractFailedMigrationName(errorOutput);
+      if (failedMigration) {
+        console.warn(`[WARN] P3009 detected — removing failed migration record: ${failedMigration}`);
+        return await resolveP3009(failedMigration);
+      }
+      console.error('[ERROR] P3009 — could not extract migration name to resolve');
     } else if (errorOutput.includes('P3018')) {
       errorCode = 'P3018';
       // P3018: A migration failed to apply because the DDL already exists in the DB
