@@ -165,3 +165,85 @@ export async function getUnreadCount() {
     };
   }
 }
+
+/**
+ * Fetch unencrypted messages sent by the current user (for client-side encryption migration).
+ *
+ * @returns Result with array of { id, content } for messages where encrypted=false and senderId=currentUser.
+ * @remarks Auth: requires session. Only returns user's own messages.
+ */
+export async function getUnencryptedMessages() {
+  noStore();
+  try {
+    const user = await requireAuthForAction();
+    if (!user) return { success: false as const, error: "Not authenticated" };
+
+    const coupleId = await getMemberCoupleId(user.id);
+    if (!coupleId) return { success: false as const, error: "No couple found" };
+
+    const messages = await prisma.coupleMessage.findMany({
+      where: { coupleId, senderId: user.id, encrypted: false },
+      select: { id: true, content: true },
+      orderBy: { createdAt: "asc" },
+    });
+
+    return { success: true as const, data: messages };
+  } catch (error) {
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : "Failed to fetch unencrypted messages",
+    };
+  }
+}
+
+/**
+ * Batch-update messages with their encrypted content (client-side migration).
+ *
+ * @param batch - Array of { id, content (ciphertext), iv } objects. Max 100 per call.
+ * @returns Result with the count of updated messages, or an error.
+ * @remarks Auth: requires session. Only updates messages owned by the caller within their couple.
+ */
+export async function encryptExistingMessages(
+  batch: { id: string; content: string; iv: string }[],
+) {
+  if (!batch || batch.length === 0) {
+    return { success: false as const, error: "Empty batch" };
+  }
+  if (batch.length > 100) {
+    return { success: false as const, error: "Batch too large (max 100)" };
+  }
+
+  try {
+    const user = await requireAuthForAction();
+    if (!user) return { success: false as const, error: "Not authenticated" };
+
+    const coupleId = await getMemberCoupleId(user.id);
+    if (!coupleId) return { success: false as const, error: "No couple found" };
+
+    const ids = batch.map((m) => m.id);
+
+    // Verify ownership: all messages must belong to this user in this couple
+    const owned = await prisma.coupleMessage.findMany({
+      where: { id: { in: ids }, coupleId, senderId: user.id, encrypted: false },
+      select: { id: true },
+    });
+    const ownedIds = new Set(owned.map((m) => m.id));
+
+    let updated = 0;
+    for (const item of batch) {
+      if (!ownedIds.has(item.id)) continue;
+      await prisma.coupleMessage.update({
+        where: { id: item.id },
+        data: { content: item.content, iv: item.iv, encrypted: true },
+      });
+      updated++;
+    }
+
+    return { success: true as const, data: { updated } };
+  } catch (error) {
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : "Failed to encrypt messages",
+    };
+  }
+}
