@@ -8,7 +8,7 @@ const getCoupleUserIdsCached = unstable_cache(
       where: { userId },
       include: { couple: { include: { members: true } } },
     });
-    if (!membership) return [userId];
+    if (!membership || !membership.couple) return [userId];
     return membership.couple.members.map((m) => m.userId);
   },
   ["couple-user-ids"],

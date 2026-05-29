@@ -108,6 +108,20 @@ async function ensureCouplesTable(): Promise<void> {
       )
     `);
     console.log('[INFO] "couples" table verified/created');
+
+    // Recover orphaned couple rows: if couple_members references coupleIds that
+    // are missing from couples (e.g. after the couples table was dropped and
+    // recreated empty), re-insert the missing couple rows from the members data.
+    const recovered = await client.query(`
+      INSERT INTO "couples" ("id", "createdAt", "updatedAt")
+      SELECT DISTINCT "coupleId", NOW(), NOW()
+      FROM "couple_members"
+      WHERE "coupleId" NOT IN (SELECT "id" FROM "couples")
+      ON CONFLICT ("id") DO NOTHING
+    `);
+    if (recovered.rowCount && recovered.rowCount > 0) {
+      console.log(`[INFO] Recovered ${recovered.rowCount} missing couple row(s) from couple_members`);
+    }
   } catch (err: any) {
     console.warn('[WARN] Could not verify/create couples table:', err.message);
   } finally {
