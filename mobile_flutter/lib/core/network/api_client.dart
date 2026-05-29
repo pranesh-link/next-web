@@ -47,7 +47,10 @@ class ApiClient {
 
         _isRefreshing = true;
         try {
-          final newToken = await _refreshGoogleToken();
+          // Try server-side JWT refresh first (uses stored refresh token)
+          var newToken = await _refreshJwtToken();
+          // Fall back to Google silent sign-in if no refresh token stored
+          newToken ??= await _refreshGoogleToken();
           if (newToken != null) {
             await SecureStorage.saveToken(newToken);
             // Retry the original request
@@ -106,7 +109,34 @@ class ApiClient {
     }
   }
 
+  /// Refreshes the access token using the server-side JWT refresh endpoint.
+  /// Returns the new access token, or null if no refresh token is stored or
+  /// the server returns an error.
+  Future<String?> _refreshJwtToken() async {
+    try {
+      final refreshToken = await SecureStorage.getRefreshToken();
+      if (refreshToken == null) return null;
+
+      // Use a fresh Dio instance to avoid interceptor loops
+      final dio = Dio(BaseOptions(baseUrl: _baseUrl));
+      final response = await dio.post<Map<String, dynamic>>(
+        ApiEndpoints.refreshToken,
+        data: {'refreshToken': refreshToken},
+      );
+      final body = response.data;
+      final newAccessToken = body?['token'] as String?;
+      final newRefreshToken = body?['refreshToken'] as String?;
+      if (newRefreshToken != null) {
+        await SecureStorage.saveRefreshToken(newRefreshToken);
+      }
+      return newAccessToken;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Attempts silent Google re-auth to get a fresh access token.
+  /// Used as fallback when no refresh token is available (e.g. first install).
   Future<String?> _refreshGoogleToken() async {
     try {
       // On web, try signInSilently first

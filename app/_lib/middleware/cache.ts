@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cacheGet, cacheSet } from '../redis';
 import { auth } from '../auth';
+import jwt from 'jsonwebtoken';
 
 /**
  * Configuration options for the cache middleware.
@@ -88,7 +89,25 @@ export function withCache(
       if (varyByUser) {
         try {
           const session = await auth();
-          userId = session?.user?.id || 'anonymous';
+          if (session?.user?.id) {
+            userId = session.user.id;
+          } else {
+            // Mobile: extract userId from Bearer JWT when no session exists
+            const authHeader = req.headers.get('authorization');
+            if (authHeader?.startsWith('Bearer ')) {
+              const token = authHeader.slice(7);
+              try {
+                const JWT_SECRET = process.env.NEXTAUTH_SECRET || 'fallback-dev-secret';
+                const decoded = jwt.verify(token, JWT_SECRET) as { sub?: string; type?: string };
+                if (decoded.sub && decoded.type !== 'refresh') {
+                  userId = decoded.sub;
+                }
+              } catch {
+                // Token invalid or expired — fall through to 'anonymous'
+              }
+            }
+          }
+          if (!userId) userId = 'anonymous';
         } catch (error) {
           if (debugEnabled) {
             console.warn('[Cache] Failed to get session, using anonymous:', error);
