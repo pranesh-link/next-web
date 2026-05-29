@@ -7,7 +7,7 @@ import 'package:sqlite3/wasm.dart';
 
 /// Open drift database on web using WASM (IndexedDB-backed).
 /// Falls back to in-memory database if worker setup fails or times out.
-Future<CacheDatabase> openCacheDatabase() async {
+Future<CacheDatabase> openCacheDatabase({bool fallbackToMemory = false}) async {
   try {
     final result = await WasmDatabase.open(
       databaseName: 'luvverse_cache',
