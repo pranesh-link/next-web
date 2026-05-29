@@ -42,6 +42,7 @@ function AccountsPageContent() {
   const [coupleUsers, setCoupleUsers] = useState<CoupleUser[]>([]);
   const [currentUserId, setCurrentUserId] = useState("");
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showAddIncome, setShowAddIncome] = useState(false);
@@ -70,9 +71,13 @@ function AccountsPageContent() {
       setTotalBalance(pageDataRes.data.totalBalance);
       setCoupleUsers(pageDataRes.data.coupleUsers as CoupleUser[]);
       setCurrentUserId(pageDataRes.data.currentUserId || "");
+      setFetchError(null);
       if (!form.newOwnerId && pageDataRes.data.currentUserId) {
         form.setNewOwnerId(pageDataRes.data.currentUserId);
       }
+    } else {
+      console.error("[Accounts] fetch failed:", pageDataRes.error);
+      setFetchError(pageDataRes.error ?? "Failed to load accounts");
     }
     setHistoryItems([]);
     setLoading(false);
@@ -162,9 +167,15 @@ function AccountsPageContent() {
           onLoadMore={(c) => fetchHistory(c)}
         />
 
+        {fetchError && (
+          <NotificationBanner $type="error" $leaving={false}>
+            {fetchError}
+          </NotificationBanner>
+        )}
+
         {loading ? (
           <LoadingSkeleton type="card" count={3} />
-        ) : accounts.length === 0 ? (
+        ) : accounts.length === 0 && !fetchError ? (
           <EmptyState
             icon="🏦"
             title="No accounts yet"
