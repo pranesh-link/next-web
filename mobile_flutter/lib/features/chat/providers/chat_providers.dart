@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_app_badger/flutter_app_badger.dart';
+import 'package:app_badge_plus/app_badge_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:luvverse/core/network/api_client.dart';
 import 'package:luvverse/features/chat/cache/chat_cache.dart';
@@ -462,11 +462,7 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
 
   /// Update badge count based on unread messages.
   void updateBadgeCount(int count) {
-    if (count > 0) {
-      FlutterAppBadger.updateBadgeCount(count);
-    } else {
-      FlutterAppBadger.removeBadge();
-    }
+    AppBadgePlus.updateBadge(count);
   }
 }
 
