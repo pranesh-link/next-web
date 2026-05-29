@@ -4,8 +4,6 @@ import { getAuthUserId } from "@/api/v1/_lib/auth";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 import { CACHE_TAGS } from "@/_lib/cache";
 
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "").split(",");
-
 export async function OPTIONS() {
   return handleOptions();
 }
