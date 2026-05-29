@@ -185,12 +185,18 @@ async function main() {
   console.log('[STEP 3/5] Creating backup...');
   const backupResult = await createBackup();
 
+  let backupPath: string | undefined;
   if (!backupResult.success) {
-    console.error(`[ERROR] Backup failed: ${backupResult.error}`);
-    process.exit(2);
+    if (backupResult.error?.includes('pg_dump not found')) {
+      console.warn('[WARN] pg_dump not available — skipping backup (no rollback capability).');
+      console.warn('[WARN] Set SKIP_DB_BACKUP=true to silence this warning in environments without pg_dump.');
+    } else {
+      console.error(`[ERROR] Backup failed: ${backupResult.error}`);
+      process.exit(2);
+    }
+  } else {
+    backupPath = backupResult.backupPath;
   }
-
-  const backupPath = backupResult.backupPath;
   console.log('');
 
   // Step 4: Run migrations
