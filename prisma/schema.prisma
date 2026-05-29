@@ -27,6 +27,7 @@ model Account {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@unique([provider, providerAccountId])
   @@map("auth_accounts")
 }
@@ -61,6 +62,8 @@ model User {
   image          String?
   currency       String   @default("INR")
   monthlyIncome  Float?
+  /// Base64-encoded JWK ECDH public key for E2E message encryption.
+  publicKey      String?  @db.Text
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -194,6 +197,9 @@ model Transaction {
   @@index([userId])
   @@index([userId, date])
   @@index([userId, category])
+  @@index([userId, date(sort: Desc)], map: "transactions_userId_date_desc_idx")
+  @@index([accountId, date])
+  @@index([userId, category, date])
   @@map("transactions")
 }
 
@@ -437,6 +443,8 @@ model Couple {
   updatedAt DateTime       @updatedAt
   members   CoupleMember[]
   invites   CoupleInvite[]
+
+  @@map("couples")
 }
 
 model CoupleMember {
@@ -489,6 +497,7 @@ model BudgetPlan {
   @@index([userId])
   @@index([coupleId])
   @@index([lastUpdatedById])
+  @@index([userId, monthAndYear(sort: Desc)])
   @@map("budget_plans")
 }
 
@@ -511,6 +520,7 @@ model Notification {
   @@index([userId])
   @@index([featureId])
   @@index([userId, archived])
+  @@index([userId, archivedAt, createdAt(sort: Desc)])
   @@map("notifications")
 }
 
@@ -637,6 +647,10 @@ model CoupleMessage {
   senderId   String
   type       MessageType @default(TEXT)
   content    String      @db.Text
+  /// Base64-encoded AES-GCM IV — present only when `encrypted` is true.
+  iv         String?
+  /// True when `content` is AES-256-GCM ciphertext rather than plaintext.
+  encrypted  Boolean     @default(false)
   payload    Json?       // structured data for LIST/REMINDER types
   reminderAt DateTime?
   readBy     String[]    @default([])
@@ -757,6 +771,10 @@ model CoupleChatMsg {
   chatId    String
   role      String     // "user" | "assistant"
   content   String     @db.Text
+  /// Base64-encoded AES-GCM IV — present only when `encrypted` is true.
+  iv        String?
+  /// True when `content` is AES-256-GCM ciphertext rather than plaintext.
+  encrypted Boolean    @default(false)
   createdAt DateTime   @default(now())
 
   chat CoupleChat @relation(fields: [chatId], references: [id], onDelete: Cascade)

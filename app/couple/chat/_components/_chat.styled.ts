@@ -1,5 +1,5 @@
-import styled from "styled-components";
 import { EASING } from "@/couple/_constants/theme";
+import styled from "styled-components";
 
 // ─── Page layout ──────────────────────────────────────────────────────────────
 

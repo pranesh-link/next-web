@@ -19,6 +19,8 @@ import type {
 } from "@prisma/client";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 import { getUserIdsForCouple } from "@/_services/finance/couple-service";
+import { withCache } from "@/_lib/middleware/cache";
+import { withRateLimit } from "@/_lib/middleware/rate-limit";
 
 function currentMonth(): string {
   const now = new Date();
@@ -29,7 +31,7 @@ export async function OPTIONS() {
   return handleOptions();
 }
 
-export async function GET() {
+async function getHandler() {
   try {
     const userId = await getAuthUserId();
     if (!userId) {
@@ -228,3 +230,8 @@ export async function GET() {
     );
   }
 }
+
+export const GET = withRateLimit(
+  withCache(getHandler, { ttl: 900, keyPrefix: 'finance:insights' }),
+  { max: 100, window: 60 }
+);

@@ -5,6 +5,9 @@ import { AccountType } from "@prisma/client";
 import { accountSchema } from "@/_lib/validations/finance";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 import { getUserIdsForCouple } from "@/_services/finance/couple-service";
+import { withCache } from "@/_lib/middleware/cache";
+import { withRateLimit } from "@/_lib/middleware/rate-limit";
+import { CacheInvalidation } from "@/_lib/cache-invalidation";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -12,7 +15,7 @@ export async function OPTIONS() {
   return handleOptions();
 }
 
-export async function GET(_request: NextRequest, context: RouteContext) {
+async function getHandler(_request: NextRequest, context: RouteContext) {
   try {
     const userId = await getAuthUserId();
     if (!userId) {
@@ -51,7 +54,12 @@ export async function GET(_request: NextRequest, context: RouteContext) {
   }
 }
 
-export async function PUT(request: NextRequest, context: RouteContext) {
+export const GET = withRateLimit(
+  withCache(getHandler, { ttl: 300, keyPrefix: 'finance:accounts' }),
+  { max: 100, window: 60 }
+);
+
+async function putHandler(request: NextRequest, context: RouteContext) {
   try {
     const userId = await getAuthUserId();
     if (!userId) {
@@ -93,6 +101,8 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       },
     });
 
+    await CacheInvalidation.onAccountChange(userId);
+
     return NextResponse.json(
       { success: true, data: account },
       { headers: corsHeaders() },
@@ -114,7 +124,9 @@ export async function PUT(request: NextRequest, context: RouteContext) {
   }
 }
 
-export async function DELETE(_request: NextRequest, context: RouteContext) {
+export const PUT = withRateLimit(putHandler, { max: 30, window: 60 });
+
+async function deleteHandler(_request: NextRequest, context: RouteContext) {
   try {
     const userId = await getAuthUserId();
     if (!userId) {
@@ -154,6 +166,8 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
 
     await prisma.financialAccount.delete({ where: { id } });
 
+    await CacheInvalidation.onAccountChange(userId);
+
     return NextResponse.json(
       { success: true, data: { id } },
       { headers: corsHeaders() },
@@ -168,3 +182,5 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
     );
   }
 }
+
+export const DELETE = withRateLimit(deleteHandler, { max: 30, window: 60 });

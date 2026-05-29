@@ -6,6 +6,9 @@ import { getLoanInsights } from "@/_services/finance";
 import type { LoanData } from "@/_services/finance";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 import { getUserIdsForCouple } from "@/_services/finance/couple-service";
+import { withCache } from "@/_lib/middleware/cache";
+import { withRateLimit } from "@/_lib/middleware/rate-limit";
+import { CacheInvalidation } from "@/_lib/cache-invalidation";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -35,7 +38,7 @@ export async function OPTIONS() {
   return handleOptions();
 }
 
-export async function GET(_request: NextRequest, context: RouteContext) {
+async function getHandler(_request: NextRequest, context: RouteContext) {
   try {
     const userId = await getAuthUserId();
     if (!userId) {
@@ -77,7 +80,12 @@ export async function GET(_request: NextRequest, context: RouteContext) {
   }
 }
 
-export async function PUT(request: NextRequest, context: RouteContext) {
+export const GET = withRateLimit(
+  withCache(getHandler, { ttl: 900, keyPrefix: 'finance:loans' }),
+  { max: 100, window: 60 }
+);
+
+async function putHandler(request: NextRequest, context: RouteContext) {
   try {
     const userId = await getAuthUserId();
     if (!userId) {
@@ -127,6 +135,8 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       },
     });
 
+    await CacheInvalidation.onLoanChange(userId);
+
     return NextResponse.json(
       { success: true, data: loan },
       { headers: corsHeaders() },
@@ -148,6 +158,8 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     );
   }
 }
+
+export const PUT = withRateLimit(putHandler, { max: 30, window: 60 });
 
 export async function DELETE(_request: NextRequest, context: RouteContext) {
   try {

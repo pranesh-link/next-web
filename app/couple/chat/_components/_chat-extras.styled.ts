@@ -54,6 +54,33 @@ export const TypingIndicator = styled.div`
   }
 `;
 
+/** Small inline encryption status icon shown next to the message timestamp. */
+export const EncryptionIcon = styled.span`
+  font-size: 9px;
+  line-height: 1;
+  opacity: 0.65;
+  margin-left: 3px;
+  cursor: default;
+  user-select: none;
+`;
+
+/** Banner shown at the top of the chat area indicating E2E encryption status. */
+export const EncryptionBanner = styled.div<{ $active: boolean }>`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 5px 16px;
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  border-radius: 8px;
+  color: ${(p) => (p.$active ? "rgba(16, 185, 129, 0.9)" : "rgba(234, 179, 8, 0.85)")};
+  background: ${(p) => (p.$active ? "rgba(16, 185, 129, 0.07)" : "rgba(234, 179, 8, 0.07)")};
+  border: 1px solid ${(p) => (p.$active ? "rgba(16, 185, 129, 0.2)" : "rgba(234, 179, 8, 0.2)")};
+`;
+
 /** Floating button that scrolls the message list to the bottom. */
 export const ScrollToBottomButton = styled.button`
   position: absolute;

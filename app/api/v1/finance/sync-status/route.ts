@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
 import prisma from "@/_lib/prisma";
 import { getUserIdsForCouple } from "@/_services/finance/couple-service";
+import { withCache } from "@/_lib/middleware/cache";
+import { withRateLimit } from "@/_lib/middleware/rate-limit";
 
 /**
  * GET /api/v1/finance/sync-status
@@ -11,7 +13,7 @@ import { getUserIdsForCouple } from "@/_services/finance/couple-service";
  *
  * @remarks GET · auth: JWT via getAuthUserId
  */
-export async function GET() {
+async function getHandler() {
   const userId = await getAuthUserId();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -65,3 +67,8 @@ export async function GET() {
     budget_plans: toMs(budgetPlans?.updatedAt),
   });
 }
+
+export const GET = withRateLimit(
+  withCache(getHandler, { ttl: 120, keyPrefix: 'finance:sync-status' }),
+  { max: 100, window: 60 }
+);

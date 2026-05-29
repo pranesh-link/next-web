@@ -15,7 +15,7 @@ import {
   NoCoupleEmoji,
   InviteButton,
 } from "./_components/_chat.styled";
-import { DateDivider, ScrollToBottomButton, TypingIndicator } from "./_components/_chat-extras.styled";
+import { DateDivider, ScrollToBottomButton, TypingIndicator, EncryptionBanner } from "./_components/_chat-extras.styled";
 
 /**
  * Format a date as a human-readable day label.
@@ -58,7 +58,7 @@ export default function ChatPage() {
   const { data: session } = useSession();
   const userId = session?.user?.id ?? "";
 
-  const { messages, noCouple, loading, memberNames, partnerTyping, handleSend, handleRefresh, handleReact, signalTyping } =
+  const { messages, noCouple, loading, memberNames, partnerTyping, handleSend, handleRefresh, handleReact, signalTyping, encryptionReady } =
     useCoupleChat(userId);
 
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -108,6 +108,10 @@ export default function ChatPage() {
       <FinanceHeader title="Chat" onRefresh={handleRefresh} />
 
       <MessagesArea ref={messagesAreaRef}>
+        <EncryptionBanner $active={encryptionReady}>
+          {encryptionReady ? "🔒 End-to-end encrypted" : "⚠️ Encryption not yet active — partner hasn't connected"}
+        </EncryptionBanner>
+
         {!loading && messages.length === 0 && (
           <EmptyState>
             <span>💬</span>
@@ -124,6 +128,11 @@ export default function ChatPage() {
             <Fragment key={msg.id}>
               {showDate && (
                 <DateDivider>{formatDateLabel(msg.createdAt)}</DateDivider>
+              )}
+              {!showDate && prevMsg && prevMsg.encrypted !== msg.encrypted && (
+                <EncryptionBanner $active={msg.encrypted}>
+                  {msg.encrypted ? "🔒 Messages are now end-to-end encrypted" : "⚠️ Messages sent without encryption"}
+                </EncryptionBanner>
               )}
               <MessageBubble
                 message={msg}

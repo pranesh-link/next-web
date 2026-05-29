@@ -49,6 +49,8 @@ export async function GET() {
                 id: true,
                 senderId: true,
                 content: true,
+                iv: true,
+                encrypted: true,
                 type: true,
                 createdAt: true,
               },

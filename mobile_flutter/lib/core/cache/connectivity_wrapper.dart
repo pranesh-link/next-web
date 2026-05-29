@@ -6,6 +6,9 @@ import 'package:luvverse/core/auth/auth_provider.dart';
 import 'package:luvverse/core/auth/session_expired_provider.dart';
 import 'package:luvverse/core/cache/cache_providers.dart';
 import 'package:luvverse/core/cache/connectivity_service.dart';
+import 'package:luvverse/core/lifecycle/app_lifecycle_manager.dart';
+import 'package:luvverse/core/prefetch/wifi_cache_warmer.dart';
+import 'package:luvverse/core/router/app_router.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';
 import 'package:luvverse/features/finance/providers/extended_providers.dart';
 import 'package:luvverse/shared/widgets/offline_widgets.dart';
@@ -25,13 +28,16 @@ class _ConnectivityWrapperState extends ConsumerState<ConnectivityWrapper>
   bool _wasOffline = false;
   bool _showBackOnline = false;
   Timer? _backOnlineTimer;
+  bool _isHandlingResume = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Start sync polling
+    
+    // Initialize WiFi cache warmer and start sync polling
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      WiFiCacheWarmer(ref).init();
       ref.read(syncManagerProvider).startPolling();
     });
   }
@@ -44,30 +50,64 @@ class _ConnectivityWrapperState extends ConsumerState<ConnectivityWrapper>
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      // App came back to foreground — refresh data if online.
-      final isOnline = ref.read(isOnlineProvider);
-      if (isOnline) _refreshAllProviders();
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
+    if (state == AppLifecycleState.paused) {
+      // App going to background - record timestamp
+      await AppLifecycleManager.recordBackgroundTime();
+    } else if (state == AppLifecycleState.resumed) {
+      // App resumed - check if data is stale
+      await _handleResume();
     }
   }
 
-  void _refreshAllProviders() {
-    // Fire all refreshes concurrently — each preserves its own previous state
-    // so even if one fails, UI stays intact with stale data.
-    Future.wait([
-      ref.read(accountsProvider.notifier).refresh(),
-      ref.read(transactionsProvider.notifier).refresh(),
-      ref.read(budgetsProvider.notifier).refresh(),
-      ref.read(loansProvider.notifier).refresh(),
-      ref.read(goalsProvider.notifier).refresh(),
-      ref.read(depositsProvider.notifier).refresh(),
-      ref.read(investmentsProvider.notifier).refresh(),
-      ref.read(dashboardInsightsProvider.notifier).refresh(),
-      ref.read(notificationsProvider.notifier).refresh(),
-    ], eagerError: false);
-    // Also refresh the health score FutureProvider by invalidating it
+  Future<void> _handleResume() async {
+    if (_isHandlingResume) return;
+    _isHandlingResume = true;
+    
+    final shouldShowSplash = await AppLifecycleManager.shouldShowSplash();
+    final isOnline = ref.read(isOnlineProvider);
+    
+    if (shouldShowSplash && isOnline) {
+      debugPrint('[Resume] Data stale, showing splash screen');
+      await _navigateToSplash();
+    } else if (!shouldShowSplash && isOnline) {
+      debugPrint('[Resume] Data fresh, lightweight check');
+      await _lightweightCacheCheck();
+    }
+    
+    _isHandlingResume = false;
+  }
+
+  Future<void> _navigateToSplash() async {
+    _invalidateAllProviders();
+    final router = ref.read(routerProvider);
+    router.go('/splash');
+    await AppLifecycleManager.clearBackgroundTime();
+  }
+
+  void _invalidateAllProviders() {
+    ref.invalidate(accountsProvider);
+    ref.invalidate(transactionsProvider);
+    ref.invalidate(budgetsProvider);
+    ref.invalidate(loansProvider);
+    ref.invalidate(goalsProvider);
+    ref.invalidate(depositsProvider);
+    ref.invalidate(investmentsProvider);
+    ref.invalidate(dashboardInsightsProvider);
+    ref.invalidate(notificationsProvider);
     ref.invalidate(healthScoreProvider);
+  }
+
+  Future<void> _lightweightCacheCheck() async {
+    final cacheService = ref.read(cacheServiceProvider);
+    final userId = ref.read(dbUserIdProvider);
+    if (userId == null) return;
+    
+    final accountsStale = await cacheService.isStale('accounts:$userId');
+    final notifStale = await cacheService.isStale('notifications:$userId');
+    
+    if (accountsStale) ref.read(accountsProvider.notifier).refresh();
+    if (notifStale) ref.read(notificationsProvider.notifier).refresh();
   }
 
   @override
@@ -121,8 +161,8 @@ class _ConnectivityWrapperState extends ConsumerState<ConnectivityWrapper>
     final remaining = await queue.getPendingCount();
     ref.read(pendingSyncCountProvider.notifier).state = remaining;
 
-    // Refresh all active providers
-    _refreshAllProviders();
+    // Refresh all active providers on reconnect
+    await _lightweightCacheCheck();
 
     // Show sync result if there were failures
     if (result.hasFailures && mounted) {

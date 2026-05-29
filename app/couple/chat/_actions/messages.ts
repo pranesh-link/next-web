@@ -50,14 +50,25 @@ export async function getMessages(limit = 50) {
 /**
  * Send a new message to the current user's couple.
  *
- * @param content - The message text content.
+ * @param content - The message text content (plaintext or AES-GCM ciphertext).
  * @param type - The message type enum value (default "TEXT").
+ * @param iv - Base64-encoded AES-GCM IV; must be provided when content is encrypted.
+ * @param encrypted - Whether `content` is E2E-encrypted ciphertext.
  * @returns Result with the created CoupleMessage record, or an error.
  * @remarks Auth: requires session.
- * @example
- * const result = await sendMessage("Hello!", "TEXT");
  */
-export async function sendMessage(content: string, type = "TEXT") {
+export async function sendMessage(
+  content: string,
+  type = "TEXT",
+  iv?: string,
+  encrypted = false,
+) {
+  if (!content || content.trim().length === 0) {
+    return { success: false as const, error: "Message cannot be empty" };
+  }
+  if (content.length > 20_000) {
+    return { success: false as const, error: "Message too long" };
+  }
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
@@ -70,7 +81,9 @@ export async function sendMessage(content: string, type = "TEXT") {
         coupleId,
         senderId: user.id,
         type: type as MessageType,
-        content: content.trim(),
+        content: encrypted ? content : content.trim(),
+        iv: encrypted ? iv : undefined,
+        encrypted,
         readBy: [user.id],
       },
     });
@@ -88,6 +101,7 @@ export async function sendMessage(content: string, type = "TEXT") {
  * Mark all unread messages in a couple as read by the current user.
  *
  * @param coupleId - The couple's id to mark messages read within.
+ *   The caller must be a member of this couple; otherwise the request is rejected.
  * @returns Result with the count of updated records, or an error.
  * @remarks Auth: requires session.
  */
@@ -95,6 +109,12 @@ export async function markAllRead(coupleId: string) {
   try {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
+
+    // Security: verify the authenticated user is actually a member of this couple.
+    const ownCoupleId = await getMemberCoupleId(user.id);
+    if (!ownCoupleId || ownCoupleId !== coupleId) {
+      return { success: false as const, error: "Forbidden" };
+    }
 
     const result = await prisma.coupleMessage.updateMany({
       where: {

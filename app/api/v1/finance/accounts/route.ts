@@ -5,12 +5,15 @@ import { AccountType } from "@prisma/client";
 import { accountSchema } from "@/_lib/validations/finance";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
+import { withCache } from "@/_lib/middleware/cache";
+import { withRateLimit } from "@/_lib/middleware/rate-limit";
+import { CacheInvalidation } from "@/_lib/cache-invalidation";
 
 export async function OPTIONS() {
   return handleOptions();
 }
 
-export async function GET() {
+async function getHandler() {
   try {
     const userId = await getAuthUserId();
     if (!userId) {
@@ -43,7 +46,12 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+export const GET = withRateLimit(
+  withCache(getHandler, { ttl: 300, keyPrefix: 'finance:accounts' }),
+  { max: 100, window: 60 }
+);
+
+async function postHandler(request: Request) {
   try {
     const userId = await getAuthUserId();
     if (!userId) {
@@ -68,6 +76,8 @@ export async function POST(request: Request) {
       },
     });
 
+    await CacheInvalidation.onAccountChange(userId);
+
     return NextResponse.json(
       { success: true, data: account },
       { status: 201, headers: corsHeaders() },
@@ -88,3 +98,5 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export const POST = withRateLimit(postHandler, { max: 30, window: 60 });
