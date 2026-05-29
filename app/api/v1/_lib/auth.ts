@@ -37,72 +37,73 @@ export function signMobileRefreshToken(userId: string): string {
  *    Also creates the user record if it doesn't exist yet.
  */
 export async function getAuthUserId(): Promise<string | null> {
-  // Try NextAuth session first (web)
+  // Check for Bearer token first (mobile) — avoids expensive auth() DB call
+  const headersList = await headers();
+  const authorization = headersList.get("authorization");
+
+  if (authorization?.startsWith("Bearer ")) {
+    const token = authorization.slice(7);
+    console.log("[getAuthUserId] Bearer token prefix:", token.substring(0, 20) + "...");
+
+    // Try as our own JWT first
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET) as {
+        sub: string;
+        type?: string;
+      };
+      // Reject refresh tokens used as access tokens
+      if (decoded.type === "refresh") {
+        console.log("[getAuthUserId] refresh token rejected for API access");
+        return null;
+      }
+      if (decoded.sub) {
+        console.log("[getAuthUserId] via JWT:", decoded.sub);
+        return decoded.sub;
+      }
+    } catch {
+      console.log("[getAuthUserId] JWT verify failed, trying Google token");
+      // Not a valid JWT — try as a Google access_token
+    }
+
+    // Try as a Google access_token
+    try {
+      const googleRes = await fetch(
+        "https://www.googleapis.com/oauth2/v3/userinfo",
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (!googleRes.ok) return null;
+
+      const { sub: googleId, email, name, picture } = await googleRes.json();
+      if (!email) return null;
+
+      // Find or create user
+      let user = await prisma.user.findUnique({ where: { email } });
+      if (!user) {
+        user = await prisma.user.create({
+          data: { email, name: name || null, image: picture || null },
+        });
+        await prisma.account.create({
+          data: {
+            userId: user.id,
+            type: "oauth",
+            provider: "google",
+            providerAccountId: googleId,
+          },
+        });
+      }
+      return user.id;
+    } catch {
+      return null;
+    }
+  }
+
+  // No Bearer token — web request, use NextAuth session (cookie-based)
   const session = await auth();
   if (session?.user?.id) {
     console.log("[getAuthUserId] via NextAuth session:", session.user.id);
     return session.user.id;
   }
 
-  // Fall back to Bearer token (mobile)
-  const headersList = await headers();
-  const authorization = headersList.get("authorization");
-  if (!authorization?.startsWith("Bearer ")) {
-    console.log("[getAuthUserId] no session, no Bearer token");
-    return null;
-  }
-
-  const token = authorization.slice(7);
-  console.log("[getAuthUserId] Bearer token prefix:", token.substring(0, 20) + "...");
-
-  // Try as our own JWT first
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as {
-      sub: string;
-      type?: string;
-    };
-    // Reject refresh tokens used as access tokens
-    if (decoded.type === "refresh") {
-      console.log("[getAuthUserId] refresh token rejected for API access");
-      return null;
-    }
-    if (decoded.sub) {
-      console.log("[getAuthUserId] via JWT:", decoded.sub);
-      return decoded.sub;
-    }
-  } catch {
-    console.log("[getAuthUserId] JWT verify failed, trying Google token");
-    // Not a valid JWT — try as a Google access_token
-  }
-
-  // Try as a Google access_token
-  try {
-    const googleRes = await fetch(
-      "https://www.googleapis.com/oauth2/v3/userinfo",
-      { headers: { Authorization: `Bearer ${token}` } },
-    );
-    if (!googleRes.ok) return null;
-
-    const { sub: googleId, email, name, picture } = await googleRes.json();
-    if (!email) return null;
-
-    // Find or create user
-    let user = await prisma.user.findUnique({ where: { email } });
-    if (!user) {
-      user = await prisma.user.create({
-        data: { email, name: name || null, image: picture || null },
-      });
-      await prisma.account.create({
-        data: {
-          userId: user.id,
-          type: "oauth",
-          provider: "google",
-          providerAccountId: googleId,
-        },
-      });
-    }
-    return user.id;
-  } catch {
-    return null;
-  }
+  console.log("[getAuthUserId] no session, no Bearer token");
+  return null;
 }

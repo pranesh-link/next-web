@@ -88,27 +88,29 @@ export function withCache(
       let userId = '';
       if (varyByUser) {
         try {
-          const session = await auth();
-          if (session?.user?.id) {
-            userId = session.user.id;
-          } else {
-            // Mobile: extract userId from Bearer JWT when no session exists
-            const authHeader = req.headers.get('authorization');
-            if (authHeader?.startsWith('Bearer ')) {
-              const token = authHeader.slice(7);
-              try {
-                const JWT_SECRET = process.env.NEXTAUTH_SECRET || 'fallback-dev-secret';
-                const decoded = jwt.verify(token, JWT_SECRET) as { sub?: string; type?: string };
-                if (decoded.sub && decoded.type !== 'refresh') {
-                  userId = decoded.sub;
-                }
-              } catch {
-                // Token invalid or expired (e.g. Google access token)
-                // Skip caching entirely — let the handler run fresh each time
-                const response = await handler(req, context);
-                response.headers.set('X-Cache', 'BYPASS');
-                return response;
+          // Check for Bearer token first — mobile requests have no session
+          // cookies, so skip the expensive auth() call entirely.
+          const authHeader = req.headers.get('authorization');
+          if (authHeader?.startsWith('Bearer ')) {
+            const token = authHeader.slice(7);
+            try {
+              const JWT_SECRET = process.env.NEXTAUTH_SECRET || 'fallback-dev-secret';
+              const decoded = jwt.verify(token, JWT_SECRET) as { sub?: string; type?: string };
+              if (decoded.sub && decoded.type !== 'refresh') {
+                userId = decoded.sub;
               }
+            } catch {
+              // Token invalid or expired (e.g. Google access token)
+              // Skip caching entirely — let the handler run fresh each time
+              const response = await handler(req, context);
+              response.headers.set('X-Cache', 'BYPASS');
+              return response;
+            }
+          } else {
+            // Web request — use session from cookie
+            const session = await auth();
+            if (session?.user?.id) {
+              userId = session.user.id;
             }
           }
           if (!userId) userId = 'anonymous';
