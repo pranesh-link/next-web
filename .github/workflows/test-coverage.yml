@@ -1,19 +1,16 @@
-name: Test Coverage
+name: Test Coverage (Badges)
 
 on:
   push:
     tags:
-      - 'v*.*.*'  # Trigger on version tags (e.g., v2.33.0)
-  pull_request:
-    branches: [master, main]
-  workflow_dispatch:  # Allow manual trigger from GitHub Actions UI
+      - 'v*.*.*'
+  workflow_dispatch:
 
 jobs:
   test:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      pull-requests: write
     
     steps:
       - name: Checkout code
@@ -23,6 +20,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: yarn
           
       - name: Install dependencies
         run: yarn --frozen-lockfile --ignore-engines
@@ -95,33 +93,3 @@ jobs:
           file_pattern: README.md
           branch: master
           push_options: '--force'
-          
-      - name: Comment coverage on PR
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const coverage = {
-              statements: '${{ steps.coverage.outputs.statements }}',
-              branches: '${{ steps.coverage.outputs.branches }}',
-              functions: '${{ steps.coverage.outputs.functions }}',
-              lines: '${{ steps.coverage.outputs.lines }}'
-            };
-            
-            const comment = `## 📊 Test Coverage Report
-            
-            | Metric | Coverage |
-            |--------|----------|
-            | **Statements** | ${coverage.statements}% |
-            | **Branches** | ${coverage.branches}% |
-            | **Functions** | ${coverage.functions}% |
-            | **Lines** | ${coverage.lines}% |
-            
-            *Coverage report for profile-2.0 components*`;
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
