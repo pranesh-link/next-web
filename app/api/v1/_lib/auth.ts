@@ -69,7 +69,10 @@ export async function getAuthUserId(): Promise<string | null> {
     try {
       const googleRes = await fetch(
         "https://www.googleapis.com/oauth2/v3/userinfo",
-        { headers: { Authorization: `Bearer ${token}` } },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: AbortSignal.timeout(5000),
+        },
       );
       if (!googleRes.ok) return null;
 
