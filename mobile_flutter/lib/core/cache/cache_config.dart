@@ -3,7 +3,7 @@ class CacheConfig {
   CacheConfig._();
 
   /// Current schema version — bump to invalidate all cached data.
-  static const int schemaVersion = 1;
+  static const int schemaVersion = 2;
 
   /// Maximum cache storage size in bytes (50MB).
   static const int maxStorageBytes = 50 * 1024 * 1024;

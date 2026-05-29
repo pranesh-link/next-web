@@ -16,8 +16,12 @@ mixin CacheMixin {
   }) async {
     try {
       final data = await apiFetch();
-      // Write-through to cache
-      await cache.put(cacheKey, serialize(data));
+      // Write-through to cache — but never cache empty/default responses
+      // to prevent stale empty data from persisting after a server outage.
+      final serialized = serialize(data);
+      if (data != defaultValue && serialized != serialize(defaultValue as T)) {
+        await cache.put(cacheKey, serialized);
+      }
       return data;
     } on NetworkException {
       // Network error — fallback to cache
