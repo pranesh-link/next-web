@@ -55,11 +55,12 @@ export async function GET() {
 /**
  * POST /api/v1/user/public-key
  *
- * Stores (or overwrites) the caller's ECDH public key. The client calls this
- * once after generating a new key pair.
+ * Stores the caller's ECDH public key. If a key already exists, it is NOT
+ * overwritten (to prevent key-mismatch issues with previously encrypted
+ * messages). Returns `{ ok: true, existing: true }` if the key was already set.
  *
  * @param request - Body: `{ publicKey: string }` — base64-encoded JWK.
- * @returns JSON `{ ok: true }`.
+ * @returns JSON `{ ok: true, existing?: true, publicKey?: string }`.
  */
 export async function POST(request: Request) {
   try {
@@ -73,6 +74,20 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const { publicKey } = publicKeySchema.parse(body);
+
+    // Check if user already has a public key — don't overwrite
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { publicKey: true },
+    });
+
+    if (user?.publicKey && user.publicKey !== publicKey) {
+      // Key already exists and differs — return existing to client
+      return NextResponse.json(
+        { ok: true, existing: true, publicKey: user.publicKey },
+        { headers: corsHeaders() },
+      );
+    }
 
     await prisma.user.update({
       where: { id: userId },

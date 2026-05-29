@@ -11,7 +11,6 @@ import {
   encryptMessage,
   decryptMessage,
 } from "@/_lib/crypto";
-import { useChatMigration } from "./useChatMigration";
 
 interface StreamPayload {
   count: number;
@@ -61,14 +60,27 @@ async function decryptAll(
   msgs: CoupleMessage[],
   sharedKey: CryptoKey | null,
 ): Promise<CoupleMessage[]> {
-  return Promise.all(
+  const failedIds: string[] = [];
+  const result = await Promise.all(
     msgs.map(async (msg) => {
       if (!msg.encrypted || !msg.iv) return msg;
       if (!sharedKey) return { ...msg, content: "🔒 [encrypted message]" };
       const plaintext = await decryptMessage(msg.content, msg.iv, sharedKey);
+      if (plaintext === null) failedIds.push(msg.id);
       return { ...msg, content: plaintext ?? "🔒 [decryption failed]" };
     }),
   );
+
+  // Auto-delete undecryptable messages (key mismatch — plaintext is unrecoverable)
+  if (failedIds.length > 0) {
+    fetch("/api/v1/couple/chat/encrypt-batch", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: failedIds }),
+    }).catch(() => {});
+  }
+
+  return result.filter((msg) => !failedIds.includes(msg.id));
 }
 
 export interface UseCoupleChat {
@@ -109,12 +121,26 @@ export function useCoupleChat(userId: string): UseCoupleChat {
         const keyPair = await getOrGenerateKeyPair();
         const publicKeyB64 = await exportPublicKey(keyPair.publicKey);
 
-        // Upload public key (idempotent — safe to call on every session start)
-        await fetch("/api/v1/user/public-key", {
+        // Upload public key — server won't overwrite if one already exists
+        const uploadRes = await fetch("/api/v1/user/public-key", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ publicKey: publicKeyB64 }),
         });
+
+        if (uploadRes.ok) {
+          const uploadData = (await uploadRes.json()) as {
+            ok: boolean;
+            existing?: boolean;
+            publicKey?: string;
+          };
+          // If server has a different key, our local IndexedDB key pair is stale
+          // We can't recover the old private key, so encryption will use the
+          // server's stored key for identity but we log a warning
+          if (uploadData.existing && uploadData.publicKey !== publicKeyB64) {
+            console.warn("[crypto] Local key pair differs from server — key mismatch detected");
+          }
+        }
 
         // Fetch partner's public key and derive the shared AES-256-GCM key
         const partnerRes = await fetch("/api/v1/couple/partner-public-key");
@@ -134,11 +160,6 @@ export function useCoupleChat(userId: string): UseCoupleChat {
     }
     void initCrypto();
   }, []);
-
-  // ---------------------------------------------------------------------------
-  // Background migration — encrypts any remaining plaintext messages once ready
-  // ---------------------------------------------------------------------------
-  useChatMigration(sharedKeyRef.current, encryptionReady);
 
   // ---------------------------------------------------------------------------
   // Message loading

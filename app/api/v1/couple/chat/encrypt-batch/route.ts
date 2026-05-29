@@ -1,6 +1,7 @@
 /**
  * GET   /api/v1/couple/chat/encrypt-batch — fetch unencrypted messages sent by caller.
  * PATCH /api/v1/couple/chat/encrypt-batch — batch-update messages with encrypted content.
+ * DELETE /api/v1/couple/chat/encrypt-batch — remove undecryptable messages by IDs.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -115,6 +116,66 @@ export async function PATCH(request: NextRequest) {
     }
 
     return NextResponse.json({ data: { updated } }, { headers: corsHeaders() });
+  } catch {
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500, headers: corsHeaders() },
+    );
+  }
+}
+
+/**
+ * DELETE /api/v1/couple/chat/encrypt-batch
+ *
+ * Removes encrypted messages that can't be decrypted (key mismatch).
+ * Body: `{ ids: string[] }` — message IDs to delete. Must belong to the caller's couple.
+ * Max 200 per call.
+ *
+ * @returns JSON `{ data: { deleted: number } }`.
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    const userId = await getAuthUserId();
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401, headers: corsHeaders() },
+      );
+    }
+
+    const coupleId = await getCoupleIdForUser(userId);
+    if (!coupleId) {
+      return NextResponse.json(
+        { error: "No couple found" },
+        { status: 404, headers: corsHeaders() },
+      );
+    }
+
+    const body = await request.json();
+    const ids = body?.ids as string[] | undefined;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return NextResponse.json(
+        { error: "No IDs provided" },
+        { status: 400, headers: corsHeaders() },
+      );
+    }
+    if (ids.length > 200) {
+      return NextResponse.json(
+        { error: "Too many IDs (max 200)" },
+        { status: 400, headers: corsHeaders() },
+      );
+    }
+
+    // Only delete encrypted messages within the caller's couple
+    const result = await prisma.coupleMessage.deleteMany({
+      where: { id: { in: ids }, coupleId, encrypted: true },
+    });
+
+    return NextResponse.json(
+      { data: { deleted: result.count } },
+      { headers: corsHeaders() },
+    );
   } catch {
     return NextResponse.json(
       { error: "Internal server error" },
