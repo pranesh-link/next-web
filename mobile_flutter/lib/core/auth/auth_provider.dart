@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:luvverse/core/auth/auth_repository.dart';
 import 'package:luvverse/core/auth/secure_storage.dart';
@@ -61,21 +62,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   /// If no refresh token is stored, exchange the current token for a proper
   /// JWT + refresh token pair via the mobile auth endpoint.
+  /// Uses a fresh Dio instance to avoid interceptor loops.
   void _ensureRefreshToken() {
     SecureStorage.getRefreshToken().then((rt) async {
       if (rt != null) return; // Already has refresh token
       try {
-        final api = _ref.read(apiClientProvider);
         final token = await SecureStorage.getToken();
         if (token == null) return;
-        // Re-authenticate with the server using whatever token we have
-        // (could be a Google access token or an expired JWT — server handles both)
-        final response = await api.post<Map<String, dynamic>>(
+        // Use a fresh Dio instance to bypass auth interceptor — the stored
+        // token may be expired and we don't want a 401 retry loop.
+        final dio = Dio(BaseOptions(baseUrl: 'https://www.pranesh.link'));
+        final response = await dio.post<Map<String, dynamic>>(
           '/api/v1/auth/mobile',
           data: {'accessToken': token},
         );
-        final newToken = response['token'] as String?;
-        final newRefresh = response['refreshToken'] as String?;
+        final body = response.data;
+        final newToken = body?['token'] as String?;
+        final newRefresh = body?['refreshToken'] as String?;
         if (newToken != null) await SecureStorage.saveToken(newToken);
         if (newRefresh != null) await SecureStorage.saveRefreshToken(newRefresh);
       } catch (_) {

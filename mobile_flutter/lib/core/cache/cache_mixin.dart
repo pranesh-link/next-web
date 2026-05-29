@@ -18,9 +18,8 @@ mixin CacheMixin {
       final data = await apiFetch();
       // Write-through to cache — but never cache empty/default responses
       // to prevent stale empty data from persisting after a server outage.
-      final serialized = serialize(data);
-      if (data != defaultValue && serialized != serialize(defaultValue as T)) {
-        await cache.put(cacheKey, serialized);
+      if (!_isEmptyResponse(data)) {
+        await cache.put(cacheKey, serialize(data));
       }
       return data;
     } on NetworkException {
@@ -81,5 +80,16 @@ mixin CacheMixin {
   /// Helper to serialize a list of models to JSON.
   String serializeList(List<dynamic> items) {
     return jsonEncode(items.map((e) => e.toJson()).toList());
+  }
+
+  /// Checks if a response is "empty" — an empty list, or a map whose `data`
+  /// key is an empty list. Prevents caching outage-induced empty results.
+  bool _isEmptyResponse<T>(T data) {
+    if (data is List) return data.isEmpty;
+    if (data is Map) {
+      final d = data['data'];
+      return d is List && d.isEmpty;
+    }
+    return false;
   }
 }
