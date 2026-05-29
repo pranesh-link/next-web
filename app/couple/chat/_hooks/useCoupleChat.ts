@@ -11,6 +11,7 @@ import {
   encryptMessage,
   decryptMessage,
 } from "@/_lib/crypto";
+import { useChatMigration } from "./useChatMigration";
 
 interface StreamPayload {
   count: number;
@@ -133,6 +134,11 @@ export function useCoupleChat(userId: string): UseCoupleChat {
     }
     void initCrypto();
   }, []);
+
+  // ---------------------------------------------------------------------------
+  // Background migration — encrypts any remaining plaintext messages once ready
+  // ---------------------------------------------------------------------------
+  useChatMigration(sharedKeyRef.current, encryptionReady);
 
   // ---------------------------------------------------------------------------
   // Message loading
