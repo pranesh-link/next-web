@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import jwt from 'jsonwebtoken';
 import redis from '../redis';
 import { auth } from '../auth';
 
@@ -159,9 +160,30 @@ export function withRateLimit(
     // Check per-user rate limit if enabled and user is authenticated
     if (byUser) {
       try {
-        const session = await auth();
-        if (session?.user?.id) {
-          const userKey = `ratelimit:user:${keyPrefix}:${session.user.id}`;
+        // For Bearer token requests (mobile), extract userId from JWT directly
+        // to avoid the expensive auth() call that opens a DB connection.
+        const authHeader = req.headers.get('authorization');
+        let rateUserId: string | null = null;
+
+        if (authHeader?.startsWith('Bearer ')) {
+          try {
+            const secret = process.env.NEXTAUTH_SECRET || 'fallback-dev-secret';
+            const decoded = jwt.verify(authHeader.slice(7), secret) as { sub?: string; type?: string };
+            if (decoded.sub && decoded.type !== 'refresh') {
+              rateUserId = decoded.sub;
+            }
+          } catch {
+            // Invalid JWT — skip user-based rate limiting, rely on IP
+          }
+        } else {
+          const session = await auth();
+          if (session?.user?.id) {
+            rateUserId = session.user.id;
+          }
+        }
+
+        if (rateUserId) {
+          const userKey = `ratelimit:user:${keyPrefix}:${rateUserId}`;
           checks.push(checkRateLimit(userKey, actualMax, config.window));
         }
       } catch (error) {
