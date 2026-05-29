@@ -3,8 +3,6 @@ import prisma from "@/_lib/prisma";
 import jwt from "jsonwebtoken";
 import { signMobileToken, signMobileRefreshToken } from "@/api/v1/_lib/auth";
 
-const JWT_SECRET = process.env.NEXTAUTH_SECRET || "fallback-dev-secret";
-
 /**
  * POST /api/v1/auth/mobile
  *
