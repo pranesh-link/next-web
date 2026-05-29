@@ -30,6 +30,7 @@
  */
 
 import { execSync } from 'child_process';
+import { Client } from 'pg';
 import { createBackup, deleteBackup } from './db-backup';
 import { restoreBackup } from './db-restore';
 
@@ -84,27 +85,33 @@ function resolveAndRetryMigrations(failedMigrationName: string): MigrationResult
 }
 
 /**
- * After migrate deploy, verify critical tables exist and force-push schema if
- * any are missing. This handles the case where migration history is recorded
- * but actual tables were dropped or never created (e.g. partial apply + rollback).
+ * Directly create the `couples` table if it is missing from the DB.
+ *
+ * This handles the edge-case where `prisma migrate deploy` reports
+ * "no pending migrations" (because `_prisma_migrations` already records
+ * the migration as applied) but the actual table was dropped or never created.
+ * Uses a raw pg connection so it works even when PrismaClient itself would
+ * throw due to the missing table.
  */
-function ensureSchemaSync(): void {
-  console.log('[INFO] Verifying schema integrity...');
+async function ensureCouplesTable(): Promise<void> {
+  console.log('[INFO] Verifying couples table exists...');
+  const client = new Client({ connectionString: process.env.DATABASE_URL });
   try {
-    // Use prisma db push (no data-loss flag) to create any missing tables.
-    // This is a no-op when schema is already in sync, and will fail safely
-    // (non-zero exit) if it would need to DROP anything (which we never want).
-    const pushOutput = execSync('npx prisma db push', {
-      encoding: 'utf-8',
-      stdio: 'pipe',
-    });
-    console.log('[INFO] Schema sync output:', pushOutput.trim().split('\n').pop());
-  } catch (pushError: any) {
-    const errText = pushError.stdout?.toString() || pushError.stderr?.toString() || pushError.message;
-    // If db push fails because it would cause data loss (e.g. drop columns), log
-    // a warning but do NOT abort — migrate deploy already ran successfully.
-    // Table creation failures are unexpected and logged for investigation.
-    console.warn('[WARN] prisma db push during schema sync:', errText.slice(0, 300));
+    await client.connect();
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS "couples" (
+        "id"        TEXT        NOT NULL,
+        "name"      TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "couples_pkey" PRIMARY KEY ("id")
+      )
+    `);
+    console.log('[INFO] "couples" table verified/created');
+  } catch (err: any) {
+    console.warn('[WARN] Could not verify/create couples table:', err.message);
+  } finally {
+    await client.end().catch(() => {});
   }
 }
 
@@ -281,8 +288,8 @@ async function main() {
   console.log('');
 
   if (migrationResult.success) {
-    // Step 5a: Ensure schema is fully in sync (creates any missing tables)
-    ensureSchemaSync();
+    // Step 5a: Ensure the couples table exists (direct SQL, idempotent)
+    await ensureCouplesTable();
     console.log('');
 
     // Step 5b: Cleanup on success

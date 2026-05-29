@@ -15,12 +15,14 @@ export async function GET() {
 
   const userId = session.user.id;
 
-  const [accountCount, loanCount, coupleMember, userRecord] = await Promise.all([
+  const [accountCount, loanCount, coupleMemberRecord, userRecord] = await Promise.all([
     prisma.financialAccount.count({ where: { userId } }),
     prisma.loan.count({ where: { userId } }),
+    // Select only from couple_members (no join to couples) so this works even
+    // when the couples table is missing.
     prisma.coupleMember.findFirst({
       where: { userId },
-      include: { couple: { include: { members: true } } },
+      select: { id: true, coupleId: true },
     }),
     prisma.user.findUnique({ where: { id: userId }, select: { id: true, email: true, name: true } }),
   ]);
@@ -30,8 +32,7 @@ export async function GET() {
     userRecord,
     accountCount,
     loanCount,
-    coupleId: coupleMember?.coupleId ?? null,
-    coupleMembers: coupleMember?.couple?.members?.map((m) => m.userId) ?? [],
+    coupleId: coupleMemberRecord?.coupleId ?? null,
     hint: accountCount === 0
       ? "No accounts found for this userId — data may be stored under a different userId"
       : "Accounts found — data is accessible",
