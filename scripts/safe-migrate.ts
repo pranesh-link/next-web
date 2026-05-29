@@ -41,6 +41,49 @@ interface MigrationResult {
 }
 
 /**
+ * Extract the failing migration name from a P3018 error message.
+ */
+function extractFailedMigrationName(errorOutput: string): string | null {
+  const match = errorOutput.match(/Migration name:\s*(\S+)/);
+  return match?.[1] ?? null;
+}
+
+/**
+ * Resolve a P3018 failed migration by marking it as applied, then retry deploy.
+ * This handles the case where a migration's DDL was already applied to the DB
+ * outside of Prisma (e.g. manually or via a previous partial run).
+ */
+function resolveAndRetryMigrations(failedMigrationName: string): MigrationResult {
+  console.warn(`[WARN] Resolving failed migration as applied: ${failedMigrationName}`);
+  try {
+    execSync(`npx prisma migrate resolve --applied ${failedMigrationName}`, {
+      encoding: 'utf-8',
+      stdio: 'pipe',
+    });
+    console.log('[INFO] Migration resolved. Retrying migrate deploy...');
+  } catch (resolveError: any) {
+    const resolveOutput = resolveError.stdout?.toString() || resolveError.stderr?.toString() || resolveError.message;
+    console.error(`[ERROR] Could not resolve migration: ${resolveOutput}`);
+    return { success: false, error: resolveOutput, errorCode: 'P3018' };
+  }
+
+  // Retry deploy once after resolving
+  try {
+    const retryOutput = execSync('npx prisma migrate deploy', {
+      encoding: 'utf-8',
+      stdio: 'pipe',
+    });
+    console.log(retryOutput);
+    console.log('[SUCCESS] Migrations applied successfully after resolve');
+    return { success: true, output: retryOutput };
+  } catch (retryError: any) {
+    const retryOutput = retryError.stdout?.toString() || retryError.stderr?.toString() || retryError.message;
+    console.error(`[ERROR] Migration failed after resolve: ${retryOutput}`);
+    return { success: false, error: retryOutput };
+  }
+}
+
+/**
  * Run Prisma migrations
  */
 async function runMigrations(): Promise<MigrationResult> {
@@ -81,7 +124,15 @@ async function runMigrations(): Promise<MigrationResult> {
       console.error('[ERROR] Migration failed (P3009): Failed migrations detected');
     } else if (errorOutput.includes('P3018')) {
       errorCode = 'P3018';
-      console.error('[ERROR] Migration not found (P3018)');
+      // P3018: A migration failed to apply because the DDL already exists in the DB
+      // (e.g. column was added manually before the migration ran).
+      // Auto-resolve by marking the migration as applied and retrying.
+      const failedMigration = extractFailedMigrationName(errorOutput);
+      if (failedMigration) {
+        console.warn(`[WARN] P3018 detected — column/table already exists. Auto-resolving: ${failedMigration}`);
+        return resolveAndRetryMigrations(failedMigration);
+      }
+      console.error('[ERROR] P3018 — could not extract migration name to resolve');
     } else if (errorOutput.includes('P3005')) {
       errorCode = 'P3005';
       console.error('[ERROR] Database does not exist (P3005)');
