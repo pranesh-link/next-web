@@ -4,38 +4,41 @@ on:
   push:
     branches:
       - master
+    paths-ignore:
+      - 'mobile_flutter/**'
+      - '.github/workflows/flutter-*'
+
+concurrency:
+  group: version-bump-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   bump-version:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      # Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Set up Node.js (required if you're using npm/yarn)
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: "20" # Specify your desired Node.js version
+          node-version: 22
+          cache: yarn
 
-      # Set Git user information (using your GitHub email and username)
       - name: Set Git User
         run: |
           git config --global user.name "Pranesh G"
           git config --global user.email "prans1991@gmail.com"
 
-      # Bump version in package.json
       - name: Bump version
         run: |
           npm version minor -m "CI version bump to v%s"
 
-      # Commit and push changes
       - name: Push changes
         run: |
           git push origin HEAD:master
-          git push --tags  # Push the created tags
+          git push --tags
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
