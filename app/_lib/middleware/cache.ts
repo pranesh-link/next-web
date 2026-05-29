@@ -103,7 +103,11 @@ export function withCache(
                   userId = decoded.sub;
                 }
               } catch {
-                // Token invalid or expired — fall through to 'anonymous'
+                // Token invalid or expired (e.g. Google access token)
+                // Skip caching entirely — let the handler run fresh each time
+                const response = await handler(req, context);
+                response.headers.set('X-Cache', 'BYPASS');
+                return response;
               }
             }
           }

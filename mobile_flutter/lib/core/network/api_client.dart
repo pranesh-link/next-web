@@ -3,22 +3,24 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:luvverse/core/auth/google_sign_in_instance.dart';
 import 'package:luvverse/core/auth/secure_storage.dart';
+import 'package:luvverse/core/auth/session_expired_provider.dart';
 import 'package:luvverse/core/network/api_endpoints.dart';
 import 'package:luvverse/core/network/api_exceptions.dart';
 
 final apiClientProvider = Provider<ApiClient>((ref) {
-  return ApiClient();
+  return ApiClient(ref);
 });
 
 class ApiClient {
   static const _baseUrl = 'https://www.pranesh.link';
 
   late final Dio _dio;
+  final Ref _ref;
   bool _isRefreshing = false;
   final List<({ErrorInterceptorHandler handler, RequestOptions options})>
       _pendingRequests = [];
 
-  ApiClient() {
+  ApiClient(this._ref) {
     _dio = Dio(BaseOptions(
       baseUrl: _baseUrl,
       connectTimeout: const Duration(seconds: 30),
@@ -68,8 +70,9 @@ class ApiClient {
         } finally {
           _isRefreshing = false;
         }
-        // Refresh failed — clear auth and reject all pending
+        // Refresh failed — clear auth and notify UI to show login prompt
         await SecureStorage.clearAll();
+        _ref.read(sessionExpiredProvider.notifier).state = true;
         _rejectPendingRequests(error);
         handler.next(error);
       },
