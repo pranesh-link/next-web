@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/_lib/prisma";
+import jwt from "jsonwebtoken";
 import { signMobileToken, signMobileRefreshToken } from "@/api/v1/_lib/auth";
+
+const JWT_SECRET = process.env.NEXTAUTH_SECRET || "fallback-dev-secret";
 
 /**
  * POST /api/v1/auth/mobile
@@ -101,6 +104,37 @@ export async function POST(request: NextRequest) {
       name = userInfo.name;
       picture = userInfo.picture;
     } else if (body.accessToken) {
+      // First, check if this is one of our own (possibly expired) JWTs.
+      // Decode without verification to extract userId — if valid, re-issue.
+      try {
+        const decoded = jwt.decode(body.accessToken) as {
+          sub?: string;
+          type?: string;
+        } | null;
+        if (decoded?.sub && decoded.type === "access") {
+          const existingUser = await prisma.user.findUnique({
+            where: { id: decoded.sub },
+          });
+          if (existingUser?.email) {
+            // It's our own JWT — skip Google verification, re-issue tokens
+            const token = signMobileToken(existingUser.id);
+            const refreshToken = signMobileRefreshToken(existingUser.id);
+            return NextResponse.json({
+              token,
+              refreshToken,
+              user: {
+                id: existingUser.id,
+                name: existingUser.name,
+                email: existingUser.email,
+                image: existingUser.image,
+              },
+            });
+          }
+        }
+      } catch {
+        // Not a JWT — fall through to Google verification
+      }
+
       // Access token mode: verify with Google userinfo endpoint
       const userRes = await fetch(
         "https://www.googleapis.com/oauth2/v3/userinfo",
