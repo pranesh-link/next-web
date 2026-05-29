@@ -61,6 +61,15 @@ export function withCache(
     const cacheEnabled = process.env.ENABLE_API_CACHE !== 'false';
     const debugEnabled = process.env.CACHE_DEBUG === 'true';
 
+    // Skip caching entirely for mobile Bearer token requests —
+    // avoids Redis calls that can timeout due to DNS issues on cold starts.
+    const authHeader = req.headers.get('authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      const response = await handler(req, context);
+      response.headers.set('X-Cache', 'BYPASS');
+      return response;
+    }
+
     // Bypass cache if disabled globally
     if (!cacheEnabled) {
       if (debugEnabled) {
