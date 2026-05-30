@@ -105,6 +105,13 @@ class PushNotificationService {
 
   String? _currentToken;
 
+  void Function()? _onChatMessageReceived;
+
+  /// Register a callback for when a chat message push arrives (used to refresh chat data).
+  void setOnChatMessageCallback(void Function() callback) {
+    _onChatMessageReceived = callback;
+  }
+
   PushNotificationService(this._apiClient)
       : _localNotifications = FlutterLocalNotificationsPlugin();
 
@@ -323,6 +330,10 @@ class PushNotificationService {
       // Suppress local notification when user is already in chat
       final type = message.data['type'] as String?;
       if (type == 'CHAT_MESSAGE' && isChatActive) return;
+      // Notify chat to refresh when push arrives (if not already viewing chat)
+      if (type == 'CHAT_MESSAGE') {
+        _onChatMessageReceived?.call();
+      }
       _showLocalNotification(message);
     });
   }

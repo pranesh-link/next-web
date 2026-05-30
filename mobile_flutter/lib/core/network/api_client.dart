@@ -6,6 +6,7 @@ import 'package:luvverse/core/auth/secure_storage.dart';
 import 'package:luvverse/core/auth/session_expired_provider.dart';
 import 'package:luvverse/core/network/api_endpoints.dart';
 import 'package:luvverse/core/network/api_exceptions.dart';
+import 'package:luvverse/core/notifications/push_providers.dart';
 
 final apiClientProvider = Provider<ApiClient>((ref) {
   return ApiClient(ref);
@@ -17,6 +18,8 @@ class ApiClient {
   late final Dio _dio;
   final Ref _ref;
   bool _isRefreshing = false;
+  int _refreshFailCount = 0;
+  DateTime? _lastRefreshAttempt;
   final List<({ErrorInterceptorHandler handler, RequestOptions options})>
       _pendingRequests = [];
 
@@ -41,6 +44,17 @@ class ApiClient {
           return handler.next(error);
         }
 
+        // Exponential backoff: skip refresh if in cooldown period
+        final cooldownMs = _refreshFailCount > 0
+            ? (1000 * (1 << (_refreshFailCount - 1).clamp(0, 5)))
+            : 0;
+        if (_lastRefreshAttempt != null &&
+            DateTime.now().difference(_lastRefreshAttempt!).inMilliseconds < cooldownMs) {
+          handler.next(error);
+          return;
+        }
+        _lastRefreshAttempt = DateTime.now();
+
         // If already refreshing, queue this request for retry later
         if (_isRefreshing) {
           _pendingRequests
@@ -55,7 +69,10 @@ class ApiClient {
           // Fall back to Google silent sign-in if no refresh token stored
           newToken ??= await _refreshGoogleToken();
           if (newToken != null) {
+            _refreshFailCount = 0;
             await SecureStorage.saveToken(newToken);
+            // Re-register FCM token with the new auth token
+            _ref.read(pushNotificationServiceProvider).registerToken();
             // Retry the original request
             final opts = error.requestOptions;
             opts.headers['Authorization'] = 'Bearer $newToken';
@@ -71,6 +88,7 @@ class ApiClient {
           _isRefreshing = false;
         }
         // Refresh failed — clear auth and notify UI to show login prompt
+        _refreshFailCount++;
         await SecureStorage.clearAll();
         _ref.read(sessionExpiredProvider.notifier).state = true;
         _rejectPendingRequests(error);

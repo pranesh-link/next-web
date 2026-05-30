@@ -50,6 +50,7 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
   String? _currentUserId;
   bool _isOnline = true;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
+  Timer? _pollTimer;
 
   @override
   Future<List<ChatMessage>> build() async {
@@ -58,7 +59,13 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
     _currentUserId = ref.read(dbUserIdProvider);
     _listenConnectivity();
     await _initCrypto();
-    return _fetchMessagesWithFallback();
+    final messages = await _fetchMessagesWithFallback();
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _pollForNewMessages();
+    });
+    ref.onDispose(() => _pollTimer?.cancel());
+    return messages;
   }
 
   /// Listen to connectivity changes and flush queue when back online.
@@ -73,6 +80,17 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
       }
     });
     ref.onDispose(() => _connectivitySub?.cancel());
+  }
+
+  /// Silently poll for new messages without showing loading state.
+  Future<void> _pollForNewMessages() async {
+    try {
+      final messages = await _fetchMessages();
+      await ChatCache.cacheMessages(messages);
+      state = AsyncData(messages);
+    } catch (_) {
+      // Silent failure — don't disrupt UI on poll failure
+    }
   }
 
   /// Attempt API fetch; fall back to cache if offline/error.
