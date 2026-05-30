@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:luvverse/core/auth/auth_repository.dart';
 import 'package:luvverse/core/auth/secure_storage.dart';
 import 'package:luvverse/core/cache/cache_providers.dart';
@@ -123,6 +124,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await pushService.unregister();
     } catch (_) {}
     await _repository.signOut();
+    // Clear biometric preference to prevent stale unlock for different account
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('biometric_enabled');
+    } catch (_) {}
     state = const AuthState();
   }
 }

@@ -252,7 +252,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
 
     return Scaffold(
-      backgroundColor: wallpaperColor ?? const Color(0xFFECE5DD),
+      backgroundColor: wallpaperColor ?? (Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1B2836) : const Color(0xFFECE5DD)),
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

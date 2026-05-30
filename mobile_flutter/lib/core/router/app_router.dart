@@ -226,6 +226,11 @@ class ScaffoldWithNavBar extends StatelessWidget {
             label: 'Finance',
           ),
           NavigationDestination(
+            icon: Icon(Icons.chat_bubble_outline),
+            selectedIcon: Icon(Icons.chat_bubble),
+            label: 'Chat',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.settings_outlined),
             selectedIcon: Icon(Icons.settings),
             label: 'Settings',
@@ -238,7 +243,8 @@ class ScaffoldWithNavBar extends StatelessWidget {
   int _calculateSelectedIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
     if (location.startsWith('/finance')) return 1;
-    if (location.startsWith('/settings')) return 2;
+    if (location.startsWith('/chat')) return 2;
+    if (location.startsWith('/settings')) return 3;
     return 0;
   }
 
@@ -249,6 +255,8 @@ class ScaffoldWithNavBar extends StatelessWidget {
       case 1:
         context.go('/finance');
       case 2:
+        context.go('/chat');
+      case 3:
         context.go('/settings');
     }
   }

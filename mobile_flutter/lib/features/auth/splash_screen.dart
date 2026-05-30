@@ -3,8 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:dio/dio.dart';
 import 'package:luvverse/core/auth/auth_provider.dart';
+import 'package:luvverse/core/auth/secure_storage.dart';
 import 'package:luvverse/core/lifecycle/app_lifecycle_manager.dart';
+import 'package:luvverse/core/network/api_endpoints.dart';
 import 'package:luvverse/core/prefetch/prefetch_progress_provider.dart';
 import 'package:luvverse/core/prefetch/splash_prefetch_service.dart';
 import 'package:luvverse/core/quick_actions/quick_actions_service.dart';
@@ -57,6 +60,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       return;
     }
 
+    // On stale resume, proactively refresh the JWT to avoid 401 cascade
+    if (await AppLifecycleManager.shouldShowSplash()) {
+      await _proactiveTokenRefresh();
+    }
+
     // Start prefetch + minimum 3s wait
     final prefetchFuture = _prefetchData();
     final completer = Completer<void>();
@@ -65,6 +73,28 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     _minWaitTimer = null;
 
     if (mounted) _navigate();
+  }
+
+  /// Attempts to refresh the JWT token proactively before making API calls.
+  /// Prevents the "session expired" dialog on stale resume.
+  Future<void> _proactiveTokenRefresh() async {
+    try {
+      final refreshToken = await SecureStorage.getRefreshToken();
+      if (refreshToken == null) return;
+      final dio = Dio(BaseOptions(baseUrl: 'https://www.pranesh.link'));
+      final response = await dio.post<Map<String, dynamic>>(
+        ApiEndpoints.refreshToken,
+        data: {'refreshToken': refreshToken},
+      );
+      final body = response.data;
+      final newToken = body?['token'] as String?;
+      final newRefresh = body?['refreshToken'] as String?;
+      if (newToken != null) await SecureStorage.saveToken(newToken);
+      if (newRefresh != null) await SecureStorage.saveRefreshToken(newRefresh);
+      debugPrint('[Splash] Proactive token refresh succeeded');
+    } catch (e) {
+      debugPrint('[Splash] Proactive token refresh failed: $e');
+    }
   }
 
   Future<void> _prefetchData() async {
