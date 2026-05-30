@@ -191,7 +191,8 @@ export async function sendPushToUser(
 
     const type = data?.type ?? '';
     const featureId = data?.featureId ?? '';
-    if (type && isDuplicate(userId, type, featureId)) {
+    // Skip dedup for chat messages — every message needs a push
+    if (type && type !== 'CHAT_MESSAGE' && isDuplicate(userId, type, featureId)) {
       return { sent: 0, failed: 0 };
     }
 

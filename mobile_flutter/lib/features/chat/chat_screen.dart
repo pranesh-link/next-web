@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:luvverse/core/notifications/push_notification_service.dart';
+import 'package:luvverse/core/notifications/push_providers.dart';
 import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
@@ -66,6 +67,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ref.read(messageSchedulerProvider).checkAndSend();
       // Clear badge
       ref.read(chatNotifierProvider.notifier).updateBadgeCount(0);
+      // Mark messages as read when opening chat
+      ref.read(chatNotifierProvider.notifier).markAsRead();
+      // Wire push notification → chat refresh
+      ref.read(pushNotificationServiceProvider).setOnChatMessageCallback(() {
+        ref.read(chatNotifierProvider.notifier).refresh();
+      });
     });
   }
 
@@ -151,7 +158,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   bool _isSameDay(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
+    final la = a.toLocal();
+    final lb = b.toLocal();
+    return la.year == lb.year && la.month == lb.month && la.day == lb.day;
   }
 
   void _showAttachMenu() {
@@ -212,7 +221,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
     if (status.lastSeen != null) {
       return Text(
-        'Last seen ${DateFormat('h:mm a').format(status.lastSeen!)}',
+        'Last seen ${DateFormat('h:mm a').format(status.lastSeen!.toLocal())}',
         style: TextStyle(
           fontSize: 12,
           color: context.colors.textMuted,
