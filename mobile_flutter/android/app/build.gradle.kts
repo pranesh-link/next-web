@@ -3,7 +3,9 @@ import java.io.FileInputStream
 
 plugins {
     id("com.android.application")
-    id("com.google.gms.google-services")
+    // google-services plugin intentionally omitted — it is incompatible with AGP 9.0.1
+    // and causes duplicate resource conflicts with the manually-maintained
+    // res/values/google-services.xml which already contains all required values.
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
