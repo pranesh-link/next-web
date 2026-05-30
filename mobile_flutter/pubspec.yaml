@@ -85,9 +85,6 @@ dependencies:
   # Firebase Storage (for images/voice uploads)
   firebase_storage: ^12.4.0
 
-  # Home Widget
-  home_widget: ^0.7.0
-
   # App Badge
   app_badge_plus: ^1.2.0
 

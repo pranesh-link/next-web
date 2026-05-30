@@ -11,7 +11,6 @@ import 'package:luvverse/features/chat/cache/message_queue.dart';
 import 'package:luvverse/features/chat/models/chat_message.dart';
 import 'package:luvverse/features/chat/repositories/chat_repository.dart';
 import 'package:luvverse/features/chat/services/crypto_service.dart';
-import 'package:luvverse/features/chat/services/home_widget_service.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';
 
 // -- Repository --
@@ -293,7 +292,6 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
       final url = await _repo.uploadFile(file);
       if (url == null) return;
       await _sendTypedMessage(url, type: MessageType.image);
-      _notifyHomeWidget(url);
     } catch (e) {
       debugPrint('[ChatNotifier] sendImage failed: $e');
     }
@@ -448,16 +446,6 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
           if (msg.id == optimistic.id) sent else msg,
       ]);
     }
-  }
-
-  void _notifyHomeWidget(String lastMessage) {
-    try {
-      ref.read(homeWidgetServiceProvider).updateWidget(
-        partnerName: 'Partner',
-        lastMessage: lastMessage,
-        messageTime: DateTime.now(),
-      );
-    } catch (_) {}
   }
 
   /// Update badge count based on unread messages.
