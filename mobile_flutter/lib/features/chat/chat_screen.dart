@@ -116,8 +116,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   void _onTyping() {
     if (_typingThrottle?.isActive ?? false) return;
-    _typingThrottle = Timer(const Duration(seconds: 2), () {});
-    // Typing signal would be sent via WebSocket in future
+    _typingThrottle = Timer(const Duration(seconds: 3), () {});
+    ref.read(chatRepositoryProvider).signalTyping();
   }
 
   void _onCopy(String content) {
@@ -314,6 +314,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             onTap: () => _scrollToPinnedMessage(),
             onDismiss: () => setState(() => _pinnedMessage = null),
           ),
+          const EncryptionBadge(),
           Expanded(
             child: chatState.when(
               loading: () => _buildShimmer(context),
@@ -372,7 +373,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         horizontal: AppSpacing.md,
         vertical: AppSpacing.sm,
       ),
-      itemCount: reversed.length + (isPartnerTyping ? 1 : 0) + 1,
+      itemCount: reversed.length + (isPartnerTyping ? 1 : 0),
       itemBuilder: (context, index) {
         // Typing indicator at the very top (index 0 in reversed list)
         if (isPartnerTyping && index == 0) {
@@ -380,11 +381,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         }
 
         final adjustedIndex = isPartnerTyping ? index - 1 : index;
-
-        // Encryption badge at the very end (last item)
-        if (adjustedIndex == reversed.length) {
-          return const EncryptionBadge();
-        }
 
         final message = reversed[adjustedIndex];
         final isMe = message.isFromUser(currentUserId);

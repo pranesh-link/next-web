@@ -6,6 +6,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:app_badge_plus/app_badge_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:luvverse/core/auth/auth_provider.dart';
 import 'package:luvverse/core/auth/secure_storage.dart';
 import 'package:luvverse/core/network/api_client.dart';
 import 'package:luvverse/features/chat/cache/chat_cache.dart';
@@ -61,7 +62,7 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
   Future<List<ChatMessage>> build() async {
     _repo = ref.read(chatRepositoryProvider);
     _crypto = ref.read(cryptoServiceProvider);
-    _currentUserId = ref.read(dbUserIdProvider);
+    _currentUserId = ref.read(authProvider).user?.id ?? ref.read(dbUserIdProvider);
     _listenConnectivity();
     await _initCrypto();
     final messages = await _fetchMessagesWithFallback();
