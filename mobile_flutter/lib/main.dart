@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,15 +22,18 @@ void main() async {
     try {
       await Firebase.initializeApp();
       FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
+      // Enable Crashlytics — captures native + Flutter crashes remotely.
+      await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
+      FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
     } catch (e) {
       debugPrint('[main] Firebase init failed: $e');
+      // Fallback error handler if Crashlytics fails to init.
+      FlutterError.onError = (details) {
+        FlutterError.presentError(details);
+        debugPrint('FlutterError: ${details.exception}');
+      };
     }
-
-    // Global Flutter error handler — prevents crashes on unhandled exceptions.
-    FlutterError.onError = (details) {
-      FlutterError.presentError(details);
-      debugPrint('FlutterError: ${details.exception}');
-    };
 
     Intl.defaultLocale = 'en_IN';
     await initializeDateFormatting('en_IN');
@@ -56,7 +60,8 @@ void main() async {
     );
   }, (error, stack) {
     // Catches async errors not handled by Flutter framework.
-    // Log in ALL modes — silent swallow in release causes invisible crashes.
+    // Report to Crashlytics for remote visibility.
+    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
     debugPrint('Unhandled error: $error');
     debugPrint('$stack');
   });
