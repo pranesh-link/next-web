@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:app_badge_plus/app_badge_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:luvverse/core/auth/secure_storage.dart';
 import 'package:luvverse/core/network/api_client.dart';
 import 'package:luvverse/features/chat/cache/chat_cache.dart';
 import 'package:luvverse/features/chat/cache/message_queue.dart';
@@ -51,6 +53,9 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
   bool _isOnline = true;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
   Timer? _pollTimer;
+  HttpClient? _sseClient;
+  StreamSubscription<String>? _sseSub;
+  String? _lastKnownMessageId;
 
   @override
   Future<List<ChatMessage>> build() async {
@@ -60,12 +65,105 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
     _listenConnectivity();
     await _initCrypto();
     final messages = await _fetchMessagesWithFallback();
+    if (messages.isNotEmpty) {
+      _lastKnownMessageId = messages.last.id;
+    }
+    // Start SSE stream for real-time updates
+    _connectSSE();
+    // Fallback poll every 30s in case SSE disconnects
     _pollTimer?.cancel();
     _pollTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      _pollForNewMessages();
+      if (_sseSub == null) _pollForNewMessages();
     });
-    ref.onDispose(() => _pollTimer?.cancel());
+    ref.onDispose(() {
+      _pollTimer?.cancel();
+      _disconnectSSE();
+    });
     return messages;
+  }
+
+  /// Connect to the server SSE stream for real-time message updates.
+  void _connectSSE() {
+    _disconnectSSE();
+    _sseClient = HttpClient();
+    _startSSEStream();
+  }
+
+  /// Start or restart the SSE stream connection.
+  Future<void> _startSSEStream() async {
+    try {
+      const baseUrl = 'https://www.pranesh.link';
+      final token = await SecureStorage.getToken();
+      if (token == null) return;
+
+      final uri = Uri.parse('$baseUrl/api/couple/chat/stream');
+      final request = await _sseClient!.getUrl(uri);
+      request.headers.set('Authorization', 'Bearer $token');
+      request.headers.set('Accept', 'text/event-stream');
+
+      final response = await request.close();
+      if (response.statusCode != 200) {
+        debugPrint('[ChatSSE] Stream returned ${response.statusCode}');
+        _scheduleSSEReconnect();
+        return;
+      }
+
+      _sseSub = response
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .where((line) => line.startsWith('data: '))
+          .map((line) => line.substring(6))
+          .listen(
+        _onSSEData,
+        onError: (_) => _scheduleSSEReconnect(),
+        onDone: _scheduleSSEReconnect,
+        cancelOnError: false,
+      );
+    } catch (e) {
+      debugPrint('[ChatSSE] Connection failed: $e');
+      _scheduleSSEReconnect();
+    }
+  }
+
+  /// Handle incoming SSE data event.
+  void _onSSEData(String data) {
+    try {
+      final json = jsonDecode(data) as Map<String, dynamic>;
+      final latest = json['latest'] as Map<String, dynamic>?;
+      final partnerTyping = json['partnerTyping'] as bool? ?? false;
+
+      ref.read(partnerTypingProvider.notifier).state = partnerTyping;
+
+      // If the latest message ID differs, fetch fresh messages
+      if (latest != null && latest['id'] != _lastKnownMessageId) {
+        _lastKnownMessageId = latest['id'] as String?;
+        _pollForNewMessages();
+        // Mark as read if message is from partner and chat is active
+        if (latest['senderId'] != _currentUserId) {
+          markAsRead();
+        }
+      }
+    } catch (e) {
+      debugPrint('[ChatSSE] Parse error: $e');
+    }
+  }
+
+  /// Schedule SSE reconnect after disconnect (server closes after 28s).
+  void _scheduleSSEReconnect() {
+    _sseSub?.cancel();
+    _sseSub = null;
+    // Reconnect after a short delay
+    Future.delayed(const Duration(seconds: 2), () {
+      if (_isOnline) _startSSEStream();
+    });
+  }
+
+  /// Disconnect SSE stream.
+  void _disconnectSSE() {
+    _sseSub?.cancel();
+    _sseSub = null;
+    _sseClient?.close(force: true);
+    _sseClient = null;
   }
 
   /// Listen to connectivity changes and flush queue when back online.
@@ -231,6 +329,15 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
   Future<void> refresh() async {
     state = const AsyncLoading<List<ChatMessage>>().copyWithPrevious(state);
     state = await AsyncValue.guard(() => _fetchMessagesWithFallback());
+  }
+
+  /// Mark all partner messages as read (triggers double-tick on partner's side).
+  Future<void> markAsRead() async {
+    try {
+      await _repo.markAllRead('');
+    } catch (_) {
+      // Non-critical — silently fail
+    }
   }
 
   /// Flush the offline queue: send all pending messages in order.

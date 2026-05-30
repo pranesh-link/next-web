@@ -52,6 +52,7 @@ export async function GET() {
                 iv: true,
                 encrypted: true,
                 type: true,
+                readBy: true,
                 createdAt: true,
               },
             }),

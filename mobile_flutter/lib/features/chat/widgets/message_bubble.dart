@@ -31,7 +31,7 @@ class MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final time = DateFormat('HH:mm').format(message.createdAt);
+    final time = DateFormat('HH:mm').format(message.createdAt.toLocal());
     final reactions = message.reactions;
     final hasReactions = reactions.isNotEmpty;
 
