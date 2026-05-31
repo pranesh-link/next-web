@@ -80,6 +80,7 @@ class ChatKeyBootstrap {
       }
 
       await _crypto.deriveSharedKey(partnerData.publicKey!);
+      await _crypto.initEpochKeys();
       _ready = true;
       return true;
     } catch (e, st) {

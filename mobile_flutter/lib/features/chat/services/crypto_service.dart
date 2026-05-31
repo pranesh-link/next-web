@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:luvverse/features/chat/services/epoch_key_store.dart';
 
 /// End-to-end encryption service using ECDH P-256 + AES-256-GCM.
 ///
@@ -16,6 +17,10 @@ class CryptoService {
   final Ecdh _ecdh = Ecdh.p256(length: 32);
 
   SecretKey? _sharedKey;
+  EpochKeyStore? _epochStore;
+
+  /// The epoch key store, available after [initEpochKeys] is called.
+  EpochKeyStore? get epochStore => _epochStore;
 
   CryptoService({FlutterSecureStorage? storage})
     : _storage = storage ?? const FlutterSecureStorage();
@@ -75,6 +80,75 @@ class CryptoService {
     // from P-256 is 32 bytes (the x-coordinate), which matches AES-256.
     final sharedSecretBytes = await sharedSecretKey.extractBytes();
     _sharedKey = SecretKey(sharedSecretBytes);
+  }
+
+  /// Initialize epoch-based forward secrecy using the derived shared secret.
+  /// Must be called after [deriveSharedKey].
+  Future<void> initEpochKeys() async {
+    if (_sharedKey == null) {
+      throw StateError('Shared key not derived. Call deriveSharedKey() first.');
+    }
+    final sharedBytes = await _sharedKey!.extractBytes();
+    _epochStore = EpochKeyStore();
+    await _epochStore!.init(Uint8List.fromList(sharedBytes));
+  }
+
+  /// Encrypt with epoch-based forward secrecy.
+  /// Returns {ciphertext, iv, epoch} or null if not ready.
+  Future<Map<String, String>?> encryptWithEpoch(String plaintext) async {
+    if (_epochStore == null) return encrypt(plaintext);
+
+    final aesGcm = AesGcm.with256bits();
+    final plaintextBytes = utf8.encode(plaintext);
+    final epochKey = await _epochStore!.getEncryptionKey();
+
+    final secretBox = await aesGcm.encrypt(plaintextBytes, secretKey: epochKey);
+
+    final ciphertextWithTag = Uint8List.fromList([
+      ...secretBox.cipherText,
+      ...secretBox.mac.bytes,
+    ]);
+
+    return {
+      'ciphertext': base64Encode(ciphertextWithTag),
+      'iv': base64Encode(Uint8List.fromList(secretBox.nonce)),
+      'epoch': _epochStore!.currentEpoch.toString(),
+    };
+  }
+
+  /// Decrypt with epoch-based forward secrecy.
+  /// Falls back to static shared key if epoch is null (legacy messages).
+  Future<String?> decryptWithEpoch(
+    String ciphertextBase64,
+    String ivBase64,
+    int? epoch,
+  ) async {
+    if (epoch == null || _epochStore == null) {
+      return decrypt(ciphertextBase64, ivBase64);
+    }
+
+    try {
+      final epochKey = await _epochStore!.getDecryptionKey(epoch);
+      if (epochKey == null) {
+        // Fallback to static key for unresolvable epochs
+        return decrypt(ciphertextBase64, ivBase64);
+      }
+
+      final aesGcm = AesGcm.with256bits();
+      final combined = base64Decode(ciphertextBase64);
+      final iv = base64Decode(ivBase64);
+
+      if (combined.length < 16) return null;
+      final cipherText = combined.sublist(0, combined.length - 16);
+      final mac = Mac(combined.sublist(combined.length - 16));
+
+      final secretBox = SecretBox(cipherText, nonce: iv, mac: mac);
+      final plainBytes = await aesGcm.decrypt(secretBox, secretKey: epochKey);
+      return utf8.decode(plainBytes);
+    } catch (_) {
+      // Fallback to static key on any epoch decryption failure
+      return decrypt(ciphertextBase64, ivBase64);
+    }
   }
 
   /// Encrypt plaintext -> {ciphertext: base64, iv: base64}.

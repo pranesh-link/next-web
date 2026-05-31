@@ -360,7 +360,10 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
     final result = <ChatMessage>[];
     for (final msg in messages) {
       if (msg.encrypted && msg.iv != null) {
-        final plaintext = await _crypto.decrypt(msg.content, msg.iv!);
+        final epoch = msg.payload?['epoch'] as int?;
+        final plaintext = await _crypto.decryptWithEpoch(
+          msg.content, msg.iv!, epoch,
+        );
         if (plaintext == null) {
           result.add(msg.copyWith(content: '\u{1F512} Encrypted message'));
         } else {
@@ -418,16 +421,23 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
       );
     }
     final plain = jsonEncode({'content': content, 'payload': payload});
-    final result = await _crypto.encrypt(plain);
+    final result = await _crypto.encryptWithEpoch(plain);
     if (result == null) {
       throw StateError('Encryption failed.');
     }
+
+    // Include epoch in wire payload for decryption routing
+    final mergedWirePayload = <String, dynamic>{
+      ...?wirePayload,
+      if (result['epoch'] != null) 'epoch': int.parse(result['epoch']!),
+    };
+
     return _repo.sendMessage(
       content: result['ciphertext']!,
       type: type,
       iv: result['iv']!,
       encrypted: true,
-      payload: wirePayload,
+      payload: mergedWirePayload.isNotEmpty ? mergedWirePayload : null,
     );
   }
 
@@ -459,7 +469,7 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
           );
         }
         final plain = jsonEncode({'content': text, 'payload': null});
-        final result = await _crypto.encrypt(plain);
+        final result = await _crypto.encryptWithEpoch(plain);
         if (result == null) {
           throw StateError('Encryption failed.');
         }
@@ -471,6 +481,9 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
             createdAt: now,
             iv: result['iv']!,
             encrypted: true,
+            payload: result['epoch'] != null
+                ? {'epoch': int.parse(result['epoch']!)}
+                : null,
           ),
         );
         _lastSendError = null;
@@ -493,7 +506,10 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
         // Replace optimistic with server response (decrypted for display).
         ChatMessage decrypted;
         if (sent.encrypted && sent.iv != null && _crypto.isReady) {
-          final plaintext = await _crypto.decrypt(sent.content, sent.iv!);
+          final epoch = sent.payload?['epoch'] as int?;
+          final plaintext = await _crypto.decryptWithEpoch(
+            sent.content, sent.iv!, epoch,
+          );
           decrypted = plaintext != null
               ? _applyDecryptedPlaintext(sent, plaintext)
               : sent.copyWith(content: text);
