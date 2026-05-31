@@ -80,6 +80,15 @@ class ChatLocalDatabase extends _$ChatLocalDatabase {
     await (delete(chatMessages)..where((t) => t.id.equals(messageId))).go();
   }
 
+  /// Mark messages as delivered locally (double-tick).
+  Future<void> markDelivered(List<String> messageIds) async {
+    await (update(chatMessages)
+          ..where((t) => t.id.isIn(messageIds)))
+        .write(ChatMessagesCompanion(
+      deliveredAt: Value(DateTime.now()),
+    ));
+  }
+
   ChatMessagesCompanion _toCompanion(ChatMessage msg) {
     return ChatMessagesCompanion.insert(
       id: msg.id,
@@ -92,6 +101,7 @@ class ChatLocalDatabase extends _$ChatLocalDatabase {
       payload: Value(msg.payload != null ? jsonEncode(msg.payload) : null),
       readBy: Value(jsonEncode(msg.readBy)),
       reminderAt: Value(msg.reminderAt),
+      deliveredAt: Value(msg.deliveredAt),
       createdAt: msg.createdAt,
       updatedAt: msg.updatedAt,
     );
@@ -111,6 +121,7 @@ class ChatLocalDatabase extends _$ChatLocalDatabase {
           : null,
       readBy: (jsonDecode(row.readBy) as List).cast<String>(),
       reminderAt: row.reminderAt,
+      deliveredAt: row.deliveredAt,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     );

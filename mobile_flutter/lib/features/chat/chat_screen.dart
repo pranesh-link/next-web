@@ -10,6 +10,7 @@ import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/chat/models/chat_message.dart';
+import 'package:luvverse/features/chat/cache/chat_db_providers.dart';
 import 'package:luvverse/features/chat/providers/chat_providers.dart';
 import 'package:luvverse/features/chat/providers/online_status_provider.dart';
 import 'package:luvverse/features/chat/providers/wallpaper_provider.dart';
@@ -81,6 +82,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ref.read(pushNotificationServiceProvider).setOnChatMessageCallback(() {
         ref.read(chatNotifierProvider.notifier).refresh();
       });
+      // Wire delivery receipts → update local DB double-tick
+      ref.read(pushNotificationServiceProvider).setOnMessageDeliveredCallback(
+        (ids) => ref.read(chatLocalDatabaseProvider).markDelivered(ids),
+      );
       // ACK delivery for received messages
       _acknowledgeReceivedMessages();
       // Show backup setup on first open if not configured
