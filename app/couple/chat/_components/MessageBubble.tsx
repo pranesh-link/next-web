@@ -3,6 +3,7 @@
 import { linkify } from "@/_utils/common/linkify";
 import type { CoupleMessage } from "@prisma/client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import EncryptedMedia from "./EncryptedMedia";
 import {
     ReactionBar,
     ReactionBarBtn,
@@ -64,7 +65,30 @@ function formatTime(date: Date | string): string {
  * @returns JSX content appropriate for the message type.
  */
 function BubbleContent({ message, isMine }: Pick<MessageBubbleProps, "message" | "isMine">) {
+  const payload = message.payload as Record<string, unknown> | null;
+
   switch (message.type) {
+    case "IMAGE": {
+      const isEncrypted = payload?.encrypted === true;
+      const contentType = (payload?.contentType as string) || "image/jpeg";
+      if (isEncrypted) {
+        return <EncryptedMedia filePath={message.content} contentType={contentType} type="image" />;
+      }
+      // Legacy: content is a direct URL
+      // eslint-disable-next-line @next/next/no-img-element
+      return <img src={message.content} alt="Image" style={{ maxWidth: 240, maxHeight: 300, borderRadius: 12, objectFit: "cover" }} />;
+    }
+
+    case "VOICE": {
+      const isEncrypted = payload?.encrypted === true;
+      const contentType = (payload?.contentType as string) || "audio/mp4";
+      if (isEncrypted) {
+        return <EncryptedMedia filePath={message.content} contentType={contentType} type="audio" />;
+      }
+      // Legacy: content is a direct URL
+      return <audio controls src={message.content} style={{ maxWidth: 240 }} />;
+    }
+
     case "LIST": {
       const items = message.content.split("\n").filter(Boolean);
       return (

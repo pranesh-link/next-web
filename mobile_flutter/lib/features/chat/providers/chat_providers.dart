@@ -608,26 +608,58 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
     }
   }
 
-  /// Upload an image file and send as IMAGE message.
+  /// Upload an image file and send as IMAGE message (encrypted).
   Future<void> sendImage(File file) async {
     try {
-      final url = await _repo.uploadFile(file);
-      if (url == null) return;
-      await _sendTypedMessage(url, type: MessageType.image);
+      final bytes = await file.readAsBytes();
+      final encrypted = await _bootstrap.crypto.encryptBytes(bytes);
+      if (encrypted == null) {
+        debugPrint('[ChatNotifier] sendImage: encryption not ready');
+        return;
+      }
+      final ext = file.path.split('.').last;
+      final contentType = _mimeFromExt(ext);
+      final result = await _repo.uploadEncryptedFile(
+        encrypted,
+        file.path.split('/').last,
+        contentType,
+      );
+      if (result?.path == null) return;
+      await _sendTypedMessage(
+        result!.path!,
+        type: MessageType.image,
+        payload: {'contentType': contentType, 'encrypted': true},
+      );
     } catch (e) {
       debugPrint('[ChatNotifier] sendImage failed: $e');
     }
   }
 
-  /// Upload a voice file and send as VOICE message.
+  /// Upload a voice file and send as VOICE message (encrypted).
   Future<void> sendVoice(File file, int durationMs) async {
     try {
-      final url = await _repo.uploadFile(file);
-      if (url == null) return;
+      final bytes = await file.readAsBytes();
+      final encrypted = await _bootstrap.crypto.encryptBytes(bytes);
+      if (encrypted == null) {
+        debugPrint('[ChatNotifier] sendVoice: encryption not ready');
+        return;
+      }
+      final ext = file.path.split('.').last;
+      final contentType = _mimeFromExt(ext);
+      final result = await _repo.uploadEncryptedFile(
+        encrypted,
+        file.path.split('/').last,
+        contentType,
+      );
+      if (result?.path == null) return;
       await _sendTypedMessage(
-        url,
+        result!.path!,
         type: MessageType.voice,
-        payload: {'durationMs': durationMs},
+        payload: {
+          'durationMs': durationMs,
+          'contentType': contentType,
+          'encrypted': true,
+        },
       );
     } catch (e) {
       debugPrint('[ChatNotifier] sendVoice failed: $e');
@@ -741,6 +773,28 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
       await _repo.pinMessage(messageId);
     } catch (e) {
       debugPrint('[ChatNotifier] pinMessage failed: $e');
+    }
+  }
+
+  /// Map a file extension to a MIME type for encrypted file upload metadata.
+  String _mimeFromExt(String ext) {
+    switch (ext.toLowerCase()) {
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'webp':
+        return 'image/webp';
+      case 'mp3':
+        return 'audio/mpeg';
+      case 'mp4':
+      case 'm4a':
+        return 'audio/mp4';
+      case 'webm':
+        return 'audio/webm';
+      default:
+        return 'application/octet-stream';
     }
   }
 

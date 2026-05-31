@@ -18,7 +18,7 @@ class CryptoService {
   SecretKey? _sharedKey;
 
   CryptoService({FlutterSecureStorage? storage})
-      : _storage = storage ?? const FlutterSecureStorage();
+    : _storage = storage ?? const FlutterSecureStorage();
 
   /// Generate a new ECDH P-256 key pair and persist to secure storage.
   Future<void> generateKeyPair() async {
@@ -30,9 +30,13 @@ class CryptoService {
     final publicJwk = _ecPublicKeyToJwk(publicKey);
 
     await _storage.write(
-        key: _privateKeyStorageKey, value: jsonEncode(privateJwk));
+      key: _privateKeyStorageKey,
+      value: jsonEncode(privateJwk),
+    );
     await _storage.write(
-        key: _publicKeyStorageKey, value: jsonEncode(publicJwk));
+      key: _publicKeyStorageKey,
+      value: jsonEncode(publicJwk),
+    );
   }
 
   /// Check if a key pair already exists in storage.
@@ -114,11 +118,7 @@ class CryptoService {
       final cipherText = combined.sublist(0, combined.length - 16);
       final mac = Mac(combined.sublist(combined.length - 16));
 
-      final secretBox = SecretBox(
-        cipherText,
-        nonce: iv,
-        mac: mac,
-      );
+      final secretBox = SecretBox(cipherText, nonce: iv, mac: mac);
 
       final plainBytes = await aesGcm.decrypt(
         secretBox,
@@ -126,6 +126,51 @@ class CryptoService {
       );
 
       return utf8.decode(plainBytes);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Encrypt raw bytes using AES-256-GCM.
+  /// Returns: [12-byte IV][ciphertext + 16-byte GCM tag] as a single Uint8List.
+  Future<Uint8List?> encryptBytes(Uint8List data) async {
+    if (_sharedKey == null) return null;
+
+    final aesGcm = AesGcm.with256bits();
+    final secretBox = await aesGcm.encrypt(data, secretKey: _sharedKey!);
+
+    // Format: IV (12 bytes) + ciphertext + MAC (16 bytes)
+    final combined = Uint8List(12 + secretBox.cipherText.length + 16);
+    combined.setAll(0, secretBox.nonce);
+    combined.setAll(12, secretBox.cipherText);
+    combined.setAll(12 + secretBox.cipherText.length, secretBox.mac.bytes);
+    return combined;
+  }
+
+  /// Decrypt bytes encrypted with `encryptBytes`.
+  /// Expects format: [12-byte IV][ciphertext + 16-byte GCM tag].
+  /// Returns null on failure.
+  Future<Uint8List?> decryptBytes(Uint8List encryptedData) async {
+    if (_sharedKey == null) return null;
+
+    try {
+      if (encryptedData.length < 12 + 16) return null;
+      final aesGcm = AesGcm.with256bits();
+
+      final iv = encryptedData.sublist(0, 12);
+      final cipherTextWithMac = encryptedData.sublist(12);
+      final cipherText = cipherTextWithMac.sublist(
+        0,
+        cipherTextWithMac.length - 16,
+      );
+      final mac = Mac(cipherTextWithMac.sublist(cipherTextWithMac.length - 16));
+
+      final secretBox = SecretBox(cipherText, nonce: iv, mac: mac);
+      final plainBytes = await aesGcm.decrypt(
+        secretBox,
+        secretKey: _sharedKey!,
+      );
+      return Uint8List.fromList(plainBytes);
     } catch (_) {
       return null;
     }
@@ -175,11 +220,7 @@ class CryptoService {
     final x = _base64UrlNoPadDecode(jwk['x'] as String);
     final y = _base64UrlNoPadDecode(jwk['y'] as String);
 
-    return EcPublicKey(
-      x: x,
-      y: y,
-      type: KeyPairType.p256,
-    );
+    return EcPublicKey(x: x, y: y, type: KeyPairType.p256);
   }
 
   /// Parse a full JWK (with 'd') into an EcKeyPairData.
@@ -188,12 +229,7 @@ class CryptoService {
     final y = _base64UrlNoPadDecode(jwk['y'] as String);
     final d = _base64UrlNoPadDecode(jwk['d'] as String);
 
-    return EcKeyPairData(
-      d: d,
-      x: x,
-      y: y,
-      type: KeyPairType.p256,
-    );
+    return EcKeyPairData(d: d, x: x, y: y, type: KeyPairType.p256);
   }
 
   /// Base64url encode without padding (JWK standard).

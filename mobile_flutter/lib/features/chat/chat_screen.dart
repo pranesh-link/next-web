@@ -20,6 +20,8 @@ import 'package:luvverse/features/chat/widgets/attach_menu.dart';
 import 'package:luvverse/features/chat/widgets/chat_search_bar.dart';
 import 'package:luvverse/features/chat/widgets/date_separator.dart';
 import 'package:luvverse/features/chat/widgets/encryption_badge.dart';
+import 'package:luvverse/features/chat/widgets/encrypted_image_bubble.dart';
+import 'package:luvverse/features/chat/widgets/encrypted_voice_bubble.dart';
 import 'package:luvverse/features/chat/widgets/image_bubble.dart';
 import 'package:luvverse/features/chat/widgets/link_preview_card.dart';
 import 'package:luvverse/features/chat/widgets/list_bubble.dart';
@@ -456,9 +458,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   ) {
     switch (message.type) {
       case MessageType.image:
+        final isEncryptedFile = message.payload?['encrypted'] == true;
+        if (isEncryptedFile) {
+          return EncryptedImageBubble(filePath: message.content, isMe: isMe);
+        }
         return ImageBubble(imageUrl: message.content, isMe: isMe);
       case MessageType.voice:
         final durationMs = message.payload?['durationMs'] as int? ?? 0;
+        final isEncryptedFile = message.payload?['encrypted'] == true;
+        if (isEncryptedFile) {
+          return EncryptedVoiceBubble(
+            filePath: message.content,
+            durationMs: durationMs,
+            isMe: isMe,
+          );
+        }
         return VoiceBubble(
           audioUrl: message.content,
           durationMs: durationMs,
