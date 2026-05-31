@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
 import prisma from "@/_lib/prisma";
 
@@ -57,7 +58,7 @@ export async function PATCH(
 
     const updated = await prisma.coupleMessage.update({
       where: { id: messageId },
-      data: { payload: existingPayload },
+      data: { payload: existingPayload as unknown as Prisma.InputJsonValue },
     });
 
     return NextResponse.json({ success: true, data: updated });
