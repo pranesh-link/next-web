@@ -64,6 +64,11 @@ model User {
   monthlyIncome  Float?
   /// Base64-encoded JWK ECDH public key for E2E message encryption.
   publicKey      String?  @db.Text
+  /// Monotonically-increasing version counter. Bumped on key rotation
+  /// (e.g. device reinstall causing private-key loss).
+  keyVersion     Int      @default(1)
+  /// Timestamp of the most recent key rotation (null = never rotated).
+  keyRotatedAt   DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

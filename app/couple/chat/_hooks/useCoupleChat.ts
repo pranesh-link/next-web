@@ -80,6 +80,8 @@ export interface UseCoupleChat {
   partnerTyping: boolean;
   /** True once both the local keypair and the partner's public key are ready. */
   encryptionReady: boolean;
+  /** True when partner has rotated their key (decryption of old messages will fail). */
+  partnerKeyRotated: boolean;
   handleSend: (content: string, type: string) => Promise<void>;
   handleRefresh: () => Promise<void>;
   handleReact: (messageId: string, emoji: string) => Promise<void>;
@@ -96,6 +98,7 @@ export function useCoupleChat(userId: string): UseCoupleChat {
   const [encryptionReady, setEncryptionReady] = useState(
     () => getCachedSharedKey() !== null,
   );
+  const [partnerKeyRotated, setPartnerKeyRotated] = useState(false);
 
   const lastCountRef = useRef<number>(-1);
   const memberNamesFetchedRef = useRef(false);
@@ -114,6 +117,10 @@ export function useCoupleChat(userId: string): UseCoupleChat {
     const tick = async () => {
       const result = await ensureKeysBootstrapped();
       if (cancelled) return;
+
+      if (result.partnerKeyVersion && result.partnerKeyVersion > 1) {
+        setPartnerKeyRotated(true);
+      }
 
       if (result.status === "ready" && result.sharedKey) {
         sharedKeyRef.current = result.sharedKey;
@@ -297,6 +304,7 @@ export function useCoupleChat(userId: string): UseCoupleChat {
     memberNames,
     partnerTyping,
     encryptionReady,
+    partnerKeyRotated,
     handleSend,
     handleRefresh,
     handleReact,
