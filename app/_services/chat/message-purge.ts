@@ -38,5 +38,9 @@ export async function cleanupDeliveredMessages(): Promise<number> {
     },
   });
 
+  if (result.count > 0) {
+    console.log(`[message-purge] Cleaned up ${result.count} delivered messages older than 1 hour`);
+  }
+
   return result.count;
 }

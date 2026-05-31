@@ -49,15 +49,6 @@ export async function POST(request: Request) {
       data: { deliveredAt: new Date() },
     });
 
-    // Delete delivered messages older than 1 hour (batch cleanup)
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-    await prisma.coupleMessage.deleteMany({
-      where: {
-        coupleId: member.coupleId,
-        deliveredAt: { not: null, lt: oneHourAgo },
-      },
-    });
-
     return NextResponse.json({ success: true, acknowledged: result.count });
   } catch (error) {
     if (error instanceof z.ZodError) {

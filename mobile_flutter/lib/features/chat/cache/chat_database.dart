@@ -117,8 +117,9 @@ class ChatLocalDatabase extends _$ChatLocalDatabase {
   }
 }
 
-/// Opens the chat-specific local database (unencrypted — messages are
-/// already E2E encrypted at the application layer).
+/// Opens the chat-specific local database with SQLCipher encryption.
+/// Messages are additionally E2E encrypted at the application layer
+/// for defense-in-depth.
 ///
 /// `sqlcipher_flutter_libs` ships `libsqlcipher.so` (a drop-in sqlite3
 /// replacement) but no `libsqlite3.so`. We register it as the sqlite3

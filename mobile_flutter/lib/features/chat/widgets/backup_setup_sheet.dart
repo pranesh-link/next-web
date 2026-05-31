@@ -32,11 +32,25 @@ class _BackupSetupSheetState extends ConsumerState<BackupSetupSheet> {
       network: _network,
     ));
 
-    // Run first backup immediately
-    await service.runBackupNow();
-
     setState(() => _setting = false);
     widget.onComplete();
+
+    // Run first backup in the background and notify via snackbar
+    service.runBackupNow().then((_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Chat backup completed successfully')),
+        );
+      }
+    }).catchError((e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Backup failed. You can retry in Settings.'),
+          ),
+        );
+      }
+    });
   }
 
   @override

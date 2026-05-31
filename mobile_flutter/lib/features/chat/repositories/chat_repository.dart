@@ -190,7 +190,7 @@ class ChatRepository {
   Future<bool> acknowledgeDelivery(List<String> messageIds) async {
     try {
       final response = await _api.post<Map<String, dynamic>>(
-        '/api/v1/couple/chat/ack',
+        ApiEndpoints.chatAck,
         data: {'messageIds': messageIds},
       );
       return response['success'] == true;
@@ -203,7 +203,7 @@ class ChatRepository {
   Future<bool> uploadKeyVault(String vaultBase64) async {
     try {
       final response = await _api.post<Map<String, dynamic>>(
-        '/api/v1/user/key-vault',
+        ApiEndpoints.keyVault,
         data: {'vault': vaultBase64},
       );
       return response['success'] == true;
@@ -216,7 +216,7 @@ class ChatRepository {
   Future<String?> downloadKeyVault() async {
     try {
       final response = await _api.get<Map<String, dynamic>>(
-        '/api/v1/user/key-vault',
+        ApiEndpoints.keyVault,
       );
       if (response['success'] != true) return null;
       return response['vault'] as String?;
@@ -229,7 +229,7 @@ class ChatRepository {
   Future<String?> getSecurityCode() async {
     try {
       final response = await _api.get<Map<String, dynamic>>(
-        '/api/v1/couple/security-code',
+        ApiEndpoints.securityCode,
       );
       if (response['success'] != true) return null;
       return response['code'] as String?;
