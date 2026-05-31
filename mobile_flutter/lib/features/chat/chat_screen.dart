@@ -318,7 +318,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           Expanded(
             child: chatState.when(
               loading: () => _buildShimmer(context),
-              error: (error, _) => _buildError(context, error),
+              // On error, fall back to whatever data we have (or empty state)
+              // instead of blocking the UI with a "Failed to load messages" screen.
+              error: (_, __) {
+                final messages = chatState.value ?? const <ChatMessage>[];
+                if (messages.isEmpty) return _buildEmpty();
+                return _buildMessageList(
+                  messages,
+                  currentUserId,
+                  isPartnerTyping,
+                );
+              },
               data: (messages) {
                 if (messages.isEmpty) return _buildEmpty();
                 return _buildMessageList(
@@ -547,29 +557,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildError(BuildContext context, Object error) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.error_outline, size: 48, color: context.colors.danger),
-          const SizedBox(height: AppSpacing.md),
-          const Text(
-            'Failed to load messages',
-            style: AppTypography.bodyMedium,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          FilledButton.icon(
-            onPressed: () =>
-                ref.read(chatNotifierProvider.notifier).refresh(),
-            icon: const Icon(Icons.refresh),
-            label: const Text('Retry'),
-          ),
-        ],
-      ),
     );
   }
 

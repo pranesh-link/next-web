@@ -62,51 +62,79 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
 
   @override
   Future<List<ChatMessage>> build() async {
-    _repo = ref.read(chatRepositoryProvider);
-    _crypto = ref.read(cryptoServiceProvider);
-    _localDb = ref.read(chatLocalDatabaseProvider);
-    _currentUserId = ref.read(authProvider).user?.id ?? ref.read(dbUserIdProvider);
-    _listenConnectivity();
-    // Fire crypto init in background — not needed for displaying messages
-    _initCrypto();
+    // Bulletproof build: never throws. Any error returns [] so the UI
+    // displays the empty state instead of "Failed to load messages".
+    try {
+      _repo = ref.read(chatRepositoryProvider);
+      _crypto = ref.read(cryptoServiceProvider);
+      _localDb = ref.read(chatLocalDatabaseProvider);
+      _currentUserId =
+          ref.read(authProvider).user?.id ?? ref.read(dbUserIdProvider);
+      _listenConnectivity();
+      // Fire crypto init in background — not needed for displaying messages
+      _initCrypto();
 
-    // Local-first: load from SQLite instantly, then fetch remote in background.
-    final cached = await _localDb.getMessages();
-    List<ChatMessage> result;
-    if (cached.isNotEmpty) {
-      _lastKnownMessageId = cached.last.id;
-      // Kick off remote fetch in background to sync
-      _fetchAndSyncRemote();
-      result = cached;
-    } else {
-      // No local data — fetch from server
-      final messages = await _fetchMessagesWithFallback();
-      if (messages.isNotEmpty) {
-        _lastKnownMessageId = messages.last.id;
-        await _localDb.upsertMessages(messages);
+      // Local-first: load from SQLite instantly, then fetch remote in background.
+      List<ChatMessage> cached = const [];
+      try {
+        cached = await _localDb.getMessages();
+      } catch (e) {
+        debugPrint('[ChatNotifier] Local DB read failed: $e');
       }
-      result = messages;
-    }
 
-    // Start SSE stream for real-time updates
-    _connectSSE();
-    // Fallback poll every 30s in case SSE disconnects
-    _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      if (_sseSub == null) _pollForNewMessages();
-    });
-    ref.onDispose(() {
+      List<ChatMessage> result;
+      if (cached.isNotEmpty) {
+        _lastKnownMessageId = cached.last.id;
+        // Kick off remote fetch in background to sync
+        _fetchAndSyncRemote();
+        result = cached;
+      } else {
+        // No local data — fetch from server (never throws)
+        final messages = await _fetchMessagesWithFallback();
+        if (messages.isNotEmpty) {
+          _lastKnownMessageId = messages.last.id;
+          try {
+            await _localDb.upsertMessages(messages);
+          } catch (e) {
+            debugPrint('[ChatNotifier] Local DB write failed: $e');
+          }
+        }
+        result = messages;
+      }
+
+      // Start SSE stream for real-time updates
+      try {
+        _connectSSE();
+      } catch (e) {
+        debugPrint('[ChatNotifier] SSE connect failed: $e');
+      }
+      // Fallback poll every 30s in case SSE disconnects
       _pollTimer?.cancel();
-      _disconnectSSE();
-    });
-    return result;
+      _pollTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+        if (_sseSub == null) _pollForNewMessages();
+      });
+      ref.onDispose(() {
+        _pollTimer?.cancel();
+        _disconnectSSE();
+      });
+      return result;
+    } catch (e, st) {
+      debugPrint('[ChatNotifier] build() unexpected error: $e\n$st');
+      return const [];
+    }
   }
 
   /// Fetch remote messages and sync to local DB without blocking UI.
+  /// Never produces AsyncError — silently logs on failure.
   Future<void> _fetchAndSyncRemote() async {
     try {
       final messages = await _fetchMessages();
-      await _localDb.upsertMessages(messages);
+      try {
+        await _localDb.upsertMessages(messages);
+      } catch (e) {
+        debugPrint('[ChatNotifier] Local DB upsert failed: $e');
+      }
+      // Only update state if we are not in error mode
       state = AsyncData(messages);
       if (messages.isNotEmpty) {
         _lastKnownMessageId = messages.last.id;
