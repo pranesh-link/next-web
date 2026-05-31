@@ -318,11 +318,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           Expanded(
             child: chatState.when(
               loading: () => _buildShimmer(context),
-              // On error, fall back to whatever data we have (or empty state)
-              // instead of blocking the UI with a "Failed to load messages" screen.
-              error: (_, __) {
+              // On error, fall back to whatever data we have. If empty,
+              // show a retry-able error widget instead of the empty state.
+              error: (error, _) {
                 final messages = chatState.value ?? const <ChatMessage>[];
-                if (messages.isEmpty) return _buildEmpty();
+                if (messages.isEmpty) return _buildError(context, error);
                 return _buildMessageList(
                   messages,
                   currentUserId,
@@ -330,7 +330,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 );
               },
               data: (messages) {
-                if (messages.isEmpty) return _buildEmpty();
+                if (messages.isEmpty) {
+                  // Differentiate genuine "no messages" from a failed fetch.
+                  final fetchError =
+                      ref.read(chatNotifierProvider.notifier).lastFetchError;
+                  if (fetchError != null) {
+                    return _buildError(context, fetchError);
+                  }
+                  return _buildEmpty();
+                }
                 return _buildMessageList(
                   messages,
                   currentUserId,
@@ -557,6 +565,43 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildError(BuildContext context, Object error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: context.colors.danger),
+            const SizedBox(height: AppSpacing.md),
+            const Text(
+              'Failed to load messages',
+              style: AppTypography.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              error.toString(),
+              style: AppTypography.small.copyWith(
+                color: Colors.grey.shade600,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            FilledButton.icon(
+              onPressed: () =>
+                  ref.read(chatNotifierProvider.notifier).refresh(),
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
