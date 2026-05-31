@@ -72,6 +72,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>com.googleusercontent.apps.613218271037-f8n7hrmek69lde0s0o7cnu46vv2hg6qe</string>
+				<string>luvverse</string>
 			</array>
 		</dict>
 	</array>
