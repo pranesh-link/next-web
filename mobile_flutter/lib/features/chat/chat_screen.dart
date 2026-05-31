@@ -38,6 +38,12 @@ import 'package:luvverse/features/chat/widgets/voice_bubble.dart';
 import 'package:luvverse/features/chat/widgets/voice_recorder.dart';
 import 'package:luvverse/features/chat/widgets/wallpaper_picker.dart';
 import 'package:luvverse/features/chat/widgets/connectivity_banner.dart';
+import 'package:luvverse/features/chat/widgets/chat_info_banner.dart';
+import 'package:luvverse/features/chat/widgets/retention_tooltip.dart';
+import 'package:luvverse/features/chat/widgets/safety_number_widget.dart';
+import 'package:luvverse/features/chat/widgets/backup_setup_sheet.dart';
+import 'package:luvverse/features/chat/services/backup_service.dart';
+import 'package:luvverse/features/chat/services/message_sync_service.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';
 
 /// Full chat screen composing all chat widgets.
@@ -75,6 +81,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ref.read(pushNotificationServiceProvider).setOnChatMessageCallback(() {
         ref.read(chatNotifierProvider.notifier).refresh();
       });
+      // ACK delivery for received messages
+      _acknowledgeReceivedMessages();
+      // Show backup setup on first open if not configured
+      _checkBackupSetup();
     });
   }
 
@@ -91,6 +101,38 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         _scrollController.offset > 200;
     if (shouldShow != _showScrollToBottom) {
       setState(() => _showScrollToBottom = shouldShow);
+    }
+  }
+
+  /// ACK delivery for messages received from partner.
+  void _acknowledgeReceivedMessages() {
+    final messages = ref.read(chatNotifierProvider).valueOrNull ?? [];
+    final currentUserId = ref.read(dbUserIdProvider) ?? '';
+    final unacked = messages
+        .where((m) => m.senderId != currentUserId && m.deliveredAt == null)
+        .map((m) => m.id)
+        .toList();
+    if (unacked.isNotEmpty) {
+      ref.read(messageSyncServiceProvider).acknowledgeMessages(unacked);
+    }
+  }
+
+  /// Show backup setup sheet on first chat open if not configured.
+  void _checkBackupSetup() async {
+    final backupService = ref.read(backupServiceProvider);
+    final config = await backupService.getConfig();
+    if (config.googleAccountEmail == null && mounted) {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (_) => BackupSetupSheet(
+          onComplete: () => Navigator.pop(context),
+          onSkip: () => Navigator.pop(context),
+        ),
+      );
     }
   }
 
@@ -186,6 +228,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
           ),
           builder: (_) => const WallpaperPicker(),
+        );
+      case 'security_code':
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          builder: (_) => const SafetyNumberWidget(),
         );
       case 'refresh':
         ref.read(chatNotifierProvider.notifier).refresh();
@@ -290,6 +341,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         backgroundColor: context.colors.bgElevated,
         elevation: 0.5,
         actions: [
+          const RetentionTooltip(),
           IconButton(
             icon: const Icon(Icons.search),
             onPressed: () => setState(() => _showSearch = !_showSearch),
@@ -298,6 +350,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             onSelected: _onMenuAction,
             itemBuilder: (_) => [
               const PopupMenuItem(value: 'wallpaper', child: Text('Wallpaper')),
+              const PopupMenuItem(
+                  value: 'security_code', child: Text('Security code')),
               const PopupMenuItem(value: 'refresh', child: Text('Refresh')),
             ],
           ),
@@ -306,6 +360,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       body: Column(
         children: [
           ConnectivityBanner(isOffline: isOffline),
+          const ChatInfoBanner(),
           if (_showSearch)
             ChatSearchBar(
               scrollController: _scrollController,

@@ -23,6 +23,7 @@ class ChatMessage {
   final Map<String, dynamic>? payload;
   final DateTime? reminderAt;
   final List<String> readBy;
+  final DateTime? deliveredAt;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -37,6 +38,7 @@ class ChatMessage {
     this.payload,
     this.reminderAt,
     required this.readBy,
+    this.deliveredAt,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -65,6 +67,7 @@ class ChatMessage {
       payload: payload ?? this.payload,
       reminderAt: reminderAt,
       readBy: readBy,
+      deliveredAt: deliveredAt,
       createdAt: createdAt,
       updatedAt: updatedAt,
     );
@@ -84,6 +87,9 @@ class ChatMessage {
           ? DateTime.parse(json['reminderAt'] as String)
           : null,
       readBy: List<String>.from(json['readBy'] as List? ?? []),
+      deliveredAt: json['deliveredAt'] != null
+          ? DateTime.parse(json['deliveredAt'] as String)
+          : null,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
     );
@@ -100,6 +106,7 @@ class ChatMessage {
     'payload': payload,
     'reminderAt': reminderAt?.toIso8601String(),
     'readBy': readBy,
+    'deliveredAt': deliveredAt?.toIso8601String(),
     'createdAt': createdAt.toIso8601String(),
     'updatedAt': updatedAt.toIso8601String(),
   };

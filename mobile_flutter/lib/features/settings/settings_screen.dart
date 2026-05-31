@@ -65,7 +65,6 @@ class SettingsScreen extends ConsumerWidget {
           _SettingsTile(icon: Icons.people, title: 'Couple', onTap: () => context.push('/couple/manage')),
           _SettingsTile(icon: Icons.notifications_outlined, title: 'Notifications', onTap: () => context.push('/notifications')),
           _TestNotificationTile(),
-          _RegisterDeviceTile(),
           _ListDevicesTile(),
           const SizedBox(height: AppSpacing.lg),
           // Theme section
@@ -252,6 +251,7 @@ class _TestNotificationTileState extends ConsumerState<_TestNotificationTile> {
       return;
     }
 
+    await pushService.registerToken();
     final result = await pushService.sendTestNotification();
     if (!mounted) return;
     setState(() => _sending = false);
@@ -268,55 +268,6 @@ class _TestNotificationTileState extends ConsumerState<_TestNotificationTile> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(text), duration: const Duration(seconds: 5)),
-    );
-  }
-}
-
-class _RegisterDeviceTile extends ConsumerStatefulWidget {
-  @override
-  ConsumerState<_RegisterDeviceTile> createState() => _RegisterDeviceTileState();
-}
-
-class _RegisterDeviceTileState extends ConsumerState<_RegisterDeviceTile> {
-  bool _busy = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      leading: Icon(Icons.phonelink_setup, color: context.colors.textDim),
-      title: Text('Re-register this device', style: AppTypography.body),
-      subtitle: Text(
-        'Request permission & re-register FCM token',
-        style: AppTypography.small.copyWith(color: context.colors.textMuted),
-      ),
-      trailing: _busy
-          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-          : Icon(Icons.chevron_right, color: context.colors.textMuted, size: 20),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      onTap: _busy ? null : _register,
-    );
-  }
-
-  Future<void> _register() async {
-    setState(() => _busy = true);
-    final pushService = ref.read(pushNotificationServiceProvider);
-    final granted = await pushService.requestPermission();
-    final result = await pushService.registerToken();
-    if (!mounted) return;
-    setState(() => _busy = false);
-
-    final String text;
-    if (!granted) {
-      text = 'Permission denied. Enable notifications in system Settings.';
-    } else if (result.success) {
-      // Backend now returns a message with userId prefix for debugging
-      text = result.message ?? 'Device registered ✓';
-    } else {
-      text = 'Registration failed: ${result.error}';
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(text), duration: const Duration(seconds: 6)),
     );
   }
 }

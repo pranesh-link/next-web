@@ -16,6 +16,7 @@ import 'package:luvverse/features/chat/models/chat_message.dart';
 import 'package:luvverse/features/chat/repositories/chat_repository.dart';
 import 'package:luvverse/features/chat/services/chat_key_bootstrap.dart';
 import 'package:luvverse/features/chat/services/crypto_service.dart';
+import 'package:luvverse/features/chat/services/message_sync_service.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';
 
 // -- Repository --
@@ -157,8 +158,23 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
       if (messages.isNotEmpty) {
         _lastKnownMessageId = messages.last.id;
       }
+      // ACK delivery for messages from partner
+      _acknowledgeReceivedMessages(messages);
     } catch (e) {
       debugPrint('[ChatNotifier] Background sync failed: $e');
+    }
+  }
+
+  /// ACK delivery for messages from partner that haven't been acknowledged.
+  void _acknowledgeReceivedMessages(List<ChatMessage> messages) {
+    final currentUserId = _ref.read(dbUserIdProvider);
+    if (currentUserId == null) return;
+    final unacked = messages
+        .where((m) => m.senderId != currentUserId && m.deliveredAt == null)
+        .map((m) => m.id)
+        .toList();
+    if (unacked.isNotEmpty) {
+      _ref.read(messageSyncServiceProvider).acknowledgeMessages(unacked);
     }
   }
 
