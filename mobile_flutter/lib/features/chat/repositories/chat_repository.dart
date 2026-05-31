@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:luvverse/core/network/api_client.dart';
@@ -152,5 +153,36 @@ class ChatRepository {
       '${ApiEndpoints.chatMessages}/$messageId/pin',
       data: {},
     );
+  }
+
+  /// Upload encrypted file bytes. Returns the file path (for signed URL requests).
+  Future<({String? url, String? path})?> uploadEncryptedFile(
+    Uint8List encryptedBytes,
+    String originalFilename,
+    String originalContentType,
+  ) async {
+    final formData = FormData.fromMap({
+      'file': MultipartFile.fromBytes(
+        encryptedBytes,
+        filename: '$originalFilename.enc',
+      ),
+      'contentType': originalContentType,
+    });
+    final response = await _api.post<Map<String, dynamic>>(
+      '/api/v1/files',
+      data: formData,
+    );
+    final url = response['url'] as String?;
+    final path = response['path'] as String?;
+    return (url: url, path: path);
+  }
+
+  /// Get a fresh signed URL for a file path.
+  Future<String?> getSignedUrl(String path) async {
+    final response = await _api.get<Map<String, dynamic>>(
+      '/api/v1/files/signed-url',
+      queryParameters: {'path': path},
+    );
+    return response['url'] as String?;
   }
 }

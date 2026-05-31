@@ -202,6 +202,54 @@ export async function decryptMessage(
 }
 
 // ---------------------------------------------------------------------------
+// Binary encryption / decryption
+// ---------------------------------------------------------------------------
+
+/**
+ * Encrypts binary data using AES-256-GCM.
+ * Returns the IV prepended to ciphertext as a single ArrayBuffer.
+ * Format: [12-byte IV][ciphertext+GCM tag]
+ */
+export async function encryptBytes(
+  data: ArrayBuffer,
+  sharedKey: CryptoKey,
+): Promise<ArrayBuffer> {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    sharedKey,
+    data,
+  );
+  const combined = new Uint8Array(12 + ciphertext.byteLength);
+  combined.set(iv, 0);
+  combined.set(new Uint8Array(ciphertext), 12);
+  return combined.buffer;
+}
+
+/**
+ * Decrypts binary data encrypted with `encryptBytes`.
+ * Expects format: [12-byte IV][ciphertext+GCM tag]
+ * Returns null on failure.
+ */
+export async function decryptBytes(
+  encryptedData: ArrayBuffer,
+  sharedKey: CryptoKey,
+): Promise<ArrayBuffer | null> {
+  try {
+    if (encryptedData.byteLength < 12 + 16) return null;
+    const iv = new Uint8Array(encryptedData, 0, 12);
+    const ciphertext = new Uint8Array(encryptedData, 12);
+    return await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv },
+      sharedKey,
+      ciphertext,
+    );
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Internal base64 helpers
 // ---------------------------------------------------------------------------
 

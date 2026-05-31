@@ -11,6 +11,7 @@ const ALLOWED_TYPES = new Set([
   "audio/mpeg",
   "audio/mp4",
   "audio/webm",
+  "application/octet-stream",
 ]);
 
 /**
@@ -94,22 +95,29 @@ export async function POST(request: Request) {
     const uniqueName = `${crypto.randomUUID()}.${ext}`;
     const filePath = `chat/${userId}/${uniqueName}`;
 
+    const originalContentType =
+      (formData.get("contentType") as string | null) || file.type;
+
     const buffer = Buffer.from(await file.arrayBuffer());
     const fileRef = bucket.file(filePath);
 
     await fileRef.save(buffer, {
       metadata: {
         contentType: file.type,
-        metadata: { uploadedBy: userId },
+        metadata: {
+          uploadedBy: userId,
+          originalContentType,
+        },
       },
     });
 
-    await fileRef.makePublic();
-
-    const url = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
+    const [signedUrl] = await fileRef.getSignedUrl({
+      action: "read" as const,
+      expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
+    });
 
     return NextResponse.json(
-      { url, filename: uniqueName },
+      { url: signedUrl, filename: uniqueName, path: filePath },
       { status: 201, headers: corsHeaders() },
     );
   } catch (error) {
