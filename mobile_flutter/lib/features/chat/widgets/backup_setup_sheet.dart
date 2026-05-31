@@ -30,6 +30,7 @@ class _BackupSetupSheetState extends ConsumerState<BackupSetupSheet> {
     await service.saveConfig(BackupConfig(
       frequency: _frequency,
       network: _network,
+      googleAccountEmail: 'pending', // Prevents re-showing; _getDriveApi overwrites with real email
     ));
 
     setState(() => _setting = false);

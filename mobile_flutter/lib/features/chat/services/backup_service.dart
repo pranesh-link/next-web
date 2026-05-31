@@ -323,11 +323,23 @@ class BackupService {
           await googleSignIn.signIn();
       if (account == null) return null;
 
+      // Persist Google account email in backup config
+      final currentConfig = await getConfig();
+      if (currentConfig.googleAccountEmail != account.email) {
+        await saveConfig(currentConfig.copyWith(
+          googleAccountEmail: account.email,
+        ));
+      }
+
       final auth = await account.authentication;
       final client = authenticatedClient(
         http.Client(),
         AccessCredentials(
-          AccessToken('Bearer', auth.accessToken!, DateTime.now().toUtc()),
+          AccessToken(
+            'Bearer',
+            auth.accessToken!,
+            DateTime.now().toUtc().add(const Duration(hours: 1)),
+          ),
           null,
           [drive.DriveApi.driveAppdataScope],
         ),

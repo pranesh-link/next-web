@@ -198,11 +198,10 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
   /// Start or restart the SSE stream connection.
   Future<void> _startSSEStream() async {
     try {
-      const baseUrl = 'https://www.pranesh.link';
       final token = await SecureStorage.getToken();
       if (token == null) return;
 
-      final uri = Uri.parse('$baseUrl/api/couple/chat/stream');
+      final uri = Uri.parse('$kApiBaseUrl/api/couple/chat/stream');
       final request = await _sseClient!.getUrl(uri);
       request.headers.set('Authorization', 'Bearer $token');
       request.headers.set('Accept', 'text/event-stream');

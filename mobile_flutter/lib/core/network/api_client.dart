@@ -12,8 +12,11 @@ final apiClientProvider = Provider<ApiClient>((ref) {
   return ApiClient(ref);
 });
 
+/// Base URL for all API requests.
+const kApiBaseUrl = 'https://www.pranesh.link';
+
 class ApiClient {
-  static const _baseUrl = 'https://www.pranesh.link';
+  static const _baseUrl = kApiBaseUrl;
 
   late final Dio _dio;
   final Ref _ref;

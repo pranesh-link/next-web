@@ -64,6 +64,7 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: AppSpacing.xxl),
           _SettingsTile(icon: Icons.people, title: 'Couple', onTap: () => context.push('/couple/manage')),
           _SettingsTile(icon: Icons.notifications_outlined, title: 'Notifications', onTap: () => context.push('/notifications')),
+          _SettingsTile(icon: Icons.cloud_outlined, title: 'Chat Backup', onTap: () => context.push('/backup-settings')),
           _TestNotificationTile(),
           _ListDevicesTile(),
           const SizedBox(height: AppSpacing.lg),
