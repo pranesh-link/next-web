@@ -67,14 +67,17 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
     _localDb = ref.read(chatLocalDatabaseProvider);
     _currentUserId = ref.read(authProvider).user?.id ?? ref.read(dbUserIdProvider);
     _listenConnectivity();
-    await _initCrypto();
+    // Fire crypto init in background — not needed for displaying messages
+    _initCrypto();
 
     // Local-first: load from SQLite instantly, then fetch remote in background.
     final cached = await _localDb.getMessages();
+    List<ChatMessage> result;
     if (cached.isNotEmpty) {
       _lastKnownMessageId = cached.last.id;
       // Kick off remote fetch in background to sync
       _fetchAndSyncRemote();
+      result = cached;
     } else {
       // No local data — fetch from server
       final messages = await _fetchMessagesWithFallback();
@@ -82,6 +85,7 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
         _lastKnownMessageId = messages.last.id;
         await _localDb.upsertMessages(messages);
       }
+      result = messages;
     }
 
     // Start SSE stream for real-time updates
@@ -95,7 +99,7 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
       _pollTimer?.cancel();
       _disconnectSSE();
     });
-    return cached.isNotEmpty ? cached : (state.value ?? []);
+    return result;
   }
 
   /// Fetch remote messages and sync to local DB without blocking UI.
@@ -232,19 +236,21 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
   }
 
   /// Attempt API fetch; fall back to local DB if offline/error.
+  /// Guaranteed to never throw — returns empty list in worst case.
   Future<List<ChatMessage>> _fetchMessagesWithFallback() async {
     try {
       final messages = await _fetchMessages();
       // Persist to local DB
       await _localDb.upsertMessages(messages);
-      _isOnline = true;
-      ref.read(isOfflineProvider.notifier).state = false;
       return messages;
     } catch (e) {
-      debugPrint('[ChatNotifier] Fetch failed, loading from local DB: $e');
-      _isOnline = false;
-      ref.read(isOfflineProvider.notifier).state = true;
-      return _localDb.getMessages();
+      debugPrint('[ChatNotifier] Fetch failed, trying local DB: $e');
+      try {
+        return await _localDb.getMessages();
+      } catch (dbError) {
+        debugPrint('[ChatNotifier] Local DB also failed: $dbError');
+        return [];
+      }
     }
   }
 
@@ -365,10 +371,12 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
     }
   }
 
-  /// Refresh messages from the server.
+  /// Refresh messages from the server. Never produces AsyncError.
   Future<void> refresh() async {
+    final previous = state.value ?? [];
     state = const AsyncLoading<List<ChatMessage>>().copyWithPrevious(state);
-    state = await AsyncValue.guard(() => _fetchMessagesWithFallback());
+    final messages = await _fetchMessagesWithFallback();
+    state = AsyncData(messages.isNotEmpty ? messages : previous);
   }
 
   /// Mark all partner messages as read (triggers double-tick on partner's side).

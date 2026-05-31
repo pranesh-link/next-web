@@ -60,6 +60,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         _ensureRefreshToken();
         _warmCache();
         _initPush();
+        _prefetchChat();
       }
     } catch (_) {
       state = const AuthState();
