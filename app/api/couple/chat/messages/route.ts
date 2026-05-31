@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
 import prisma from "@/_lib/prisma";
-import { MessageType } from "@prisma/client";
+import { MessageType, Prisma } from "@prisma/client";
 import { sendChatPushNotification } from "@/_services/chat/push-service";
 
 const sendMessageSchema = z.object({
@@ -91,7 +91,9 @@ export async function POST(request: Request) {
         content: validated.encrypted ? validated.content : validated.content.trim(),
         iv: validated.encrypted ? validated.iv : undefined,
         encrypted: validated.encrypted,
-        payload: validated.payload ?? undefined,
+        payload: validated.payload
+          ? (validated.payload as Prisma.InputJsonValue)
+          : undefined,
         reminderAt: validated.reminderAt ? new Date(validated.reminderAt) : undefined,
         readBy: [userId],
       },
