@@ -24,6 +24,7 @@ class ChatMessages extends Table {
   TextColumn get payload => text().nullable()();
   TextColumn get readBy => text().withDefault(const Constant('[]'))();
   DateTimeColumn get reminderAt => dateTime().nullable()();
+  DateTimeColumn get deliveredAt => dateTime().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 
@@ -36,14 +37,17 @@ class ChatLocalDatabase extends _$ChatLocalDatabase {
   ChatLocalDatabase(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) => m.createAll(),
         onUpgrade: (m, from, to) async {
-          await m.deleteTable('chat_messages');
-          await m.createAll();
+          if (from < 2) {
+            await m.database.customStatement(
+              'ALTER TABLE chat_messages ADD COLUMN delivered_at INTEGER',
+            );
+          }
         },
       );
 

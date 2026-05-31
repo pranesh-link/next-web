@@ -185,4 +185,56 @@ class ChatRepository {
     );
     return response['url'] as String?;
   }
+
+  /// Acknowledge delivery of messages so the server can purge them.
+  Future<bool> acknowledgeDelivery(List<String> messageIds) async {
+    try {
+      final response = await _api.post<Map<String, dynamic>>(
+        '/api/v1/couple/chat/ack',
+        data: {'messageIds': messageIds},
+      );
+      return response['success'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Upload encrypted key vault blob to server.
+  Future<bool> uploadKeyVault(String vaultBase64) async {
+    try {
+      final response = await _api.post<Map<String, dynamic>>(
+        '/api/v1/user/key-vault',
+        data: {'vault': vaultBase64},
+      );
+      return response['success'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Download encrypted key vault blob from server.
+  Future<String?> downloadKeyVault() async {
+    try {
+      final response = await _api.get<Map<String, dynamic>>(
+        '/api/v1/user/key-vault',
+      );
+      if (response['success'] != true) return null;
+      return response['vault'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Get the security code (safety number) for the couple.
+  Future<String?> getSecurityCode() async {
+    try {
+      final response = await _api.get<Map<String, dynamic>>(
+        '/api/v1/couple/security-code',
+      );
+      if (response['success'] != true) return null;
+      return response['code'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
 }
