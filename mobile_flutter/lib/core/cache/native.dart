@@ -39,6 +39,14 @@ Future<CacheDatabase> openCacheDatabase({bool fallbackToMemory = false}) async {
 
     final queryExecutor = NativeDatabase.createInBackground(
       dbFile,
+      isolateSetup: () async {
+        // Re-apply sqlcipher override inside the background isolate
+        // (overrides are per-isolate; without this, the background
+        // isolate fails with "libsqlite3.so not found" on Android).
+        if (Platform.isAndroid) {
+          open.overrideFor(OperatingSystem.android, openCipherOnAndroid);
+        }
+      },
       setup: (db) {
         db.execute("PRAGMA key = '$key'");
       },
