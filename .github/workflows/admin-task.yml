@@ -1,0 +1,55 @@
+name: Admin Task
+
+on:
+  workflow_dispatch:
+    inputs:
+      script:
+        description: 'Script path relative to repo root (e.g. scripts/cleanup-xyz.ts)'
+        required: true
+        type: string
+      confirm:
+        description: 'Type YES to confirm execution'
+        required: true
+        type: string
+
+concurrency:
+  group: admin-task
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    environment: production
+    if: github.event.inputs.confirm == 'YES'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+
+      - uses: actions/cache@v4
+        id: node-modules
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('yarn.lock') }}
+
+      - name: Install dependencies
+        if: steps.node-modules.outputs.cache-hit != 'true'
+        run: yarn --frozen-lockfile --ignore-engines
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Validate script exists
+        run: |
+          if [[ ! -f "${{ github.event.inputs.script }}" ]]; then
+            echo "::error::Script not found: ${{ github.event.inputs.script }}"
+            exit 1
+          fi
+
+      - name: Run admin task
+        run: npx tsx ${{ github.event.inputs.script }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
