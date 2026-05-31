@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:luvverse/core/auth/auth_repository.dart';
@@ -10,10 +11,14 @@ import 'package:luvverse/core/notifications/push_providers.dart';
 import 'package:luvverse/features/chat/cache/chat_cache.dart';
 import 'package:luvverse/features/chat/cache/chat_db_providers.dart';
 import 'package:luvverse/features/chat/providers/chat_providers.dart';
+import 'package:luvverse/features/chat/services/chat_key_bootstrap.dart';
 import 'package:luvverse/models/user.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return AuthRepository(ref.read(apiClientProvider), ref.read(cacheServiceProvider));
+  return AuthRepository(
+    ref.read(apiClientProvider),
+    ref.read(cacheServiceProvider),
+  );
 });
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
@@ -27,11 +32,23 @@ class AuthState {
   final bool isSigningOut;
   final String? error;
 
-  const AuthState({this.user, this.token, this.isLoading = false, this.isSigningOut = false, this.error});
+  const AuthState({
+    this.user,
+    this.token,
+    this.isLoading = false,
+    this.isSigningOut = false,
+    this.error,
+  });
 
   bool get isAuthenticated => user != null && token != null;
 
-  AuthState copyWith({User? user, String? token, bool? isLoading, bool? isSigningOut, String? error}) {
+  AuthState copyWith({
+    User? user,
+    String? token,
+    bool? isLoading,
+    bool? isSigningOut,
+    String? error,
+  }) {
     return AuthState(
       user: user ?? this.user,
       token: token ?? this.token,
@@ -46,7 +63,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final AuthRepository _repository;
   final Ref _ref;
 
-  AuthNotifier(this._repository, this._ref) : super(const AuthState(isLoading: true)) {
+  AuthNotifier(this._repository, this._ref)
+    : super(const AuthState(isLoading: true)) {
     _checkStoredAuth();
   }
 
@@ -61,6 +79,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         _warmCache();
         _initPush();
         _prefetchChat();
+        _ensureE2EKeysUploaded();
       }
     } catch (_) {
       state = const AuthState();
@@ -87,7 +106,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final newToken = body?['token'] as String?;
         final newRefresh = body?['refreshToken'] as String?;
         if (newToken != null) await SecureStorage.saveToken(newToken);
-        if (newRefresh != null) await SecureStorage.saveRefreshToken(newRefresh);
+        if (newRefresh != null)
+          await SecureStorage.saveRefreshToken(newRefresh);
       } catch (_) {
         // Non-critical — will retry on next sign-in
       }
@@ -105,6 +125,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       _initPush();
       // Prefetch chat messages in background for instant loading
       _prefetchChat();
+      // Bootstrap E2E keys so encryption is ready before first chat open.
+      _ensureE2EKeysUploaded();
     } catch (e) {
       final message = e.toString().replaceFirst('Exception: ', '');
       state = state.copyWith(isLoading: false, error: message);
@@ -132,6 +154,22 @@ class AuthNotifier extends StateNotifier<AuthState> {
         _ref.read(chatNotifierProvider.notifier).prefetch();
       } catch (_) {
         // Provider may not be initialized yet — safe to ignore.
+      }
+    });
+  }
+
+  /// Eagerly bootstrap E2E encryption keys. Runs after sign-in / app start so
+  /// the chat screen opens with encryption already ready in the common case.
+  /// Fire-and-forget; failures are logged and retried on next call.
+  void _ensureE2EKeysUploaded() {
+    Future(() async {
+      try {
+        final ok = await _ref
+            .read(chatKeyBootstrapProvider)
+            .ensureBootstrapped();
+        debugPrint('[Auth] E2E keys bootstrap: $ok');
+      } catch (e) {
+        debugPrint('[Auth] E2E keys bootstrap failed: $e');
       }
     });
   }

@@ -3,14 +3,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { CoupleMessage } from "@prisma/client";
 import { markAllRead } from "../_actions/messages";
+import { encryptMessage, decryptMessage } from "@/_lib/crypto";
 import {
-  getOrGenerateKeyPair,
-  exportPublicKey,
-  importPublicKey,
-  deriveSharedKey,
-  encryptMessage,
-  decryptMessage,
-} from "@/_lib/crypto";
+  ensureKeysBootstrapped,
+  getCachedSharedKey,
+} from "@/_lib/e2e/key-bootstrap";
+import { useToast } from "@/couple/_components/shared/ToastProvider";
 
 interface StreamPayload {
   count: number;
@@ -26,6 +24,8 @@ interface StreamPayload {
   partnerTyping?: boolean;
 }
 
+const NO_PARTNER_RECHECK_MS = 30_000;
+
 async function fetchMessages(): Promise<CoupleMessage[]> {
   try {
     const res = await fetch("/api/couple/chat/messages", { cache: "no-store" });
@@ -40,14 +40,13 @@ async function fetchMessages(): Promise<CoupleMessage[]> {
 async function postMessage(
   content: string,
   type: string,
-  iv?: string,
-  encrypted = false,
+  iv: string,
 ): Promise<boolean> {
   try {
     const res = await fetch("/api/couple/chat/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content, type, iv, encrypted }),
+      body: JSON.stringify({ content, type, iv, encrypted: true }),
     });
     return res.ok;
   } catch {
@@ -55,32 +54,21 @@ async function postMessage(
   }
 }
 
-/** Decrypts any encrypted messages in-place; leaves plaintext messages untouched. */
+/** Decrypts encrypted messages; replaces plaintext rows with a lock placeholder. */
 async function decryptAll(
   msgs: CoupleMessage[],
   sharedKey: CryptoKey | null,
 ): Promise<CoupleMessage[]> {
-  const failedIds: string[] = [];
-  const result = await Promise.all(
+  return Promise.all(
     msgs.map(async (msg) => {
-      if (!msg.encrypted || !msg.iv) return msg;
+      if (!msg.encrypted || !msg.iv) {
+        return { ...msg, content: "🔒 [legacy unencrypted]" };
+      }
       if (!sharedKey) return { ...msg, content: "🔒 [encrypted message]" };
       const plaintext = await decryptMessage(msg.content, msg.iv, sharedKey);
-      if (plaintext === null) failedIds.push(msg.id);
       return { ...msg, content: plaintext ?? "🔒 [decryption failed]" };
     }),
   );
-
-  // Auto-delete undecryptable messages (key mismatch — plaintext is unrecoverable)
-  if (failedIds.length > 0) {
-    fetch("/api/v1/couple/chat/encrypt-batch", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids: failedIds }),
-    }).catch(() => {});
-  }
-
-  return result.filter((msg) => !failedIds.includes(msg.id));
 }
 
 export interface UseCoupleChat {
@@ -105,60 +93,46 @@ export function useCoupleChat(userId: string): UseCoupleChat {
   const [loading, setLoading] = useState(true);
   const [memberNames, setMemberNames] = useState<Record<string, string>>({});
   const [partnerTyping, setPartnerTyping] = useState(false);
-  const [encryptionReady, setEncryptionReady] = useState(false);
+  const [encryptionReady, setEncryptionReady] = useState(
+    () => getCachedSharedKey() !== null,
+  );
 
   const lastCountRef = useRef<number>(-1);
   const memberNamesFetchedRef = useRef(false);
   const lastSignalRef = useRef<number>(0);
-  const sharedKeyRef = useRef<CryptoKey | null>(null);
+  const sharedKeyRef = useRef<CryptoKey | null>(getCachedSharedKey());
+  const { showToast } = useToast();
 
   // ---------------------------------------------------------------------------
-  // Crypto initialisation — runs once on mount
+  // Crypto bootstrap — delegates to the eager bootstrap module. Re-checks every
+  // 30s while mounted when the partner key is still missing.
   // ---------------------------------------------------------------------------
   useEffect(() => {
-    async function initCrypto() {
-      try {
-        const keyPair = await getOrGenerateKeyPair();
-        const publicKeyB64 = await exportPublicKey(keyPair.publicKey);
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
 
-        // Upload public key — server won't overwrite if one already exists
-        const uploadRes = await fetch("/api/v1/user/public-key", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ publicKey: publicKeyB64 }),
-        });
+    const tick = async () => {
+      const result = await ensureKeysBootstrapped();
+      if (cancelled) return;
 
-        if (uploadRes.ok) {
-          const uploadData = (await uploadRes.json()) as {
-            ok: boolean;
-            existing?: boolean;
-            publicKey?: string;
-          };
-          // If server has a different key, our local IndexedDB key pair is stale
-          // We can't recover the old private key, so encryption will use the
-          // server's stored key for identity but we log a warning
-          if (uploadData.existing && uploadData.publicKey !== publicKeyB64) {
-            console.warn("[crypto] Local key pair differs from server — key mismatch detected");
-          }
-        }
-
-        // Fetch partner's public key and derive the shared AES-256-GCM key
-        const partnerRes = await fetch("/api/v1/couple/partner-public-key");
-        if (partnerRes.ok) {
-          const { publicKey: partnerB64 } = (await partnerRes.json()) as {
-            publicKey: string | null;
-          };
-          if (partnerB64) {
-            const partnerKey = await importPublicKey(partnerB64);
-            sharedKeyRef.current = await deriveSharedKey(keyPair.privateKey, partnerKey);
-            setEncryptionReady(true);
-          }
-        }
-      } catch {
-        // Crypto init failure is non-fatal — messages fall back to plaintext
+      if (result.status === "ready" && result.sharedKey) {
+        sharedKeyRef.current = result.sharedKey;
+        setEncryptionReady(true);
+        return;
       }
-    }
-    void initCrypto();
+
+      sharedKeyRef.current = null;
+      setEncryptionReady(false);
+      if (result.status === "no-partner") {
+        timer = setTimeout(() => void tick(), NO_PARTNER_RECHECK_MS);
+      }
+    };
+
+    void tick();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
   }, []);
 
   // ---------------------------------------------------------------------------
@@ -246,28 +220,34 @@ export function useCoupleChat(userId: string): UseCoupleChat {
   }, [noCouple, coupleId]);
 
   // ---------------------------------------------------------------------------
-  // Send — encrypt when sharedKey is available, fall back to plaintext
+  // Send — strict: refuses to send plaintext under any circumstance.
   // ---------------------------------------------------------------------------
   const handleSend = useCallback(async (content: string, type: string) => {
-    let ciphertext = content;
-    let iv: string | undefined;
-    let encrypted = false;
-
-    if (sharedKeyRef.current) {
-      const result = await encryptMessage(content, sharedKeyRef.current);
-      ciphertext = result.ciphertext;
-      iv = result.iv;
-      encrypted = true;
+    let key = sharedKeyRef.current;
+    if (!key) {
+      const result = await ensureKeysBootstrapped();
+      if (result.status === "ready" && result.sharedKey) {
+        sharedKeyRef.current = result.sharedKey;
+        setEncryptionReady(true);
+        key = result.sharedKey;
+      } else {
+        showToast(
+          "Encryption not ready. Make sure your partner has signed in.",
+          "error",
+        );
+        return;
+      }
     }
 
-    const ok = await postMessage(ciphertext, type, iv, encrypted);
+    const { ciphertext, iv } = await encryptMessage(content, key);
+    const ok = await postMessage(ciphertext, type, iv);
     if (ok) {
       const raw = await fetchMessages();
       const msgs = await decryptAll(raw, sharedKeyRef.current);
       setMessages([...msgs].reverse());
       if (msgs[0]?.coupleId) setCoupleId(msgs[0].coupleId);
     }
-  }, []);
+  }, [showToast]);
 
   // ---------------------------------------------------------------------------
   // Typing indicator
@@ -323,4 +303,3 @@ export function useCoupleChat(userId: string): UseCoupleChat {
     signalTyping,
   };
 }
-
