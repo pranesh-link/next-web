@@ -665,6 +665,8 @@ model CoupleMessage {
   readBy     String[]    @default([])
   /// Timestamp when the message was delivered (ACKed) by the recipient.
   deliveredAt DateTime?
+  /// Timestamp when the message was pinned — null means not pinned.
+  pinnedAt    DateTime?
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
 

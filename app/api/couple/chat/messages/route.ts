@@ -10,6 +10,8 @@ const sendMessageSchema = z.object({
   type: z.nativeEnum(MessageType).optional().default(MessageType.TEXT),
   iv: z.string().optional(),
   encrypted: z.boolean().optional().default(false),
+  payload: z.record(z.unknown()).optional(),
+  reminderAt: z.string().datetime().optional(),
 });
 
 /**
@@ -89,6 +91,8 @@ export async function POST(request: Request) {
         content: validated.encrypted ? validated.content : validated.content.trim(),
         iv: validated.encrypted ? validated.iv : undefined,
         encrypted: validated.encrypted,
+        payload: validated.payload ?? undefined,
+        reminderAt: validated.reminderAt ? new Date(validated.reminderAt) : undefined,
         readBy: [userId],
       },
     });

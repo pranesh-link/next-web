@@ -30,3 +30,6 @@ export async function PATCH() {
 
   return new NextResponse(null, { status: 204 });
 }
+
+// Mobile sends POST; keep PATCH for backward compatibility.
+export { PATCH as POST };

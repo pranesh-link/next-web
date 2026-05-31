@@ -97,7 +97,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         if (token == null) return;
         // Use a fresh Dio instance to bypass auth interceptor — the stored
         // token may be expired and we don't want a 401 retry loop.
-        final dio = Dio(BaseOptions(baseUrl: 'https://www.pranesh.link'));
+        final dio = Dio(BaseOptions(baseUrl: kApiBaseUrl));
         final response = await dio.post<Map<String, dynamic>>(
           '/api/v1/auth/mobile',
           data: {'accessToken': token},

@@ -7,6 +7,7 @@ import 'package:dio/dio.dart';
 import 'package:luvverse/core/auth/auth_provider.dart';
 import 'package:luvverse/core/auth/secure_storage.dart';
 import 'package:luvverse/core/lifecycle/app_lifecycle_manager.dart';
+import 'package:luvverse/core/network/api_client.dart';
 import 'package:luvverse/core/network/api_endpoints.dart';
 import 'package:luvverse/core/prefetch/prefetch_progress_provider.dart';
 import 'package:luvverse/core/prefetch/splash_prefetch_service.dart';
@@ -81,7 +82,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     try {
       final refreshToken = await SecureStorage.getRefreshToken();
       if (refreshToken == null) return;
-      final dio = Dio(BaseOptions(baseUrl: 'https://www.pranesh.link'));
+      final dio = Dio(BaseOptions(baseUrl: kApiBaseUrl));
       final response = await dio.post<Map<String, dynamic>>(
         ApiEndpoints.refreshToken,
         data: {'refreshToken': refreshToken},

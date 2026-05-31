@@ -28,6 +28,7 @@ import 'package:luvverse/features/chat/widgets/chat_gate_screen.dart';
 import 'package:luvverse/features/settings/settings_screen.dart';
 import 'package:luvverse/features/couple/invite_screen.dart';
 import 'package:luvverse/features/onboarding/onboarding_screen.dart';
+import 'package:luvverse/features/chat/pages/backup_settings_page.dart';
 import 'package:luvverse/core/auth/auth_provider.dart';
 
 /// Navigation shell keys for nested navigation.
@@ -44,6 +45,12 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: '/splash',
     refreshListenable: listenable,
     redirect: (context, state) {
+      // Normalize trailing slashes from deep links (e.g. luvverse://chat/ → /chat)
+      final path = state.uri.path;
+      if (path.length > 1 && path.endsWith('/')) {
+        return path.substring(0, path.length - 1);
+      }
+
       final auth = ref.read(authProvider);
       final isLoggedIn = auth.isAuthenticated;
       final isLoggingIn = state.uri.path == '/login';
@@ -199,6 +206,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/couple/manage',
         builder: (context, state) => const CoupleManagementScreen(),
+      ),
+
+      // Backup settings
+      GoRoute(
+        path: '/backup-settings',
+        builder: (context, state) => const BackupSettingsPage(),
       ),
 
       // Deep link: couple invite
