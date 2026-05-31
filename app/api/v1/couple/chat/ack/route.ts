@@ -49,6 +49,14 @@ export async function POST(request: Request) {
       data: { deliveredAt: new Date() },
     });
 
+    // Ephemeral: delete delivered messages immediately (local DB is source of truth)
+    prisma.coupleMessage.deleteMany({
+      where: {
+        id: { in: messageIds },
+        coupleId: member.coupleId,
+      },
+    }).catch(() => {});
+
     return NextResponse.json({ success: true, acknowledged: result.count });
   } catch (error) {
     if (error instanceof z.ZodError) {
