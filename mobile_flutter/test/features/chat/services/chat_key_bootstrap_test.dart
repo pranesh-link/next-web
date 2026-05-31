@@ -30,15 +30,19 @@ void main() {
     when(
       () => repo.uploadPublicKey(any()),
     ).thenAnswer((_) async => <String, dynamic>{});
+    when(
+      () => repo.uploadPublicKeyForce(any()),
+    ).thenAnswer((_) async => <String, dynamic>{});
   });
 
   group('ChatKeyBootstrap.ensureBootstrapped', () {
     test(
       'returns true and derives shared key when partner key present',
       () async {
-        when(
-          () => repo.getPartnerPublicKey(),
-        ).thenAnswer((_) async => 'partner-pub');
+        when(() => repo.getPartnerPublicKeyWithVersion()).thenAnswer(
+          (_) async =>
+              (publicKey: 'partner-pub', keyVersion: 1, keyRotatedAt: null),
+        );
 
         final ok = await bootstrap.ensureBootstrapped();
 
@@ -51,9 +55,10 @@ void main() {
 
     test('generates key pair when none exists', () async {
       when(() => crypto.hasKeyPair()).thenAnswer((_) async => false);
-      when(
-        () => repo.getPartnerPublicKey(),
-      ).thenAnswer((_) async => 'partner-pub');
+      when(() => repo.getPartnerPublicKeyWithVersion()).thenAnswer(
+        (_) async =>
+            (publicKey: 'partner-pub', keyVersion: 1, keyRotatedAt: null),
+      );
 
       final ok = await bootstrap.ensureBootstrapped();
 
@@ -64,39 +69,43 @@ void main() {
     test(
       'returns false (not ready) when partner key absent — no caching',
       () async {
-        when(() => repo.getPartnerPublicKey()).thenAnswer((_) async => null);
+        when(() => repo.getPartnerPublicKeyWithVersion()).thenAnswer(
+          (_) async => (publicKey: null, keyVersion: null, keyRotatedAt: null),
+        );
 
         final first = await bootstrap.ensureBootstrapped();
         expect(first, isFalse);
         expect(bootstrap.isReady, isFalse);
 
         // Next call should retry (partner may have signed in by then).
-        when(
-          () => repo.getPartnerPublicKey(),
-        ).thenAnswer((_) async => 'partner-pub');
+        when(() => repo.getPartnerPublicKeyWithVersion()).thenAnswer(
+          (_) async =>
+              (publicKey: 'partner-pub', keyVersion: 1, keyRotatedAt: null),
+        );
         final second = await bootstrap.ensureBootstrapped();
         expect(second, isTrue);
-        verify(() => repo.getPartnerPublicKey()).called(2);
+        verify(() => repo.getPartnerPublicKeyWithVersion()).called(2);
       },
     );
 
     test('is idempotent — second call after success is a no-op', () async {
-      when(
-        () => repo.getPartnerPublicKey(),
-      ).thenAnswer((_) async => 'partner-pub');
+      when(() => repo.getPartnerPublicKeyWithVersion()).thenAnswer(
+        (_) async =>
+            (publicKey: 'partner-pub', keyVersion: 1, keyRotatedAt: null),
+      );
 
       await bootstrap.ensureBootstrapped();
       await bootstrap.ensureBootstrapped();
       await bootstrap.ensureBootstrapped();
 
-      verify(() => repo.getPartnerPublicKey()).called(1);
+      verify(() => repo.getPartnerPublicKeyWithVersion()).called(1);
       verify(() => crypto.deriveSharedKey(any())).called(1);
     });
 
     test('coalesces concurrent in-flight calls', () async {
-      when(() => repo.getPartnerPublicKey()).thenAnswer((_) async {
+      when(() => repo.getPartnerPublicKeyWithVersion()).thenAnswer((_) async {
         await Future<void>.delayed(const Duration(milliseconds: 20));
-        return 'partner-pub';
+        return (publicKey: 'partner-pub', keyVersion: 1, keyRotatedAt: null);
       });
 
       final results = await Future.wait([
@@ -106,12 +115,12 @@ void main() {
       ]);
 
       expect(results, [true, true, true]);
-      verify(() => repo.getPartnerPublicKey()).called(1);
+      verify(() => repo.getPartnerPublicKeyWithVersion()).called(1);
     });
 
     test('returns false on error and allows retry', () async {
       when(
-        () => repo.getPartnerPublicKey(),
+        () => repo.getPartnerPublicKeyWithVersion(),
       ).thenThrow(Exception('network down'));
 
       final first = await bootstrap.ensureBootstrapped();
@@ -119,9 +128,10 @@ void main() {
       expect(bootstrap.isReady, isFalse);
 
       // Recovery — retry should run again, not return cached failure.
-      when(
-        () => repo.getPartnerPublicKey(),
-      ).thenAnswer((_) async => 'partner-pub');
+      when(() => repo.getPartnerPublicKeyWithVersion()).thenAnswer(
+        (_) async =>
+            (publicKey: 'partner-pub', keyVersion: 1, keyRotatedAt: null),
+      );
       final second = await bootstrap.ensureBootstrapped();
       expect(second, isTrue);
     });
@@ -130,9 +140,10 @@ void main() {
       when(
         () => repo.uploadPublicKey(any()),
       ).thenThrow(Exception('upload failed'));
-      when(
-        () => repo.getPartnerPublicKey(),
-      ).thenAnswer((_) async => 'partner-pub');
+      when(() => repo.getPartnerPublicKeyWithVersion()).thenAnswer(
+        (_) async =>
+            (publicKey: 'partner-pub', keyVersion: 1, keyRotatedAt: null),
+      );
 
       final ok = await bootstrap.ensureBootstrapped();
 

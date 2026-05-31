@@ -69,6 +69,14 @@ class ChatRepository {
     );
   }
 
+  /// Force-upload public key (key rotation after device reinstall).
+  Future<Map<String, dynamic>> uploadPublicKeyForce(String publicKey) async {
+    return await _api.post<Map<String, dynamic>>(
+      ApiEndpoints.userPublicKey,
+      data: {'publicKey': publicKey, 'force': true},
+    );
+  }
+
   /// Fetch partner's public key.
   Future<String?> getPartnerPublicKey() async {
     final response = await _api.get<Map<String, dynamic>>(
@@ -77,12 +85,22 @@ class ChatRepository {
     return response['publicKey'] as String?;
   }
 
+  /// Fetch partner's public key with version metadata.
+  Future<({String? publicKey, int? keyVersion, String? keyRotatedAt})>
+  getPartnerPublicKeyWithVersion() async {
+    final response = await _api.get<Map<String, dynamic>>(
+      ApiEndpoints.partnerPublicKey,
+    );
+    return (
+      publicKey: response['publicKey'] as String?,
+      keyVersion: response['keyVersion'] as int?,
+      keyRotatedAt: response['keyRotatedAt'] as String?,
+    );
+  }
+
   /// Signal that the user is typing.
   Future<void> signalTyping() async {
-    await _api.post<Map<String, dynamic>>(
-      ApiEndpoints.chatTyping,
-      data: {},
-    );
+    await _api.post<Map<String, dynamic>>(ApiEndpoints.chatTyping, data: {});
   }
 
   /// React to a message with an emoji.

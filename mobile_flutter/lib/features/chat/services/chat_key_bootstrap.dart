@@ -15,10 +15,21 @@ class ChatKeyBootstrap {
 
   Future<bool>? _inFlight;
   bool _ready = false;
+  int? _partnerKeyVersion;
+  String? _partnerKeyRotatedAt;
 
   /// Whether shared key has been derived. Combines local flag with the
   /// underlying crypto service readiness for defense-in-depth.
   bool get isReady => _ready && _crypto.isReady;
+
+  /// Partner's current key version (1 = original, >1 = rotated).
+  int? get partnerKeyVersion => _partnerKeyVersion;
+
+  /// ISO timestamp of partner's last key rotation.
+  String? get partnerKeyRotatedAt => _partnerKeyRotatedAt;
+
+  /// Whether the partner has rotated their key (device reinstall).
+  bool get partnerKeyRotated => (_partnerKeyVersion ?? 1) > 1;
 
   /// Underlying crypto service — exposed so callers can encrypt/decrypt
   /// without reaching into Riverpod providers.
@@ -49,20 +60,26 @@ class ChatKeyBootstrap {
       final pub = await _crypto.exportPublicKeyBase64();
       if (pub != null) {
         try {
-          await _repo.uploadPublicKey(pub);
+          final uploadRes = await _repo.uploadPublicKey(pub);
+          // If server says key already exists with different value,
+          // force-rotate (we lost our old private key — e.g. reinstall).
+          if (uploadRes['existing'] == true) {
+            await _repo.uploadPublicKeyForce(pub);
+          }
         } catch (e) {
-          // Server upload is idempotent; tolerate transient errors.
           debugPrint('[ChatKeyBootstrap] uploadPublicKey failed: $e');
         }
       }
 
-      final partnerKey = await _repo.getPartnerPublicKey();
-      if (partnerKey == null) {
-        // Partner has not uploaded yet — do NOT cache success; allow retry.
+      final partnerData = await _repo.getPartnerPublicKeyWithVersion();
+      _partnerKeyVersion = partnerData.keyVersion;
+      _partnerKeyRotatedAt = partnerData.keyRotatedAt;
+
+      if (partnerData.publicKey == null) {
         return false;
       }
 
-      await _crypto.deriveSharedKey(partnerKey);
+      await _crypto.deriveSharedKey(partnerData.publicKey!);
       _ready = true;
       return true;
     } catch (e, st) {

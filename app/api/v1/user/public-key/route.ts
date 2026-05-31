@@ -15,6 +15,7 @@ export function OPTIONS() {
 
 const publicKeySchema = z.object({
   publicKey: z.string().min(10).max(2048),
+  force: z.boolean().optional(),
 });
 
 /**
@@ -55,12 +56,12 @@ export async function GET() {
 /**
  * POST /api/v1/user/public-key
  *
- * Stores the caller's ECDH public key. If a key already exists, it is NOT
- * overwritten (to prevent key-mismatch issues with previously encrypted
- * messages). Returns `{ ok: true, existing: true }` if the key was already set.
+ * Stores the caller's ECDH public key. If a key already exists and differs,
+ * returns `{ ok: true, existing: true }` unless `force: true` is passed, in
+ * which case the key is overwritten and `keyVersion` is incremented (rotation).
  *
- * @param request - Body: `{ publicKey: string }` — base64-encoded JWK.
- * @returns JSON `{ ok: true, existing?: true, publicKey?: string }`.
+ * @param request - Body: `{ publicKey: string, force?: boolean }` — base64-encoded JWK.
+ * @returns JSON `{ ok: true, keyVersion, rotated?, existing?, publicKey? }`.
  */
 export async function POST(request: Request) {
   try {
@@ -73,28 +74,55 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { publicKey } = publicKeySchema.parse(body);
+    const { publicKey, force } = publicKeySchema.parse(body);
 
-    // Check if user already has a public key — don't overwrite
+    // Check if user already has a public key
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { publicKey: true },
+      select: { publicKey: true, keyVersion: true },
     });
 
     if (user?.publicKey && user.publicKey !== publicKey) {
+      if (force) {
+        // Force rotation — overwrite key and bump version
+        const newVersion = (user.keyVersion ?? 1) + 1;
+        await prisma.user.update({
+          where: { id: userId },
+          data: {
+            publicKey,
+            keyVersion: newVersion,
+            keyRotatedAt: new Date(),
+          },
+        });
+        return NextResponse.json(
+          { ok: true, rotated: true, keyVersion: newVersion },
+          { headers: corsHeaders() },
+        );
+      }
+
       // Key already exists and differs — return existing to client
       return NextResponse.json(
-        { ok: true, existing: true, publicKey: user.publicKey },
+        {
+          ok: true,
+          existing: true,
+          publicKey: user.publicKey,
+          keyVersion: user.keyVersion ?? 1,
+        },
         { headers: corsHeaders() },
       );
     }
 
-    await prisma.user.update({
+    // Key matches or no key exists — save normally
+    const updated = await prisma.user.update({
       where: { id: userId },
       data: { publicKey },
+      select: { keyVersion: true },
     });
 
-    return NextResponse.json({ ok: true }, { headers: corsHeaders() });
+    return NextResponse.json(
+      { ok: true, keyVersion: updated.keyVersion ?? 1 },
+      { headers: corsHeaders() },
+    );
   } catch {
     return NextResponse.json(
       { error: "Failed to store public key" },

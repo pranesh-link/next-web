@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "users" ADD COLUMN "keyVersion" INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE "users" ADD COLUMN "keyRotatedAt" TIMESTAMP(3);

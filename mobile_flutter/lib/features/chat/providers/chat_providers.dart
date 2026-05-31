@@ -41,6 +41,10 @@ final partnerTypingProvider = StateProvider<bool>((ref) => false);
 /// Whether the device is currently offline.
 final isOfflineProvider = StateProvider<bool>((ref) => false);
 
+/// Whether the partner has rotated their key (device reinstall), meaning
+/// older messages cannot be decrypted.
+final partnerKeyRotatedProvider = StateProvider<bool>((ref) => false);
+
 // -- Chat Notifier --
 
 final chatNotifierProvider =
@@ -320,6 +324,9 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
     }
     if (ok) {
       ref.read(encryptionReadyProvider.notifier).state = true;
+      if (_bootstrap.partnerKeyRotated) {
+        ref.read(partnerKeyRotatedProvider.notifier).state = true;
+      }
     }
     return ok;
   }

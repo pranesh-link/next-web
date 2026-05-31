@@ -24,6 +24,5 @@ abstract final class ApiEndpoints {
   static const chatStream = '/api/couple/chat/stream';
   static const userPublicKey = '/api/v1/user/public-key';
   static const partnerPublicKey = '/api/v1/couple/partner-public-key';
-  static const chatEncryptBatch = '/api/v1/couple/chat/encrypt-batch';
   static const coupleMembers = '/api/v1/couple/members';
 }

@@ -51,18 +51,22 @@ export async function GET() {
 
     if (!partnerMember) {
       return NextResponse.json(
-        { publicKey: null },
+        { publicKey: null, keyVersion: null, keyRotatedAt: null },
         { headers: corsHeaders() },
       );
     }
 
     const partner = await prisma.user.findUnique({
       where: { id: partnerMember.userId },
-      select: { publicKey: true },
+      select: { publicKey: true, keyVersion: true, keyRotatedAt: true },
     });
 
     return NextResponse.json(
-      { publicKey: partner?.publicKey ?? null },
+      {
+        publicKey: partner?.publicKey ?? null,
+        keyVersion: partner?.keyVersion ?? null,
+        keyRotatedAt: partner?.keyRotatedAt?.toISOString() ?? null,
+      },
       { headers: corsHeaders() },
     );
   } catch {
