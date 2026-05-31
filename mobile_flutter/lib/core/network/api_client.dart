@@ -160,15 +160,13 @@ class ApiClient {
     }
   }
 
-  /// Attempts silent Google re-auth to get a fresh access token.
+  /// Attempts silent Google re-auth and exchanges for an app JWT.
   /// Used as fallback when no refresh token is available (e.g. first install).
   Future<String?> _refreshGoogleToken() async {
     try {
-      // On web, try signInSilently first
       var account = await googleSignInInstance
           .signInSilently()
           .timeout(const Duration(seconds: 5));
-      // If silent fails on web, try full signIn (shows popup)
       if (account == null && kIsWeb) {
         account = await googleSignInInstance
             .signIn()
@@ -177,7 +175,22 @@ class ApiClient {
       if (account == null) return null;
       final auth = await account.authentication
           .timeout(const Duration(seconds: 5));
-      return auth.accessToken;
+      final googleAccessToken = auth.accessToken;
+      if (googleAccessToken == null) return null;
+
+      // Exchange Google token for app JWT via the auth endpoint
+      final dio = Dio(BaseOptions(baseUrl: _baseUrl));
+      final response = await dio.post<Map<String, dynamic>>(
+        ApiEndpoints.auth,
+        data: {'accessToken': googleAccessToken},
+      );
+      final body = response.data;
+      final newToken = body?['token'] as String?;
+      final newRefresh = body?['refreshToken'] as String?;
+      if (newRefresh != null) {
+        await SecureStorage.saveRefreshToken(newRefresh);
+      }
+      return newToken;
     } catch (_) {
       return null;
     }
