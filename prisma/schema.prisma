@@ -69,6 +69,8 @@ model User {
   keyVersion     Int      @default(1)
   /// Timestamp of the most recent key rotation (null = never rotated).
   keyRotatedAt   DateTime?
+  /// AES-256-GCM encrypted private key blob, locked by user's PIN-derived key.
+  encryptedKeyVault Bytes?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -661,11 +663,14 @@ model CoupleMessage {
   payload    Json?       // structured data for LIST/REMINDER types
   reminderAt DateTime?
   readBy     String[]    @default([])
+  /// Timestamp when the message was delivered (ACKed) by the recipient.
+  deliveredAt DateTime?
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
 
   @@index([coupleId, createdAt])
   @@index([senderId])
+  @@index([coupleId, deliveredAt])
   @@map("couple_messages")
 }
 

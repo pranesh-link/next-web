@@ -46,13 +46,13 @@ export async function POST(_request: NextRequest) {
     const messageByReason: Record<string, string> = {
       OK: `Test notification sent to ${result.sent} device(s)`,
       PARTIAL: `Sent to ${result.sent}/${result.deviceCount} device(s); ${result.failed} failed`,
-      NO_DEVICES: `No active devices found for userId ${userId.substring(0, 8)}... — Tap 'Re-register this device' in Settings.`,
+      NO_DEVICES: `No active devices found for userId ${userId.substring(0, 8)}... — Try signing out and back in to re-register your device.`,
       FCM_NOT_CONFIGURED:
         "Push service is not configured on the server (missing FCM credentials).",
       CIRCUIT_OPEN:
         "Push service is temporarily disabled due to repeated FCM failures. Try again in 60s.",
       ALL_FAILED:
-        "All device tokens were rejected by FCM. They have been deactivated. Tap 'Re-register this device'.",
+        "All device tokens were rejected by FCM. They have been deactivated. Try signing out and back in to re-register your device.",
       EXCEPTION: "An unexpected error occurred while sending the push.",
     };
 

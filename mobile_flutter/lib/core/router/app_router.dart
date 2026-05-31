@@ -24,6 +24,7 @@ import 'package:luvverse/features/couple/couple_management_screen.dart';
 import 'package:luvverse/features/couple/couple_status_provider.dart';
 import 'package:luvverse/features/lifestyle/lifestyle_screen.dart';
 import 'package:luvverse/features/chat/chat_screen.dart';
+import 'package:luvverse/features/chat/widgets/chat_gate_screen.dart';
 import 'package:luvverse/features/settings/settings_screen.dart';
 import 'package:luvverse/features/couple/invite_screen.dart';
 import 'package:luvverse/features/onboarding/onboarding_screen.dart';
@@ -166,9 +167,18 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/chat',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: ChatScreen(),
-            ),
+            pageBuilder: (context, state) {
+              final hasCouple = ref.read(hasCoupleProvider);
+              return NoTransitionPage(
+                child: hasCouple.when(
+                  data: (has) => has
+                      ? const ChatScreen()
+                      : const ChatGateScreen(),
+                  loading: () => const ChatScreen(),
+                  error: (_, __) => const ChatScreen(),
+                ),
+              );
+            },
           ),
           GoRoute(
             path: '/settings',

@@ -24,6 +24,7 @@ class ChatMessages extends Table {
   TextColumn get payload => text().nullable()();
   TextColumn get readBy => text().withDefault(const Constant('[]'))();
   DateTimeColumn get reminderAt => dateTime().nullable()();
+  DateTimeColumn get deliveredAt => dateTime().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 
@@ -36,14 +37,17 @@ class ChatLocalDatabase extends _$ChatLocalDatabase {
   ChatLocalDatabase(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) => m.createAll(),
         onUpgrade: (m, from, to) async {
-          await m.deleteTable('chat_messages');
-          await m.createAll();
+          if (from < 2) {
+            await m.database.customStatement(
+              'ALTER TABLE chat_messages ADD COLUMN delivered_at INTEGER',
+            );
+          }
         },
       );
 
@@ -76,6 +80,15 @@ class ChatLocalDatabase extends _$ChatLocalDatabase {
     await (delete(chatMessages)..where((t) => t.id.equals(messageId))).go();
   }
 
+  /// Mark messages as delivered locally (double-tick).
+  Future<void> markDelivered(List<String> messageIds) async {
+    await (update(chatMessages)
+          ..where((t) => t.id.isIn(messageIds)))
+        .write(ChatMessagesCompanion(
+      deliveredAt: Value(DateTime.now()),
+    ));
+  }
+
   ChatMessagesCompanion _toCompanion(ChatMessage msg) {
     return ChatMessagesCompanion.insert(
       id: msg.id,
@@ -88,6 +101,7 @@ class ChatLocalDatabase extends _$ChatLocalDatabase {
       payload: Value(msg.payload != null ? jsonEncode(msg.payload) : null),
       readBy: Value(jsonEncode(msg.readBy)),
       reminderAt: Value(msg.reminderAt),
+      deliveredAt: Value(msg.deliveredAt),
       createdAt: msg.createdAt,
       updatedAt: msg.updatedAt,
     );
@@ -107,14 +121,16 @@ class ChatLocalDatabase extends _$ChatLocalDatabase {
           : null,
       readBy: (jsonDecode(row.readBy) as List).cast<String>(),
       reminderAt: row.reminderAt,
+      deliveredAt: row.deliveredAt,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     );
   }
 }
 
-/// Opens the chat-specific local database (unencrypted — messages are
-/// already E2E encrypted at the application layer).
+/// Opens the chat-specific local database with SQLCipher encryption.
+/// Messages are additionally E2E encrypted at the application layer
+/// for defense-in-depth.
 ///
 /// `sqlcipher_flutter_libs` ships `libsqlcipher.so` (a drop-in sqlite3
 /// replacement) but no `libsqlite3.so`. We register it as the sqlite3

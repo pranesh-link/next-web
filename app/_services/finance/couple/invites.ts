@@ -1,5 +1,6 @@
 import prisma from '@/_lib/prisma';
 import { createNotification } from '@/_services/finance/notification-service';
+import { sendPushToUser } from '@/_services/finance/push-service';
 
 /**
  * Invite a partner to join an existing couple by email.
@@ -81,6 +82,17 @@ export async function acceptInvite(inviteId: string, userId: string) {
     }),
   ]);
 
+  // Notify the couple owner that their partner has joined
+  const ownerId = invite.couple.members[0]?.userId;
+  if (ownerId) {
+    sendPushToUser(
+      ownerId,
+      'Your partner joined! 🎉',
+      'Your couple is now complete. Chat is now available!',
+      { type: 'COUPLE_FORMED', coupleId: invite.coupleId },
+    ).catch(() => {});
+  }
+
   return member;
 }
 
@@ -155,6 +167,17 @@ export async function acceptInviteByToken(token: string, userId: string) {
       data: { status: 'ACCEPTED' },
     }),
   ]);
+
+  // Notify the couple owner that their partner has joined
+  const ownerId = invite.couple.members[0]?.userId;
+  if (ownerId) {
+    sendPushToUser(
+      ownerId,
+      'Your partner joined! 🎉',
+      'Your couple is now complete. Chat is now available!',
+      { type: 'COUPLE_FORMED', coupleId: invite.coupleId },
+    ).catch(() => {});
+  }
 
   return member;
 }

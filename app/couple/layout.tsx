@@ -6,7 +6,6 @@ import StyledComponentsRegistry from "@/_lib/registry";
 import CoupleProviders from "@/couple/_components/CoupleProviders";
 import FinanceLayout from "@/couple/_components/layout/FinanceLayout";
 import OnboardingCheck from "@/couple/_components/OnboardingCheck";
-import E2EKeyBootstrap from "@/_components/E2EKeyBootstrap";
 import { prisma } from "@/_lib/prisma";
 
 export const metadata = {
@@ -52,7 +51,6 @@ export default async function CoupleRootLayout({
       <StyledComponentsRegistry>
         <CoupleProviders>
           <OnboardingCheck hasCouple={hasCouple} />
-          {session?.user && <E2EKeyBootstrap />}
           <FinanceLayout user={user}>{children}</FinanceLayout>
         </CoupleProviders>
       </StyledComponentsRegistry>

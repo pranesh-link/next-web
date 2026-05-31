@@ -116,6 +116,17 @@ class $ChatMessagesTable extends ChatMessages
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _deliveredAtMeta = const VerificationMeta(
+    'deliveredAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deliveredAt = GeneratedColumn<DateTime>(
+    'delivered_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -150,6 +161,7 @@ class $ChatMessagesTable extends ChatMessages
     payload,
     readBy,
     reminderAt,
+    deliveredAt,
     createdAt,
     updatedAt,
   ];
@@ -229,6 +241,15 @@ class $ChatMessagesTable extends ChatMessages
         reminderAt.isAcceptableOrUnknown(data['reminder_at']!, _reminderAtMeta),
       );
     }
+    if (data.containsKey('delivered_at')) {
+      context.handle(
+        _deliveredAtMeta,
+        deliveredAt.isAcceptableOrUnknown(
+          data['delivered_at']!,
+          _deliveredAtMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -294,6 +315,10 @@ class $ChatMessagesTable extends ChatMessages
         DriftSqlType.dateTime,
         data['${effectivePrefix}reminder_at'],
       ),
+      deliveredAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}delivered_at'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -322,6 +347,7 @@ class ChatMessageRow extends DataClass implements Insertable<ChatMessageRow> {
   final String? payload;
   final String readBy;
   final DateTime? reminderAt;
+  final DateTime? deliveredAt;
   final DateTime createdAt;
   final DateTime updatedAt;
   const ChatMessageRow({
@@ -335,6 +361,7 @@ class ChatMessageRow extends DataClass implements Insertable<ChatMessageRow> {
     this.payload,
     required this.readBy,
     this.reminderAt,
+    this.deliveredAt,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -357,6 +384,9 @@ class ChatMessageRow extends DataClass implements Insertable<ChatMessageRow> {
     if (!nullToAbsent || reminderAt != null) {
       map['reminder_at'] = Variable<DateTime>(reminderAt);
     }
+    if (!nullToAbsent || deliveredAt != null) {
+      map['delivered_at'] = Variable<DateTime>(deliveredAt);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -378,6 +408,9 @@ class ChatMessageRow extends DataClass implements Insertable<ChatMessageRow> {
       reminderAt: reminderAt == null && nullToAbsent
           ? const Value.absent()
           : Value(reminderAt),
+      deliveredAt: deliveredAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deliveredAt),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -399,6 +432,7 @@ class ChatMessageRow extends DataClass implements Insertable<ChatMessageRow> {
       payload: serializer.fromJson<String?>(json['payload']),
       readBy: serializer.fromJson<String>(json['readBy']),
       reminderAt: serializer.fromJson<DateTime?>(json['reminderAt']),
+      deliveredAt: serializer.fromJson<DateTime?>(json['deliveredAt']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -417,6 +451,7 @@ class ChatMessageRow extends DataClass implements Insertable<ChatMessageRow> {
       'payload': serializer.toJson<String?>(payload),
       'readBy': serializer.toJson<String>(readBy),
       'reminderAt': serializer.toJson<DateTime?>(reminderAt),
+      'deliveredAt': serializer.toJson<DateTime?>(deliveredAt),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -433,6 +468,7 @@ class ChatMessageRow extends DataClass implements Insertable<ChatMessageRow> {
     Value<String?> payload = const Value.absent(),
     String? readBy,
     Value<DateTime?> reminderAt = const Value.absent(),
+    Value<DateTime?> deliveredAt = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => ChatMessageRow(
@@ -446,6 +482,7 @@ class ChatMessageRow extends DataClass implements Insertable<ChatMessageRow> {
     payload: payload.present ? payload.value : this.payload,
     readBy: readBy ?? this.readBy,
     reminderAt: reminderAt.present ? reminderAt.value : this.reminderAt,
+    deliveredAt: deliveredAt.present ? deliveredAt.value : this.deliveredAt,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -463,6 +500,9 @@ class ChatMessageRow extends DataClass implements Insertable<ChatMessageRow> {
       reminderAt: data.reminderAt.present
           ? data.reminderAt.value
           : this.reminderAt,
+      deliveredAt: data.deliveredAt.present
+          ? data.deliveredAt.value
+          : this.deliveredAt,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -481,6 +521,7 @@ class ChatMessageRow extends DataClass implements Insertable<ChatMessageRow> {
           ..write('payload: $payload, ')
           ..write('readBy: $readBy, ')
           ..write('reminderAt: $reminderAt, ')
+          ..write('deliveredAt: $deliveredAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -499,6 +540,7 @@ class ChatMessageRow extends DataClass implements Insertable<ChatMessageRow> {
     payload,
     readBy,
     reminderAt,
+    deliveredAt,
     createdAt,
     updatedAt,
   );
@@ -516,6 +558,7 @@ class ChatMessageRow extends DataClass implements Insertable<ChatMessageRow> {
           other.payload == this.payload &&
           other.readBy == this.readBy &&
           other.reminderAt == this.reminderAt &&
+          other.deliveredAt == this.deliveredAt &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -531,6 +574,7 @@ class ChatMessagesCompanion extends UpdateCompanion<ChatMessageRow> {
   final Value<String?> payload;
   final Value<String> readBy;
   final Value<DateTime?> reminderAt;
+  final Value<DateTime?> deliveredAt;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -545,6 +589,7 @@ class ChatMessagesCompanion extends UpdateCompanion<ChatMessageRow> {
     this.payload = const Value.absent(),
     this.readBy = const Value.absent(),
     this.reminderAt = const Value.absent(),
+    this.deliveredAt = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -560,6 +605,7 @@ class ChatMessagesCompanion extends UpdateCompanion<ChatMessageRow> {
     this.payload = const Value.absent(),
     this.readBy = const Value.absent(),
     this.reminderAt = const Value.absent(),
+    this.deliveredAt = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
@@ -581,6 +627,7 @@ class ChatMessagesCompanion extends UpdateCompanion<ChatMessageRow> {
     Expression<String>? payload,
     Expression<String>? readBy,
     Expression<DateTime>? reminderAt,
+    Expression<DateTime>? deliveredAt,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -596,6 +643,7 @@ class ChatMessagesCompanion extends UpdateCompanion<ChatMessageRow> {
       if (payload != null) 'payload': payload,
       if (readBy != null) 'read_by': readBy,
       if (reminderAt != null) 'reminder_at': reminderAt,
+      if (deliveredAt != null) 'delivered_at': deliveredAt,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -613,6 +661,7 @@ class ChatMessagesCompanion extends UpdateCompanion<ChatMessageRow> {
     Value<String?>? payload,
     Value<String>? readBy,
     Value<DateTime?>? reminderAt,
+    Value<DateTime?>? deliveredAt,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -628,6 +677,7 @@ class ChatMessagesCompanion extends UpdateCompanion<ChatMessageRow> {
       payload: payload ?? this.payload,
       readBy: readBy ?? this.readBy,
       reminderAt: reminderAt ?? this.reminderAt,
+      deliveredAt: deliveredAt ?? this.deliveredAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -667,6 +717,9 @@ class ChatMessagesCompanion extends UpdateCompanion<ChatMessageRow> {
     if (reminderAt.present) {
       map['reminder_at'] = Variable<DateTime>(reminderAt.value);
     }
+    if (deliveredAt.present) {
+      map['delivered_at'] = Variable<DateTime>(deliveredAt.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -692,6 +745,7 @@ class ChatMessagesCompanion extends UpdateCompanion<ChatMessageRow> {
           ..write('payload: $payload, ')
           ..write('readBy: $readBy, ')
           ..write('reminderAt: $reminderAt, ')
+          ..write('deliveredAt: $deliveredAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -723,6 +777,7 @@ typedef $$ChatMessagesTableCreateCompanionBuilder =
       Value<String?> payload,
       Value<String> readBy,
       Value<DateTime?> reminderAt,
+      Value<DateTime?> deliveredAt,
       required DateTime createdAt,
       required DateTime updatedAt,
       Value<int> rowid,
@@ -739,6 +794,7 @@ typedef $$ChatMessagesTableUpdateCompanionBuilder =
       Value<String?> payload,
       Value<String> readBy,
       Value<DateTime?> reminderAt,
+      Value<DateTime?> deliveredAt,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -800,6 +856,11 @@ class $$ChatMessagesTableFilterComposer
 
   ColumnFilters<DateTime> get reminderAt => $composableBuilder(
     column: $table.reminderAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deliveredAt => $composableBuilder(
+    column: $table.deliveredAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -873,6 +934,11 @@ class $$ChatMessagesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get deliveredAt => $composableBuilder(
+    column: $table.deliveredAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -922,6 +988,11 @@ class $$ChatMessagesTableAnnotationComposer
 
   GeneratedColumn<DateTime> get reminderAt => $composableBuilder(
     column: $table.reminderAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get deliveredAt => $composableBuilder(
+    column: $table.deliveredAt,
     builder: (column) => column,
   );
 
@@ -979,6 +1050,7 @@ class $$ChatMessagesTableTableManager
                 Value<String?> payload = const Value.absent(),
                 Value<String> readBy = const Value.absent(),
                 Value<DateTime?> reminderAt = const Value.absent(),
+                Value<DateTime?> deliveredAt = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -993,6 +1065,7 @@ class $$ChatMessagesTableTableManager
                 payload: payload,
                 readBy: readBy,
                 reminderAt: reminderAt,
+                deliveredAt: deliveredAt,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -1009,6 +1082,7 @@ class $$ChatMessagesTableTableManager
                 Value<String?> payload = const Value.absent(),
                 Value<String> readBy = const Value.absent(),
                 Value<DateTime?> reminderAt = const Value.absent(),
+                Value<DateTime?> deliveredAt = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<int> rowid = const Value.absent(),
@@ -1023,6 +1097,7 @@ class $$ChatMessagesTableTableManager
                 payload: payload,
                 readBy: readBy,
                 reminderAt: reminderAt,
+                deliveredAt: deliveredAt,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,

@@ -106,10 +106,16 @@ class PushNotificationService {
   String? _currentToken;
 
   void Function()? _onChatMessageReceived;
+  void Function(List<String>)? _onMessageDelivered;
 
   /// Register a callback for when a chat message push arrives (used to refresh chat data).
   void setOnChatMessageCallback(void Function() callback) {
     _onChatMessageReceived = callback;
+  }
+
+  /// Register a callback for delivery receipts (double-tick).
+  void setOnMessageDeliveredCallback(void Function(List<String>) callback) {
+    _onMessageDelivered = callback;
   }
 
   PushNotificationService(this._apiClient)
@@ -327,8 +333,16 @@ class PushNotificationService {
       if (kDebugMode) {
         debugPrint('[Push] Foreground message: ${message.notification?.title}');
       }
-      // Suppress local notification when user is already in chat
       final type = message.data['type'] as String?;
+
+      // Silent delivery receipt — update local DB, no notification
+      if (type == 'MESSAGE_DELIVERED') {
+        final ids = (message.data['messageIds'] as String?)?.split(',') ?? [];
+        if (ids.isNotEmpty) _onMessageDelivered?.call(ids);
+        return;
+      }
+
+      // Suppress local notification when user is already in chat
       if (type == 'CHAT_MESSAGE' && isChatActive) return;
       // Notify chat to refresh when push arrives (if not already viewing chat)
       if (type == 'CHAT_MESSAGE') {

@@ -44,6 +44,12 @@ export async function GET(request: Request) {
         : {}),
     });
 
+    // Fire-and-forget: purge orphan messages older than 30 days for this couple
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    prisma.coupleMessage.deleteMany({
+      where: { coupleId: member.coupleId, createdAt: { lt: thirtyDaysAgo } },
+    }).catch(() => {});
+
     return NextResponse.json({ success: true, data: messages });
   } catch (error) {
     return NextResponse.json(

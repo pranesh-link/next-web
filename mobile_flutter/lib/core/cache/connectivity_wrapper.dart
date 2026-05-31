@@ -9,6 +9,7 @@ import 'package:luvverse/core/cache/connectivity_service.dart';
 import 'package:luvverse/core/lifecycle/app_lifecycle_manager.dart';
 import 'package:luvverse/core/prefetch/wifi_cache_warmer.dart';
 import 'package:luvverse/core/router/app_router.dart';
+import 'package:luvverse/features/chat/services/backup_service.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';
 import 'package:luvverse/features/finance/providers/extended_providers.dart';
 import 'package:luvverse/shared/widgets/offline_widgets.dart';
@@ -73,6 +74,15 @@ class _ConnectivityWrapperState extends ConsumerState<ConnectivityWrapper>
     } else if (!shouldShowSplash && isOnline) {
       debugPrint('[Resume] Data fresh, lightweight check');
       await _lightweightCacheCheck();
+    }
+
+    // Fire-and-forget: trigger backup if due
+    if (isOnline) {
+      unawaited(
+        ref.read(backupServiceProvider).runBackupIfDue().then((_) {}).catchError((e) {
+          debugPrint('[Resume] Backup check failed: $e');
+        }),
+      );
     }
     
     _isHandlingResume = false;

@@ -77,6 +77,11 @@ dependencies:
   # Chat & Crypto
   cryptography: ^2.7.0
 
+  # Google Drive Backup
+  googleapis: ^14.0.0
+  googleapis_auth: ^2.0.0
+  share_plus: ^10.1.4
+
   # Media
   record: ^6.0.0
   audioplayers: ^6.1.0

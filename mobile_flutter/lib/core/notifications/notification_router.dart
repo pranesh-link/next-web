@@ -7,6 +7,7 @@ abstract final class NotificationRouter {
     return switch (type) {
       'CHAT_MESSAGE' => '/chat',
       'COUPLE_INVITE' => '/notifications',
+      'COUPLE_FORMED' => '/chat',
       'BUDGET_ALERT' || 'PUSH_BUDGET_ALERT' || 'BUDGET_EXCEEDED' => '/finance/budgets',
       'SIP_REMINDER' || 'PUSH_SIP_REMINDER' || 'INVESTMENT_SIP_REMINDER' => '/finance/investments',
       'DEPOSIT_REMINDER' || 'PUSH_DEPOSIT_REMINDER' || 'DEPOSIT_INSTALLMENT_REMINDER' || 'DEPOSIT_MATURITY_REMINDER' => '/finance/deposits',

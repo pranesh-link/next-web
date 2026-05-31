@@ -16,6 +16,7 @@ import 'package:luvverse/features/chat/models/chat_message.dart';
 import 'package:luvverse/features/chat/repositories/chat_repository.dart';
 import 'package:luvverse/features/chat/services/chat_key_bootstrap.dart';
 import 'package:luvverse/features/chat/services/crypto_service.dart';
+import 'package:luvverse/features/chat/services/message_sync_service.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';
 
 // -- Repository --
@@ -157,8 +158,23 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
       if (messages.isNotEmpty) {
         _lastKnownMessageId = messages.last.id;
       }
+      // ACK delivery for messages from partner
+      _acknowledgeReceivedMessages(messages);
     } catch (e) {
       debugPrint('[ChatNotifier] Background sync failed: $e');
+    }
+  }
+
+  /// ACK delivery for messages from partner that haven't been acknowledged.
+  void _acknowledgeReceivedMessages(List<ChatMessage> messages) {
+    final currentUserId = ref.read(dbUserIdProvider);
+    if (currentUserId == null) return;
+    final unacked = messages
+        .where((m) => m.senderId != currentUserId && m.deliveredAt == null)
+        .map((m) => m.id)
+        .toList();
+    if (unacked.isNotEmpty) {
+      ref.read(messageSyncServiceProvider).acknowledgeMessages(unacked);
     }
   }
 
@@ -360,7 +376,10 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
     final result = <ChatMessage>[];
     for (final msg in messages) {
       if (msg.encrypted && msg.iv != null) {
-        final plaintext = await _crypto.decrypt(msg.content, msg.iv!);
+        final epoch = msg.payload?['epoch'] as int?;
+        final plaintext = await _crypto.decryptWithEpoch(
+          msg.content, msg.iv!, epoch,
+        );
         if (plaintext == null) {
           result.add(msg.copyWith(content: '\u{1F512} Encrypted message'));
         } else {
@@ -418,16 +437,23 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
       );
     }
     final plain = jsonEncode({'content': content, 'payload': payload});
-    final result = await _crypto.encrypt(plain);
+    final result = await _crypto.encryptWithEpoch(plain);
     if (result == null) {
       throw StateError('Encryption failed.');
     }
+
+    // Include epoch in wire payload for decryption routing
+    final mergedWirePayload = <String, dynamic>{
+      ...?wirePayload,
+      if (result['epoch'] != null) 'epoch': int.parse(result['epoch']!),
+    };
+
     return _repo.sendMessage(
       content: result['ciphertext']!,
       type: type,
       iv: result['iv']!,
       encrypted: true,
-      payload: wirePayload,
+      payload: mergedWirePayload.isNotEmpty ? mergedWirePayload : null,
     );
   }
 
@@ -459,7 +485,7 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
           );
         }
         final plain = jsonEncode({'content': text, 'payload': null});
-        final result = await _crypto.encrypt(plain);
+        final result = await _crypto.encryptWithEpoch(plain);
         if (result == null) {
           throw StateError('Encryption failed.');
         }
@@ -471,6 +497,9 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
             createdAt: now,
             iv: result['iv']!,
             encrypted: true,
+            payload: result['epoch'] != null
+                ? {'epoch': int.parse(result['epoch']!)}
+                : null,
           ),
         );
         _lastSendError = null;
@@ -493,7 +522,10 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
         // Replace optimistic with server response (decrypted for display).
         ChatMessage decrypted;
         if (sent.encrypted && sent.iv != null && _crypto.isReady) {
-          final plaintext = await _crypto.decrypt(sent.content, sent.iv!);
+          final epoch = sent.payload?['epoch'] as int?;
+          final plaintext = await _crypto.decryptWithEpoch(
+            sent.content, sent.iv!, epoch,
+          );
           decrypted = plaintext != null
               ? _applyDecryptedPlaintext(sent, plaintext)
               : sent.copyWith(content: text);
