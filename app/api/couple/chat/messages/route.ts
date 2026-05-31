@@ -10,7 +10,7 @@ const sendMessageSchema = z.object({
   type: z.nativeEnum(MessageType).optional().default(MessageType.TEXT),
   iv: z.string().optional(),
   encrypted: z.boolean().optional().default(false),
-  payload: z.record(z.unknown()).optional(),
+  payload: z.record(z.string(), z.unknown()).optional(),
   reminderAt: z.string().datetime().optional(),
 });
 
