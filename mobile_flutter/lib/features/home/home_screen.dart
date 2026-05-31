@@ -8,6 +8,7 @@ import 'package:luvverse/core/prefetch/background_prefetch_service.dart';
 import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
+import 'package:luvverse/features/couple/couple_status_provider.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';
 import 'package:luvverse/shared/widgets/app_card.dart';
 
@@ -33,6 +34,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final user = ref.watch(authProvider).user;
     final firstName = user?.name.split(' ').first;
     final balance = ref.watch(totalBalanceProvider);
+    final hasCouple = ref.watch(hasCoupleProvider).valueOrNull ?? false;
 
     return Scaffold(
       backgroundColor: context.colors.bg,
@@ -78,7 +80,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     _ModuleCard(icon: Icons.account_balance_wallet, title: 'Finance', subtitle: 'Track money together', color: context.colors.accent, onTap: () => context.go('/finance')),
                     _ModuleCard(icon: Icons.flight, title: 'Travel', subtitle: 'Plan trips', color: const Color(0xFF8B5CF6), onTap: () => _snackbar(context, 'Coming soon')),
                     _ModuleCard(icon: Icons.favorite, title: 'Lifestyle', subtitle: 'Health & wellness', color: const Color(0xFFEC4899), onTap: () => context.go('/lifestyle')),
-                    _ModuleCard(icon: Icons.chat_bubble, title: 'Chat', subtitle: 'Stay connected', color: context.colors.success, onTap: () => context.go('/chat')),
+                    if (hasCouple)
+                      _ModuleCard(icon: Icons.chat_bubble, title: 'Chat', subtitle: 'Stay connected', color: context.colors.success, onTap: () => context.go('/chat')),
                   ],
                 ),
               ),

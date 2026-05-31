@@ -21,6 +21,7 @@ import 'package:luvverse/features/finance/scanning/scan_receipt_screen.dart';
 import 'package:luvverse/features/finance/scanning/scan_schedule_screen.dart';
 import 'package:luvverse/features/finance/finance_shell.dart';
 import 'package:luvverse/features/couple/couple_management_screen.dart';
+import 'package:luvverse/features/couple/couple_status_provider.dart';
 import 'package:luvverse/features/lifestyle/lifestyle_screen.dart';
 import 'package:luvverse/features/chat/chat_screen.dart';
 import 'package:luvverse/features/settings/settings_screen.dart';
@@ -202,62 +203,78 @@ final routerProvider = Provider<GoRouter>((ref) {
 });
 
 /// Bottom navigation bar scaffold wrapping the shell routes.
-class ScaffoldWithNavBar extends StatelessWidget {
+class ScaffoldWithNavBar extends ConsumerWidget {
   final Widget child;
 
   const ScaffoldWithNavBar({super.key, required this.child});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hasCouple = ref.watch(hasCoupleProvider).valueOrNull ?? false;
+
+    final destinations = <NavigationDestination>[
+      const NavigationDestination(
+        icon: Icon(Icons.home_outlined),
+        selectedIcon: Icon(Icons.home),
+        label: 'Home',
+      ),
+      const NavigationDestination(
+        icon: Icon(Icons.account_balance_wallet_outlined),
+        selectedIcon: Icon(Icons.account_balance_wallet),
+        label: 'Finance',
+      ),
+      if (hasCouple)
+        const NavigationDestination(
+          icon: Icon(Icons.chat_bubble_outline),
+          selectedIcon: Icon(Icons.chat_bubble),
+          label: 'Chat',
+        ),
+      const NavigationDestination(
+        icon: Icon(Icons.settings_outlined),
+        selectedIcon: Icon(Icons.settings),
+        label: 'Settings',
+      ),
+    ];
+
     return Scaffold(
       body: child,
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _calculateSelectedIndex(context),
-        onDestinationSelected: (index) => _onItemTapped(index, context),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.account_balance_wallet_outlined),
-            selectedIcon: Icon(Icons.account_balance_wallet),
-            label: 'Finance',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.chat_bubble_outline),
-            selectedIcon: Icon(Icons.chat_bubble),
-            label: 'Chat',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
-        ],
+        selectedIndex: _calculateSelectedIndex(context, hasCouple),
+        onDestinationSelected: (index) => _onItemTapped(index, context, hasCouple),
+        destinations: destinations,
       ),
     );
   }
 
-  int _calculateSelectedIndex(BuildContext context) {
+  int _calculateSelectedIndex(BuildContext context, bool hasCouple) {
     final location = GoRouterState.of(context).uri.path;
     if (location.startsWith('/finance')) return 1;
-    if (location.startsWith('/chat')) return 2;
-    if (location.startsWith('/settings')) return 3;
+    if (hasCouple && location.startsWith('/chat')) return 2;
+    if (location.startsWith('/settings')) return hasCouple ? 3 : 2;
     return 0;
   }
 
-  void _onItemTapped(int index, BuildContext context) {
-    switch (index) {
-      case 0:
-        context.go('/home');
-      case 1:
-        context.go('/finance');
-      case 2:
-        context.go('/chat');
-      case 3:
-        context.go('/settings');
+  void _onItemTapped(int index, BuildContext context, bool hasCouple) {
+    if (hasCouple) {
+      switch (index) {
+        case 0:
+          context.go('/home');
+        case 1:
+          context.go('/finance');
+        case 2:
+          context.go('/chat');
+        case 3:
+          context.go('/settings');
+      }
+    } else {
+      switch (index) {
+        case 0:
+          context.go('/home');
+        case 1:
+          context.go('/finance');
+        case 2:
+          context.go('/settings');
+      }
     }
   }
 }

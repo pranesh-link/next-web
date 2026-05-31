@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:drift/native.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -13,6 +14,8 @@ import 'package:luvverse/core/cache/cache_service.dart';
 import 'package:luvverse/core/cache/database.dart';
 import 'package:luvverse/core/cache/platform.dart';
 import 'package:luvverse/core/notifications/push_notification_service.dart';
+import 'package:luvverse/features/chat/cache/chat_database.dart';
+import 'package:luvverse/features/chat/cache/chat_db_providers.dart';
 
 void main() async {
   runZonedGuarded(() async {
@@ -50,10 +53,20 @@ void main() async {
       cacheDb = await openCacheDatabase(fallbackToMemory: true);
     }
 
+    // Initialize chat-specific local database.
+    late ChatLocalDatabase chatDb;
+    try {
+      chatDb = await openChatDatabase();
+    } catch (e) {
+      debugPrint('[main] Chat DB init failed: $e');
+      chatDb = ChatLocalDatabase(NativeDatabase.memory());
+    }
+
     runApp(
       ProviderScope(
         overrides: [
           cacheDatabaseProvider.overrideWithValue(cacheDb),
+          chatLocalDatabaseProvider.overrideWithValue(chatDb),
         ],
         child: const LuvVerseApp(),
       ),
