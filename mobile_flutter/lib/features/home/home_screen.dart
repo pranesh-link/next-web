@@ -34,7 +34,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final user = ref.watch(authProvider).user;
     final firstName = user?.name.split(' ').first;
     final balance = ref.watch(totalBalanceProvider);
-    final hasCouple = ref.watch(hasCoupleProvider).valueOrNull ?? false;
+    final hasCouple = ref.watch(hasCoupleProvider).valueOrNull ?? true;
 
     return Scaffold(
       backgroundColor: context.colors.bg,

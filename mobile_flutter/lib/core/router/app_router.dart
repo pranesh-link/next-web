@@ -210,7 +210,8 @@ class ScaffoldWithNavBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final hasCouple = ref.watch(hasCoupleProvider).valueOrNull ?? false;
+    // Default to true (show Chat) — only hide when API confirms no couple.
+    final hasCouple = ref.watch(hasCoupleProvider).valueOrNull ?? true;
 
     final destinations = <NavigationDestination>[
       const NavigationDestination(
