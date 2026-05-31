@@ -167,14 +167,14 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
 
   /// ACK delivery for messages from partner that haven't been acknowledged.
   void _acknowledgeReceivedMessages(List<ChatMessage> messages) {
-    final currentUserId = _ref.read(dbUserIdProvider);
+    final currentUserId = ref.read(dbUserIdProvider);
     if (currentUserId == null) return;
     final unacked = messages
         .where((m) => m.senderId != currentUserId && m.deliveredAt == null)
         .map((m) => m.id)
         .toList();
     if (unacked.isNotEmpty) {
-      _ref.read(messageSyncServiceProvider).acknowledgeMessages(unacked);
+      ref.read(messageSyncServiceProvider).acknowledgeMessages(unacked);
     }
   }
 

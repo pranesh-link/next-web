@@ -25,6 +25,7 @@ void main() {
       () => crypto.exportPublicKeyBase64(),
     ).thenAnswer((_) async => 'pub-key');
     when(() => crypto.deriveSharedKey(any())).thenAnswer((_) async {});
+    when(() => crypto.initEpochKeys()).thenAnswer((_) async {});
     when(() => crypto.isReady).thenReturn(true);
 
     when(
