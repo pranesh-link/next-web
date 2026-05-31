@@ -14,6 +14,7 @@ import 'package:luvverse/features/chat/cache/chat_db_providers.dart';
 import 'package:luvverse/features/chat/cache/message_queue.dart';
 import 'package:luvverse/features/chat/models/chat_message.dart';
 import 'package:luvverse/features/chat/repositories/chat_repository.dart';
+import 'package:luvverse/features/chat/services/chat_key_bootstrap.dart';
 import 'package:luvverse/features/chat/services/crypto_service.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';
 
@@ -43,14 +44,13 @@ final isOfflineProvider = StateProvider<bool>((ref) => false);
 // -- Chat Notifier --
 
 final chatNotifierProvider =
-    AsyncNotifierProvider<ChatNotifier, List<ChatMessage>>(
-  ChatNotifier.new,
-);
+    AsyncNotifierProvider<ChatNotifier, List<ChatMessage>>(ChatNotifier.new);
 
 /// Manages chat message state: fetching, sending, encrypting/decrypting.
 class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
   late final ChatRepository _repo;
   late final CryptoService _crypto;
+  late final ChatKeyBootstrap _bootstrap;
   late final ChatLocalDatabase _localDb;
   String? _currentUserId;
   bool _isOnline = true;
@@ -59,11 +59,14 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
   HttpClient? _sseClient;
   StreamSubscription<String>? _sseSub;
   String? _lastKnownMessageId;
-  /// Tracks the in-flight crypto init so callers can await readiness.
-  Future<void>? _cryptoInitFuture;
+
   /// Last fetch error (for diagnostics surfaced in UI).
   Object? _lastFetchError;
   Object? get lastFetchError => _lastFetchError;
+
+  /// Last send error — surfaced to UI for retry / toast display.
+  Object? _lastSendError;
+  Object? get lastSendError => _lastSendError;
 
   @override
   Future<List<ChatMessage>> build() async {
@@ -73,12 +76,17 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
       _lastFetchError = null;
       _repo = ref.read(chatRepositoryProvider);
       _crypto = ref.read(cryptoServiceProvider);
+      _bootstrap = ref.read(chatKeyBootstrapProvider);
       _localDb = ref.read(chatLocalDatabaseProvider);
       _currentUserId =
           ref.read(authProvider).user?.id ?? ref.read(dbUserIdProvider);
       _listenConnectivity();
-      // Fire crypto init in background — not needed for displaying messages
-      _initCrypto();
+      // Reflect any prior bootstrap success in UI state immediately.
+      if (_bootstrap.isReady) {
+        ref.read(encryptionReadyProvider.notifier).state = true;
+      }
+      // Fire-and-forget bootstrap so UI updates if user opens chat first.
+      _ensureCryptoReady();
 
       // Local-first: load from SQLite instantly, then fetch remote in background.
       List<ChatMessage> cached = const [];
@@ -192,11 +200,11 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
           .where((line) => line.startsWith('data: '))
           .map((line) => line.substring(6))
           .listen(
-        _onSSEData,
-        onError: (_) => _scheduleSSEReconnect(),
-        onDone: _scheduleSSEReconnect,
-        cancelOnError: false,
-      );
+            _onSSEData,
+            onError: (_) => _scheduleSSEReconnect(),
+            onDone: _scheduleSSEReconnect,
+            cancelOnError: false,
+          );
     } catch (e) {
       debugPrint('[ChatSSE] Connection failed: $e');
       _scheduleSSEReconnect();
@@ -291,51 +299,29 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
     }
   }
 
-  /// Initialize E2E encryption (idempotent). Returns the in-flight future
-  /// so other code can await readiness without triggering re-init.
-  Future<void> _initCrypto() {
-    return _cryptoInitFuture ??= _initCryptoImpl();
-  }
-
-  Future<void> _initCryptoImpl() async {
-    try {
-      // Generate key pair if not already present
-      if (!await _crypto.hasKeyPair()) {
-        await _crypto.generateKeyPair();
-      }
-
-      // Upload our public key (server returns existing if already set)
-      final publicKey = await _crypto.exportPublicKeyBase64();
-      if (publicKey != null) {
-        await _repo.uploadPublicKey(publicKey);
-      }
-
-      // Fetch partner's public key and derive shared secret
-      final partnerKey = await _repo.getPartnerPublicKey();
-      if (partnerKey != null) {
-        await _crypto.deriveSharedKey(partnerKey);
+  /// Ensure crypto is ready, with a timeout. Delegates to the shared
+  /// [ChatKeyBootstrap] so init runs once per app lifetime.
+  Future<bool> _ensureCryptoReady({
+    Duration timeout = const Duration(seconds: 8),
+  }) async {
+    if (_bootstrap.isReady) {
+      // Mirror to UI state in case it wasn't already set.
+      final readyState = ref.read(encryptionReadyProvider);
+      if (!readyState) {
         ref.read(encryptionReadyProvider.notifier).state = true;
-        debugPrint('[ChatNotifier] Crypto ready');
-      } else {
-        debugPrint('[ChatNotifier] Partner public key not available');
       }
-    } catch (e) {
-      debugPrint('[ChatNotifier] Crypto init failed: $e');
-      // Allow retry on next call
-      _cryptoInitFuture = null;
-      rethrow;
+      return true;
     }
-  }
-
-  /// Ensure crypto is ready, with a timeout. Returns true if ready.
-  Future<bool> _ensureCryptoReady({Duration timeout = const Duration(seconds: 8)}) async {
-    if (_crypto.isReady) return true;
+    bool ok = false;
     try {
-      await _initCrypto().timeout(timeout);
+      ok = await _bootstrap.ensureBootstrapped().timeout(timeout);
     } catch (_) {
-      // ignore — we'll just return whatever readiness we have
+      ok = false;
     }
-    return _crypto.isReady;
+    if (ok) {
+      ref.read(encryptionReadyProvider.notifier).state = true;
+    }
+    return ok;
   }
 
   /// Fetch messages from API and decrypt any encrypted ones.
@@ -368,11 +354,11 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
     for (final msg in messages) {
       if (msg.encrypted && msg.iv != null) {
         final plaintext = await _crypto.decrypt(msg.content, msg.iv!);
-        result.add(
-          plaintext != null
-              ? msg.copyWith(content: plaintext)
-              : msg.copyWith(content: '\u{1F512} Encrypted message'),
-        );
+        if (plaintext == null) {
+          result.add(msg.copyWith(content: '\u{1F512} Encrypted message'));
+        } else {
+          result.add(_applyDecryptedPlaintext(msg, plaintext));
+        }
       } else {
         result.add(msg);
       }
@@ -380,25 +366,68 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
     return result;
   }
 
-  /// Send a message, encrypting if encryption is ready.
-  /// If offline, queues the message and shows it optimistically.
-  Future<void> sendMessage(String text, {String type = 'TEXT'}) async {
-    String content = text;
-    String? iv;
-    bool encrypted = false;
-
-    // Wait for crypto so we never send plaintext when E2E is available.
-    await _ensureCryptoReady();
-    if (_crypto.isReady) {
-      final result = await _crypto.encrypt(text);
-      if (result != null) {
-        content = result['ciphertext']!;
-        iv = result['iv']!;
-        encrypted = true;
+  /// Apply a decrypted plaintext to a message. Supports both the new
+  /// JSON-blob format (`{content, payload}` encrypted together) and the
+  /// legacy raw-text format (decrypted text used directly as content).
+  ChatMessage _applyDecryptedPlaintext(ChatMessage msg, String plaintext) {
+    final trimmed = plaintext.trimLeft();
+    if (trimmed.startsWith('{')) {
+      try {
+        final decoded = jsonDecode(plaintext);
+        if (decoded is Map<String, dynamic>) {
+          final innerContent = decoded['content'];
+          final innerPayload = decoded['payload'];
+          return msg.copyWith(
+            content: innerContent is String ? innerContent : plaintext,
+            payload: innerPayload is Map<String, dynamic>
+                ? innerPayload
+                : msg.payload,
+          );
+        }
+      } catch (_) {
+        // Fall through to legacy format.
       }
     }
+    return msg.copyWith(content: plaintext);
+  }
 
-    // Optimistic: add a local placeholder immediately
+  /// Encrypt `content` (and `payload`) as a JSON blob and send via repo.
+  /// Throws [StateError] if encryption is unavailable.
+  ///
+  /// `wirePayload` is sent to the server UNENCRYPTED — used only for
+  /// metadata the server must see (e.g. `reminderAt` for scheduling
+  /// notifications). Message content + full payload are still encrypted
+  /// inside the ciphertext blob.
+  Future<ChatMessage?> _sendEncrypted({
+    required String content,
+    required String type,
+    Map<String, dynamic>? payload,
+    Map<String, dynamic>? wirePayload,
+  }) async {
+    final ready = await _ensureCryptoReady();
+    if (!ready) {
+      throw StateError(
+        'Encryption not ready. Make sure your partner has signed in.',
+      );
+    }
+    final plain = jsonEncode({'content': content, 'payload': payload});
+    final result = await _crypto.encrypt(plain);
+    if (result == null) {
+      throw StateError('Encryption failed.');
+    }
+    return _repo.sendMessage(
+      content: result['ciphertext']!,
+      type: type,
+      iv: result['iv']!,
+      encrypted: true,
+      payload: wirePayload,
+    );
+  }
+
+  /// Send a message, encrypting via the shared bootstrap. If offline,
+  /// the message is encrypted up-front and queued so [_flushQueue] can
+  /// replay it without re-encryption.
+  Future<void> sendMessage(String text, {String type = 'TEXT'}) async {
     final now = DateTime.now();
     final optimistic = ChatMessage(
       id: 'temp_${now.millisecondsSinceEpoch}',
@@ -406,52 +435,82 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
       senderId: _currentUserId ?? '',
       type: type,
       content: text, // Show plaintext locally
-      encrypted: encrypted,
-      iv: iv,
+      encrypted: false,
       readBy: [_currentUserId ?? ''],
       createdAt: now,
       updatedAt: now,
     );
-
     state = AsyncData([...state.value ?? [], optimistic]);
 
-    // If offline, queue for later
+    // Offline path: encrypt, then queue with on-the-wire format.
     if (!_isOnline) {
-      await MessageQueue.enqueue(PendingMessage(
-        id: optimistic.id,
-        content: content,
-        type: type,
-        createdAt: now,
-        iv: iv,
-        encrypted: encrypted,
-      ));
-      return;
+      try {
+        final ready = await _ensureCryptoReady();
+        if (!ready) {
+          throw StateError(
+            'Encryption not ready. Make sure your partner has signed in.',
+          );
+        }
+        final plain = jsonEncode({'content': text, 'payload': null});
+        final result = await _crypto.encrypt(plain);
+        if (result == null) {
+          throw StateError('Encryption failed.');
+        }
+        await MessageQueue.enqueue(
+          PendingMessage(
+            id: optimistic.id,
+            content: result['ciphertext']!,
+            type: type,
+            createdAt: now,
+            iv: result['iv']!,
+            encrypted: true,
+          ),
+        );
+        _lastSendError = null;
+        return;
+      } catch (e) {
+        _lastSendError = e;
+        // Revert optimistic on failure.
+        state = AsyncData([
+          for (final msg in state.value ?? [])
+            if (msg.id != optimistic.id) msg,
+        ]);
+        return;
+      }
     }
 
-    // Actual API call
-    final sent = await _repo.sendMessage(
-      content: content,
-      type: type,
-      iv: iv,
-      encrypted: encrypted,
-    );
-
-    if (sent != null) {
-      // Replace optimistic message with server response (decrypted for display)
-      final decrypted = sent.encrypted && sent.iv != null && _crypto.isReady
-          ? sent.copyWith(
-              content: await _crypto.decrypt(sent.content, sent.iv!) ?? text)
-          : sent.copyWith(content: text);
+    try {
+      final sent = await _sendEncrypted(content: text, type: type);
+      _lastSendError = null;
+      if (sent != null) {
+        // Replace optimistic with server response (decrypted for display).
+        ChatMessage decrypted;
+        if (sent.encrypted && sent.iv != null && _crypto.isReady) {
+          final plaintext = await _crypto.decrypt(sent.content, sent.iv!);
+          decrypted = plaintext != null
+              ? _applyDecryptedPlaintext(sent, plaintext)
+              : sent.copyWith(content: text);
+        } else {
+          decrypted = sent.copyWith(content: text);
+        }
+        state = AsyncData([
+          for (final msg in state.value ?? [])
+            if (msg.id == optimistic.id) decrypted else msg,
+        ]);
+        try {
+          await _localDb.upsertMessages([decrypted]);
+        } catch (e) {
+          debugPrint('[ChatNotifier] Failed to persist sent message: $e');
+        }
+      }
+    } catch (e) {
+      _lastSendError = e;
+      debugPrint('[ChatNotifier] sendMessage failed: $e');
+      // Revert optimistic on hard failure.
       state = AsyncData([
         for (final msg in state.value ?? [])
-          if (msg.id == optimistic.id) decrypted else msg,
+          if (msg.id != optimistic.id) msg,
       ]);
-      // Persist to local DB so message survives app restart.
-      try {
-        await _localDb.upsertMessages([decrypted]);
-      } catch (e) {
-        debugPrint('[ChatNotifier] Failed to persist sent message: $e');
-      }
     }
   }
 
@@ -504,16 +563,15 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
       state = AsyncData([
         for (final msg in messages)
           if (msg.id == messageId)
-            msg.copyWith(payload: {
-              ...?msg.payload,
-              'reactions': {
-                ...msg.reactions,
-                emoji: [
-                  ...msg.reactions[emoji] ?? [],
-                  _currentUserId ?? '',
-                ],
+            msg.copyWith(
+              payload: {
+                ...?msg.payload,
+                'reactions': {
+                  ...msg.reactions,
+                  emoji: [...msg.reactions[emoji] ?? [], _currentUserId ?? ''],
+                },
               },
-            })
+            )
           else
             msg,
       ]);
@@ -577,18 +635,16 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
     final payload = {
       'title': title,
       'items': items
-          .map((text) => {
-                'text': text,
-                'checked': false,
-                'addedBy': _currentUserId,
-              })
+          .map(
+            (text) => {
+              'text': text,
+              'checked': false,
+              'addedBy': _currentUserId,
+            },
+          )
           .toList(),
     };
-    await _sendTypedMessage(
-      title,
-      type: MessageType.list,
-      payload: payload,
-    );
+    await _sendTypedMessage(title, type: MessageType.list, payload: payload);
   }
 
   /// Toggle a list item's checked state.
@@ -625,7 +681,7 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
     return msg.copyWith(payload: payload);
   }
 
-  /// Send a reminder message.
+  /// Send a reminder message (encrypted end-to-end).
   Future<void> sendReminder({
     required String text,
     required DateTime reminderAt,
@@ -646,16 +702,28 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
 
     state = AsyncData([...state.value ?? [], optimistic]);
 
-    final sent = await _repo.sendMessage(
-      content: text,
-      type: MessageType.reminder,
-      payload: {'reminderAt': reminderAt.toIso8601String()},
-    );
-
-    if (sent != null) {
+    try {
+      final sent = await _sendEncrypted(
+        content: text,
+        type: MessageType.reminder,
+        payload: {'reminderAt': reminderAt.toIso8601String()},
+        // Leak reminderAt to server so it can dispatch notifications.
+        // Content stays encrypted inside the ciphertext blob.
+        wirePayload: {'reminderAt': reminderAt.toIso8601String()},
+      );
+      _lastSendError = null;
+      if (sent != null) {
+        state = AsyncData([
+          for (final msg in state.value ?? [])
+            if (msg.id == optimistic.id) sent else msg,
+        ]);
+      }
+    } catch (e) {
+      _lastSendError = e;
+      debugPrint('[ChatNotifier] sendReminder failed: $e');
       state = AsyncData([
         for (final msg in state.value ?? [])
-          if (msg.id == optimistic.id) sent else msg,
+          if (msg.id != optimistic.id) msg,
       ]);
     }
   }
@@ -669,7 +737,8 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
     }
   }
 
-  /// Helper to send a typed message with optimistic update.
+  /// Helper to send a typed message (image/voice/list) with optimistic
+  /// update and end-to-end encryption.
   Future<void> _sendTypedMessage(
     String content, {
     required String type,
@@ -691,16 +760,25 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
 
     state = AsyncData([...state.value ?? [], optimistic]);
 
-    final sent = await _repo.sendMessage(
-      content: content,
-      type: type,
-      payload: payload,
-    );
-
-    if (sent != null) {
+    try {
+      final sent = await _sendEncrypted(
+        content: content,
+        type: type,
+        payload: payload,
+      );
+      _lastSendError = null;
+      if (sent != null) {
+        state = AsyncData([
+          for (final msg in state.value ?? [])
+            if (msg.id == optimistic.id) sent else msg,
+        ]);
+      }
+    } catch (e) {
+      _lastSendError = e;
+      debugPrint('[ChatNotifier] _sendTypedMessage failed: $e');
       state = AsyncData([
         for (final msg in state.value ?? [])
-          if (msg.id == optimistic.id) sent else msg,
+          if (msg.id != optimistic.id) msg,
       ]);
     }
   }
