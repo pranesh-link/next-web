@@ -15,12 +15,15 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(authProvider).user;
+    final authState = ref.watch(authProvider);
+    final user = authState.user;
     final currentTheme = ref.watch(themeProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
-      body: ListView(
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: AppBar(title: const Text('Settings')),
+          body: ListView(
         padding: const EdgeInsets.all(AppSpacing.xl),
         children: [
           // Profile section
@@ -100,6 +103,23 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ],
       ),
+    ),
+    // Signing out overlay — blocks all interaction
+    if (authState.isSigningOut)
+      Container(
+        color: Colors.black54,
+        child: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: Colors.white),
+              SizedBox(height: 16),
+              Text('Signing out...', style: TextStyle(color: Colors.white, fontSize: 16)),
+            ],
+          ),
+        ),
+      ),
+    ],
     );
   }
 

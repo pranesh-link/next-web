@@ -7,6 +7,9 @@ import 'package:luvverse/core/cache/cache_providers.dart';
 import 'package:luvverse/core/cache/cache_warmer.dart';
 import 'package:luvverse/core/network/api_client.dart';
 import 'package:luvverse/core/notifications/push_providers.dart';
+import 'package:luvverse/features/chat/cache/chat_cache.dart';
+import 'package:luvverse/features/chat/cache/chat_db_providers.dart';
+import 'package:luvverse/features/chat/providers/chat_providers.dart';
 import 'package:luvverse/models/user.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
@@ -21,17 +24,19 @@ class AuthState {
   final User? user;
   final String? token;
   final bool isLoading;
+  final bool isSigningOut;
   final String? error;
 
-  const AuthState({this.user, this.token, this.isLoading = false, this.error});
+  const AuthState({this.user, this.token, this.isLoading = false, this.isSigningOut = false, this.error});
 
   bool get isAuthenticated => user != null && token != null;
 
-  AuthState copyWith({User? user, String? token, bool? isLoading, String? error}) {
+  AuthState copyWith({User? user, String? token, bool? isLoading, bool? isSigningOut, String? error}) {
     return AuthState(
       user: user ?? this.user,
       token: token ?? this.token,
       isLoading: isLoading ?? this.isLoading,
+      isSigningOut: isSigningOut ?? this.isSigningOut,
       error: error,
     );
   }
@@ -97,6 +102,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       // Eagerly populate cache so offline mode works immediately.
       _warmCache();
       _initPush();
+      // Prefetch chat messages in background for instant loading
+      _prefetchChat();
     } catch (e) {
       final message = e.toString().replaceFirst('Exception: ', '');
       state = state.copyWith(isLoading: false, error: message);
@@ -117,7 +124,25 @@ class AuthNotifier extends StateNotifier<AuthState> {
     });
   }
 
+  void _prefetchChat() {
+    // Fire-and-forget — fetch chat messages after sign-in for instant loading.
+    Future.microtask(() {
+      try {
+        _ref.read(chatNotifierProvider.notifier).prefetch();
+      } catch (_) {
+        // Provider may not be initialized yet — safe to ignore.
+      }
+    });
+  }
+
   Future<void> signOut() async {
+    state = state.copyWith(isSigningOut: true);
+    // Clear chat local DB
+    try {
+      final chatDb = _ref.read(chatLocalDatabaseProvider);
+      await chatDb.deleteAllMessages();
+      await ChatCache.clear();
+    } catch (_) {}
     // Unregister push token before clearing auth
     try {
       final pushService = _ref.read(pushNotificationServiceProvider);
