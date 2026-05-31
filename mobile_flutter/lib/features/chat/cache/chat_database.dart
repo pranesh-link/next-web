@@ -5,6 +5,8 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:sqlite3/open.dart';
+import 'package:sqlcipher_flutter_libs/sqlcipher_flutter_libs.dart';
 import 'package:luvverse/features/chat/models/chat_message.dart';
 
 part 'chat_database.g.dart';
@@ -113,9 +115,30 @@ class ChatLocalDatabase extends _$ChatLocalDatabase {
 
 /// Opens the chat-specific local database (unencrypted — messages are
 /// already E2E encrypted at the application layer).
+///
+/// `sqlcipher_flutter_libs` ships `libsqlcipher.so` (a drop-in sqlite3
+/// replacement) but no `libsqlite3.so`. We register it as the sqlite3
+/// implementation in *both* the main isolate and the background isolate
+/// so `NativeDatabase.createInBackground` can find it on Android.
 Future<ChatLocalDatabase> openChatDatabase() async {
+  // Apply override in the main isolate too, in case any sqlite3 calls
+  // happen here before the background isolate is spawned.
+  if (Platform.isAndroid) {
+    open.overrideFor(OperatingSystem.android, openCipherOnAndroid);
+  }
+
   final dir = await getApplicationDocumentsDirectory();
   final dbFile = File(p.join(dir.path, 'chat.db'));
-  final executor = NativeDatabase.createInBackground(dbFile);
+  final executor = NativeDatabase.createInBackground(
+    dbFile,
+    isolateSetup: () async {
+      // Re-apply override inside the background isolate (overrides are
+      // per-isolate). Without this, Drift tries to load libsqlite3.so
+      // which isn't bundled — only libsqlcipher.so is.
+      if (Platform.isAndroid) {
+        open.overrideFor(OperatingSystem.android, openCipherOnAndroid);
+      }
+    },
+  );
   return ChatLocalDatabase(executor);
 }
