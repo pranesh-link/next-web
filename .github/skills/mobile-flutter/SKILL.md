@@ -49,3 +49,47 @@ Every Flutter code change must work on BOTH Android and iOS:
 - Android: `android/app/google-services.json`
 - iOS: `ios/Runner/GoogleService-Info.plist`
 - Both are gitignored sensitive files — must be present locally for builds
+
+## Flutter Code Quality Rules
+
+### Null Safety
+- Write soundly null-safe code
+- **NEVER** use `!` unless the value is guaranteed to be non-null
+- Always handle nullable types properly in `fromJson` to match DB schema
+
+### State Management (Riverpod)
+- Use `FutureProvider` for async data that loads once
+- Use `StateNotifierProvider` for complex mutable state
+- Use `ref.invalidate()` to force a provider to refetch
+- Avoid silently catching errors in providers — log or rethrow
+
+### Code Structure
+- Keep functions < 20 lines where possible
+- Use `PascalCase` for classes, `camelCase` for members/variables, `snake_case` for files
+- Line length: 80 characters or fewer
+- Use arrow syntax for simple one-line functions
+- Prefer `const` constructors wherever possible
+
+### Widget Best Practices
+- Widgets (especially `StatelessWidget`) should be immutable
+- Use `const` constructors in `build()` methods to reduce rebuilds
+- Break down large `build()` methods into smaller, reusable private Widget classes
+- Use `ListView.builder` for long lists (lazy loading)
+- Avoid expensive operations (network calls, computations) in `build()` methods
+
+### Error Handling
+- Use `try-catch` for exceptions with appropriate exception types
+- **NEVER** let code fail silently — always log errors
+- Use `developer.log` from `dart:developer` instead of `print`
+
+### JSON Serialization
+- Match nullable fields in models to DB schema (e.g., `String?` for nullable columns)
+- Use `json_serializable` + `json_annotation` for parsing
+- Run `dart run build_runner build --delete-conflicting-outputs` after model changes
+
+### Testing
+- Follow Arrange-Act-Assert pattern
+- Write unit tests for domain logic and data layer
+- Write widget tests for UI components
+- Aim for high test coverage
+- Prefer fakes/stubs over mocks

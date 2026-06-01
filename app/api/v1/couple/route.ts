@@ -17,7 +17,10 @@ export async function OPTIONS() {
  */
 export async function GET() {
   const userId = await getAuthUserId();
+  console.log("[GET /api/v1/couple] userId from auth:", userId);
+  
   if (!userId) {
+    console.log("[GET /api/v1/couple] Unauthorized - no userId");
     return NextResponse.json(
       { error: "Unauthorized" },
       { status: 401, headers: corsHeaders() },
@@ -46,7 +49,16 @@ export async function GET() {
     },
   });
 
+  console.log("[GET /api/v1/couple] membership found:", !!membership, membership?.couple?.members?.length, "members");
+
   if (!membership) {
+    // Debug: check if user exists and if they have any couple memberships
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+    const allMemberships = await prisma.coupleMember.findMany({
+      where: { user: { email: user?.email } },
+      select: { userId: true, user: { select: { email: true } } },
+    });
+    console.log("[GET /api/v1/couple] user email:", user?.email, "memberships by email:", allMemberships);
     return NextResponse.json({ data: null }, { headers: corsHeaders() });
   }
 
