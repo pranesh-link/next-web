@@ -215,6 +215,39 @@ export async function sendPushToUser(
 }
 
 /**
+ * Sends a silent (data-only) push to a user's devices.
+ * Does NOT include a `notification` key, so the OS never shows a tray
+ * notification. Intended for background triggers such as E2E key
+ * bootstrap on COUPLE_FORMED.
+ *
+ * Android: woken via high-priority FCM data message.
+ * iOS: delivered as a background push via content-available=1.
+ *
+ * @param userId - Target user's ID.
+ * @param data - Data payload for background handler routing.
+ * @returns Count of sent vs failed tokens.
+ */
+export async function sendSilentPushToUser(
+  userId: string,
+  data?: Record<string, string>
+): Promise<{ sent: number; failed: number }> {
+  try {
+    if (isCircuitOpen()) return { sent: 0, failed: 0 };
+
+    const messaging = await getMessaging();
+    if (!messaging) return { sent: 0, failed: 0 };
+
+    const tokens = await getActiveTokens(userId);
+    if (tokens.length === 0) return { sent: 0, failed: 0 };
+
+    return await _sendDataToTokens(messaging, tokens, data);
+  } catch (error) {
+    console.error('[push-service] sendSilentPushToUser error:', error);
+    return { sent: 0, failed: 0 };
+  }
+}
+
+/**
  * Sends a push notification to multiple users.
  * Batches tokens across all users and sends in chunks of 500.
  *
@@ -447,6 +480,92 @@ async function sendToTokens(
   }
 
   // Cleanup stale tokens asynchronously
+  if (staleTokens.length > 0) {
+    deactivateTokens(staleTokens).catch((err) =>
+      console.error('[push-service] Failed to deactivate stale tokens:', err)
+    );
+  }
+
+  return { sent: totalSent, failed: totalFailed };
+}
+
+/**
+ * Core send logic for silent (data-only) pushes.
+ * Identical batching/retry/stale-token-cleanup as sendToTokens, but
+ * builds a message without the `notification` key and adds
+ * platform-specific hints for background delivery.
+ */
+async function _sendDataToTokens(
+  messaging: any,
+  tokens: string[],
+  data?: Record<string, string>
+): Promise<{ sent: number; failed: number }> {
+  if (!messaging) {
+    console.error('[_sendDataToTokens] messaging is null/undefined');
+    return { sent: 0, failed: tokens.length };
+  }
+  if (typeof messaging.sendEachForMulticast !== 'function') {
+    console.error('[_sendDataToTokens] messaging.sendEachForMulticast is not a function');
+    return { sent: 0, failed: tokens.length };
+  }
+  if (!Array.isArray(tokens) || tokens.length === 0) {
+    return { sent: 0, failed: 0 };
+  }
+
+  let totalSent = 0;
+  let totalFailed = 0;
+  const staleTokens: string[] = [];
+
+  for (let i = 0; i < tokens.length; i += 500) {
+    const batch = tokens.slice(i, i + 500);
+
+    const message = {
+      data: data ?? {},
+      tokens: batch,
+      android: { priority: 'high' as const },
+      apns: {
+        headers: { 'apns-push-type': 'background', 'apns-priority': '5' },
+        payload: { aps: { 'content-available': 1 } },
+      },
+    };
+
+    let response: any = null;
+
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        response = await messaging.sendEachForMulticast(message);
+        recordSuccess();
+        break;
+      } catch (error: unknown) {
+        const isRetryable = isRetryableError(error);
+        if (!isRetryable || attempt === MAX_RETRIES) {
+          recordFailure();
+          console.error(`[push-service] Silent batch send failed after ${attempt + 1} attempts:`, error);
+          totalFailed += batch.length;
+          break;
+        }
+        await sleep(RETRY_DELAYS[attempt]);
+      }
+    }
+
+    if (response) {
+      totalSent += response.successCount;
+      totalFailed += response.failureCount;
+
+      response.responses.forEach((resp: any, idx: number) => {
+        if (resp.error) {
+          const code = resp.error.code;
+          if (
+            code === 'messaging/registration-token-not-registered' ||
+            code === 'messaging/invalid-registration-token'
+          ) {
+            staleTokens.push(batch[idx]);
+          }
+        }
+      });
+    }
+  }
+
   if (staleTokens.length > 0) {
     deactivateTokens(staleTokens).catch((err) =>
       console.error('[push-service] Failed to deactivate stale tokens:', err)

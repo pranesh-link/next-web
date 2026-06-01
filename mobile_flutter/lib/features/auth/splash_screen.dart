@@ -14,8 +14,10 @@ import 'package:luvverse/core/prefetch/splash_prefetch_service.dart';
 import 'package:luvverse/core/quick_actions/quick_actions_service.dart';
 import 'package:luvverse/core/router/app_router.dart';
 import 'package:luvverse/core/theme/app_colors_extension.dart';
+import 'package:luvverse/core/router/pending_invite_provider.dart';
 import 'package:luvverse/features/chat/services/chat_key_bootstrap.dart';
 import 'package:luvverse/features/onboarding/onboarding_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -110,6 +112,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     ref.read(chatKeyBootstrapProvider).ensureBootstrapped().then((ready) {
       debugPrint('[Splash] Chat key bootstrap: ready=$ready');
     }).catchError((_) {});
+
+    // If a COUPLE_FORMED push arrived while app was terminated, bootstrap now
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool('pendingE2EBootstrap') == true) {
+      await prefs.remove('pendingE2EBootstrap');
+      ref.read(chatKeyBootstrapProvider).ensureBootstrapped().then((ready) {
+        debugPrint('[Splash] Pending bootstrap after COUPLE_FORMED: ready=$ready');
+      }).catchError((_) {});
+    }
   }
 
   void _navigate() {
@@ -121,6 +132,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     // Initialize quick actions after splash
     final router = ref.read(routerProvider);
     QuickActionsService().init(router);
+
+    // If an invite deep link arrived before login, honour it now
+    final pendingToken = ref.read(pendingInviteTokenProvider);
+    if (pendingToken != null) {
+      ref.read(pendingInviteTokenProvider.notifier).state = null;
+      context.go('/couple/invite/$pendingToken');
+      return;
+    }
 
     // Check onboarding status
     final onboarding = ref.read(onboardingCompleteProvider);

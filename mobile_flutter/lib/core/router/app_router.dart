@@ -30,6 +30,7 @@ import 'package:luvverse/features/couple/invite_screen.dart';
 import 'package:luvverse/features/onboarding/onboarding_screen.dart';
 import 'package:luvverse/features/chat/pages/backup_settings_page.dart';
 import 'package:luvverse/core/auth/auth_provider.dart';
+import 'package:luvverse/core/router/pending_invite_provider.dart';
 
 /// Navigation shell keys for nested navigation.
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -59,7 +60,15 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       if (isSplash) return null;
       if (isOnboarding) return null;
-      if (!isLoggedIn) return isLoggingIn ? null : '/login';
+      if (!isLoggedIn) {
+        if (isLoggingIn) return null;
+        // Preserve invite token across login redirect
+        final inviteMatch = RegExp(r'^/couple/invite/(.+)$').firstMatch(state.uri.path);
+        if (inviteMatch != null) {
+          ref.read(pendingInviteTokenProvider.notifier).state = inviteMatch.group(1);
+        }
+        return '/login';
+      }
       if (isLoggingIn) return '/home';
       return null;
     },
