@@ -515,14 +515,7 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
     }
 
     try {
-      // Try encrypted send first; fall back to plaintext if crypto not ready
-      ChatMessage? sent;
-      try {
-        sent = await _sendEncrypted(content: text, type: type);
-      } on StateError catch (e) {
-        debugPrint('[ChatNotifier] Encryption unavailable, sending plaintext: $e');
-        sent = await _repo.sendMessage(content: text, type: type);
-      }
+      final sent = await _sendEncrypted(content: text, type: type);
       _lastSendError = null;
       if (sent != null) {
         // Replace optimistic with server response (decrypted for display).

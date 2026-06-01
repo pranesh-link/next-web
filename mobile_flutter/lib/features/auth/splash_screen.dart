@@ -14,6 +14,7 @@ import 'package:luvverse/core/prefetch/splash_prefetch_service.dart';
 import 'package:luvverse/core/quick_actions/quick_actions_service.dart';
 import 'package:luvverse/core/router/app_router.dart';
 import 'package:luvverse/core/theme/app_colors_extension.dart';
+import 'package:luvverse/features/chat/services/chat_key_bootstrap.dart';
 import 'package:luvverse/features/onboarding/onboarding_screen.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -103,6 +104,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     final service = SplashPrefetchService(ref);
     _prefetchResult = await service.prefetchAll();
     debugPrint('[Splash] Prefetch complete: ${_prefetchResult?.summary}');
+
+    // Bootstrap E2E chat keys early so both partners have keys uploaded
+    // before either opens chat. Fire-and-forget — doesn't block navigation.
+    ref.read(chatKeyBootstrapProvider).ensureBootstrapped().then((ready) {
+      debugPrint('[Splash] Chat key bootstrap: ready=$ready');
+    }).catchError((_) {});
   }
 
   void _navigate() {
