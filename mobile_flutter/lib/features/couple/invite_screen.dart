@@ -7,6 +7,7 @@ import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/chat/services/chat_key_bootstrap.dart';
+import 'package:luvverse/features/couple/couple_status_provider.dart';
 import 'package:luvverse/features/finance/repositories/couple_repository.dart';
 import 'package:luvverse/shared/widgets/app_button.dart';
 
@@ -48,7 +49,9 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
       // Bootstrap E2E keys immediately so the husband can derive the shared
       // secret as soon as his COUPLE_FORMED push arrives.
       await ref.read(chatKeyBootstrapProvider).ensureBootstrapped().catchError((_) => false);
-      if (mounted) context.go('/couple');
+      // Invalidate couple state so Chat tab appears and couple management refreshes
+      ref.invalidate(hasCoupleProvider);
+      if (mounted) context.go('/home');
     } catch (e) {
       final msg = e.toString();
       setState(() {

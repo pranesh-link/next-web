@@ -7,6 +7,7 @@ import 'package:luvverse/core/notifications/push_providers.dart';
 import 'package:luvverse/core/router/app_router.dart';
 import 'package:luvverse/core/theme/app_theme.dart';
 import 'package:luvverse/core/theme/theme_provider.dart';
+import 'package:luvverse/features/couple/couple_status_provider.dart';
 
 class LuvVerseApp extends ConsumerStatefulWidget {
   const LuvVerseApp({super.key});
@@ -25,6 +26,11 @@ class _LuvVerseAppState extends ConsumerState<LuvVerseApp> {
       final router = ref.read(routerProvider);
       pushService.setOnTapCallback((type) {
         NotificationRouter.navigate(router, type);
+      });
+
+      // Refresh couple state when partner accepts invite (foreground push)
+      pushService.setOnCoupleFormedCallback(() {
+        ref.invalidate(hasCoupleProvider);
       });
 
       // Handle notification that launched the app from terminated state
