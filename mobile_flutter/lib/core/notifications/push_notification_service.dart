@@ -7,11 +7,16 @@ import 'package:luvverse/core/network/api_client.dart';
 import 'package:luvverse/core/network/api_endpoints.dart';
 import 'package:luvverse/core/network/api_exceptions.dart';
 import 'package:luvverse/core/notifications/notification_channel.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Top-level background message handler (must be top-level function).
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   if (kDebugMode) debugPrint('[Push] Background message: ${message.messageId}');
+  if (message.data['type'] == 'COUPLE_FORMED') {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('pendingE2EBootstrap', true);
+  }
 }
 
 /// Result of registering a device token with the backend.

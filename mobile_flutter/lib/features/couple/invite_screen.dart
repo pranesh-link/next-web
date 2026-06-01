@@ -1,17 +1,68 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:luvverse/core/network/api_client.dart';
+import 'package:luvverse/core/router/pending_invite_provider.dart';
 import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
+import 'package:luvverse/features/finance/repositories/couple_repository.dart';
 import 'package:luvverse/shared/widgets/app_button.dart';
 
-class InviteScreen extends ConsumerWidget {
+final _inviteRepoProvider = Provider<CoupleRepository>((ref) {
+  return CoupleRepository(ref.read(apiClientProvider));
+});
+
+class InviteScreen extends ConsumerStatefulWidget {
   final String token;
 
   const InviteScreen({super.key, required this.token});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<InviteScreen> createState() => _InviteScreenState();
+}
+
+class _InviteScreenState extends ConsumerState<InviteScreen> {
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    // Clear any stored pending token — user dismissed or completed the invite
+    ref.read(pendingInviteTokenProvider.notifier).state = null;
+    super.dispose();
+  }
+
+  Future<void> _accept() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      await ref.read(_inviteRepoProvider).acceptInvite(token: widget.token);
+      if (mounted) context.go('/home');
+    } catch (e) {
+      final msg = e.toString();
+      setState(() {
+        _error = msg;
+        _loading = false;
+      });
+      // Terminal error — clear stored token so it is not replayed on next launch
+      const terminalErrors = [
+        'Invite not found',
+        'Invite is no longer pending',
+        'Couple already has two members',
+        'You are already in a couple',
+      ];
+      if (terminalErrors.any((err) => (_error ?? '').contains(err))) {
+        ref.read(pendingInviteTokenProvider.notifier).state = null;
+      }
+      debugPrint('[InviteScreen] Accept error: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.colors.bg,
       body: SafeArea(
@@ -30,8 +81,12 @@ class InviteScreen extends ConsumerWidget {
               Text('Couple Invite', style: AppTypography.pageTitle.copyWith(color: context.colors.text)),
               const SizedBox(height: AppSpacing.sm),
               Text('You\'ve been invited to join a couple', style: AppTypography.body.copyWith(color: context.colors.textMuted), textAlign: TextAlign.center),
+              if (_error != null) ...[
+                const SizedBox(height: AppSpacing.md),
+                Text(_error!, style: AppTypography.body.copyWith(color: Colors.red), textAlign: TextAlign.center),
+              ],
               const SizedBox(height: AppSpacing.xxxxl),
-              AppButton(label: 'Accept Invite', fullWidth: true, onPressed: () {}),
+              AppButton(label: 'Accept Invite', fullWidth: true, isLoading: _loading, onPressed: _loading ? null : _accept),
             ],
           ),
         ),
@@ -39,3 +94,4 @@ class InviteScreen extends ConsumerWidget {
     );
   }
 }
+
