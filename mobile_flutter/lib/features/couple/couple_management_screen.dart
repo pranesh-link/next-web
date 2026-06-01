@@ -261,7 +261,7 @@ class _CoupleManagementScreenState
                                 ? CachedNetworkImageProvider(m.user.image!)
                                 : null,
                             child: m.user.image == null
-                                ? Text(m.user.name[0])
+                                ? Text(m.user.displayName[0])
                                 : null,
                           ),
                           const SizedBox(width: AppSpacing.md),
@@ -269,7 +269,7 @@ class _CoupleManagementScreenState
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(m.user.name, style: AppTypography.bodyMedium),
+                                Text(m.user.displayName, style: AppTypography.bodyMedium),
                                 Text(m.role,
                                     style: AppTypography.xs
                                         .copyWith(color: context.colors.textMuted)),

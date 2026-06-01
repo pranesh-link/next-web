@@ -4,13 +4,13 @@ import 'package:flutter/foundation.dart';
 @immutable
 class User {
   final String id;
-  final String name;
+  final String? name;
   final String email;
   final String? image;
 
   const User({
     required this.id,
-    required this.name,
+    this.name,
     required this.email,
     this.image,
   });
@@ -18,7 +18,7 @@ class User {
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
       id: json['id'] as String,
-      name: json['name'] as String,
+      name: json['name'] as String?,
       email: json['email'] as String,
       image: json['image'] as String?,
     );
@@ -32,4 +32,7 @@ class User {
       'image': image,
     };
   }
+
+  /// Display name, falling back to email prefix if name is null.
+  String get displayName => name ?? email.split('@').first;
 }
