@@ -37,6 +37,7 @@ export function signMobileRefreshToken(userId: string): string {
  *    Also creates the user record if it doesn't exist yet.
  */
 export async function getAuthUserId(): Promise<string | null> {
+  try {
   // Check for Bearer token first (mobile) — avoids expensive auth() DB call
   const headersList = await headers();
   const authorization = headersList.get("authorization");
@@ -109,4 +110,8 @@ export async function getAuthUserId(): Promise<string | null> {
 
   console.log("[getAuthUserId] no session, no Bearer token");
   return null;
+  } catch {
+    console.error("[getAuthUserId] unexpected error, returning null");
+    return null;
+  }
 }

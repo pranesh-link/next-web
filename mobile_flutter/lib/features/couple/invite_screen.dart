@@ -6,6 +6,7 @@ import 'package:luvverse/core/router/pending_invite_provider.dart';
 import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
+import 'package:luvverse/features/chat/services/chat_key_bootstrap.dart';
 import 'package:luvverse/features/finance/repositories/couple_repository.dart';
 import 'package:luvverse/shared/widgets/app_button.dart';
 
@@ -28,8 +29,12 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
 
   @override
   void dispose() {
-    // Clear any stored pending token — user dismissed or completed the invite
-    ref.read(pendingInviteTokenProvider.notifier).state = null;
+    // Clear any stored pending token — user dismissed or completed the invite.
+    // Guard with try/catch: dispose() may be called after the provider scope
+    // is torn down during hot-restart or fast widget removal.
+    try {
+      ref.read(pendingInviteTokenProvider.notifier).state = null;
+    } catch (_) {}
     super.dispose();
   }
 
@@ -40,7 +45,10 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
     });
     try {
       await ref.read(_inviteRepoProvider).acceptInvite(token: widget.token);
-      if (mounted) context.go('/home');
+      // Bootstrap E2E keys immediately so the husband can derive the shared
+      // secret as soon as his COUPLE_FORMED push arrives.
+      await ref.read(chatKeyBootstrapProvider).ensureBootstrapped().catchError((_) => false);
+      if (mounted) context.go('/couple');
     } catch (e) {
       final msg = e.toString();
       setState(() {
