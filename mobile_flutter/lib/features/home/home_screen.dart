@@ -32,7 +32,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
-    final firstName = user?.name.split(' ').first;
+    final firstName = user?.name?.split(' ').first ?? user?.displayName;
     final balance = ref.watch(totalBalanceProvider);
     final hasCouple = ref.watch(hasCoupleProvider).valueOrNull ?? true;
 
