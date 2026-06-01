@@ -112,6 +112,7 @@ class PushNotificationService {
 
   void Function()? _onChatMessageReceived;
   void Function(List<String>)? _onMessageDelivered;
+  void Function()? _onCoupleFormed;
 
   /// Register a callback for when a chat message push arrives (used to refresh chat data).
   void setOnChatMessageCallback(void Function() callback) {
@@ -121,6 +122,11 @@ class PushNotificationService {
   /// Register a callback for delivery receipts (double-tick).
   void setOnMessageDeliveredCallback(void Function(List<String>) callback) {
     _onMessageDelivered = callback;
+  }
+
+  /// Register a callback for when COUPLE_FORMED push arrives (partner accepted invite).
+  void setOnCoupleFormedCallback(void Function() callback) {
+    _onCoupleFormed = callback;
   }
 
   PushNotificationService(this._apiClient)
@@ -344,6 +350,12 @@ class PushNotificationService {
       if (type == 'MESSAGE_DELIVERED') {
         final ids = (message.data['messageIds'] as String?)?.split(',') ?? [];
         if (ids.isNotEmpty) _onMessageDelivered?.call(ids);
+        return;
+      }
+
+      // Partner accepted invite — trigger couple state refresh
+      if (type == 'COUPLE_FORMED') {
+        _onCoupleFormed?.call();
         return;
       }
 
