@@ -51,6 +51,16 @@ class ChatKeyBootstrap {
     }
   }
 
+  /// Clears any cached ready/in-flight state and forces a fresh bootstrap
+  /// attempt. Use when a previous attempt returned false (partner key was
+  /// null) and you want to re-check immediately — e.g. after the send path
+  /// fails and the user taps Retry.
+  Future<bool> forceRetry() async {
+    _ready = false;
+    _inFlight = null;
+    return ensureBootstrapped();
+  }
+
   Future<bool> _run() async {
     try {
       if (!await _crypto.hasKeyPair()) {
