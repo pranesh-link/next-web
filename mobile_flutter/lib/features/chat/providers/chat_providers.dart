@@ -320,8 +320,14 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
 
   /// Ensure crypto is ready, with a timeout. Delegates to the shared
   /// [ChatKeyBootstrap] so init runs once per app lifetime.
+  ///
+  /// [forSend] when true uses a longer timeout (30 s) and performs one
+  /// extra [forceRetry] attempt before giving up, so a send triggered
+  /// before the background bootstrap completes has a better chance of
+  /// succeeding rather than failing immediately.
   Future<bool> _ensureCryptoReady({
     Duration timeout = const Duration(seconds: 8),
+    bool forSend = false,
   }) async {
     if (_bootstrap.isReady) {
       // Mirror to UI state in case it wasn't already set.
@@ -331,12 +337,29 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
       }
       return true;
     }
+
+    final effectiveTimeout =
+        forSend ? const Duration(seconds: 30) : timeout;
+
     bool ok = false;
     try {
-      ok = await _bootstrap.ensureBootstrapped().timeout(timeout);
+      ok = await _bootstrap.ensureBootstrapped().timeout(effectiveTimeout);
     } catch (_) {
       ok = false;
     }
+
+    // If the first attempt timed-out or returned false (partner key was
+    // transiently null), do one immediate forceRetry on the send path
+    // before giving up — this catches the common race where bootstrap
+    // was in-flight but partner key just became available.
+    if (!ok && forSend) {
+      try {
+        ok = await _bootstrap.forceRetry().timeout(effectiveTimeout);
+      } catch (_) {
+        ok = false;
+      }
+    }
+
     if (ok) {
       ref.read(encryptionReadyProvider.notifier).state = true;
       if (_bootstrap.partnerKeyRotated) {
@@ -417,7 +440,7 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
   }
 
   /// Encrypt `content` (and `payload`) as a JSON blob and send via repo.
-  /// Throws [StateError] if encryption is unavailable.
+  /// Throws [StateError] if encryption is unavailable after all retries.
   ///
   /// `wirePayload` is sent to the server UNENCRYPTED — used only for
   /// metadata the server must see (e.g. `reminderAt` for scheduling
@@ -429,10 +452,10 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
     Map<String, dynamic>? payload,
     Map<String, dynamic>? wirePayload,
   }) async {
-    final ready = await _ensureCryptoReady();
+    final ready = await _ensureCryptoReady(forSend: true);
     if (!ready) {
       throw StateError(
-        'Encryption not ready. Make sure your partner has signed in.',
+        'Encryption not ready. Ask your partner to open the app.',
       );
     }
     final plain = jsonEncode({'content': content, 'payload': payload});
@@ -477,10 +500,10 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
     // Offline path: encrypt, then queue with on-the-wire format.
     if (!_isOnline) {
       try {
-        final ready = await _ensureCryptoReady();
+        final ready = await _ensureCryptoReady(forSend: true);
         if (!ready) {
           throw StateError(
-            'Encryption not ready. Make sure your partner has signed in.',
+            'Encryption not ready. Ask your partner to open the app.',
           );
         }
         final plain = jsonEncode({'content': text, 'payload': null});

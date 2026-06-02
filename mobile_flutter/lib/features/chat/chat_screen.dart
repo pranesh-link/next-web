@@ -147,7 +147,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   void _startEncryptionRetry() {
     _encryptionRetryTimer?.cancel();
-    _encryptionRetryTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+    _encryptionRetryTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       if (!mounted) return;
       final ready = ref.read(encryptionReadyProvider);
       if (ready) {
@@ -179,6 +179,37 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   void _onSend(String text) {
+    // If encryption isn't ready yet, surface a friendly amber warning instead
+    // of letting the send path throw a red error. Bootstrap is retried every
+    // 3 s in the background; the user should try again shortly.
+    if (!ref.read(encryptionReadyProvider)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Setting up encryption… Try again in a moment.',
+          ),
+          backgroundColor: Colors.amber.shade700,
+          duration: const Duration(seconds: 4),
+          action: SnackBarAction(
+            label: 'Retry now',
+            textColor: Colors.white,
+            onPressed: () {
+              ref
+                  .read(chatKeyBootstrapProvider)
+                  .forceRetry()
+                  .then((ok) {
+                if (ok && mounted) {
+                  ref.read(encryptionReadyProvider.notifier).state = true;
+                  _onSend(text);
+                }
+              }).catchError((_) {});
+            },
+          ),
+        ),
+      );
+      return;
+    }
+
     ref.read(chatNotifierProvider.notifier).sendMessage(text).then((_) {
       final err = ref.read(chatNotifierProvider.notifier).lastSendError;
       if (err != null && mounted) {
@@ -422,7 +453,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           _EncryptionPendingBanner(
             isReady: ref.watch(encryptionReadyProvider),
             onRetry: () => ref.read(chatKeyBootstrapProvider)
-                .ensureBootstrapped()
+                .forceRetry()
                 .then((ok) {
               if (ok && mounted) {
                 ref.read(encryptionReadyProvider.notifier).state = true;
@@ -781,7 +812,7 @@ class _EncryptionPendingBanner extends StatelessWidget {
           const SizedBox(width: 8),
           const Expanded(
             child: Text(
-              'Setting up encryption… Messages will be sent once ready.',
+              'Waiting for partner encryption. Ask them to open the app.',
               style: TextStyle(fontSize: 12, color: Colors.black87),
             ),
           ),
