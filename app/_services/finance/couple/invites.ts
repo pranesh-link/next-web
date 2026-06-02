@@ -1,6 +1,8 @@
 import prisma from '@/_lib/prisma';
 import { createNotification } from '@/_services/finance/notification-service';
 import { sendSilentPushToUser } from '@/_services/finance/push-service';
+import { revalidateTag } from 'next/cache';
+import { CACHE_TAGS } from '@/_lib/cache';
 
 /**
  * Invite a partner to join an existing couple by email.
@@ -81,6 +83,8 @@ export async function acceptInvite(inviteId: string, userId: string) {
       data: { status: 'ACCEPTED' },
     }),
   ]);
+
+  revalidateTag(CACHE_TAGS.COUPLE_MEMBERS);
 
   // Notify the couple owner that their partner has joined (silent push — triggers E2E key bootstrap)
   const ownerId = invite.couple.members[0]?.userId;
@@ -165,6 +169,8 @@ export async function acceptInviteByToken(token: string, userId: string) {
       data: { status: 'ACCEPTED' },
     }),
   ]);
+
+  revalidateTag(CACHE_TAGS.COUPLE_MEMBERS);
 
   // Notify the couple owner that their partner has joined (silent push — triggers E2E key bootstrap)
   const ownerId = invite.couple.members[0]?.userId;

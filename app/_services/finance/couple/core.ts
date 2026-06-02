@@ -1,4 +1,6 @@
 import prisma from '@/_lib/prisma';
+import { revalidateTag } from 'next/cache';
+import { CACHE_TAGS } from '@/_lib/cache';
 
 /**
  * Create a new couple owned by the given user.
@@ -25,6 +27,7 @@ export async function createCouple(userId: string, name?: string) {
       },
     },
   });
+  revalidateTag(CACHE_TAGS.COUPLE_MEMBERS);
   return couple;
 }
 
@@ -100,6 +103,8 @@ export async function leaveCouple(userId: string) {
     await prisma.couple.delete({ where: { id: membership.coupleId } });
   }
 
+  revalidateTag(CACHE_TAGS.COUPLE_MEMBERS);
+
   return { success: true };
 }
 
@@ -139,6 +144,8 @@ export async function disbandCouple(userId: string) {
   if (!membership) throw new Error('Not in a couple');
 
   await prisma.couple.delete({ where: { id: membership.coupleId } });
+
+  revalidateTag(CACHE_TAGS.COUPLE_MEMBERS);
 
   return { success: true };
 }
