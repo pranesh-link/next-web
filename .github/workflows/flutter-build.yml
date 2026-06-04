@@ -11,6 +11,9 @@ on:
     paths:
       - 'mobile_flutter/**'
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   analyze-and-test:
     name: Analyze & Test

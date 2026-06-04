@@ -7,6 +7,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqlite3/open.dart';
 import 'package:sqlcipher_flutter_libs/sqlcipher_flutter_libs.dart';
 import 'package:luvverse/features/chat/models/chat_message.dart';
@@ -130,12 +131,22 @@ class ChatLocalDatabase extends _$ChatLocalDatabase {
   }
 }
 
+/// SharedPreferences key used as a sentinel to distinguish a true first launch
+/// from a transient Android Keystore read failure.
+const _kDbInitSentinel = 'chat_db_key_written';
+
 /// Opens the chat-specific local database with SQLCipher encryption.
 ///
 /// A per-device AES-256 key is generated on first launch and stored in
 /// [FlutterSecureStorage] (Android EncryptedSharedPreferences / iOS Keychain).
 /// The key is applied via `PRAGMA key` immediately after opening, so the
 /// database file is unreadable without the device key.
+///
+/// A [SharedPreferences] sentinel ([_kDbInitSentinel]) tracks whether the key
+/// has ever been written. If the secure storage read returns null but the
+/// sentinel is set, a short retry is attempted before treating the situation
+/// as a first launch — this guards against transient Android Keystore hiccups
+/// on some OEM devices where the Keystore is briefly unavailable at cold start.
 ///
 /// Migration note: if the database file exists from a previous version that
 /// did not apply a cipher key, it is deleted so a fresh encrypted file is
@@ -158,18 +169,35 @@ Future<ChatLocalDatabase> openChatDatabase() async {
   var encKey = await storage.read(key: keyStorageKey);
 
   if (encKey == null) {
-    // First launch with encryption: delete any existing unencrypted file to
-    // prevent SQLITE_NOTADB when PRAGMA key is applied to a plaintext DB.
-    if (await dbFile.exists()) {
-      await dbFile.delete();
+    // Check the sentinel to distinguish a true first launch from a transient
+    // Android Keystore hiccup where secure storage momentarily returns null.
+    final prefs = await SharedPreferences.getInstance();
+    final wasInitialized = prefs.getBool(_kDbInitSentinel) ?? false;
+
+    if (wasInitialized) {
+      // The key was written before — retry once after a short delay.
+      // Some OEM Android variants need a moment for the Keystore to be ready.
+      await Future.delayed(const Duration(milliseconds: 200));
+      encKey = await storage.read(key: keyStorageKey);
     }
-    // Generate a cryptographically random 32-byte key, encode as base64.
-    final rng = Random.secure();
-    final keyBytes = Uint8List.fromList(
-      List.generate(32, (_) => rng.nextInt(256)),
-    );
-    encKey = base64Encode(keyBytes);
-    await storage.write(key: keyStorageKey, value: encKey);
+
+    if (encKey == null) {
+      // Either a genuine first launch, or the key is permanently gone.
+      // Only delete the DB file if it exists — in both cases we must start
+      // fresh because we cannot open an existing encrypted DB without its key.
+      if (await dbFile.exists()) {
+        await dbFile.delete();
+      }
+      // Generate a cryptographically random 32-byte key, encode as base64.
+      final rng = Random.secure();
+      final keyBytes = Uint8List.fromList(
+        List.generate(32, (_) => rng.nextInt(256)),
+      );
+      encKey = base64Encode(keyBytes);
+      await storage.write(key: keyStorageKey, value: encKey);
+      // Mark the sentinel so future launches know a key has been written.
+      await prefs.setBool(_kDbInitSentinel, true);
+    }
   }
 
   final cipherKey = encKey;

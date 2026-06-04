@@ -247,7 +247,7 @@ class _CoupleManagementScreenState
                   children: [
                     Icon(Icons.favorite, color: context.colors.accent),
                     const SizedBox(width: AppSpacing.sm),
-                    Text(couple.name, style: AppTypography.cardTitle),
+                    Text(couple.name ?? 'Our Couple', style: AppTypography.cardTitle),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.lg),

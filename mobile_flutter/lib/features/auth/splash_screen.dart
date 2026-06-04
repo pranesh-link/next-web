@@ -16,6 +16,10 @@ import 'package:luvverse/core/router/app_router.dart';
 import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/router/pending_invite_provider.dart';
 import 'package:luvverse/features/chat/services/chat_key_bootstrap.dart';
+import 'package:luvverse/core/config/app_config.dart';
+import 'package:luvverse/core/config/app_config_provider.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:luvverse/features/onboarding/onboarding_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -60,7 +64,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       _minWaitTimer = Timer(const Duration(seconds: 3), completer.complete);
       await completer.future;
       _minWaitTimer = null;
-      if (mounted) _navigate();
+      if (mounted) unawaited(_navigate());
       return;
     }
 
@@ -71,6 +75,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       await _proactiveTokenRefresh();
     }
 
+    // Fetch remote config (maintenance.json) alongside prefetch.
+    // Fire-and-forget into the provider — _navigate() reads the cached result.
+    unawaited(ref.refresh(appConfigProvider.future).catchError((_) => AppConfig.defaults()));
+
     // Start prefetch + minimum 3s wait
     final prefetchFuture = _prefetchData();
     final completer = Completer<void>();
@@ -78,7 +86,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     await Future.wait([prefetchFuture, completer.future]);
     _minWaitTimer = null;
 
-    if (mounted) _navigate();
+    if (mounted) unawaited(_navigate());
   }
 
   /// Attempts to refresh the JWT token proactively before making API calls.
@@ -135,10 +143,73 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     }
   }
 
-  void _navigate() {
+  Future<void> _navigate() async {
     if (!mounted || _isNavigating) return;
     _isNavigating = true;
-    
+
+    final appConfig = ref.read(appConfigProvider).valueOrNull;
+
+    // Force-upgrade check — blocks navigation if running version is below minAppVersion.
+    if (appConfig != null) {
+      try {
+        final info = await PackageInfo.fromPlatform();
+        if (_isVersionLessThan(info.version, appConfig.minAppVersion)) {
+          if (!mounted) return;
+          _isNavigating = false;
+          showDialog<void>(
+            context: context,
+            barrierDismissible: false,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Update Required'),
+              content: Text(
+                'Please update LuvVerse to version ${appConfig.minAppVersion} or later to continue.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () async {
+                    final uri = Uri.parse(_kStoreUrl);
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    }
+                  },
+                  child: const Text('Update Now'),
+                ),
+              ],
+            ),
+          );
+          return;
+        }
+      } catch (_) {
+        // PackageInfo unavailable — skip version gate
+      }
+    }
+
+    // Check maintenance mode — show blocking dialog if active.
+    if (appConfig != null && appConfig.maintenanceMode) {
+      if (!mounted) return;
+      _isNavigating = false;
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Under Maintenance'),
+          content: Text(
+            appConfig.maintenanceMessage.isNotEmpty
+                ? appConfig.maintenanceMessage
+                : 'LuvVerse is currently under maintenance. Please try again later.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    if (!mounted) return;
     final auth = ref.read(authProvider);
 
     // Initialize quick actions after splash
@@ -236,4 +307,20 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       ),
     );
   }
+
+  /// Compares two semver strings; returns true if [version] < [minVersion].
+  bool _isVersionLessThan(String version, String minVersion) {
+    final v = version.split('.').map((s) => int.tryParse(s) ?? 0).toList();
+    final m = minVersion.split('.').map((s) => int.tryParse(s) ?? 0).toList();
+    for (int i = 0; i < 3; i++) {
+      final vi = i < v.length ? v[i] : 0;
+      final mi = i < m.length ? m[i] : 0;
+      if (vi < mi) return true;
+      if (vi > mi) return false;
+    }
+    return false;
+  }
 }
+
+// TODO: replace with actual App Store / Play Store URL after release.
+const String _kStoreUrl = 'https://pranesh.link';
