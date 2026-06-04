@@ -171,6 +171,13 @@ class PushNotificationService {
         settings.authorizationStatus == AuthorizationStatus.provisional;
   }
 
+  /// Returns true if the user has never been asked for push permission
+  /// (i.e. status is notDetermined — first install or after a settings reset).
+  Future<bool> isPermissionNotDetermined() async {
+    final settings = await FirebaseMessaging.instance.getNotificationSettings();
+    return settings.authorizationStatus == AuthorizationStatus.notDetermined;
+  }
+
   /// Get FCM token and register with the backend.
   /// Returns detailed result for UI feedback.
   Future<TokenRegistrationResult> registerToken() async {

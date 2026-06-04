@@ -55,6 +55,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   Future<void> _complete() async {
     const storage = FlutterSecureStorage();
     await storage.write(key: _onboardingCompleteKey, value: 'true');
+    // Invalidate the provider so any subsequent splash navigation reads the
+    // updated value rather than the cached 'false'.
+    ref.invalidate(onboardingCompleteProvider);
     widget.onComplete();
   }
 

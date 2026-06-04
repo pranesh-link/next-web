@@ -139,15 +139,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   void _initPush() {
-    // Fire-and-forget — register FCM token after sign-in, but only when
-    // the user has (or grants) notification permission.
+    // Fire-and-forget — set up FCM handlers immediately.
+    // Permission request is deferred to HomeScreen (post-frame) so the OS
+    // dialog never races the login→home navigation transition.
+    // If permission was already granted (returning user), register the token
+    // straight away to keep it fresh.
     final pushService = _ref.read(pushNotificationServiceProvider);
     pushService.init().then((_) async {
-      final granted = await pushService.requestPermission();
-      if (granted) {
-        await pushService.registerToken();
-      }
-    });
+      final granted = await pushService.hasPermission();
+      if (granted) await pushService.registerToken();
+    }).catchError((_) {});
   }
 
   void _prefetchChat() {

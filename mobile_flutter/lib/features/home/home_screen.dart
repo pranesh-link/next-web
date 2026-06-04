@@ -34,9 +34,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
   }
 
-  /// Show the permission reminder banner if notifications have been denied.
+  /// Handle push permission on home load.
+  /// First install (notDetermined): show the OS prompt now that home is visible.
+  /// Already denied: surface the reminder banner.
   Future<void> _checkPushPermission() async {
     final pushService = ref.read(pushNotificationServiceProvider);
+    if (await pushService.isPermissionNotDetermined()) {
+      // First install — ask for permission now that home page is visible.
+      final granted = await pushService.requestPermission();
+      if (granted && mounted) await pushService.registerToken();
+      return;
+    }
+    // Already asked — show reminder banner if denied.
     final hasPermission = await pushService.hasPermission();
     if (!hasPermission && mounted) {
       setState(() {}); // Triggers rebuild to show NotificationPermissionReminder
