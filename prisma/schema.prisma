@@ -814,3 +814,18 @@ model DeviceToken {
   @@index([token])
   @@map("device_tokens")
 }
+
+// ─── App Config ─────────────────────────────────────────────
+
+/// Singleton row controlling mobile app feature flags and maintenance mode.
+/// There is always exactly one row (id = 'singleton').
+model AppConfig {
+  id                 String   @id @default("singleton")
+  minAppVersion      String   @default("1.0.0")
+  enabledFeatures    String[] @default(["finance", "chat"])
+  maintenanceMode    Boolean  @default(false)
+  maintenanceMessage String   @default("")
+  updatedAt          DateTime @updatedAt
+
+  @@map("app_config")
+}

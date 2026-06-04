@@ -3,8 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:luvverse/core/config/app_config.dart';
 
-/// URL of the static maintenance/feature-flag JSON served by the web host.
-const _kMaintenanceJsonUrl = 'https://pranesh.link/maintenance.json';
+/// DB-backed app config endpoint — no auth required, served by the API.
+const _kMaintenanceJsonUrl = 'https://pranesh.link/api/v1/config';
 
 /// Fetches [AppConfig] from [_kMaintenanceJsonUrl].
 ///
