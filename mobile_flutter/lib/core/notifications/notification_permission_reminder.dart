@@ -95,17 +95,19 @@ class _NotificationPermissionReminderState
     );
   }
 
-  void _openSettings() {
+  Future<void> _openSettings() async {
     // Open the device app-settings page so the user can enable notifications.
-    launchUrl(
-      Uri.parse('app-settings:'),
-      mode: LaunchMode.externalApplication,
-    ).catchError((Object _) {
-      // Fallback: some Android versions don't support 'app-settings:'.
-      launchUrl(
+    try {
+      final opened = await launchUrl(
+        Uri.parse('app-settings:'),
+        mode: LaunchMode.externalApplication,
+      );
+      if (opened) return;
+      // Fallback: some Android versions don't support 'app-settings:'
+      await launchUrl(
         Uri.parse('package:com.pranesh.luvverse'),
         mode: LaunchMode.externalApplication,
-      ).catchError((Object __) {});
-    });
+      );
+    } catch (_) {}
   }
 }

@@ -101,7 +101,8 @@ class _ConnectivityWrapperState extends ConsumerState<ConnectivityWrapper>
       unawaited(
         ref.read(pushNotificationServiceProvider).hasPermission().then((granted) {
           if (!granted) return;
-          ref.read(pushNotificationServiceProvider).registerToken().catchError((Object e) {
+          // Chain .then((_){}) to convert to Future<void> so catchError is type-safe
+          ref.read(pushNotificationServiceProvider).registerToken().then((_) {}).catchError((Object e) {
             debugPrint('[Resume] FCM token re-registration failed: $e');
           });
         }),
