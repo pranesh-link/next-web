@@ -5,20 +5,36 @@ import 'package:luvverse/core/auth/auth_provider.dart';
 import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 
-class LoginScreen extends ConsumerWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends ConsumerState<LoginScreen> {
+  @override
+  Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
 
-    // Belt-and-suspenders: if GoRouter redirect fires late or races the OS
-    // permission dialog, navigate imperatively the moment isAuthenticated flips.
+    // 1. Reactive guard: fires when isAuthenticated transitions false → true.
+    //    Using ConsumerStatefulWidget ensures the ref (and its listener) persists
+    //    across rebuilds with a stable identity — no listener churn.
     ref.listen<AuthState>(authProvider, (previous, next) {
       if (next.isAuthenticated && !(previous?.isAuthenticated ?? false)) {
-        context.go('/home');
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) context.go('/home');
+        });
       }
     });
+
+    // 2. Static guard: if we somehow land here while already authenticated
+    //    (e.g. GoRouter redirect hasn't fired yet), navigate post-frame.
+    if (auth.isAuthenticated) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.go('/home');
+      });
+    }
 
     return Scaffold(
       body: Container(
