@@ -12,13 +12,13 @@ abstract class CoupleRole {
 @immutable
 class Couple {
   final String id;
-  final String name;
+  final String? name;
   final List<CoupleMember> members;
   final DateTime createdAt;
 
   const Couple({
     required this.id,
-    required this.name,
+    this.name,
     required this.members,
     required this.createdAt,
   });
@@ -26,7 +26,7 @@ class Couple {
   factory Couple.fromJson(Map<String, dynamic> json) {
     return Couple(
       id: json['id'] as String,
-      name: json['name'] as String,
+      name: json['name'] as String?,
       members: (json['members'] as List<dynamic>)
           .map((e) => CoupleMember.fromJson(e as Map<String, dynamic>))
           .toList(),
