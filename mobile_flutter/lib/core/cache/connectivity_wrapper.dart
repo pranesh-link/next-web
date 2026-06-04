@@ -71,6 +71,11 @@ class _ConnectivityWrapperState extends ConsumerState<ConnectivityWrapper>
     if (shouldShowSplash && isOnline) {
       debugPrint('[Resume] Data stale, showing splash screen');
       await _navigateToSplash();
+    } else if (shouldShowSplash && !isOnline) {
+      // Network not yet re-established (common on Android right after wake).
+      // Leave the background timestamp in place so _onReconnect() can pick
+      // it up and run a proactive token refresh when connectivity returns.
+      debugPrint('[Resume] Data stale but offline — will refresh on reconnect');
     } else if (!shouldShowSplash && isOnline) {
       debugPrint('[Resume] Data fresh, lightweight check');
       await _lightweightCacheCheck();
@@ -92,7 +97,9 @@ class _ConnectivityWrapperState extends ConsumerState<ConnectivityWrapper>
     _invalidateAllProviders();
     final router = ref.read(routerProvider);
     router.go('/splash');
-    await AppLifecycleManager.clearBackgroundTime();
+    // NOTE: do NOT clear background time here — splash screen reads it to
+    // decide whether to run a proactive token refresh. It clears the time
+    // itself after the refresh completes.
   }
 
   void _invalidateAllProviders() {
@@ -162,6 +169,14 @@ class _ConnectivityWrapperState extends ConsumerState<ConnectivityWrapper>
   }
 
   Future<void> _onReconnect() async {
+    // If the app was stale when it resumed offline, do a proactive token
+    // refresh now that we're back online (avoids a 401 cascade on next request).
+    if (await AppLifecycleManager.shouldShowSplash()) {
+      debugPrint('[Reconnect] Stale resume detected — showing splash');
+      await _navigateToSplash();
+      return;
+    }
+
     // Replay pending mutations
     final syncManager = ref.read(syncManagerProvider);
     final result = await syncManager.replayMutations();

@@ -64,7 +64,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       return;
     }
 
-    // On stale resume, proactively refresh the JWT to avoid 401 cascade
+    // On stale resume, proactively refresh the JWT to avoid 401 cascade.
+    // _proactiveTokenRefresh() clears the background timestamp in its
+    // finally block so subsequent calls return false.
     if (await AppLifecycleManager.shouldShowSplash()) {
       await _proactiveTokenRefresh();
     }
@@ -85,7 +87,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     try {
       final refreshToken = await SecureStorage.getRefreshToken();
       if (refreshToken == null) return;
-      final dio = Dio(BaseOptions(baseUrl: kApiBaseUrl));
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: kApiBaseUrl,
+          connectTimeout: const Duration(seconds: 10),
+          receiveTimeout: const Duration(seconds: 10),
+        ),
+      );
       final response = await dio.post<Map<String, dynamic>>(
         ApiEndpoints.refreshToken,
         data: {'refreshToken': refreshToken},
@@ -98,6 +106,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       debugPrint('[Splash] Proactive token refresh succeeded');
     } catch (e) {
       debugPrint('[Splash] Proactive token refresh failed: $e');
+    } finally {
+      // Clear the stale timestamp here — after the refresh attempt — so that
+      // shouldShowSplash() correctly returned true when we checked it above.
+      await AppLifecycleManager.clearBackgroundTime();
     }
   }
 
@@ -161,7 +173,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           context.go('/login');
         }
       },
-      error: (_, __) {
+      error: (_, _) {
         if (auth.isAuthenticated) {
           context.go('/home');
         } else {
