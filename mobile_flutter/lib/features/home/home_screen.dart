@@ -82,7 +82,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     _ModuleCard(
                       icon: Icons.account_balance_wallet,
                       title: 'Finance',
-                      subtitle: 'Track money together',
+                      subtitle: 'Track money',
                       color: context.colors.accent,
                       comingSoon: config != null && !config.isEnabled('finance'),
                       onTap: () => context.go('/finance'),
@@ -167,6 +167,7 @@ class _ModuleCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Stack(
+      fit: StackFit.passthrough,
       children: [
         AppCard(
           onTap: comingSoon

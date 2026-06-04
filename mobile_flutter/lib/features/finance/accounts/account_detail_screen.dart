@@ -5,18 +5,26 @@ import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';
+import 'package:luvverse/models/account.dart';
 import 'package:luvverse/models/transaction.dart';
 import 'package:luvverse/shared/widgets/currency_display.dart';
 import 'package:luvverse/shared/widgets/loading_skeleton.dart';
 import 'package:luvverse/shared/widgets/offline_error_state.dart';
 
-class AccountDetailScreen extends ConsumerWidget {
+class AccountDetailScreen extends ConsumerStatefulWidget {
   final String accountId;
 
   const AccountDetailScreen({super.key, required this.accountId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AccountDetailScreen> createState() => _AccountDetailScreenState();
+}
+
+class _AccountDetailScreenState extends ConsumerState<AccountDetailScreen> {
+  bool _showBalanceHistory = false;
+
+  @override
+  Widget build(BuildContext context) {
     final accountsAsync = ref.watch(accountsProvider);
     final txnsAsync = ref.watch(transactionsProvider);
 
@@ -25,7 +33,7 @@ class AccountDetailScreen extends ConsumerWidget {
       appBar: AppBar(
         title: accountsAsync.whenOrNull(
               data: (accounts) => Text(
-                accounts.where((a) => a.id == accountId).firstOrNull?.name ?? 'Account',
+                accounts.where((a) => a.id == widget.accountId).firstOrNull?.name ?? 'Account',
               ),
             ) ??
             const Text('Account Details'),
@@ -40,7 +48,7 @@ class AccountDetailScreen extends ConsumerWidget {
           onRetry: () => ref.read(accountsProvider.notifier).refresh(),
         ),
         data: (accounts) {
-          final account = accounts.where((a) => a.id == accountId).firstOrNull;
+          final account = accounts.where((a) => a.id == widget.accountId).firstOrNull;
           if (account == null) {
             return const Center(child: Text('Account not found'));
           }
@@ -60,7 +68,7 @@ class AccountDetailScreen extends ConsumerWidget {
                     onRetry: () => ref.read(transactionsProvider.notifier).refresh(),
                   ),
                   data: (txns) {
-                    final filtered = txns.where((t) => t.accountId == accountId).toList();
+                    final filtered = txns.where((t) => t.accountId == widget.accountId).toList();
                     if (filtered.isEmpty) {
                       return Padding(
                         padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl),
@@ -72,13 +80,54 @@ class AccountDetailScreen extends ConsumerWidget {
                     return Column(children: filtered.take(10).map((tx) => _buildTxTile(context, tx)).toList());
                   },
                 ),
+                const SizedBox(height: AppSpacing.lg),
+                _buildBalanceHistorySection(context),
                 const SizedBox(height: AppSpacing.xxl),
-                _buildDeleteButton(context, ref),
+                _buildDeleteButton(context),
               ],
             ),
           );
         },
       ),
+    );
+  }
+
+  Widget _buildBalanceHistorySection(BuildContext context) {
+    final historyAsync = ref.watch(accountBalanceHistoryProvider(widget.accountId));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Balance History', style: AppTypography.sectionTitle),
+            TextButton.icon(
+              onPressed: () => setState(() => _showBalanceHistory = !_showBalanceHistory),
+              icon: Icon(_showBalanceHistory ? Icons.expand_less : Icons.expand_more, size: 18),
+              label: Text(_showBalanceHistory ? 'Hide' : 'Show'),
+            ),
+          ],
+        ),
+        if (_showBalanceHistory)
+          historyAsync.when(
+            loading: () => const LoadingSkeleton(type: SkeletonType.list, count: 3),
+            error: (_, __) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+              child: Text('Could not load balance history', style: AppTypography.small.copyWith(color: context.colors.textMuted)),
+            ),
+            data: (history) {
+              if (history.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                  child: Text('No balance history yet', style: AppTypography.small.copyWith(color: context.colors.textMuted)),
+                );
+              }
+              return Column(
+                children: history.map((entry) => _buildHistoryTile(context, entry)).toList(),
+              );
+            },
+          ),
+      ],
     );
   }
 
@@ -112,7 +161,7 @@ class AccountDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildDeleteButton(BuildContext context, WidgetRef ref) {
+  Widget _buildDeleteButton(BuildContext context) {
     return SizedBox(
       width: double.infinity,
       child: TextButton(
@@ -129,12 +178,47 @@ class AccountDetailScreen extends ConsumerWidget {
             ),
           );
           if (confirm == true && context.mounted) {
-            await ref.read(accountsProvider.notifier).delete(accountId);
+            await ref.read(accountsProvider.notifier).delete(widget.accountId);
             if (context.mounted) Navigator.pop(context);
           }
         },
         style: TextButton.styleFrom(foregroundColor: context.colors.danger),
         child: const Text('Delete Account'),
+      ),
+    );
+  }
+
+  Widget _buildHistoryTile(BuildContext context, BalanceHistoryEntry entry) {
+    final isPositive = entry.change >= 0;
+    final fmt = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(
+        isPositive ? Icons.arrow_upward : Icons.arrow_downward,
+        color: isPositive ? context.colors.success : context.colors.danger,
+        size: 18,
+      ),
+      title: Text(
+        entry.note ?? (isPositive ? 'Balance increased' : 'Balance decreased'),
+        style: AppTypography.small,
+      ),
+      subtitle: Text(
+        DateFormat('dd MMM yyyy').format(entry.createdAt),
+        style: AppTypography.xs.copyWith(color: context.colors.textMuted),
+      ),
+      trailing: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            '${isPositive ? '+' : ''}${fmt.format(entry.change)}',
+            style: AppTypography.small.copyWith(
+              color: isPositive ? context.colors.success : context.colors.danger,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Text(fmt.format(entry.balance), style: AppTypography.xs.copyWith(color: context.colors.textMuted)),
+        ],
       ),
     );
   }

@@ -38,7 +38,15 @@ class _LoansContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final totalOutstanding = loans.fold(0.0, (sum, l) => sum + l.remainingBalance);
-    final totalEmi = loans.fold(0.0, (sum, l) => sum + l.emiAmount);
+    final now = DateTime.now();
+    final totalEmi = loans.fold(0.0, (sum, l) {
+      final currentEmi = l.schedule
+          ?.where((e) => !DateTime.parse(e.date).isBefore(now))
+          .fold<LoanScheduleEntry?>(null, (prev, e) =>
+              prev == null || DateTime.parse(e.date).isBefore(DateTime.parse(prev.date)) ? e : prev)
+          ?.emi ?? l.emiAmount;
+      return sum + currentEmi;
+    });
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

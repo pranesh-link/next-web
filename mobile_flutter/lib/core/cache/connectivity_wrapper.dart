@@ -13,6 +13,7 @@ import 'package:luvverse/features/chat/services/backup_service.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';
 import 'package:luvverse/features/finance/providers/extended_providers.dart';
 import 'package:luvverse/core/config/app_config_provider.dart';
+import 'package:luvverse/core/notifications/push_providers.dart';
 import 'package:luvverse/shared/widgets/offline_widgets.dart';
 
 /// Wraps the app to handle connectivity changes and auto-refresh.
@@ -87,6 +88,12 @@ class _ConnectivityWrapperState extends ConsumerState<ConnectivityWrapper>
       unawaited(
         ref.read(backupServiceProvider).runBackupIfDue().then((_) {}).catchError((e) {
           debugPrint('[Resume] Backup check failed: $e');
+        }),
+      );
+      // Re-register FCM token to ensure push notifications stay active
+      unawaited(
+        ref.read(pushNotificationServiceProvider).registerToken().then((_) {}).catchError((Object e) {
+          debugPrint('[Resume] FCM token re-registration failed: $e');
         }),
       );
     }

@@ -6,6 +6,16 @@ instructions:
   - .github/skills/testing/SKILL.md
   - .github/skills/finance-dev/SKILL.md
   - .github/skills/mobile-flutter/SKILL.md
+  - .github/skills/flutter-apply-architecture-best-practices/SKILL.md
+  - .github/skills/flutter-add-widget-test/SKILL.md
+  - .github/skills/flutter-add-integration-test/SKILL.md
+  - .github/skills/flutter-build-responsive-layout/SKILL.md
+  - .github/skills/flutter-fix-layout-issues/SKILL.md
+  - .github/skills/flutter-implement-json-serialization/SKILL.md
+  - .github/skills/flutter-use-http-package/SKILL.md
+  - .github/skills/flutter-setup-declarative-routing/SKILL.md
+  - .github/skills/flutter-setup-localization/SKILL.md
+  - .github/skills/flutter-add-widget-preview/SKILL.md
   - .github/skills/couple-data/SKILL.md
   - .github/skills/auth-patterns/SKILL.md
   - .github/skills/api-routes/SKILL.md
@@ -108,6 +118,16 @@ prisma/
 12. **Tests are mandatory** — see testing skill
 13. **Feature parity web ↔ mobile** — both channels must have equivalent features
 14. **Mobile: Android + iOS compatibility** — see mobile-flutter skill
+15. **Flutter widget tests** — see flutter-add-widget-test skill
+16. **Flutter integration tests** — see flutter-add-integration-test skill
+17. **Flutter responsive layouts** — see flutter-build-responsive-layout skill
+18. **Flutter layout errors** (overflows, unbounded constraints) — see flutter-fix-layout-issues skill
+19. **Flutter JSON models** — see flutter-implement-json-serialization skill
+20. **Flutter HTTP calls** — see flutter-use-http-package skill
+21. **Flutter routing** — see flutter-setup-declarative-routing skill
+22. **Flutter localization** — see flutter-setup-localization skill
+23. **Flutter widget previews** — see flutter-add-widget-preview skill
+24. **Flutter architecture** — see flutter-apply-architecture-best-practices skill
 
 # Workflow
 

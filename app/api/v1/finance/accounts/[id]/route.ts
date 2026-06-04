@@ -30,6 +30,19 @@ async function getHandler(_request: NextRequest, context: RouteContext) {
 
     const account = await prisma.financialAccount.findFirst({
       where: { id, userId: { in: coupleUserIds } },
+      include: {
+        balanceHistory: {
+          orderBy: { createdAt: "desc" },
+          take: 20,
+          select: {
+            id: true,
+            balance: true,
+            change: true,
+            note: true,
+            createdAt: true,
+          },
+        },
+      },
     });
 
     if (!account) {

@@ -12,6 +12,7 @@ import 'package:luvverse/features/finance/dashboard/health_score_widget.dart';
 import 'package:luvverse/features/finance/dashboard/insights_widget.dart';
 import 'package:luvverse/features/finance/dashboard/loans_summary_widget.dart';
 import 'package:luvverse/features/finance/dashboard/net_worth_card.dart';
+import 'package:go_router/go_router.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';
 import 'package:luvverse/features/finance/providers/extended_providers.dart';
 import 'package:luvverse/models/transaction.dart';
@@ -67,7 +68,7 @@ class FinanceDashboardScreen extends ConsumerWidget {
             // 1. Summary: Balance + Net Worth + Cash Flow + Savings Rate
             const SectionHeader(title: 'Overview'),
             const SizedBox(height: AppSpacing.sm),
-            _buildSummaryRow(income, expense, balance, savingsRate),
+            _buildSummaryRow(context, income, expense, balance, savingsRate),
             const SizedBox(height: AppSpacing.md),
             const NetWorthCard(),
             const SizedBox(height: AppSpacing.xxl),
@@ -120,13 +121,16 @@ class FinanceDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSummaryRow(AsyncValue<double> income, AsyncValue<double> expense, AsyncValue<double> balance, AsyncValue<double> savingsRate) {
+  Widget _buildSummaryRow(BuildContext context, AsyncValue<double> income, AsyncValue<double> expense, AsyncValue<double> balance, AsyncValue<double> savingsRate) {
     return Column(
       children: [
         balance.when(
           loading: () => const LoadingSkeleton(type: SkeletonType.card, count: 1),
           error: (_, __) => const SizedBox.shrink(),
-          data: (val) => _AnimatedSummaryCard(title: 'Total Balance', value: val, icon: Icons.account_balance_wallet),
+          data: (val) => GestureDetector(
+            onTap: () => context.go('/finance/accounts'),
+            child: _AnimatedSummaryCard(title: 'Total Balance', value: val, icon: Icons.account_balance_wallet),
+          ),
         ),
         const SizedBox(height: AppSpacing.md),
         Row(
