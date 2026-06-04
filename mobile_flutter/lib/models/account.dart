@@ -95,3 +95,31 @@ class Account {
     };
   }
 }
+
+/// A single entry in an account's balance change history.
+@immutable
+class BalanceHistoryEntry {
+  final String id;
+  final double balance;
+  final double change;
+  final String? note;
+  final DateTime createdAt;
+
+  const BalanceHistoryEntry({
+    required this.id,
+    required this.balance,
+    required this.change,
+    this.note,
+    required this.createdAt,
+  });
+
+  factory BalanceHistoryEntry.fromJson(Map<String, dynamic> json) {
+    return BalanceHistoryEntry(
+      id: json['id'] as String,
+      balance: (json['balance'] as num).toDouble(),
+      change: (json['change'] as num).toDouble(),
+      note: json['note'] as String?,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+    );
+  }
+}

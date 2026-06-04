@@ -68,4 +68,9 @@ class AccountsRepository {
   Future<void> deleteAccount(String id) async {
     await _api.delete('${ApiEndpoints.accounts}/$id');
   }
+
+  /// Fetches a single account with its balance history (last 20 entries).
+  Future<Map<String, dynamic>> getAccountDetail(String id) async {
+    return await _api.get<Map<String, dynamic>>('${ApiEndpoints.accounts}/$id');
+  }
 }

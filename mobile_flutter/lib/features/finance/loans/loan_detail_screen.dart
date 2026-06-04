@@ -90,6 +90,12 @@ class LoanDetailScreen extends ConsumerWidget {
   }
 
   Widget _buildStatsRow(BuildContext context, Loan loan) {
+    final now = DateTime.now();
+    final currentEmi = loan.schedule
+        ?.where((e) => !DateTime.parse(e.date).isBefore(now))
+        .fold<LoanScheduleEntry?>(null, (prev, e) =>
+            prev == null || DateTime.parse(e.date).isBefore(DateTime.parse(prev.date)) ? e : prev)
+        ?.emi ?? loan.emiAmount;
     return Row(
       children: [
         _statCard(context, 'Principal', _fmt.format(loan.principal)),
@@ -98,7 +104,7 @@ class LoanDetailScreen extends ConsumerWidget {
         const SizedBox(width: AppSpacing.sm),
         _statCard(context, 'Tenure', '${loan.tenureMonths}mo'),
         const SizedBox(width: AppSpacing.sm),
-        _statCard(context, 'EMI', _fmt.format(loan.emiAmount)),
+        _statCard(context, 'EMI', _fmt.format(currentEmi)),
       ],
     );
   }
@@ -226,25 +232,22 @@ class _ExpandableSchedule extends StatefulWidget {
 }
 
 class _ExpandableScheduleState extends State<_ExpandableSchedule> {
-  bool _expanded = false;
+  bool _showPaid = false;
 
   @override
   Widget build(BuildContext context) {
-    final display = _expanded ? widget.schedule : widget.schedule.take(6).toList();
+    final now = DateTime.now();
+    // Sort ascending by date (nearest EMI first)
+    final sorted = [...widget.schedule]
+      ..sort((a, b) => DateTime.parse(a.date).compareTo(DateTime.parse(b.date)));
+
+    final unpaid = sorted.where((e) => !DateTime.parse(e.date).isBefore(now)).toList();
+    final paid = sorted.where((e) => DateTime.parse(e.date).isBefore(now)).toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('Amortization Schedule', style: AppTypography.sectionTitle),
-            if (widget.schedule.length > 6)
-              TextButton(
-                onPressed: () => setState(() => _expanded = !_expanded),
-                child: Text(_expanded ? 'Show less' : 'Show all (${widget.schedule.length})'),
-              ),
-          ],
-        ),
+        Text('EMI Schedule', style: AppTypography.sectionTitle),
         const SizedBox(height: AppSpacing.md),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -253,23 +256,48 @@ class _ExpandableScheduleState extends State<_ExpandableSchedule> {
             headingTextStyle: AppTypography.xs.copyWith(color: context.colors.textMuted),
             dataTextStyle: AppTypography.small,
             columns: const [
-              DataColumn(label: Text('Month')),
-              DataColumn(label: Text('EMI')),
-              DataColumn(label: Text('Principal')),
-              DataColumn(label: Text('Interest')),
+              DataColumn(label: Text('EMI Date')),
+              DataColumn(label: Text('EMI Amount')),
               DataColumn(label: Text('Balance')),
             ],
-            rows: display
+            rows: unpaid
                 .map((e) => DataRow(cells: [
-                      DataCell(Text('${e.month}')),
+                      DataCell(Text(e.date)),
                       DataCell(Text(_fmt.format(e.emi))),
-                      DataCell(Text(_fmt.format(e.principal))),
-                      DataCell(Text(_fmt.format(e.interest))),
                       DataCell(Text(_fmt.format(e.balance))),
                     ]))
                 .toList(),
           ),
         ),
+        if (paid.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.sm),
+          TextButton.icon(
+            onPressed: () => setState(() => _showPaid = !_showPaid),
+            icon: Icon(_showPaid ? Icons.expand_less : Icons.expand_more, size: 18),
+            label: Text(_showPaid ? 'Hide paid (${paid.length})' : 'Show paid (${paid.length})'),
+          ),
+          if (_showPaid)
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                columnSpacing: AppSpacing.lg.toDouble(),
+                headingTextStyle: AppTypography.xs.copyWith(color: context.colors.textMuted),
+                dataTextStyle: AppTypography.small.copyWith(color: context.colors.textMuted),
+                columns: const [
+                  DataColumn(label: Text('EMI Date')),
+                  DataColumn(label: Text('EMI Amount')),
+                  DataColumn(label: Text('Balance')),
+                ],
+                rows: paid
+                    .map((e) => DataRow(cells: [
+                          DataCell(Text(e.date)),
+                          DataCell(Text(_fmt.format(e.emi))),
+                          DataCell(Text(_fmt.format(e.balance))),
+                        ]))
+                    .toList(),
+              ),
+            ),
+        ],
       ],
     );
   }

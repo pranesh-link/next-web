@@ -435,11 +435,12 @@ class NetWorthData {
   });
 }
 
-/// Computes net worth: Assets (accounts) - Liabilities (loans).
-/// Deposits and investments excluded until their APIs are deployed.
+/// Computes net worth: Assets (accounts + deposits + investments) - Liabilities (loans).
 final netWorthProvider = Provider<AsyncValue<NetWorthData>>((ref) {
   final accounts = ref.watch(accountsProvider);
   final loans = ref.watch(loansProvider);
+  final deposits = ref.watch(depositsProvider);
+  final investments = ref.watch(investmentsProvider);
 
   if (accounts.isLoading || loans.isLoading) {
     return const AsyncValue.loading();
@@ -449,14 +450,16 @@ final netWorthProvider = Provider<AsyncValue<NetWorthData>>((ref) {
 
   final accountsTotal = accounts.valueOrNull?.fold(0.0, (sum, a) => sum + a.balance) ?? 0.0;
   final loansTotal = loans.valueOrNull?.fold(0.0, (sum, l) => sum + l.remainingBalance) ?? 0.0;
+  final depositsTotal = deposits.valueOrNull?.fold(0.0, (sum, d) => sum + d.principalAmount) ?? 0.0;
+  final investmentsTotal = investments.valueOrNull?.fold(0.0, (sum, i) => sum + (i.currentValue ?? i.investedAmount)) ?? 0.0;
 
-  final totalAssets = accountsTotal;
+  final totalAssets = accountsTotal + depositsTotal + investmentsTotal;
   final netWorth = totalAssets - loansTotal;
 
   return AsyncValue.data(NetWorthData(
     accountsTotal: accountsTotal,
-    investmentsTotal: 0.0,
-    depositsTotal: 0.0,
+    investmentsTotal: investmentsTotal,
+    depositsTotal: depositsTotal,
     totalAssets: totalAssets,
     liabilities: loansTotal,
     netWorth: netWorth,

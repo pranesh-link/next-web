@@ -12,14 +12,15 @@ class FinanceShell extends StatelessWidget {
   static const _tabs = [
     _Tab('Dashboard', Icons.dashboard_outlined),
     _Tab('Accounts', Icons.account_balance_outlined),
+    _Tab('Loans', Icons.real_estate_agent_outlined),
+    _Tab('Planner', Icons.calendar_month_outlined),
     _Tab('Transactions', Icons.receipt_long_outlined),
     _Tab('Budgets', Icons.pie_chart_outline),
-    _Tab('Planner', Icons.calendar_month_outlined),
-    _Tab('Loans', Icons.real_estate_agent_outlined),
     _Tab('Goals', Icons.flag_outlined),
+    _Tab('Deposits', Icons.savings_outlined),
   ];
 
-  static const _routes = ['/finance', '/finance/accounts', '/finance/transactions', '/finance/budgets', '/finance/budget-planner', '/finance/loans', '/finance/goals'];
+  static const _routes = ['/finance', '/finance/accounts', '/finance/loans', '/finance/budget-planner', '/finance/transactions', '/finance/budgets', '/finance/goals', '/finance/deposits'];
 
   @override
   Widget build(BuildContext context) {

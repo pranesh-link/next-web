@@ -121,8 +121,23 @@ class AccountsNotifier extends AsyncNotifier<List<Account>> {
   }
 
   Future<void> updateAccountData(String id, Map<String, dynamic> data) async {
-    await ref.read(accountsRepositoryProvider).updateAccountData(id, data);
-    await refresh();
+    // Capture original state for rollback
+    final original = state.valueOrNull?.firstWhere(
+      (a) => a.id == id,
+      orElse: () => throw StateError('Account not found'),
+    );
+    if (original == null) return;
+
+    // Optimistic update: reflect change immediately in UI
+    updateAccountOptimistic(id, data);
+
+    try {
+      await ref.read(accountsRepositoryProvider).updateAccountData(id, data);
+    } catch (_) {
+      // Rollback on failure
+      revertAccountOptimistic(id, original.toJson());
+      rethrow;
+    }
   }
 
   /// Update account optimistically (UI-only, no API call).
@@ -156,6 +171,18 @@ class AccountsNotifier extends AsyncNotifier<List<Account>> {
     await refresh();
   }
 }
+
+/// Fetches balance history for a specific account (last 20 entries).
+final accountBalanceHistoryProvider = FutureProvider.family<List<BalanceHistoryEntry>, String>(
+  (ref, accountId) async {
+    final result = await ref.read(accountsRepositoryProvider).getAccountDetail(accountId);
+    final data = result['data'] as Map<String, dynamic>? ?? {};
+    final historyJson = data['balanceHistory'] as List<dynamic>? ?? [];
+    return historyJson
+        .map((e) => BalanceHistoryEntry.fromJson(e as Map<String, dynamic>))
+        .toList();
+  },
+);
 
 // -- Transactions --
 

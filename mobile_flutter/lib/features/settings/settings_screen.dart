@@ -234,42 +234,43 @@ class _TestNotificationTileState extends ConsumerState<_TestNotificationTile> {
 
   Future<void> _sendTest() async {
     setState(() => _sending = true);
-    final pushService = ref.read(pushNotificationServiceProvider);
+    try {
+      final pushService = ref.read(pushNotificationServiceProvider);
 
-    // Guard: check permission first so we give a clear diagnosis
-    final hasPerm = await pushService.hasPermission();
-    if (!hasPerm) {
-      if (!mounted) return;
-      setState(() => _sending = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Notification permission denied. Enable it in system Settings → Apps → LuvVerse → Notifications.',
+      // Guard: check permission first so we give a clear diagnosis
+      final hasPerm = await pushService.hasPermission();
+      if (!hasPerm) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Notification permission denied. Enable it in system Settings → Apps → LuvVerse → Notifications.',
+            ),
+            duration: Duration(seconds: 5),
           ),
-          duration: Duration(seconds: 5),
-        ),
+        );
+        return;
+      }
+
+      await pushService.registerToken();
+      final result = await pushService.sendTestNotification();
+      if (!mounted) return;
+
+      final String text;
+      if (result.success) {
+        text = 'Test sent to ${result.sent}/${result.deviceCount} device(s)';
+      } else if (result.rateLimited) {
+        text = '⏱  ${result.message}';
+      } else {
+        text = result.message;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(text), duration: const Duration(seconds: 5)),
       );
-      return;
+    } finally {
+      if (mounted) setState(() => _sending = false);
     }
-
-    await pushService.registerToken();
-    final result = await pushService.sendTestNotification();
-    if (!mounted) return;
-    setState(() => _sending = false);
-
-    final String text;
-    if (result.success) {
-      text = 'Test sent to ${result.sent}/${result.deviceCount} device(s)';
-    } else if (result.rateLimited) {
-      text = '⏱  ${result.message}';
-    } else {
-      // Backend returns the precise reason — use its message directly
-      text = result.message;
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(text), duration: const Duration(seconds: 5)),
-    );
   }
 }
 

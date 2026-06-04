@@ -42,7 +42,6 @@ import 'package:luvverse/features/chat/widgets/connectivity_banner.dart';
 import 'package:luvverse/features/chat/widgets/chat_info_banner.dart';
 import 'package:luvverse/features/chat/widgets/retention_tooltip.dart';
 import 'package:luvverse/features/chat/widgets/safety_number_widget.dart';
-import 'package:luvverse/features/chat/widgets/backup_setup_sheet.dart';
 import 'package:luvverse/features/chat/services/backup_service.dart';
 import 'package:luvverse/features/chat/services/message_sync_service.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';
@@ -64,6 +63,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   bool _showSearch = false;
   bool _isRecording = false;
   ChatMessage? _pinnedMessage;
+  bool _backupConfigured = true;
 
   @override
   void initState() {
@@ -122,22 +122,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  /// Show backup setup sheet on first chat open if not configured.
+  /// Check backup config and show inline banner if not configured.
   void _checkBackupSetup() async {
     final backupService = ref.read(backupServiceProvider);
     final config = await backupService.getConfig();
-    if (config.googleAccountEmail == null && mounted) {
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        builder: (_) => BackupSetupSheet(
-          onComplete: () => Navigator.pop(context),
-          onSkip: () => Navigator.pop(context),
-        ),
-      );
+    if (mounted) {
+      setState(() => _backupConfigured = config.googleAccountEmail != null);
     }
   }
 
@@ -383,7 +373,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       body: Column(
         children: [
           ConnectivityBanner(isOffline: isOffline),
-          const ChatInfoBanner(),
+          if (!_backupConfigured)
+            ChatInfoBanner(
+              backupConfigured: false,
+              onSetupBackup: () => context.go('/settings/chat-backup'),
+              onDismiss: () => setState(() => _backupConfigured = true),
+            ),
           if (_showSearch)
             ChatSearchBar(
               scrollController: _scrollController,

@@ -103,11 +103,17 @@ class LoanCard extends StatelessWidget {
   }
 
   Widget _buildDetails(BuildContext context) {
+    final now = DateTime.now();
+    final currentScheduleEmi = loan.schedule
+        ?.where((e) => !DateTime.parse(e.date).isBefore(now))
+        .fold<LoanScheduleEntry?>(null, (prev, e) =>
+            prev == null || DateTime.parse(e.date).isBefore(DateTime.parse(prev.date)) ? e : prev)
+        ?.emi ?? loan.emiAmount;
     return Wrap(
       spacing: AppSpacing.lg,
       runSpacing: AppSpacing.sm,
       children: [
-        _detail(context, 'EMI', _currencyFormat.format(loan.emiAmount)),
+        _detail(context, 'EMI', _currencyFormat.format(currentScheduleEmi)),
         _detail(context, 'Remaining', _currencyFormat.format(loan.remainingBalance)),
         _detail(context, 'Start', _dateFormat.format(loan.startDate)),
         _detail(context, 'Tenure', '${loan.tenureMonths} months'),

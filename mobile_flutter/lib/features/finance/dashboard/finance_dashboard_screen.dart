@@ -12,6 +12,7 @@ import 'package:luvverse/features/finance/dashboard/health_score_widget.dart';
 import 'package:luvverse/features/finance/dashboard/insights_widget.dart';
 import 'package:luvverse/features/finance/dashboard/loans_summary_widget.dart';
 import 'package:luvverse/features/finance/dashboard/net_worth_card.dart';
+import 'package:go_router/go_router.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';
 import 'package:luvverse/features/finance/providers/extended_providers.dart';
 import 'package:luvverse/models/transaction.dart';
@@ -126,7 +127,10 @@ class FinanceDashboardScreen extends ConsumerWidget {
         balance.when(
           loading: () => const LoadingSkeleton(type: SkeletonType.card, count: 1),
           error: (_, __) => const SizedBox.shrink(),
-          data: (val) => _AnimatedSummaryCard(title: 'Total Balance', value: val, icon: Icons.account_balance_wallet),
+          data: (val) => GestureDetector(
+            onTap: () => context.go('/finance/accounts'),
+            child: _AnimatedSummaryCard(title: 'Total Balance', value: val, icon: Icons.account_balance_wallet),
+          ),
         ),
         const SizedBox(height: AppSpacing.md),
         Row(
