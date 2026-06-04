@@ -37,6 +37,9 @@ Every Flutter code change must work on BOTH Android and iOS:
 ## CI/CD
 - `.github/workflows/flutter-build.yml` — PR checks (analyze + test + build)
 - `.github/workflows/flutter-distribute.yml` — Firebase App Distribution (Android + iOS)
+- **CI analyze flag**: `flutter analyze --no-fatal-infos` — warnings are **fatal** in CI even though they aren't locally
+- **Local CI equivalent**: `flutter analyze --no-pub --no-fatal-infos` — run this before every push
+- See `flutter-ci-gotchas` skill for common CI failure patterns
 
 ## Code Conventions
 - Feature folders: `lib/features/<name>/`
@@ -93,3 +96,52 @@ Every Flutter code change must work on BOTH Android and iOS:
 - Write widget tests for UI components
 - Aim for high test coverage
 - Prefer fakes/stubs over mocks
+
+## Mutation UX Pattern (Optimistic UI)
+
+All finance forms follow fire-and-forget: **close the modal first, run API in background**.
+
+```dart
+Future<void> _submit() async {
+  if (!_validate()) return;
+  // 1. Optimistic state update
+  ref.read(xyzProvider.notifier).updateOptimistic(id, patch);
+  // 2. Capture messenger before pop (context may be gone after)
+  final messenger = ScaffoldMessenger.of(context);
+  if (mounted) Navigator.pop(context);
+  // 3. API in background — .catchError rolls back
+  ref.read(xyzProvider.notifier).updateXyz(...).catchError((Object e) {
+    ref.read(xyzProvider.notifier).updateOptimistic(id, original.toJson());
+    messenger.showSnackBar(const SnackBar(content: Text('Update failed.')));
+  });
+}
+```
+
+Key rules:
+- **Never `await` the API call inside `_submit()`** — user shouldn't wait for network
+- **Capture `ScaffoldMessenger` before `Navigator.pop()`** — context is invalid after pop
+- **All finance notifiers** expose `updateOptimistic(id, data)` and `removeOptimistic(id)`
+- See `mobile-flutter-finance` skill for the full provider map and model field names
+
+## Opening Device Settings
+
+Use `url_launcher` (already in pubspec) — do **not** add `app_settings` package:
+
+```dart
+import 'package:url_launcher/url_launcher.dart';
+
+Future<void> openNotificationSettings() async {
+  try {
+    final opened = await launchUrl(
+      Uri.parse('app-settings:'),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!opened) {
+      await launchUrl(
+        Uri.parse('package:com.pranesh.luvverse'),
+        mode: LaunchMode.externalApplication,
+      );
+    }
+  } catch (_) {}
+}
+```
