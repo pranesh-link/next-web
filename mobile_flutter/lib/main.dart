@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:drift/native.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -16,6 +15,7 @@ import 'package:luvverse/core/cache/platform.dart';
 import 'package:luvverse/core/notifications/push_notification_service.dart';
 import 'package:luvverse/features/chat/cache/chat_database.dart';
 import 'package:luvverse/features/chat/cache/chat_db_providers.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   runZonedGuarded(() async {
@@ -57,9 +57,24 @@ void main() async {
     late ChatLocalDatabase chatDb;
     try {
       chatDb = await openChatDatabase();
-    } catch (e) {
-      debugPrint('[main] Chat DB init failed: $e');
-      chatDb = ChatLocalDatabase(NativeDatabase.memory());
+    } catch (e, st) {
+      // Record the failure — this should never happen in normal operation.
+      // Do NOT fall back to NativeDatabase.memory(): an in-memory DB loses all
+      // messages on force-close, making the problem invisible and recurring.
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        st,
+        reason: 'chat-db-init-failed',
+        fatal: false,
+      );
+      debugPrint('[main] Chat DB init failed: $e — resetting sentinel and retrying');
+      // Clear the sentinel so openChatDatabase() treats next launch as first-launch
+      // and generates a fresh key instead of entering the retry loop again.
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('chat_db_key_written');
+      // Retry once with a clean slate (fresh encrypted DB, empty cache).
+      // Messages will be re-synced from the server on first fetch.
+      chatDb = await openChatDatabase();
     }
 
     runApp(
