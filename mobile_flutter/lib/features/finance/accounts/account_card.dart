@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
+import 'package:luvverse/features/finance/providers/finance_providers.dart';
 import 'package:luvverse/models/account.dart';
 import 'package:luvverse/shared/widgets/currency_display.dart';
 
 /// A rich account card displaying badges, pin status, and action row.
-class AccountCard extends StatelessWidget {
+class AccountCard extends ConsumerWidget {
   final Account account;
   final String? currentUserId;
   final VoidCallback onTap;
@@ -28,7 +30,7 @@ class AccountCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -53,6 +55,8 @@ class AccountCard extends StatelessWidget {
             _buildTypeRow(context),
             const SizedBox(height: AppSpacing.md),
             CurrencyDisplay(amount: account.balance, colorCoded: true),
+            const SizedBox(height: AppSpacing.xs),
+            _BalanceHistoryMini(accountId: account.id),
             const SizedBox(height: AppSpacing.sm),
             _buildLastUpdated(),
             const SizedBox(height: AppSpacing.lg),
@@ -247,5 +251,45 @@ class AccountCard extends StatelessWidget {
       default:
         return type;
     }
+  }
+}
+
+/// Compact last-3 balance history shown directly on the account card in the list.
+class _BalanceHistoryMini extends ConsumerWidget {
+  final String accountId;
+  const _BalanceHistoryMini({required this.accountId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final historyAsync = ref.watch(accountBalanceHistoryProvider(accountId));
+    return historyAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (history) {
+        if (history.isEmpty) return const SizedBox.shrink();
+        final recent = history.take(3).toList();
+        final fmt = NumberFormat.compactCurrency(locale: 'en_IN', symbol: '₹');
+        return Wrap(
+          spacing: AppSpacing.sm,
+          children: recent.map((entry) {
+            final isPositive = entry.balance >= 0;
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: context.colors.surface,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: context.colors.cardBorder),
+              ),
+              child: Text(
+                '${DateFormat('d MMM').format(entry.createdAt)}  ${fmt.format(entry.balance)}',
+                style: AppTypography.xs.copyWith(
+                  color: isPositive ? context.colors.success : context.colors.danger,
+                ),
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
   }
 }

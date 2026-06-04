@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import 'package:luvverse/core/finance/balance_masked_provider.dart';
 import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
@@ -45,6 +46,16 @@ class FinanceDashboardScreen extends ConsumerWidget {
     final expense = ref.watch(monthlyExpenseProvider);
     final savingsRate = ref.watch(savingsRateProvider);
     final txns = ref.watch(transactionsProvider);
+    final masked = ref.watch(balanceMaskedProvider);
+
+    // Eagerly initialise all tab providers so data is ready when user navigates
+    ref.read(loansProvider);
+    ref.read(goalsProvider);
+    ref.read(budgetsProvider);
+    ref.read(depositsProvider);
+    ref.read(healthScoreProvider);
+    ref.read(dashboardInsightsProvider);
+
     return RefreshIndicator(
       onRefresh: () async {
         try {
@@ -68,7 +79,7 @@ class FinanceDashboardScreen extends ConsumerWidget {
             // 1. Summary: Balance + Net Worth + Cash Flow + Savings Rate
             const SectionHeader(title: 'Overview'),
             const SizedBox(height: AppSpacing.sm),
-            _buildSummaryRow(context, income, expense, balance, savingsRate),
+            _buildSummaryRow(context, income, expense, balance, savingsRate, masked: masked),
             const SizedBox(height: AppSpacing.md),
             const NetWorthCard(),
             const SizedBox(height: AppSpacing.xxl),
@@ -121,7 +132,7 @@ class FinanceDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSummaryRow(BuildContext context, AsyncValue<double> income, AsyncValue<double> expense, AsyncValue<double> balance, AsyncValue<double> savingsRate) {
+  Widget _buildSummaryRow(BuildContext context, AsyncValue<double> income, AsyncValue<double> expense, AsyncValue<double> balance, AsyncValue<double> savingsRate, {bool masked = false}) {
     return Column(
       children: [
         balance.when(
@@ -129,7 +140,7 @@ class FinanceDashboardScreen extends ConsumerWidget {
           error: (_, __) => const SizedBox.shrink(),
           data: (val) => GestureDetector(
             onTap: () => context.go('/finance/accounts'),
-            child: _AnimatedSummaryCard(title: 'Total Balance', value: val, icon: Icons.account_balance_wallet),
+            child: _AnimatedSummaryCard(title: 'Total Balance', value: val, icon: Icons.account_balance_wallet, masked: masked),
           ),
         ),
         const SizedBox(height: AppSpacing.md),
@@ -139,7 +150,7 @@ class FinanceDashboardScreen extends ConsumerWidget {
               child: income.when(
                 loading: () => const LoadingSkeleton(type: SkeletonType.card, count: 1),
                 error: (_, __) => const SizedBox.shrink(),
-                data: (val) => _AnimatedSummaryCard(title: 'Income', value: val, icon: Icons.trending_up),
+                data: (val) => _AnimatedSummaryCard(title: 'Income', value: val, icon: Icons.trending_up, masked: masked),
               ),
             ),
             const SizedBox(width: AppSpacing.md),
@@ -147,7 +158,7 @@ class FinanceDashboardScreen extends ConsumerWidget {
               child: expense.when(
                 loading: () => const LoadingSkeleton(type: SkeletonType.card, count: 1),
                 error: (_, __) => const SizedBox.shrink(),
-                data: (val) => _AnimatedSummaryCard(title: 'Expenses', value: val, icon: Icons.trending_down),
+                data: (val) => _AnimatedSummaryCard(title: 'Expenses', value: val, icon: Icons.trending_down, masked: masked),
               ),
             ),
           ],
@@ -165,6 +176,7 @@ class FinanceDashboardScreen extends ConsumerWidget {
                     title: 'Cash Flow',
                     value: incVal - expVal,
                     icon: Icons.swap_vert,
+                    masked: masked,
                   );
                 },
               ),
@@ -178,6 +190,7 @@ class FinanceDashboardScreen extends ConsumerWidget {
                   title: 'Savings Rate',
                   value: val,
                   icon: Icons.savings_outlined,
+                  masked: masked,
                 ),
               ),
             ),
@@ -261,15 +274,20 @@ class _AnimatedSummaryCard extends StatelessWidget {
   final String title;
   final double value;
   final IconData icon;
+  final bool masked;
 
   const _AnimatedSummaryCard({
     required this.title,
     required this.value,
     required this.icon,
+    this.masked = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    if (masked) {
+      return SummaryCard(title: title, value: '₹ ••••', icon: icon);
+    }
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: value),
       duration: const Duration(milliseconds: 800),
@@ -287,15 +305,20 @@ class _AnimatedPercentCard extends StatelessWidget {
   final String title;
   final double value;
   final IconData icon;
+  final bool masked;
 
   const _AnimatedPercentCard({
     required this.title,
     required this.value,
     required this.icon,
+    this.masked = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    if (masked) {
+      return SummaryCard(title: title, value: '••%', icon: icon);
+    }
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: value),
       duration: const Duration(milliseconds: 800),

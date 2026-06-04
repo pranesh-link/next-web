@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:luvverse/core/finance/balance_masked_provider.dart';
 import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 
-class FinanceShell extends StatelessWidget {
+class FinanceShell extends ConsumerWidget {
   final Widget child;
   final String currentLocation;
 
@@ -23,7 +25,7 @@ class FinanceShell extends StatelessWidget {
   static const _routes = ['/finance', '/finance/accounts', '/finance/loans', '/finance/deposits', '/finance/budget-planner', '/finance/transactions', '/finance/budgets', '/finance/goals'];
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final activeIndex = _routes.indexWhere((r) => r != '/finance' && currentLocation.startsWith(r));
     // If no sub-route matched, we're on the dashboard (index 0)
     final resolvedIndex = activeIndex == -1 ? 0 : activeIndex;
@@ -36,6 +38,17 @@ class FinanceShell extends StatelessWidget {
         elevation: 0,
         titleTextStyle: AppTypography.pageTitle,
         actions: [
+          Consumer(builder: (_, ref, __) {
+            final masked = ref.watch(balanceMaskedProvider);
+            return IconButton(
+              icon: Icon(
+                masked ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                color: context.colors.textMuted,
+              ),
+              onPressed: () => ref.read(balanceMaskedProvider.notifier).toggle(),
+              tooltip: masked ? 'Show balances' : 'Hide balances',
+            );
+          }),
           PopupMenuButton<String>(
             icon: Icon(Icons.more_vert, color: context.colors.textMuted),
             onSelected: (route) => context.go(route),

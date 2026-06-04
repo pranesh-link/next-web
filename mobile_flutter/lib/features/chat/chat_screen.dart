@@ -390,7 +390,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             onTap: () => _scrollToPinnedMessage(),
             onDismiss: () => setState(() => _pinnedMessage = null),
           ),
-          const EncryptionBadge(),
           Expanded(
             child: chatState.when(
               loading: () => _buildShimmer(context),
