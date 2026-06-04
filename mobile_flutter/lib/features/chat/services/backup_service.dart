@@ -317,6 +317,14 @@ class BackupService {
     }
   }
 
+  /// Sign in to Google Drive and persist the account email.
+  /// Safe to call from Settings without running a full backup.
+  /// Returns true if authentication succeeded.
+  Future<bool> connectGoogleAccount() async {
+    final api = await _getDriveApi();
+    return api != null;
+  }
+
   Future<drive.DriveApi?> _getDriveApi() async {
     try {
       final googleSignIn = GoogleSignIn(
