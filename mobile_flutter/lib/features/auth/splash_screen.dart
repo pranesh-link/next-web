@@ -16,6 +16,8 @@ import 'package:luvverse/core/router/app_router.dart';
 import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/router/pending_invite_provider.dart';
 import 'package:luvverse/features/chat/services/chat_key_bootstrap.dart';
+import 'package:luvverse/core/config/app_config.dart';
+import 'package:luvverse/core/config/app_config_provider.dart';
 import 'package:luvverse/features/onboarding/onboarding_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -70,6 +72,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     if (await AppLifecycleManager.shouldShowSplash()) {
       await _proactiveTokenRefresh();
     }
+
+    // Fetch remote config (maintenance.json) alongside prefetch.
+    // Fire-and-forget into the provider — _navigate() reads the cached result.
+    unawaited(ref.refresh(appConfigProvider.future).catchError((_) => AppConfig.defaults()));
 
     // Start prefetch + minimum 3s wait
     final prefetchFuture = _prefetchData();
@@ -138,7 +144,32 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   void _navigate() {
     if (!mounted || _isNavigating) return;
     _isNavigating = true;
-    
+
+    // Check maintenance mode — show blocking dialog if active.
+    final appConfig = ref.read(appConfigProvider).valueOrNull;
+    if (appConfig != null && appConfig.maintenanceMode) {
+      _isNavigating = false;
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Under Maintenance'),
+          content: Text(
+            appConfig.maintenanceMessage.isNotEmpty
+                ? appConfig.maintenanceMessage
+                : 'LuvVerse is currently under maintenance. Please try again later.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     final auth = ref.read(authProvider);
 
     // Initialize quick actions after splash

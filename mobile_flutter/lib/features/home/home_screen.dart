@@ -11,6 +11,7 @@ import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/couple/couple_status_provider.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';
 import 'package:luvverse/shared/widgets/app_card.dart';
+import 'package:luvverse/core/config/app_config_provider.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -35,6 +36,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final firstName = user?.name?.split(' ').first ?? user?.displayName;
     final balance = ref.watch(totalBalanceProvider);
     final hasCouple = ref.watch(hasCoupleProvider).valueOrNull ?? true;
+    final config = ref.watch(appConfigProvider).valueOrNull;
 
     return Scaffold(
       backgroundColor: context.colors.bg,
@@ -77,11 +79,39 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   crossAxisSpacing: AppSpacing.lg,
                   childAspectRatio: 1.05,
                   children: [
-                    _ModuleCard(icon: Icons.account_balance_wallet, title: 'Finance', subtitle: 'Track money together', color: context.colors.accent, onTap: () => context.go('/finance')),
-                    _ModuleCard(icon: Icons.flight, title: 'Travel', subtitle: 'Plan trips', color: const Color(0xFF8B5CF6), onTap: () => _snackbar(context, 'Coming soon')),
-                    _ModuleCard(icon: Icons.favorite, title: 'Lifestyle', subtitle: 'Health & wellness', color: const Color(0xFFEC4899), onTap: () => context.go('/lifestyle')),
+                    _ModuleCard(
+                      icon: Icons.account_balance_wallet,
+                      title: 'Finance',
+                      subtitle: 'Track money together',
+                      color: context.colors.accent,
+                      comingSoon: config != null && !config.isEnabled('finance'),
+                      onTap: () => context.go('/finance'),
+                    ),
+                    _ModuleCard(
+                      icon: Icons.flight,
+                      title: 'Travel',
+                      subtitle: 'Plan trips',
+                      color: const Color(0xFF8B5CF6),
+                      comingSoon: config == null || !config.isEnabled('travel'),
+                      onTap: () => context.go('/travel'),
+                    ),
+                    _ModuleCard(
+                      icon: Icons.favorite,
+                      title: 'Lifestyle',
+                      subtitle: 'Health & wellness',
+                      color: const Color(0xFFEC4899),
+                      comingSoon: config == null || !config.isEnabled('lifestyle'),
+                      onTap: () => context.go('/lifestyle'),
+                    ),
                     if (hasCouple)
-                      _ModuleCard(icon: Icons.chat_bubble, title: 'Chat', subtitle: 'Stay connected', color: context.colors.success, onTap: () => context.go('/chat')),
+                      _ModuleCard(
+                        icon: Icons.chat_bubble,
+                        title: 'Chat',
+                        subtitle: 'Stay connected',
+                        color: context.colors.success,
+                        comingSoon: config != null && !config.isEnabled('chat'),
+                        onTap: () => context.go('/chat'),
+                      ),
                   ],
                 ),
               ),
@@ -106,7 +136,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ),
                 loading: () => const SizedBox.shrink(),
-                error: (_, __) => const SizedBox.shrink(),
+                error: (e, _) => const SizedBox.shrink(),
               ),
             ],
           ),
@@ -115,9 +145,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  void _snackbar(BuildContext context, String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 2)));
-  }
 }
 
 class _ModuleCard extends StatelessWidget {
@@ -126,29 +153,72 @@ class _ModuleCard extends StatelessWidget {
   final String subtitle;
   final Color color;
   final VoidCallback onTap;
+  final bool comingSoon;
 
-  const _ModuleCard({required this.icon, required this.title, required this.subtitle, required this.color, required this.onTap});
+  const _ModuleCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+    required this.onTap,
+    this.comingSoon = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      onTap: onTap,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
-            child: Icon(icon, color: color, size: 20),
+    return Stack(
+      children: [
+        AppCard(
+          onTap: comingSoon
+              ? () => ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Coming soon'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  )
+              : onTap,
+          child: Opacity(
+            opacity: comingSoon ? 0.55 : 1.0,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+                  child: Icon(icon, color: color, size: 20),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(title, style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text(subtitle, style: AppTypography.small.copyWith(color: context.colors.textMuted), maxLines: 1, overflow: TextOverflow.ellipsis),
+              ],
+            ),
           ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(title, style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
-          Text(subtitle, style: AppTypography.small.copyWith(color: context.colors.textMuted), maxLines: 1, overflow: TextOverflow.ellipsis),
-        ],
-      ),
+        ),
+        if (comingSoon)
+          Positioned(
+            top: 8,
+            right: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF59E0B),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Text(
+                'Coming soon',
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

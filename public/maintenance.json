@@ -1,0 +1,6 @@
+{
+  "minAppVersion": "1.0.0",
+  "enabledFeatures": ["finance", "chat"],
+  "maintenanceMode": false,
+  "maintenanceMessage": ""
+}

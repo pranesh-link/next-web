@@ -12,6 +12,7 @@ import 'package:luvverse/core/router/app_router.dart';
 import 'package:luvverse/features/chat/services/backup_service.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';
 import 'package:luvverse/features/finance/providers/extended_providers.dart';
+import 'package:luvverse/core/config/app_config_provider.dart';
 import 'package:luvverse/shared/widgets/offline_widgets.dart';
 
 /// Wraps the app to handle connectivity changes and auto-refresh.
@@ -95,6 +96,8 @@ class _ConnectivityWrapperState extends ConsumerState<ConnectivityWrapper>
 
   Future<void> _navigateToSplash() async {
     _invalidateAllProviders();
+    // Invalidate config so splash fetches fresh maintenance.json on stale resume.
+    ref.invalidate(appConfigProvider);
     final router = ref.read(routerProvider);
     router.go('/splash');
     // NOTE: do NOT clear background time here — splash screen reads it to
