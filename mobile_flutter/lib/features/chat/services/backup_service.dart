@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
@@ -145,24 +144,34 @@ class BackupService {
   /// Force a backup immediately regardless of schedule.
   Future<BackupResult> runBackupNow() async {
     try {
-      // 1. Export all messages
+      // 1. Ensure E2E keys are bootstrapped — required for encryption.
+      //    This is a no-op if already ready (O(1)), so safe to call always.
+      final ready = await _bootstrap.ensureBootstrapped();
+      if (!ready) return BackupResult.chatNotReady;
+
+      // 2. Authenticate Google Drive early so the account email is persisted
+      //    even if a later step fails (fixes 'pending' stuck state).
+      final driveApi = await _getDriveApi();
+      if (driveApi == null) return BackupResult.uploadFailed;
+
+      // 3. Export all messages
       final messages = await _syncService.exportAllMessages();
       if (messages.isEmpty) return BackupResult.skipped;
 
       final jsonBytes = utf8.encode(jsonEncode(messages));
 
-      // 2. Encrypt with key derived from the E2E private key
+      // 4. Encrypt with key derived from the E2E private key
       final encrypted = await _encryptBackup(Uint8List.fromList(jsonBytes));
       if (encrypted == null) return BackupResult.encryptionFailed;
 
-      // 3. Upload to Google Drive App Data folder
-      final uploaded = await _uploadToDrive(encrypted);
+      // 5. Upload to Google Drive App Data folder (reuse authenticated client)
+      final uploaded = await _uploadToDriveWithApi(driveApi, encrypted);
       if (!uploaded) return BackupResult.uploadFailed;
 
-      // 4. Prune old backups (keep last 3)
-      await _pruneOldBackups();
+      // 6. Prune old backups (keep last 3)
+      await _pruneOldBackupsWithApi(driveApi);
 
-      // 5. Update config
+      // 7. Update config
       final config = await getConfig();
       await saveConfig(config.copyWith(
         lastBackup: DateTime.now(),
@@ -271,10 +280,8 @@ class BackupService {
     }
   }
 
-  Future<bool> _uploadToDrive(Uint8List data) async {
-    final driveApi = await _getDriveApi();
-    if (driveApi == null) return false;
-
+  Future<bool> _uploadToDriveWithApi(
+      drive.DriveApi driveApi, Uint8List data) async {
     final timestamp =
         DateTime.now().toIso8601String().replaceAll(RegExp(r'[:]'), '-');
     final fileName = '$_backupPrefix$timestamp.enc';
@@ -294,10 +301,7 @@ class BackupService {
     return true;
   }
 
-  Future<void> _pruneOldBackups() async {
-    final driveApi = await _getDriveApi();
-    if (driveApi == null) return;
-
+  Future<void> _pruneOldBackupsWithApi(drive.DriveApi driveApi) async {
     final fileList = await driveApi.files.list(
       spaces: 'appDataFolder',
       q: "name contains '$_backupPrefix'",
@@ -357,6 +361,8 @@ enum BackupResult {
   success,
   skipped,
   networkUnavailable,
+  /// E2E keys not yet bootstrapped — user must open Chat first.
+  chatNotReady,
   encryptionFailed,
   uploadFailed,
   error,

@@ -48,6 +48,8 @@ class _BackupSettingsPageState extends ConsumerState<BackupSettingsPage> {
       BackupResult.success => 'Backup completed successfully',
       BackupResult.skipped => 'No messages to back up',
       BackupResult.networkUnavailable => 'Network unavailable',
+      BackupResult.chatNotReady =>
+          'Open the Chat screen first to enable encryption, then retry.',
       BackupResult.encryptionFailed => 'Encryption failed — is chat enabled?',
       BackupResult.uploadFailed => 'Upload to Google Drive failed',
       BackupResult.error => 'Backup failed. Please try again.',
@@ -149,7 +151,10 @@ class _BackupSettingsPageState extends ConsumerState<BackupSettingsPage> {
             ListTile(
               title: const Text('Google account'),
               subtitle: Text(
-                  _config.googleAccountEmail ?? 'Signed-in account'),
+                  (_config.googleAccountEmail == null ||
+                          _config.googleAccountEmail == 'pending')
+                      ? 'Will be set on first backup'
+                      : _config.googleAccountEmail!),
               trailing: const Icon(Icons.chevron_right),
             ),
             const Divider(),
