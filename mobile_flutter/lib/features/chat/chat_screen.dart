@@ -42,6 +42,7 @@ import 'package:luvverse/features/chat/widgets/connectivity_banner.dart';
 import 'package:luvverse/features/chat/widgets/chat_info_banner.dart';
 import 'package:luvverse/features/chat/widgets/retention_tooltip.dart';
 import 'package:luvverse/features/chat/widgets/safety_number_widget.dart';
+import 'package:go_router/go_router.dart';
 import 'package:luvverse/features/chat/services/backup_service.dart';
 import 'package:luvverse/features/chat/services/message_sync_service.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';

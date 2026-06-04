@@ -68,7 +68,7 @@ class FinanceDashboardScreen extends ConsumerWidget {
             // 1. Summary: Balance + Net Worth + Cash Flow + Savings Rate
             const SectionHeader(title: 'Overview'),
             const SizedBox(height: AppSpacing.sm),
-            _buildSummaryRow(income, expense, balance, savingsRate),
+            _buildSummaryRow(context, income, expense, balance, savingsRate),
             const SizedBox(height: AppSpacing.md),
             const NetWorthCard(),
             const SizedBox(height: AppSpacing.xxl),
@@ -121,7 +121,7 @@ class FinanceDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSummaryRow(AsyncValue<double> income, AsyncValue<double> expense, AsyncValue<double> balance, AsyncValue<double> savingsRate) {
+  Widget _buildSummaryRow(BuildContext context, AsyncValue<double> income, AsyncValue<double> expense, AsyncValue<double> balance, AsyncValue<double> savingsRate) {
     return Column(
       children: [
         balance.when(
