@@ -99,8 +99,11 @@ class _ConnectivityWrapperState extends ConsumerState<ConnectivityWrapper>
       );
       // Re-register FCM token to ensure push notifications stay active
       unawaited(
-        ref.read(pushNotificationServiceProvider).registerToken().then((_) {}).catchError((Object e) {
-          debugPrint('[Resume] FCM token re-registration failed: $e');
+        ref.read(pushNotificationServiceProvider).hasPermission().then((granted) {
+          if (!granted) return;
+          ref.read(pushNotificationServiceProvider).registerToken().catchError((Object e) {
+            debugPrint('[Resume] FCM token re-registration failed: $e');
+          });
         }),
       );
     }

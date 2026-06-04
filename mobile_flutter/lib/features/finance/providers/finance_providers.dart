@@ -167,8 +167,23 @@ class AccountsNotifier extends AsyncNotifier<List<Account>> {
   }
 
   Future<void> delete(String id) async {
-    await ref.read(accountsRepositoryProvider).deleteAccount(id);
-    await refresh();
+    // Capture original for rollback
+    final original = state.valueOrNull?.where((a) => a.id == id).firstOrNull;
+    // Optimistic removal
+    state.whenData((accounts) {
+      state = AsyncData(accounts.where((a) => a.id != id).toList());
+    });
+    try {
+      await ref.read(accountsRepositoryProvider).deleteAccount(id);
+    } catch (_) {
+      // Rollback
+      if (original != null) {
+        state.whenData((accounts) {
+          state = AsyncData([...accounts, original]);
+        });
+      }
+      rethrow;
+    }
   }
 }
 
@@ -271,8 +286,16 @@ class TransactionsNotifier extends AsyncNotifier<List<Transaction>> {
   }
 
   Future<void> delete(String id) async {
-    await ref.read(transactionsRepositoryProvider).deleteTransaction(id);
-    await refresh();
+    final original = state.valueOrNull?.where((t) => t.id == id).firstOrNull;
+    removeOptimistic(id);
+    try {
+      await ref.read(transactionsRepositoryProvider).deleteTransaction(id);
+    } catch (_) {
+      if (original != null) {
+        state.whenData((txns) => state = AsyncData([...txns, original]));
+      }
+      rethrow;
+    }
   }
 }
 
@@ -346,8 +369,16 @@ class BudgetsNotifier extends AsyncNotifier<List<Budget>> {
   }
 
   Future<void> delete(String id) async {
-    await ref.read(budgetsRepositoryProvider).deleteBudget(id);
-    await refresh();
+    final original = state.valueOrNull?.where((b) => b.id == id).firstOrNull;
+    removeOptimistic(id);
+    try {
+      await ref.read(budgetsRepositoryProvider).deleteBudget(id);
+    } catch (_) {
+      if (original != null) {
+        state.whenData((budgets) => state = AsyncData([...budgets, original]));
+      }
+      rethrow;
+    }
   }
 }
 
@@ -416,8 +447,16 @@ class LoansNotifier extends AsyncNotifier<List<Loan>> {
   }
 
   Future<void> delete(String id) async {
-    await ref.read(loansRepositoryProvider).deleteLoan(id);
-    await refresh();
+    final original = state.valueOrNull?.where((l) => l.id == id).firstOrNull;
+    removeOptimistic(id);
+    try {
+      await ref.read(loansRepositoryProvider).deleteLoan(id);
+    } catch (_) {
+      if (original != null) {
+        state.whenData((loans) => state = AsyncData([...loans, original]));
+      }
+      rethrow;
+    }
   }
 }
 
@@ -501,8 +540,16 @@ class GoalsNotifier extends AsyncNotifier<List<Goal>> {
   }
 
   Future<void> delete(String id) async {
-    await ref.read(goalsRepositoryProvider).deleteGoal(id);
-    await refresh();
+    final original = state.valueOrNull?.where((g) => g.id == id).firstOrNull;
+    removeOptimistic(id);
+    try {
+      await ref.read(goalsRepositoryProvider).deleteGoal(id);
+    } catch (_) {
+      if (original != null) {
+        state.whenData((goals) => state = AsyncData([...goals, original]));
+      }
+      rethrow;
+    }
   }
 }
 

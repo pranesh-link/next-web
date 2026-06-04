@@ -74,8 +74,10 @@ class ApiClient {
           if (newToken != null) {
             _refreshFailCount = 0;
             await SecureStorage.saveToken(newToken);
-            // Re-register FCM token with the new auth token
-            _ref.read(pushNotificationServiceProvider).registerToken();
+            // Re-register FCM token with the new auth token (only if permission granted)
+            _ref.read(pushNotificationServiceProvider).hasPermission().then((granted) {
+              if (granted) _ref.read(pushNotificationServiceProvider).registerToken();
+            });
             // Retry the original request
             final opts = error.requestOptions;
             opts.headers['Authorization'] = 'Bearer $newToken';

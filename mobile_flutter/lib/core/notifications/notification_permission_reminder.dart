@@ -3,6 +3,7 @@ import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 const _kLastReminderKey = 'pushPermissionReminderTs';
 
@@ -95,23 +96,16 @@ class _NotificationPermissionReminderState
   }
 
   void _openSettings() {
-    // AppSettings.openNotificationSettings() — use the app_settings package.
-    // If not installed, we fall back to a snackbar directing the user.
-    try {
-      // Dynamically invoke to avoid hard dependency on a package that may
-      // not be registered in pubspec.yaml at this revision.
-      // If the package IS available, add:
-      //   import 'package:app_settings/app_settings.dart';
-      // and replace this block with:
-      //   AppSettings.openNotificationSettings();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Go to Settings → Apps → LuvVerse → Notifications to enable.',
-          ),
-          duration: Duration(seconds: 5),
-        ),
-      );
-    } catch (_) {}
+    // Open the device app-settings page so the user can enable notifications.
+    launchUrl(
+      Uri.parse('app-settings:'),
+      mode: LaunchMode.externalApplication,
+    ).catchError((Object _) {
+      // Fallback: some Android versions don't support 'app-settings:'.
+      launchUrl(
+        Uri.parse('package:com.pranesh.luvverse'),
+        mode: LaunchMode.externalApplication,
+      ).catchError((Object __) {});
+    });
   }
 }
