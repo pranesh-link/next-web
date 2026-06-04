@@ -42,7 +42,6 @@ class _AddIncomeModalState extends ConsumerState<AddIncomeModal> {
   bool _loading = false;
   String? _error;
   String? _noteError;
-  bool _disposed = false;
 
   @override
   void initState() {
@@ -55,28 +54,9 @@ class _AddIncomeModalState extends ConsumerState<AddIncomeModal> {
 
   @override
   void dispose() {
-    _disposed = true;
     _amountCtrl.dispose();
     _noteCtrl.dispose();
     super.dispose();
-  }
-
-  /// Retry API call with exponential backoff.
-  Future<T> _retryApiCall<T>(
-    Future<T> Function() apiCall, {
-    int maxAttempts = 3,
-  }) async {
-    for (int attempt = 1; attempt <= maxAttempts; attempt++) {
-      if (_disposed) throw Exception('Widget disposed');
-      try {
-        return await apiCall();
-      } catch (e) {
-        if (attempt == maxAttempts) rethrow;
-        if (_disposed) throw Exception('Widget disposed');
-        await Future.delayed(Duration(seconds: attempt));
-      }
-    }
-    throw Exception('Max retries exceeded');
   }
 
   Future<void> _submit() async {
@@ -96,49 +76,26 @@ class _AddIncomeModalState extends ConsumerState<AddIncomeModal> {
       _loading = true;
     });
 
-    // Store original balance for rollback
-    final originalBalance = widget.account.balance;
-    final newBalance = originalBalance + amount;
+    final newBalance = widget.account.balance + amount;
+    final data = <String, dynamic>{'balance': newBalance, 'note': note};
 
-    try {
-      // Optimistic update: UI updates immediately
-      ref.read(accountsProvider.notifier).updateAccountOptimistic(
-        widget.account.id,
-        {'balance': newBalance},
-      );
+    // updateAccountData applies optimistic internally — modal closes immediately.
+    final messenger = ScaffoldMessenger.of(context);
+    widget.onSuccess();
+    if (mounted) Navigator.pop(context);
 
-      // API call with retry in background
-      final data = <String, dynamic>{'balance': newBalance, 'note': note};
-      await _retryApiCall(() =>
-        ref.read(accountsProvider.notifier).updateAccountData(
-          widget.account.id,
-          data,
+    // API fires in background; notifier handles rollback on failure.
+    ref
+        .read(accountsProvider.notifier)
+        .updateAccountData(widget.account.id, data)
+        .catchError((Object e) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Income update failed. Please try again.'),
+          duration: Duration(seconds: 5),
         ),
       );
-
-      widget.onSuccess();
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Income added')),
-        );
-      }
-    } catch (e) {
-      // Rollback on failure after retries (only if not disposed)
-      if (!_disposed) {
-        ref.read(accountsProvider.notifier).revertAccountOptimistic(
-          widget.account.id,
-          {'balance': originalBalance},
-        );
-      }
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+    });
   }
 
   @override

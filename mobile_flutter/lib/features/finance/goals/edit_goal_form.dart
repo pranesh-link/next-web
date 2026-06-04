@@ -77,31 +77,44 @@ class _EditGoalFormState extends ConsumerState<EditGoalForm> {
   Future<void> _submit() async {
     if (!_validate()) return;
     setState(() => _loading = true);
-    try {
-      await ref.read(goalsProvider.notifier).updateGoal(
-            id: widget.goal.id,
-            name: _nameCtrl.text.trim(),
-            targetAmount: double.parse(_targetCtrl.text),
-            currentAmount: _currentCtrl.text.isNotEmpty
-                ? double.parse(_currentCtrl.text)
-                : null,
-            deadline: _deadline,
-          );
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Goal updated')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+
+    final original = widget.goal;
+    final currentAmount = _currentCtrl.text.isNotEmpty
+        ? double.parse(_currentCtrl.text)
+        : original.currentAmount;
+    final patch = <String, dynamic>{
+      'name': _nameCtrl.text.trim(),
+      'targetAmount': double.parse(_targetCtrl.text),
+      'currentAmount': currentAmount,
+      'deadline': _deadline?.toIso8601String(),
+    };
+
+    // Optimistic update — dismiss modal immediately.
+    ref.read(goalsProvider.notifier).updateOptimistic(original.id, patch);
+    final messenger = ScaffoldMessenger.of(context);
+    if (mounted) Navigator.pop(context);
+
+    // API fires in background; roll back on failure.
+    ref
+        .read(goalsProvider.notifier)
+        .updateGoal(
+          id: original.id,
+          name: _nameCtrl.text.trim(),
+          targetAmount: double.parse(_targetCtrl.text),
+          currentAmount: _currentCtrl.text.isNotEmpty
+              ? double.parse(_currentCtrl.text)
+              : null,
+          deadline: _deadline,
+        )
+        .catchError((Object e) {
+      ref.read(goalsProvider.notifier).updateOptimistic(original.id, original.toJson());
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Goal update failed. Please try again.'),
+          duration: Duration(seconds: 5),
+        ),
+      );
+    });
   }
 
   @override

@@ -211,6 +211,25 @@ class TransactionsNotifier extends AsyncNotifier<List<Transaction>> {
     );
   }
 
+  /// Optimistically update a transaction in local state (no API call).
+  void updateOptimistic(String id, Map<String, dynamic> data) {
+    state.whenData((txns) {
+      state = AsyncData(txns.map((t) {
+        if (t.id != id) return t;
+        final json = t.toJson();
+        json.addAll(data);
+        return Transaction.fromJson(json);
+      }).toList());
+    });
+  }
+
+  /// Optimistically remove a transaction from local state (no API call).
+  void removeOptimistic(String id) {
+    state.whenData((txns) {
+      state = AsyncData(txns.where((t) => t.id != id).toList());
+    });
+  }
+
   Future<void> create({
     required String accountId,
     required double amount,
@@ -279,6 +298,25 @@ class BudgetsNotifier extends AsyncNotifier<List<Budget>> {
     );
   }
 
+  /// Optimistically update a budget in local state (no API call).
+  void updateOptimistic(String id, Map<String, dynamic> data) {
+    state.whenData((budgets) {
+      state = AsyncData(budgets.map((b) {
+        if (b.id != id) return b;
+        final json = b.toJson();
+        json.addAll(data);
+        return Budget.fromJson(json);
+      }).toList());
+    });
+  }
+
+  /// Optimistically remove a budget from local state (no API call).
+  void removeOptimistic(String id) {
+    state.whenData((budgets) {
+      state = AsyncData(budgets.where((b) => b.id != id).toList());
+    });
+  }
+
   Future<void> create({
     required String category,
     required double limit,
@@ -333,6 +371,25 @@ class LoansNotifier extends AsyncNotifier<List<Loan>> {
     );
   }
 
+  /// Optimistically update a loan in local state (no API call).
+  void updateOptimistic(String id, Map<String, dynamic> data) {
+    state.whenData((loans) {
+      state = AsyncData(loans.map((l) {
+        if (l.id != id) return l;
+        final json = l.toJson();
+        json.addAll(data);
+        return Loan.fromJson(json);
+      }).toList());
+    });
+  }
+
+  /// Optimistically remove a loan from local state (no API call).
+  void removeOptimistic(String id) {
+    state.whenData((loans) {
+      state = AsyncData(loans.where((l) => l.id != id).toList());
+    });
+  }
+
   Future<void> updateLoan({
     required String id,
     String? name,
@@ -382,6 +439,25 @@ class GoalsNotifier extends AsyncNotifier<List<Goal>> {
     state = await AsyncValue.guard(
       () => ref.read(cachedGoalsProvider).getGoals(),
     );
+  }
+
+  /// Optimistically update a goal in local state (no API call).
+  void updateOptimistic(String id, Map<String, dynamic> data) {
+    state.whenData((goals) {
+      state = AsyncData(goals.map((g) {
+        if (g.id != id) return g;
+        final json = g.toJson();
+        json.addAll(data);
+        return Goal.fromJson(json);
+      }).toList());
+    });
+  }
+
+  /// Optimistically remove a goal from local state (no API call).
+  void removeOptimistic(String id) {
+    state.whenData((goals) {
+      state = AsyncData(goals.where((g) => g.id != id).toList());
+    });
   }
 
   Future<void> create({
