@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:luvverse/core/auth/auth_provider.dart';
 import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
@@ -10,6 +11,14 @@ class LoginScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authProvider);
+
+    // Belt-and-suspenders: if GoRouter redirect fires late or races the OS
+    // permission dialog, navigate imperatively the moment isAuthenticated flips.
+    ref.listen<AuthState>(authProvider, (previous, next) {
+      if (next.isAuthenticated && !(previous?.isAuthenticated ?? false)) {
+        context.go('/home');
+      }
+    });
 
     return Scaffold(
       body: Container(
@@ -45,10 +54,19 @@ class LoginScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 48),
-                  _GoogleSignInButton(
-                    isLoading: auth.isLoading,
-                    onPressed: () => ref.read(authProvider.notifier).signIn(),
-                  ),
+                  if (auth.isLoading)
+                    const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: Colors.white70,
+                      ),
+                    )
+                  else
+                    _GoogleSignInButton(
+                      onPressed: () => ref.read(authProvider.notifier).signIn(),
+                    ),
                   if (auth.error != null) ...[
                     const SizedBox(height: AppSpacing.lg),
                     Text(
@@ -68,10 +86,9 @@ class LoginScreen extends ConsumerWidget {
 }
 
 class _GoogleSignInButton extends StatelessWidget {
-  final bool isLoading;
   final VoidCallback onPressed;
 
-  const _GoogleSignInButton({required this.isLoading, required this.onPressed});
+  const _GoogleSignInButton({required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -79,23 +96,21 @@ class _GoogleSignInButton extends StatelessWidget {
       width: double.infinity,
       height: 52,
       child: ElevatedButton(
-        onPressed: isLoading ? null : onPressed,
+        onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.white,
           foregroundColor: Colors.black87,
           elevation: 2,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        child: isLoading
-            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-            : const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _GoogleLogo(),
-                  SizedBox(width: AppSpacing.md),
-                  Text('Sign in with Google', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                ],
-              ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _GoogleLogo(),
+            SizedBox(width: AppSpacing.md),
+            Text('Sign in with Google', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+          ],
+        ),
       ),
     );
   }
