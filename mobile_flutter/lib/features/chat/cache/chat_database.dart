@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/open.dart';
@@ -129,31 +131,54 @@ class ChatLocalDatabase extends _$ChatLocalDatabase {
 }
 
 /// Opens the chat-specific local database with SQLCipher encryption.
-/// Messages are additionally E2E encrypted at the application layer
-/// for defense-in-depth.
 ///
-/// `sqlcipher_flutter_libs` ships `libsqlcipher.so` (a drop-in sqlite3
-/// replacement) but no `libsqlite3.so`. We register it as the sqlite3
-/// implementation in *both* the main isolate and the background isolate
-/// so `NativeDatabase.createInBackground` can find it on Android.
+/// A per-device AES-256 key is generated on first launch and stored in
+/// [FlutterSecureStorage] (Android EncryptedSharedPreferences / iOS Keychain).
+/// The key is applied via `PRAGMA key` immediately after opening, so the
+/// database file is unreadable without the device key.
+///
+/// Migration note: if the database file exists from a previous version that
+/// did not apply a cipher key, it is deleted so a fresh encrypted file is
+/// created. The local DB is a cache — messages are re-synced from the server
+/// on the next fetch.
 Future<ChatLocalDatabase> openChatDatabase() async {
-  // Apply override in the main isolate too, in case any sqlite3 calls
-  // happen here before the background isolate is spawned.
   if (Platform.isAndroid) {
     open.overrideFor(OperatingSystem.android, openCipherOnAndroid);
   }
 
   final dir = await getApplicationDocumentsDirectory();
   final dbFile = File(p.join(dir.path, 'chat.db'));
-  final executor = NativeDatabase.createInBackground(
+
+  const storage = FlutterSecureStorage(
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
+
+  const keyStorageKey = 'chat_db_encryption_key';
+  var encKey = await storage.read(key: keyStorageKey);
+
+  if (encKey == null) {
+    // First launch with encryption: delete any existing unencrypted file to
+    // prevent SQLITE_NOTADB when PRAGMA key is applied to a plaintext DB.
+    if (await dbFile.exists()) {
+      await dbFile.delete();
+    }
+    // Generate a cryptographically random 32-byte key, encode as base64.
+    final rng = Random.secure();
+    final keyBytes = Uint8List.fromList(
+      List.generate(32, (_) => rng.nextInt(256)),
+    );
+    encKey = base64Encode(keyBytes);
+    await storage.write(key: keyStorageKey, value: encKey);
+  }
+
+  final cipherKey = encKey;
+
+  final executor = NativeDatabase(
     dbFile,
-    isolateSetup: () async {
-      // Re-apply override inside the background isolate (overrides are
-      // per-isolate). Without this, Drift tries to load libsqlite3.so
-      // which isn't bundled — only libsqlcipher.so is.
-      if (Platform.isAndroid) {
-        open.overrideFor(OperatingSystem.android, openCipherOnAndroid);
-      }
+    setup: (rawDb) {
+      // Must be the first statement executed on every connection.
+      rawDb.execute("PRAGMA key = '$cipherKey'");
     },
   );
   return ChatLocalDatabase(executor);

@@ -46,7 +46,6 @@ import 'package:luvverse/features/chat/widgets/backup_setup_sheet.dart';
 import 'package:luvverse/features/chat/services/backup_service.dart';
 import 'package:luvverse/features/chat/services/message_sync_service.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';
-import 'package:luvverse/features/chat/services/chat_key_bootstrap.dart';
 
 /// Full chat screen composing all chat widgets.
 class ChatScreen extends ConsumerStatefulWidget {
@@ -60,7 +59,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _scrollController = ScrollController();
   bool _showScrollToBottom = false;
   Timer? _typingThrottle;
-  Timer? _encryptionRetryTimer;
   int _previousMessageCount = 0;
   ChatMessage? _replyingTo;
   bool _showSearch = false;
@@ -92,7 +90,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _acknowledgeReceivedMessages();
       // Show backup setup on first open if not configured
       _checkBackupSetup();
-      _startEncryptionRetry();
     });
   }
 
@@ -101,7 +98,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     PushNotificationService.isChatActive = false;
     _scrollController.dispose();
     _typingThrottle?.cancel();
-    _encryptionRetryTimer?.cancel();
     super.dispose();
   }
 
@@ -145,26 +141,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  void _startEncryptionRetry() {
-    _encryptionRetryTimer?.cancel();
-    _encryptionRetryTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      if (!mounted) return;
-      final ready = ref.read(encryptionReadyProvider);
-      if (ready) {
-        _encryptionRetryTimer?.cancel();
-        _encryptionRetryTimer = null;
-        return;
-      }
-      ref.read(chatKeyBootstrapProvider).ensureBootstrapped().then((ok) {
-        if (ok && mounted) {
-          ref.read(encryptionReadyProvider.notifier).state = true;
-          _encryptionRetryTimer?.cancel();
-          _encryptionRetryTimer = null;
-        }
-      }).catchError((_) {});
-    });
-  }
-
   void _scrollToBottom({bool animate = true}) {
     if (!_scrollController.hasClients) return;
     if (animate) {
@@ -179,37 +155,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   void _onSend(String text) {
-    // If encryption isn't ready yet, surface a friendly amber warning instead
-    // of letting the send path throw a red error. Bootstrap is retried every
-    // 3 s in the background; the user should try again shortly.
-    if (!ref.read(encryptionReadyProvider)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-            'Setting up encryption… Try again in a moment.',
-          ),
-          backgroundColor: Colors.amber.shade700,
-          duration: const Duration(seconds: 4),
-          action: SnackBarAction(
-            label: 'Retry now',
-            textColor: Colors.white,
-            onPressed: () {
-              ref
-                  .read(chatKeyBootstrapProvider)
-                  .forceRetry()
-                  .then((ok) {
-                if (ok && mounted) {
-                  ref.read(encryptionReadyProvider.notifier).state = true;
-                  _onSend(text);
-                }
-              }).catchError((_) {});
-            },
-          ),
-        ),
-      );
-      return;
-    }
-
     ref.read(chatNotifierProvider.notifier).sendMessage(text).then((_) {
       final err = ref.read(chatNotifierProvider.notifier).lastSendError;
       if (err != null && mounted) {
@@ -450,16 +395,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             onDismiss: () => setState(() => _pinnedMessage = null),
           ),
           const EncryptionBadge(),
-          _EncryptionPendingBanner(
-            isReady: ref.watch(encryptionReadyProvider),
-            onRetry: () => ref.read(chatKeyBootstrapProvider)
-                .forceRetry()
-                .then((ok) {
-              if (ok && mounted) {
-                ref.read(encryptionReadyProvider.notifier).state = true;
-              }
-            }).catchError((_) {}),
-          ),
           Expanded(
             child: chatState.when(
               loading: () => _buildShimmer(context),
@@ -788,45 +723,3 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 }
 
-/// Shown when E2E encryption is not yet initialized.
-/// Disappears automatically once [isReady] becomes true.
-class _EncryptionPendingBanner extends StatelessWidget {
-  final bool isReady;
-  final VoidCallback onRetry;
-
-  const _EncryptionPendingBanner({
-    required this.isReady,
-    required this.onRetry,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (isReady) return const SizedBox.shrink();
-    return Container(
-      width: double.infinity,
-      color: Colors.amber.shade100,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        children: [
-          const Icon(Icons.lock_clock, size: 16, color: Colors.amber),
-          const SizedBox(width: 8),
-          const Expanded(
-            child: Text(
-              'Waiting for partner encryption. Ask them to open the app.',
-              style: TextStyle(fontSize: 12, color: Colors.black87),
-            ),
-          ),
-          TextButton(
-            onPressed: onRetry,
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            child: const Text('Retry', style: TextStyle(fontSize: 12)),
-          ),
-        ],
-      ),
-    );
-  }
-}
