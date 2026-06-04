@@ -15,6 +15,7 @@ class _BackupSettingsPageState extends ConsumerState<BackupSettingsPage> {
   BackupConfig _config = const BackupConfig();
   bool _loading = true;
   bool _backingUp = false;
+  bool _connectingAccount = false;
 
   @override
   void initState() {
@@ -35,6 +36,23 @@ class _BackupSettingsPageState extends ConsumerState<BackupSettingsPage> {
     final service = ref.read(backupServiceProvider);
     await service.saveConfig(newConfig);
     setState(() => _config = newConfig);
+  }
+
+  Future<void> _connectGoogleAccount() async {
+    setState(() => _connectingAccount = true);
+    final service = ref.read(backupServiceProvider);
+    final success = await service.connectGoogleAccount();
+    setState(() => _connectingAccount = false);
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(success
+            ? 'Google account connected'
+            : 'Could not sign in to Google. Please try again.'),
+      ),
+    );
+    if (success) await _loadConfig();
   }
 
   Future<void> _backupNow() async {
@@ -151,11 +169,18 @@ class _BackupSettingsPageState extends ConsumerState<BackupSettingsPage> {
             ListTile(
               title: const Text('Google account'),
               subtitle: Text(
-                  (_config.googleAccountEmail == null ||
-                          _config.googleAccountEmail == 'pending')
-                      ? 'Will be set on first backup'
-                      : _config.googleAccountEmail!),
-              trailing: const Icon(Icons.chevron_right),
+                (_config.googleAccountEmail == null ||
+                        _config.googleAccountEmail == 'pending')
+                    ? 'Tap to connect Google account'
+                    : _config.googleAccountEmail!),
+              trailing: _connectingAccount
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.chevron_right),
+              onTap: _connectingAccount ? null : _connectGoogleAccount,
             ),
             const Divider(),
 
