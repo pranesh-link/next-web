@@ -2,11 +2,15 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart';
 import 'package:luvverse/core/auth/auth_provider.dart';
+import 'package:luvverse/core/auth/secure_storage.dart';
 import 'package:luvverse/core/auth/session_expired_provider.dart';
 import 'package:luvverse/core/cache/cache_providers.dart';
 import 'package:luvverse/core/cache/connectivity_service.dart';
 import 'package:luvverse/core/lifecycle/app_lifecycle_manager.dart';
+import 'package:luvverse/core/network/api_client.dart';
+import 'package:luvverse/core/network/api_endpoints.dart';
 import 'package:luvverse/core/prefetch/wifi_cache_warmer.dart';
 import 'package:luvverse/core/router/app_router.dart';
 import 'package:luvverse/features/chat/services/backup_service.dart';
@@ -79,6 +83,9 @@ class _ConnectivityWrapperState extends ConsumerState<ConnectivityWrapper>
       // it up and run a proactive token refresh when connectivity returns.
       debugPrint('[Resume] Data stale but offline — will refresh on reconnect');
     } else if (!shouldShowSplash && isOnline) {
+      // Proactively refresh JWT so an expired token doesn't trigger the
+      // session-expired dialog the moment the user starts interacting.
+      unawaited(_proactiveTokenRefresh());
       debugPrint('[Resume] Data fresh, lightweight check');
       await _lightweightCacheCheck();
     }
@@ -99,6 +106,35 @@ class _ConnectivityWrapperState extends ConsumerState<ConnectivityWrapper>
     }
     
     _isHandlingResume = false;
+  }
+
+  /// Silently refresh the JWT using the stored refresh token.
+  /// Fire-and-forget — failures are intentionally swallowed here;
+  /// the api_client interceptor handles 401s as a fallback.
+  Future<void> _proactiveTokenRefresh() async {
+    try {
+      final refreshToken = await SecureStorage.getRefreshToken();
+      if (refreshToken == null) return;
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: kApiBaseUrl,
+          connectTimeout: const Duration(seconds: 10),
+          receiveTimeout: const Duration(seconds: 10),
+        ),
+      );
+      final response = await dio.post<Map<String, dynamic>>(
+        ApiEndpoints.refreshToken,
+        data: {'refreshToken': refreshToken},
+      );
+      final body = response.data;
+      final newToken = body?['token'] as String?;
+      final newRefresh = body?['refreshToken'] as String?;
+      if (newToken != null) await SecureStorage.saveToken(newToken);
+      if (newRefresh != null) await SecureStorage.saveRefreshToken(newRefresh);
+      debugPrint('[Resume] Proactive token refresh succeeded');
+    } catch (e) {
+      debugPrint('[Resume] Proactive token refresh failed (will retry on 401): $e');
+    }
   }
 
   Future<void> _navigateToSplash() async {

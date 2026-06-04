@@ -21,7 +21,7 @@ class AccountDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _AccountDetailScreenState extends ConsumerState<AccountDetailScreen> {
-  bool _showBalanceHistory = false;
+  bool _showBalanceHistory = true;
 
   @override
   Widget build(BuildContext context) {
@@ -59,6 +59,8 @@ class _AccountDetailScreenState extends ConsumerState<AccountDetailScreen> {
               children: [
                 _buildHeader(context, account.name, account.nickname, account.type, account.balance),
                 const SizedBox(height: AppSpacing.xxl),
+                _buildBalanceHistorySection(context),
+                const SizedBox(height: AppSpacing.xxl),
                 Text('Recent Transactions', style: AppTypography.sectionTitle),
                 const SizedBox(height: AppSpacing.md),
                 txnsAsync.when(
@@ -80,8 +82,6 @@ class _AccountDetailScreenState extends ConsumerState<AccountDetailScreen> {
                     return Column(children: filtered.take(10).map((tx) => _buildTxTile(context, tx)).toList());
                   },
                 ),
-                const SizedBox(height: AppSpacing.lg),
-                _buildBalanceHistorySection(context),
                 const SizedBox(height: AppSpacing.xxl),
                 _buildDeleteButton(context),
               ],

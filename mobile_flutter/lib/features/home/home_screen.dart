@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:luvverse/core/auth/auth_provider.dart';
+import 'package:luvverse/core/notifications/notification_permission_reminder.dart';
+import 'package:luvverse/core/notifications/push_providers.dart';
 import 'package:luvverse/core/prefetch/background_prefetch_service.dart';
 import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
@@ -27,7 +29,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // Trigger background prefetch after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       BackgroundPrefetchService(ref).prefetchMediumPriority();
+      _checkPushPermission();
     });
+  }
+
+  /// Show the permission reminder banner if notifications have been denied.
+  Future<void> _checkPushPermission() async {
+    final pushService = ref.read(pushNotificationServiceProvider);
+    final hasPermission = await pushService.hasPermission();
+    if (!hasPermission && mounted) {
+      setState(() {}); // Triggers rebuild to show NotificationPermissionReminder
+    }
   }
 
   @override
@@ -37,6 +49,49 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final balance = ref.watch(totalBalanceProvider);
     final hasCouple = ref.watch(hasCoupleProvider).valueOrNull ?? true;
     final config = ref.watch(appConfigProvider).valueOrNull;
+
+    // Build module cards; available (non-comingSoon) items appear first.
+    final allModules = [
+      _ModuleConfig(
+        icon: Icons.account_balance_wallet,
+        title: 'Finance',
+        subtitle: 'Track money',
+        color: context.colors.accent,
+        comingSoon: config != null && !config.isEnabled('finance'),
+        route: '/finance',
+      ),
+      _ModuleConfig(
+        icon: Icons.flight,
+        title: 'Travel',
+        subtitle: 'Plan trips',
+        color: const Color(0xFF8B5CF6),
+        comingSoon: config == null || !config.isEnabled('travel'),
+        route: '/travel',
+      ),
+      _ModuleConfig(
+        icon: Icons.favorite,
+        title: 'Lifestyle',
+        subtitle: 'Health & wellness',
+        color: const Color(0xFFEC4899),
+        comingSoon: config == null || !config.isEnabled('lifestyle'),
+        route: '/lifestyle',
+      ),
+      if (hasCouple)
+        _ModuleConfig(
+          icon: Icons.chat_bubble,
+          title: 'Chat',
+          subtitle: 'Stay connected',
+          color: context.colors.success,
+          comingSoon: config != null && !config.isEnabled('chat'),
+          route: '/chat',
+        ),
+    ];
+    // Active modules first, coming-soon last.
+    final sortedModules = [...allModules..sort((a, b) {
+      if (!a.comingSoon && b.comingSoon) return -1;
+      if (a.comingSoon && !b.comingSoon) return 1;
+      return 0;
+    })];
 
     return Scaffold(
       backgroundColor: context.colors.bg,
@@ -71,6 +126,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 style: AppTypography.cardTitle.copyWith(letterSpacing: -0.3),
               ),
               const SizedBox(height: AppSpacing.xxl),
+              // Permission reminder banner — only visible when notifications denied
+              FutureBuilder<bool>(
+                future: ref.read(pushNotificationServiceProvider).hasPermission(),
+                builder: (context, snap) {
+                  if (snap.data == true) return const SizedBox.shrink();
+                  return const NotificationPermissionReminder();
+                },
+              ),
               // Module grid
               Expanded(
                 child: GridView.count(
@@ -78,41 +141,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   mainAxisSpacing: AppSpacing.lg,
                   crossAxisSpacing: AppSpacing.lg,
                   childAspectRatio: 1.05,
-                  children: [
-                    _ModuleCard(
-                      icon: Icons.account_balance_wallet,
-                      title: 'Finance',
-                      subtitle: 'Track money',
-                      color: context.colors.accent,
-                      comingSoon: config != null && !config.isEnabled('finance'),
-                      onTap: () => context.go('/finance'),
-                    ),
-                    _ModuleCard(
-                      icon: Icons.flight,
-                      title: 'Travel',
-                      subtitle: 'Plan trips',
-                      color: const Color(0xFF8B5CF6),
-                      comingSoon: config == null || !config.isEnabled('travel'),
-                      onTap: () => context.go('/travel'),
-                    ),
-                    _ModuleCard(
-                      icon: Icons.favorite,
-                      title: 'Lifestyle',
-                      subtitle: 'Health & wellness',
-                      color: const Color(0xFFEC4899),
-                      comingSoon: config == null || !config.isEnabled('lifestyle'),
-                      onTap: () => context.go('/lifestyle'),
-                    ),
-                    if (hasCouple)
-                      _ModuleCard(
-                        icon: Icons.chat_bubble,
-                        title: 'Chat',
-                        subtitle: 'Stay connected',
-                        color: context.colors.success,
-                        comingSoon: config != null && !config.isEnabled('chat'),
-                        onTap: () => context.go('/chat'),
-                      ),
-                  ],
+                  children: sortedModules.map((m) => _ModuleCard(
+                    icon: m.icon,
+                    title: m.title,
+                    subtitle: m.subtitle,
+                    color: m.color,
+                    comingSoon: m.comingSoon,
+                    onTap: () => context.go(m.route),
+                  )).toList(),
                 ),
               ),
               // Quick stats
@@ -222,4 +258,22 @@ class _ModuleCard extends StatelessWidget {
       ],
     );
   }
+}
+
+class _ModuleConfig {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+  final bool comingSoon;
+  final String route;
+
+  const _ModuleConfig({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+    required this.comingSoon,
+    required this.route,
+  });
 }

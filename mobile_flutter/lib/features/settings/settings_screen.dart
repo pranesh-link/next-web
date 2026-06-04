@@ -252,7 +252,19 @@ class _TestNotificationTileState extends ConsumerState<_TestNotificationTile> {
         return;
       }
 
-      await pushService.registerToken();
+      // Re-register to ensure the device token is active.
+      final regResult = await pushService.registerToken();
+      if (!regResult.success) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Device registration failed: ${regResult.error ?? 'Unknown error'}.'),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+        return;
+      }
+
       final result = await pushService.sendTestNotification();
       if (!mounted) return;
 
@@ -261,6 +273,8 @@ class _TestNotificationTileState extends ConsumerState<_TestNotificationTile> {
         text = 'Test sent to ${result.sent}/${result.deviceCount} device(s)';
       } else if (result.rateLimited) {
         text = '⏱  ${result.message}';
+      } else if (result.deviceCount == 0) {
+        text = 'No active devices found. Sign out and back in, then try again.';
       } else {
         text = result.message;
       }

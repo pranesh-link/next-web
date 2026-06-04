@@ -139,11 +139,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   void _initPush() {
-    // Fire-and-forget — register FCM token after sign-in.
+    // Fire-and-forget — register FCM token after sign-in, but only when
+    // the user has (or grants) notification permission.
     final pushService = _ref.read(pushNotificationServiceProvider);
     pushService.init().then((_) async {
-      await pushService.requestPermission();
-      await pushService.registerToken();
+      final granted = await pushService.requestPermission();
+      if (granted) {
+        await pushService.registerToken();
+      }
     });
   }
 
