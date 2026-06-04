@@ -19,11 +19,14 @@ class AuthRepository {
   /// Timeout for the Google Sign-In popup flow.
   static const _signInTimeout = Duration(seconds: 30);
 
-  Future<User> signInWithGoogle() async {
+  Future<({User user, String token})> signInWithGoogle() async {
     // Sign out locally to force account picker on subsequent sign-ins.
     // NOTE: Do NOT use disconnect() — on web (GIS 0.12+) it calls revoke()
     // which can cause the credential callback to never fire, freezing the UI.
-    await _googleSignIn.signOut().catchError((_) => null);
+    // Timeout guards against rare hangs on first launch (no prior session).
+    try {
+      await _googleSignIn.signOut().timeout(const Duration(seconds: 5));
+    } catch (_) {}
 
     final googleUser = await _googleSignIn.signIn().timeout(
       _signInTimeout,
@@ -51,6 +54,7 @@ class AuthRepository {
     return _saveCredentials(response);
   }
 
+  /// Returns stored credentials (may be null on fresh install).
   Future<void> signOut() async {
     await _googleSignIn.signOut();
     await SecureStorage.clearAll();
@@ -63,7 +67,7 @@ class AuthRepository {
     return (user: user, token: token);
   }
 
-  Future<User> _saveCredentials(Map<String, dynamic> response) async {
+  Future<({User user, String token})> _saveCredentials(Map<String, dynamic> response) async {
     final token = response['token'] as String;
     final refreshToken = response['refreshToken'] as String?;
     final userData = User.fromJson(response['user'] as Map<String, dynamic>);
@@ -73,6 +77,8 @@ class AuthRepository {
       await SecureStorage.saveRefreshToken(refreshToken);
     }
     await SecureStorage.saveUser(userData);
-    return userData;
+    // Return token directly to avoid a redundant SecureStorage read-back which
+    // can block on iOS (keychain access) on first install.
+    return (user: userData, token: token);
   }
 }

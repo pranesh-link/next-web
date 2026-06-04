@@ -115,11 +115,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> signIn() async {
+    // Prevent concurrent sign-in calls (e.g. rapid double-tap).
+    if (state.isLoading) return;
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final user = await _repository.signInWithGoogle();
-      final token = await SecureStorage.getToken();
-      state = AuthState(user: user, token: token);
+      // 60-second overall guard ensures the spinner ALWAYS clears — covers any
+      // inner step that lacks its own timeout (e.g. SecureStorage writes on
+      // iOS first install with keychain initialisation overhead).
+      final result = await _repository.signInWithGoogle().timeout(
+        const Duration(seconds: 60),
+        onTimeout: () => throw Exception('Sign-in timed out. Please try again.'),
+      );
+      // Use the token returned directly from the repository — avoids a
+      // SecureStorage read-back that can block indefinitely on iOS.
+      state = AuthState(user: result.user, token: result.token);
       // Eagerly populate cache so offline mode works immediately.
       _warmCache();
       _initPush();
