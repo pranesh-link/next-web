@@ -167,8 +167,23 @@ class AccountsNotifier extends AsyncNotifier<List<Account>> {
   }
 
   Future<void> delete(String id) async {
-    await ref.read(accountsRepositoryProvider).deleteAccount(id);
-    await refresh();
+    // Capture original for rollback
+    final original = state.valueOrNull?.where((a) => a.id == id).firstOrNull;
+    // Optimistic removal
+    state.whenData((accounts) {
+      state = AsyncData(accounts.where((a) => a.id != id).toList());
+    });
+    try {
+      await ref.read(accountsRepositoryProvider).deleteAccount(id);
+    } catch (_) {
+      // Rollback
+      if (original != null) {
+        state.whenData((accounts) {
+          state = AsyncData([...accounts, original]);
+        });
+      }
+      rethrow;
+    }
   }
 }
 
@@ -209,6 +224,25 @@ class TransactionsNotifier extends AsyncNotifier<List<Transaction>> {
     state = await AsyncValue.guard(
       () => ref.read(cachedTransactionsProvider).getTransactions(month: month),
     );
+  }
+
+  /// Optimistically update a transaction in local state (no API call).
+  void updateOptimistic(String id, Map<String, dynamic> data) {
+    state.whenData((txns) {
+      state = AsyncData(txns.map((t) {
+        if (t.id != id) return t;
+        final json = t.toJson();
+        json.addAll(data);
+        return Transaction.fromJson(json);
+      }).toList());
+    });
+  }
+
+  /// Optimistically remove a transaction from local state (no API call).
+  void removeOptimistic(String id) {
+    state.whenData((txns) {
+      state = AsyncData(txns.where((t) => t.id != id).toList());
+    });
   }
 
   Future<void> create({
@@ -252,8 +286,16 @@ class TransactionsNotifier extends AsyncNotifier<List<Transaction>> {
   }
 
   Future<void> delete(String id) async {
-    await ref.read(transactionsRepositoryProvider).deleteTransaction(id);
-    await refresh();
+    final original = state.valueOrNull?.where((t) => t.id == id).firstOrNull;
+    removeOptimistic(id);
+    try {
+      await ref.read(transactionsRepositoryProvider).deleteTransaction(id);
+    } catch (_) {
+      if (original != null) {
+        state.whenData((txns) => state = AsyncData([...txns, original]));
+      }
+      rethrow;
+    }
   }
 }
 
@@ -277,6 +319,25 @@ class BudgetsNotifier extends AsyncNotifier<List<Budget>> {
     state = await AsyncValue.guard(
       () => ref.read(cachedBudgetsProvider).getBudgets(month: month),
     );
+  }
+
+  /// Optimistically update a budget in local state (no API call).
+  void updateOptimistic(String id, Map<String, dynamic> data) {
+    state.whenData((budgets) {
+      state = AsyncData(budgets.map((b) {
+        if (b.id != id) return b;
+        final json = b.toJson();
+        json.addAll(data);
+        return Budget.fromJson(json);
+      }).toList());
+    });
+  }
+
+  /// Optimistically remove a budget from local state (no API call).
+  void removeOptimistic(String id) {
+    state.whenData((budgets) {
+      state = AsyncData(budgets.where((b) => b.id != id).toList());
+    });
   }
 
   Future<void> create({
@@ -308,8 +369,16 @@ class BudgetsNotifier extends AsyncNotifier<List<Budget>> {
   }
 
   Future<void> delete(String id) async {
-    await ref.read(budgetsRepositoryProvider).deleteBudget(id);
-    await refresh();
+    final original = state.valueOrNull?.where((b) => b.id == id).firstOrNull;
+    removeOptimistic(id);
+    try {
+      await ref.read(budgetsRepositoryProvider).deleteBudget(id);
+    } catch (_) {
+      if (original != null) {
+        state.whenData((budgets) => state = AsyncData([...budgets, original]));
+      }
+      rethrow;
+    }
   }
 }
 
@@ -331,6 +400,25 @@ class LoansNotifier extends AsyncNotifier<List<Loan>> {
     state = await AsyncValue.guard(
       () => ref.read(cachedLoansProvider).getLoans(),
     );
+  }
+
+  /// Optimistically update a loan in local state (no API call).
+  void updateOptimistic(String id, Map<String, dynamic> data) {
+    state.whenData((loans) {
+      state = AsyncData(loans.map((l) {
+        if (l.id != id) return l;
+        final json = l.toJson();
+        json.addAll(data);
+        return Loan.fromJson(json);
+      }).toList());
+    });
+  }
+
+  /// Optimistically remove a loan from local state (no API call).
+  void removeOptimistic(String id) {
+    state.whenData((loans) {
+      state = AsyncData(loans.where((l) => l.id != id).toList());
+    });
   }
 
   Future<void> updateLoan({
@@ -359,8 +447,16 @@ class LoansNotifier extends AsyncNotifier<List<Loan>> {
   }
 
   Future<void> delete(String id) async {
-    await ref.read(loansRepositoryProvider).deleteLoan(id);
-    await refresh();
+    final original = state.valueOrNull?.where((l) => l.id == id).firstOrNull;
+    removeOptimistic(id);
+    try {
+      await ref.read(loansRepositoryProvider).deleteLoan(id);
+    } catch (_) {
+      if (original != null) {
+        state.whenData((loans) => state = AsyncData([...loans, original]));
+      }
+      rethrow;
+    }
   }
 }
 
@@ -382,6 +478,25 @@ class GoalsNotifier extends AsyncNotifier<List<Goal>> {
     state = await AsyncValue.guard(
       () => ref.read(cachedGoalsProvider).getGoals(),
     );
+  }
+
+  /// Optimistically update a goal in local state (no API call).
+  void updateOptimistic(String id, Map<String, dynamic> data) {
+    state.whenData((goals) {
+      state = AsyncData(goals.map((g) {
+        if (g.id != id) return g;
+        final json = g.toJson();
+        json.addAll(data);
+        return Goal.fromJson(json);
+      }).toList());
+    });
+  }
+
+  /// Optimistically remove a goal from local state (no API call).
+  void removeOptimistic(String id) {
+    state.whenData((goals) {
+      state = AsyncData(goals.where((g) => g.id != id).toList());
+    });
   }
 
   Future<void> create({
@@ -425,8 +540,16 @@ class GoalsNotifier extends AsyncNotifier<List<Goal>> {
   }
 
   Future<void> delete(String id) async {
-    await ref.read(goalsRepositoryProvider).deleteGoal(id);
-    await refresh();
+    final original = state.valueOrNull?.where((g) => g.id == id).firstOrNull;
+    removeOptimistic(id);
+    try {
+      await ref.read(goalsRepositoryProvider).deleteGoal(id);
+    } catch (_) {
+      if (original != null) {
+        state.whenData((goals) => state = AsyncData([...goals, original]));
+      }
+      rethrow;
+    }
   }
 }
 

@@ -55,27 +55,23 @@ class _EditNicknameModalState extends ConsumerState<EditNicknameModal> {
     final value = _controller.text.trim();
     if (value.isEmpty) return;
     setState(() => _loading = true);
-    try {
-      await ref.read(accountsProvider.notifier).updateAccountData(
-        widget.account.id,
-        {'nickname': value},
+
+    // updateAccountData applies optimistic internally — modal closes immediately.
+    final messenger = ScaffoldMessenger.of(context);
+    widget.onSuccess();
+    if (mounted) Navigator.pop(context);
+
+    ref
+        .read(accountsProvider.notifier)
+        .updateAccountData(widget.account.id, {'nickname': value})
+        .catchError((Object e) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Nickname update failed. Please try again.'),
+          duration: Duration(seconds: 5),
+        ),
       );
-      widget.onSuccess();
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Nickname updated')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+    });
   }
 
   @override

@@ -76,28 +76,37 @@ class _EditBudgetFormState extends ConsumerState<EditBudgetForm> {
   Future<void> _submit() async {
     if (!_validate()) return;
     setState(() => _loading = true);
-    try {
-      await ref.read(budgetsProvider.notifier).updateBudget(
-            id: widget.budget.id,
-            category: _category,
-            limit: double.parse(_limitCtrl.text),
-            month: _month,
-          );
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Budget updated')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+
+    final original = widget.budget;
+    final patch = <String, dynamic>{
+      'category': _category,
+      'limit': double.parse(_limitCtrl.text),
+      'month': _month,
+    };
+
+    // Optimistic update — dismiss modal immediately.
+    ref.read(budgetsProvider.notifier).updateOptimistic(original.id, patch);
+    final messenger = ScaffoldMessenger.of(context);
+    if (mounted) Navigator.pop(context);
+
+    // API fires in background; roll back on failure.
+    ref
+        .read(budgetsProvider.notifier)
+        .updateBudget(
+          id: original.id,
+          category: _category,
+          limit: double.parse(_limitCtrl.text),
+          month: _month,
+        )
+        .catchError((Object e) {
+      ref.read(budgetsProvider.notifier).updateOptimistic(original.id, original.toJson());
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Budget update failed. Please try again.'),
+          duration: Duration(seconds: 5),
+        ),
+      );
+    });
   }
 
   @override

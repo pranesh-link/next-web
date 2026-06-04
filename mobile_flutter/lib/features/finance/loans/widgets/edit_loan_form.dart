@@ -92,29 +92,47 @@ class _EditLoanFormState extends ConsumerState<EditLoanForm> {
   Future<void> _submit() async {
     if (!_validate()) return;
     setState(() => _loading = true);
-    try {
-      await ref.read(loansProvider.notifier).updateLoan(
-            id: widget.loan.id,
-            name: _nameCtrl.text.trim(),
-            principal: double.parse(_principalCtrl.text),
-            interestRate: double.parse(_rateCtrl.text),
-            tenureMonths: int.parse(_tenureCtrl.text),
-            emiAmount: double.parse(_emiCtrl.text),
-            startDate: _startDate,
-            loanProvider: _providerCtrl.text.trim().isEmpty ? null : _providerCtrl.text.trim(),
-            loanAccountNumber: _accountNumCtrl.text.trim().isEmpty ? null : _accountNumCtrl.text.trim(),
-          );
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Loan updated')));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-      }
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+
+    final original = widget.loan;
+    final patch = <String, dynamic>{
+      'name': _nameCtrl.text.trim(),
+      'principal': double.parse(_principalCtrl.text),
+      'interestRate': double.parse(_rateCtrl.text),
+      'tenureMonths': int.parse(_tenureCtrl.text),
+      'emiAmount': double.parse(_emiCtrl.text),
+      'startDate': _startDate.toIso8601String(),
+      if (_providerCtrl.text.trim().isNotEmpty) 'loanProvider': _providerCtrl.text.trim(),
+      if (_accountNumCtrl.text.trim().isNotEmpty) 'loanAccountNumber': _accountNumCtrl.text.trim(),
+    };
+
+    // Optimistic update — dismiss modal immediately.
+    ref.read(loansProvider.notifier).updateOptimistic(original.id, patch);
+    final messenger = ScaffoldMessenger.of(context);
+    if (mounted) Navigator.pop(context);
+
+    // API fires in background; roll back on failure.
+    ref
+        .read(loansProvider.notifier)
+        .updateLoan(
+          id: original.id,
+          name: _nameCtrl.text.trim(),
+          principal: double.parse(_principalCtrl.text),
+          interestRate: double.parse(_rateCtrl.text),
+          tenureMonths: int.parse(_tenureCtrl.text),
+          emiAmount: double.parse(_emiCtrl.text),
+          startDate: _startDate,
+          loanProvider: _providerCtrl.text.trim().isEmpty ? null : _providerCtrl.text.trim(),
+          loanAccountNumber: _accountNumCtrl.text.trim().isEmpty ? null : _accountNumCtrl.text.trim(),
+        )
+        .catchError((Object e) {
+      ref.read(loansProvider.notifier).updateOptimistic(original.id, original.toJson());
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Loan update failed. Please try again.'),
+          duration: Duration(seconds: 5),
+        ),
+      );
+    });
   }
 
   @override

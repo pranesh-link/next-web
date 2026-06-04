@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:luvverse/core/finance/balance_masked_provider.dart';
 import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
@@ -54,7 +55,7 @@ class AccountCard extends ConsumerWidget {
             const SizedBox(height: AppSpacing.md),
             _buildTypeRow(context),
             const SizedBox(height: AppSpacing.md),
-            CurrencyDisplay(amount: account.balance, colorCoded: true),
+            CurrencyDisplay(amount: account.balance, colorCoded: true, masked: ref.watch(balanceMaskedProvider)),
             const SizedBox(height: AppSpacing.xs),
             _BalanceHistoryMini(accountId: account.id),
             const SizedBox(height: AppSpacing.sm),

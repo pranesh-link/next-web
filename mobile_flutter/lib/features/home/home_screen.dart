@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:luvverse/core/auth/auth_provider.dart';
+import 'package:luvverse/core/finance/balance_masked_provider.dart';
 import 'package:luvverse/core/notifications/notification_permission_reminder.dart';
 import 'package:luvverse/core/notifications/push_providers.dart';
 import 'package:luvverse/core/prefetch/background_prefetch_service.dart';
@@ -47,6 +48,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final user = ref.watch(authProvider).user;
     final firstName = user?.name?.split(' ').first ?? user?.displayName;
     final balance = ref.watch(totalBalanceProvider);
+    final masked = ref.watch(balanceMaskedProvider);
     final hasCouple = ref.watch(hasCoupleProvider).valueOrNull ?? true;
     final config = ref.watch(appConfigProvider).valueOrNull;
 
@@ -167,7 +169,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       const SizedBox(width: AppSpacing.md),
                       Text('Total Balance', style: AppTypography.small.copyWith(color: context.colors.textMuted)),
                       const Spacer(),
-                      Text(NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 2).format(val), style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w700)),
+                      Text(
+                        masked ? '₹ ••••' : NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 2).format(val),
+                        style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+                      ),
                     ],
                   ),
                 ),

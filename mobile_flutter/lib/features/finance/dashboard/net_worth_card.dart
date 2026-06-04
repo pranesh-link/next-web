@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:luvverse/core/finance/balance_masked_provider.dart';
 import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
@@ -17,22 +18,25 @@ class NetWorthCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final netWorthAsync = ref.watch(netWorthProvider);
+    final masked = ref.watch(balanceMaskedProvider);
 
     return netWorthAsync.when(
       loading: () => const LoadingSkeleton(type: SkeletonType.card),
       error: (_, __) => const SizedBox.shrink(),
-      data: (data) => _NetWorthContent(data: data),
+      data: (data) => _NetWorthContent(data: data, masked: masked),
     );
   }
 }
 
 class _NetWorthContent extends StatelessWidget {
   final NetWorthData data;
-  const _NetWorthContent({required this.data});
+  final bool masked;
+  const _NetWorthContent({required this.data, this.masked = false});
 
   @override
   Widget build(BuildContext context) {
     final isPositive = data.netWorth >= 0;
+    final fmt = masked ? '₹ ••••' : _currencyFormat.format(data.netWorth);
 
     return AppCard(
       child: Column(
@@ -57,22 +61,26 @@ class _NetWorthContent extends StatelessWidget {
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(
-              _currencyFormat.format(data.netWorth),
+              fmt,
               style: AppTypography.summaryValue.copyWith(
-                color: isPositive ? context.colors.success : context.colors.danger,
+                color: masked
+                    ? context.colors.textMuted
+                    : isPositive
+                        ? context.colors.success
+                        : context.colors.danger,
               ),
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
-          _BreakdownLine(label: 'Accounts', amount: data.accountsTotal),
+          _BreakdownLine(label: 'Accounts', amount: data.accountsTotal, masked: masked),
           const SizedBox(height: AppSpacing.sm),
-          _BreakdownLine(label: 'Investments', amount: data.investmentsTotal),
+          _BreakdownLine(label: 'Investments', amount: data.investmentsTotal, masked: masked),
           const SizedBox(height: AppSpacing.sm),
-          _BreakdownLine(label: 'Deposits', amount: data.depositsTotal),
+          _BreakdownLine(label: 'Deposits', amount: data.depositsTotal, masked: masked),
           const Divider(height: 20),
-          _BreakdownLine(label: 'Total Assets', amount: data.totalAssets, bold: true),
+          _BreakdownLine(label: 'Total Assets', amount: data.totalAssets, bold: true, masked: masked),
           const SizedBox(height: AppSpacing.sm),
-          _BreakdownLine(label: 'Liabilities (Loans)', amount: -data.liabilities, isDanger: true),
+          _BreakdownLine(label: 'Liabilities (Loans)', amount: -data.liabilities, isDanger: true, masked: masked),
         ],
       ),
     );
@@ -84,12 +92,14 @@ class _BreakdownLine extends StatelessWidget {
   final double amount;
   final bool bold;
   final bool isDanger;
+  final bool masked;
 
   const _BreakdownLine({
     required this.label,
     required this.amount,
     this.bold = false,
     this.isDanger = false,
+    this.masked = false,
   });
 
   @override
@@ -104,7 +114,7 @@ class _BreakdownLine extends StatelessWidget {
               : AppTypography.small.copyWith(color: context.colors.textMuted),
         ),
         Text(
-          _currencyFormat.format(amount.abs()),
+          masked ? '••••' : _currencyFormat.format(amount.abs()),
           style: AppTypography.small.copyWith(
             fontWeight: bold ? FontWeight.w600 : FontWeight.w500,
             color: isDanger ? context.colors.danger : context.colors.text,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:luvverse/core/finance/balance_masked_provider.dart';
 import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
@@ -20,13 +21,14 @@ class LoansSummaryWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final loansAsync = ref.watch(loansProvider);
+    final masked = ref.watch(balanceMaskedProvider);
 
     return loansAsync.when(
       loading: () => const LoadingSkeleton(type: SkeletonType.card),
       error: (_, __) => const SizedBox.shrink(),
       data: (loans) {
         if (loans.isEmpty) return const SizedBox.shrink();
-        return _LoansContent(loans: loans);
+        return _LoansContent(loans: loans, masked: masked);
       },
     );
   }
@@ -34,7 +36,8 @@ class LoansSummaryWidget extends ConsumerWidget {
 
 class _LoansContent extends StatelessWidget {
   final List<Loan> loans;
-  const _LoansContent({required this.loans});
+  final bool masked;
+  const _LoansContent({required this.loans, this.masked = false});
 
   @override
   Widget build(BuildContext context) {
@@ -75,7 +78,7 @@ class _LoansContent extends StatelessWidget {
                       children: [
                         Text('Total Outstanding', style: AppTypography.small.copyWith(color: context.colors.textMuted)),
                         Text(
-                          _currencyFormat.format(totalOutstanding),
+                          masked ? '₹ ••••' : _currencyFormat.format(totalOutstanding),
                           style: AppTypography.cardTitle.copyWith(color: context.colors.danger),
                         ),
                       ],
@@ -89,7 +92,7 @@ class _LoansContent extends StatelessWidget {
                   Expanded(
                     child: _StatItem(
                       label: 'Monthly EMI',
-                      value: _currencyFormat.format(totalEmi),
+                      value: masked ? '₹ ••••' : _currencyFormat.format(totalEmi),
                     ),
                   ),
                   Expanded(

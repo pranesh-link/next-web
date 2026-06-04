@@ -84,31 +84,44 @@ class _EditTransactionFormState extends ConsumerState<EditTransactionForm> {
   Future<void> _submit() async {
     if (!_validate()) return;
     setState(() => _loading = true);
-    try {
-      await ref.read(transactionsProvider.notifier).updateTransaction(
-            id: widget.transaction.id,
-            accountId: _accountId,
-            amount: double.parse(_amountCtrl.text),
-            type: _type,
-            category: _category,
-            date: _date,
-            description:
-                _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
-          );
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Transaction updated')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Error: $e')));
-      }
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+
+    final original = widget.transaction;
+    final patch = <String, dynamic>{
+      'accountId': _accountId,
+      'amount': double.parse(_amountCtrl.text),
+      'type': _type,
+      'category': _category,
+      'date': _date.toIso8601String(),
+      'description': _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+    };
+
+    // Optimistic update — dismiss modal immediately.
+    ref.read(transactionsProvider.notifier).updateOptimistic(original.id, patch);
+    final messenger = ScaffoldMessenger.of(context);
+    if (mounted) Navigator.pop(context);
+
+    // API fires in background; roll back on failure.
+    ref
+        .read(transactionsProvider.notifier)
+        .updateTransaction(
+          id: original.id,
+          accountId: _accountId,
+          amount: double.parse(_amountCtrl.text),
+          type: _type,
+          category: _category,
+          date: _date,
+          description:
+              _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+        )
+        .catchError((Object e) {
+      ref.read(transactionsProvider.notifier).updateOptimistic(original.id, original.toJson());
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Transaction update failed. Please try again.'),
+          duration: Duration(seconds: 5),
+        ),
+      );
+    });
   }
 
   @override
