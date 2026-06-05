@@ -36,9 +36,19 @@ class ApiClient {
 
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
-        final token = await SecureStorage.getToken();
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
+        // Timeout the keychain read to prevent the sign-in POST from stalling
+        // behind a backlog of concurrent onRequest interceptors on reinstall
+        // (many simultaneous SecureStorage.getToken() calls on iOS can
+        // serialize and delay the queue by >60 s, firing the outer timeout).
+        try {
+          final token = await SecureStorage.getToken()
+              .timeout(const Duration(seconds: 3));
+          if (token != null) {
+            options.headers['Authorization'] = 'Bearer $token';
+          }
+        } catch (_) {
+          // Keychain timed out — proceed without header; request will 401 and
+          // the refresh flow will supply a valid token.
         }
         handler.next(options);
       },
@@ -144,8 +154,15 @@ class ApiClient {
       final refreshToken = await SecureStorage.getRefreshToken();
       if (refreshToken == null) return null;
 
-      // Use a fresh Dio instance to avoid interceptor loops
-      final dio = Dio(BaseOptions(baseUrl: _baseUrl));
+      // Use a fresh Dio instance to avoid interceptor loops.
+      // Timeouts prevent this from blocking indefinitely when the server is
+      // slow — which would keep _isRefreshing=true and queue any concurrent
+      // sign-in request in _pendingRequests forever.
+      final dio = Dio(BaseOptions(
+        baseUrl: _baseUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+      ));
       final response = await dio.post<Map<String, dynamic>>(
         ApiEndpoints.refreshToken,
         data: {'refreshToken': refreshToken},
@@ -180,8 +197,14 @@ class ApiClient {
       final googleAccessToken = auth.accessToken;
       if (googleAccessToken == null) return null;
 
-      // Exchange Google token for app JWT via the auth endpoint
-      final dio = Dio(BaseOptions(baseUrl: _baseUrl));
+      // Exchange Google token for app JWT via the auth endpoint.
+      // Timeouts prevent hanging if the server is slow (same rationale as
+      // _refreshJwtToken).
+      final dio = Dio(BaseOptions(
+        baseUrl: _baseUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+      ));
       final response = await dio.post<Map<String, dynamic>>(
         ApiEndpoints.auth,
         data: {'accessToken': googleAccessToken},

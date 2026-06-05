@@ -70,6 +70,30 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> _checkStoredAuth() async {
     try {
+      // On iOS, Keychain data persists through uninstall/reinstall while
+      // SharedPreferences does not. We use a known-install flag to detect the
+      // first launch after a fresh install or a reinstall where the keychain
+      // was also cleared (e.g. iCloud Keychain disabled, or long time since
+      // uninstall). When a stale token IS present on reinstall, Fix #2
+      // (bounded Dio timeouts) prevents the 401 cascade from hanging the UI.
+      final prefs = await SharedPreferences.getInstance();
+      if (!(prefs.getBool('lv_known_install') ?? false)) {
+        await prefs.setBool('lv_known_install', true);
+        // Check for an existing token BEFORE wiping:
+        // • No token → true first launch or keychain-cleared reinstall →
+        //   clearAll() is a no-op but also removes any partial stale data.
+        // • Token present → existing user receiving this fix for the first
+        //   time (SharedPreferences cleared on update on some devices) OR
+        //   reinstall where iOS kept the keychain. Do NOT wipe — let the
+        //   normal auth flow proceed; stale tokens are handled by Fix #2.
+        final existingToken = await SecureStorage.getToken();
+        if (existingToken == null) {
+          await SecureStorage.clearAll();
+          state = const AuthState();
+          return;
+        }
+      }
+
       final credentials = await _repository.getStoredCredentials();
       state = AuthState(user: credentials.user, token: credentials.token);
       // Warm cache in the background after restoring session
@@ -97,7 +121,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
         if (token == null) return;
         // Use a fresh Dio instance to bypass auth interceptor — the stored
         // token may be expired and we don't want a 401 retry loop.
-        final dio = Dio(BaseOptions(baseUrl: kApiBaseUrl));
+        // Timeouts prevent this fire-and-forget from blocking the platform
+        // channel when the server is slow.
+        final dio = Dio(BaseOptions(
+          baseUrl: kApiBaseUrl,
+          connectTimeout: const Duration(seconds: 10),
+          receiveTimeout: const Duration(seconds: 10),
+        ));
         final response = await dio.post<Map<String, dynamic>>(
           '/api/v1/auth/mobile',
           data: {'accessToken': token},
