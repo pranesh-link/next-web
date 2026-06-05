@@ -97,16 +97,22 @@ class _ConnectivityWrapperState extends ConsumerState<ConnectivityWrapper>
           debugPrint('[Resume] Backup check failed: $e');
         }),
       );
-      // Re-register FCM token to ensure push notifications stay active
-      unawaited(
-        ref.read(pushNotificationServiceProvider).hasPermission().then((granted) {
-          if (!granted) return;
-          // Chain .then((_){}) to convert to Future<void> so catchError is type-safe
-          ref.read(pushNotificationServiceProvider).registerToken().then((_) {}).catchError((Object e) {
-            debugPrint('[Resume] FCM token re-registration failed: $e');
-          });
-        }),
-      );
+      // Re-register FCM token to ensure push notifications stay active.
+      // Guard with isAuthenticated: on iOS a reinstall leaves push permission
+      // and keychain credentials intact, so without this guard registerToken()
+      // fires with a stale/cleared JWT, triggers a 401, and the interceptor's
+      // token-refresh loop can block any concurrent explicit sign-in request.
+      if (ref.read(authProvider).isAuthenticated) {
+        unawaited(
+          ref.read(pushNotificationServiceProvider).hasPermission().then((granted) {
+            if (!granted) return;
+            // Chain .then((_){}) to convert to Future<void> so catchError is type-safe
+            ref.read(pushNotificationServiceProvider).registerToken().then((_) {}).catchError((Object e) {
+              debugPrint('[Resume] FCM token re-registration failed: $e');
+            });
+          }),
+        );
+      }
     }
     
     _isHandlingResume = false;
