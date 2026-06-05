@@ -2,12 +2,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:luvverse/core/cache/cache_providers.dart';
 import 'package:luvverse/core/cache/cached_repositories_ext.dart';
 import 'package:luvverse/core/network/api_client.dart';
+import 'package:luvverse/core/network/api_endpoints.dart';
 import 'package:luvverse/features/finance/repositories/deposits_repository.dart';
 import 'package:luvverse/features/finance/repositories/investments_repository.dart';
 import 'package:luvverse/features/finance/repositories/budget_plans_repository.dart';
 import 'package:luvverse/features/finance/repositories/notifications_repository.dart';
 import 'package:luvverse/features/finance/repositories/insights_repository.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';
+import 'package:luvverse/models/account.dart';
 import 'package:luvverse/models/deposit.dart';
 import 'package:luvverse/models/investment.dart';
 import 'package:luvverse/models/budget_plan.dart';
@@ -476,4 +478,23 @@ final savingsRateProvider = Provider<AsyncValue<double>>((ref) {
     if (inc <= 0) return 0.0;
     return ((inc - exp) / inc) * 100;
   });
+});
+
+/// Overall balance history across all accounts (couple-aware, newest first).
+/// Fetches the first page (20 entries). Used in AccountsScreen history section.
+final overallBalanceHistoryProvider =
+    FutureProvider<List<OverallBalanceLogEntry>>((ref) async {
+  final api = ref.read(apiClientProvider);
+  try {
+    final response = await api.get<Map<String, dynamic>>(
+      ApiEndpoints.accountsBalanceHistory,
+    );
+    if (response['success'] != true) return [];
+    final items = (response['data'] as Map<String, dynamic>?)?['items'] as List? ?? [];
+    return items
+        .map((e) => OverallBalanceLogEntry.fromJson(e as Map<String, dynamic>))
+        .toList();
+  } catch (_) {
+    return [];
+  }
 });

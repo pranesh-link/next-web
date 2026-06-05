@@ -1,15 +1,22 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 const _kLastReminderKey = 'pushPermissionReminderTs';
 
 /// Shows a non-intrusive banner at most once every 3 days when the user
-/// has denied push notification permission. The banner deep-links to the
-/// device's app notification settings.
+/// has denied push notification permission. The banner:
+/// - On Android: requests the permission directly via FirebaseMessaging if
+///   not-yet-determined, otherwise opens the system Notification Settings
+///   screen for the app via the ACTION_APP_NOTIFICATION_SETTINGS intent.
+/// - On iOS: deep-links to the app notification settings.
 class NotificationPermissionReminder extends StatefulWidget {
   const NotificationPermissionReminder({super.key});
 
@@ -70,10 +77,7 @@ class _NotificationPermissionReminderState
           ),
           TextButton(
             onPressed: () {
-              _dismiss();
-              // Navigate user to device notification settings for this app.
-              // Uses flutter_local_notifications, available in the project.
-              _openSettings();
+              _handleEnable();
             },
             style: TextButton.styleFrom(
               padding: const EdgeInsets.symmetric(
@@ -96,18 +100,56 @@ class _NotificationPermissionReminderState
   }
 
   Future<void> _openSettings() async {
-    // Open the device app-settings page so the user can enable notifications.
-    try {
-      final opened = await launchUrl(
-        Uri.parse('app-settings:'),
-        mode: LaunchMode.externalApplication,
-      );
-      if (opened) return;
-      // Fallback: some Android versions don't support 'app-settings:'
-      await launchUrl(
-        Uri.parse('package:com.pranesh.luvverse'),
-        mode: LaunchMode.externalApplication,
-      );
-    } catch (_) {}
+    if (Platform.isAndroid) {
+      // Try the Android notification-settings intent first.
+      // This opens directly to the notification toggle for this app.
+      const channel = MethodChannel('luvverse/notifications');
+      try {
+        await channel.invokeMethod('openNotificationSettings');
+        return;
+      } catch (_) {
+        // Platform channel not registered — fall through to URL fallback.
+      }
+      // Fallback: deep-link via intent URI understood by most Android versions.
+      try {
+        final opened = await launchUrl(
+          Uri.parse('android.settings.APP_NOTIFICATION_SETTINGS'),
+          mode: LaunchMode.externalApplication,
+        );
+        if (opened) return;
+      } catch (_) {}
+      // Last resort: open generic app settings.
+      try {
+        await launchUrl(
+          Uri.parse('app-settings:'),
+          mode: LaunchMode.externalApplication,
+        );
+      } catch (_) {}
+    } else {
+      // iOS: open the app settings page (notification toggle is there).
+      try {
+        await launchUrl(
+          Uri.parse('app-settings:'),
+          mode: LaunchMode.externalApplication,
+        );
+      } catch (_) {}
+    }
+  }
+
+  Future<void> _handleEnable() async {
+    _dismiss();
+    if (Platform.isAndroid) {
+      // On Android, check if the permission can still be requested directly.
+      final settings =
+          await FirebaseMessaging.instance.getNotificationSettings();
+      if (settings.authorizationStatus ==
+          AuthorizationStatus.notDetermined) {
+        // First time — show the OS permission dialog.
+        await FirebaseMessaging.instance.requestPermission();
+        return;
+      }
+    }
+    // Already denied / iOS — take user to settings.
+    await _openSettings();
   }
 }

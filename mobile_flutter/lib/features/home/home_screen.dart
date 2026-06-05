@@ -23,15 +23,36 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen>
+    with WidgetsBindingObserver {
+  /// Tracks whether notifications are denied so the banner rebuilds correctly
+  /// when the user returns from Android settings after granting permission.
+  bool _notifDenied = false;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Trigger background prefetch after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       BackgroundPrefetchService(ref).prefetchMediumPriority();
       _checkPushPermission();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// Re-check permission whenever the app comes back to the foreground so the
+  /// banner disappears immediately after the user grants permission in settings.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkPushPermission();
+    }
   }
 
   /// Handle push permission on home load.
@@ -42,13 +63,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (await pushService.isPermissionNotDetermined()) {
       // First install — ask for permission now that home page is visible.
       final granted = await pushService.requestPermission();
-      if (granted && mounted) await pushService.registerToken();
+      if (granted && mounted) {
+        await pushService.registerToken();
+        setState(() => _notifDenied = false);
+      }
       return;
     }
-    // Already asked — show reminder banner if denied.
     final hasPermission = await pushService.hasPermission();
-    if (!hasPermission && mounted) {
-      setState(() {}); // Triggers rebuild to show NotificationPermissionReminder
+    if (mounted) {
+      setState(() => _notifDenied = !hasPermission);
     }
   }
 
@@ -137,14 +160,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 style: AppTypography.cardTitle.copyWith(letterSpacing: -0.3),
               ),
               const SizedBox(height: AppSpacing.xxl),
-              // Permission reminder banner — only visible when notifications denied
-              FutureBuilder<bool>(
-                future: ref.read(pushNotificationServiceProvider).hasPermission(),
-                builder: (context, snap) {
-                  if (snap.data == true) return const SizedBox.shrink();
-                  return const NotificationPermissionReminder();
-                },
-              ),
+              // Permission reminder banner — only visible when notifications denied.
+              // Driven by _notifDenied state which refreshes on every app resume
+              // so the banner disappears immediately after the user grants
+              // permission in system settings and returns to the app.
+              if (_notifDenied) const NotificationPermissionReminder(),
               // Module grid
               Expanded(
                 child: GridView.count(
