@@ -4,6 +4,7 @@ import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/models/loan.dart';
+import 'package:luvverse/_services/finance/loan_emi_utils.dart';
 
 final _currencyFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
 
@@ -15,7 +16,7 @@ class LoanSummaryCards extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final totalOutstanding = loans.fold(0.0, (sum, l) => sum + l.remainingBalance);
-    final monthlyEmi = loans.fold(0.0, (sum, l) => sum + l.emiAmount);
+    final monthlyEmi = totalCurrentMonthEmi(loans, DateTime.now());
 
     return Row(
       children: [

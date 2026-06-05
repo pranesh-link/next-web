@@ -12,6 +12,9 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:luvverse/features/chat/services/message_sync_service.dart';
+import 'package:luvverse/features/chat/services/crypto_service.dart';
+import 'package:luvverse/features/chat/providers/chat_providers.dart'
+    show cryptoServiceProvider;
 
 /// Backup frequency options.
 enum BackupFrequency { daily, weekly, monthly, off }
@@ -86,9 +89,10 @@ class BackupConfig {
 /// - Each device has a unique backup key derived from its own key material.
 /// - Legacy backups encrypted with the ECDH shared key fall back gracefully.
 class BackupService {
-  BackupService(this._syncService);
+  BackupService(this._syncService, this._crypto);
 
   final MessageSyncService _syncService;
+  final CryptoService _crypto;
   static const _configKey = 'chat_backup_config';
   static const _backupPrefix = 'luvverse-chat-backup-';
   static const _maxBackups = 3;
@@ -169,12 +173,17 @@ class BackupService {
   /// Force a backup immediately regardless of schedule.
   Future<BackupResult> runBackupNow() async {
     try {
-      // 1. Derive backup key from device's own ECDH private key (no partner
-      //    needed). If no key pair exists yet, generate one now.
+      // 1. Ensure a local ECDH key pair exists so _deriveBackupKey() can
+      //    produce the HKDF backup key. This is a fast no-op when the key
+      //    already exists (chat was opened at least once). If Chat was never
+      //    opened the key pair is generated now — no server upload needed.
+      await _ensureKeyPair();
+
+      // 2. Derive backup key from device's own ECDH private key.
       final backupKey = await _deriveBackupKey();
       if (backupKey == null) return BackupResult.encryptionFailed;
 
-      // 2. Authenticate Google Drive early so account email is persisted.
+      // 3. Authenticate Google Drive early so account email is persisted.
       final driveApi = await _getDriveApi();
       if (driveApi == null) return BackupResult.uploadFailed;
 
@@ -282,6 +291,18 @@ class BackupService {
     } catch (e) {
       debugPrint('[Backup] deleteAllBackups failed: $e');
       return false;
+    }
+  }
+
+  /// Ensure a local ECDH key pair exists (generates one if missing).
+  /// Does not upload to server — used only to enable backup key derivation.
+  Future<void> _ensureKeyPair() async {
+    try {
+      if (!await _crypto.hasKeyPair()) {
+        await _crypto.generateKeyPair();
+      }
+    } catch (e) {
+      debugPrint('[Backup] _ensureKeyPair failed: $e');
     }
   }
 
@@ -454,5 +475,6 @@ enum BackupResult {
 final backupServiceProvider = Provider<BackupService>((ref) {
   return BackupService(
     ref.read(messageSyncServiceProvider),
+    ref.read(cryptoServiceProvider),
   );
 });

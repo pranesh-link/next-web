@@ -8,6 +8,7 @@ import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';
 import 'package:luvverse/models/loan.dart';
+import 'package:luvverse/_services/finance/loan_emi_utils.dart';
 import 'package:luvverse/shared/widgets/app_card.dart';
 import 'package:luvverse/shared/widgets/loading_skeleton.dart';
 import 'package:luvverse/shared/widgets/section_header.dart';
@@ -43,12 +44,8 @@ class _LoansContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final totalOutstanding = loans.fold(0.0, (sum, l) => sum + l.remainingBalance);
     final now = DateTime.now();
-    // Sum the EMI for each loan's schedule entry that falls in the current
-    // calendar month. This gives the true monthly outflow as the schedule
-    // varies (post-prepayments, step-up loans, etc.).
-    // Falls back to l.emiAmount when no schedule is stored, and to 0 when
-    // the loan has no entry for this month (completed or not yet started).
-    final totalEmi = loans.fold(0.0, (sum, l) => sum + _currentMonthEmi(l, now));
+    // Use shared util so all EMI displays are consistent.
+    final totalEmi = totalCurrentMonthEmi(loans, now);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -108,23 +105,6 @@ class _LoansContent extends StatelessWidget {
       ],
     );
   }
-}
-
-/// Returns the EMI for [loan] that corresponds to the current calendar month.
-/// Looks up the amortisation schedule by matching year+month on [e.date].
-/// Falls back to [Loan.emiAmount] when no schedule is stored, and to 0.0
-/// when the loan has no entry for this month (completed / not yet started).
-double _currentMonthEmi(Loan loan, DateTime now) {
-  if (loan.schedule == null || loan.schedule!.isEmpty) return loan.emiAmount;
-  LoanScheduleEntry? entry;
-  for (final e in loan.schedule!) {
-    final d = DateTime.tryParse(e.date);
-    if (d != null && d.year == now.year && d.month == now.month) {
-      entry = e;
-      break;
-    }
-  }
-  return entry?.emi ?? 0.0;
 }
 
 class _StatItem extends StatelessWidget {

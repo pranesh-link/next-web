@@ -560,46 +560,34 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
     }
   }
 
-  /// Upload an image file and send as IMAGE message (encrypted).
+  /// Upload an image file and send as IMAGE message.
   Future<void> sendImage(File file) async {
     try {
-      final bytes = await file.readAsBytes();
-      final ext = file.path.split('.').last;
-      final contentType = _mimeFromExt(ext);
-      final result = await _repo.uploadEncryptedFile(
-        bytes,
-        file.path.split('/').last,
-        contentType,
-      );
-      if (result?.path == null) return;
+      // Use plain uploadFile (encryption decommissioned — files stored as-is).
+      final url = await _repo.uploadFile(file);
+      if (url == null) return;
       await _sendTypedMessage(
-        result!.path!,
+        url,
         type: MessageType.image,
-        payload: {'contentType': contentType},
+        payload: {'contentType': _mimeFromExt(file.path.split('.').last)},
       );
     } catch (e) {
       debugPrint('[ChatNotifier] sendImage failed: $e');
     }
   }
 
-  /// Upload a voice file and send as VOICE message (encrypted).
+  /// Upload a voice file and send as VOICE message.
   Future<void> sendVoice(File file, int durationMs) async {
     try {
-      final bytes = await file.readAsBytes();
-      final ext = file.path.split('.').last;
-      final contentType = _mimeFromExt(ext);
-      final result = await _repo.uploadEncryptedFile(
-        bytes,
-        file.path.split('/').last,
-        contentType,
-      );
-      if (result?.path == null) return;
+      // Use plain uploadFile (encryption decommissioned).
+      final url = await _repo.uploadFile(file);
+      if (url == null) return;
       await _sendTypedMessage(
-        result!.path!,
+        url,
         type: MessageType.voice,
         payload: {
           'durationMs': durationMs,
-          'contentType': contentType,
+          'contentType': _mimeFromExt(file.path.split('.').last),
         },
       );
     } catch (e) {

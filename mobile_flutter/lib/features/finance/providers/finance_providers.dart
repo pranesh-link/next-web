@@ -103,6 +103,8 @@ class AccountsNotifier extends AsyncNotifier<List<Account>> {
   Future<void> refresh() async {
     state = const AsyncLoading<List<Account>>().copyWithPrevious(state);
     state = await AsyncValue.guard(() => _fetchAccounts());
+    // Invalidate per-account balance history so it refetches with fresh data.
+    ref.invalidate(accountBalanceHistoryProvider);
   }
 
   Future<void> create({
@@ -111,30 +113,44 @@ class AccountsNotifier extends AsyncNotifier<List<Account>> {
     required double balance,
     String? nickname,
   }) async {
-    await ref.read(accountsRepositoryProvider).createAccount(
-          name: name,
-          type: type,
-          balance: balance,
-          nickname: nickname,
-        );
-    await refresh();
+    final confirmed = await ref.read(cachedAccountsProvider).createAccount({
+      'name': name,
+      'type': type,
+      'balance': balance,
+      if (nickname != null) 'nickname': nickname,
+    });
+    // Add confirmed account to state without a full refresh.
+    state.whenData((accounts) {
+      state = AsyncData([...accounts, confirmed]);
+    });
+    ref.invalidate(accountBalanceHistoryProvider);
   }
 
   Future<void> updateAccountData(String id, Map<String, dynamic> data) async {
-    // Capture original state for rollback
     final original = state.valueOrNull?.firstWhere(
       (a) => a.id == id,
       orElse: () => throw StateError('Account not found'),
     );
     if (original == null) return;
 
-    // Optimistic update: reflect change immediately in UI
+    // 1. Optimistic: show new value immediately.
     updateAccountOptimistic(id, data);
 
     try {
-      await ref.read(accountsRepositoryProvider).updateAccountData(id, data);
+      // 2. API call — returns the server-confirmed Account.
+      final confirmed = await ref
+          .read(cachedAccountsProvider)
+          .updateAccount(id, data);
+      // 3. Replace optimistic entry with confirmed server values.
+      state.whenData((accounts) {
+        state = AsyncData(accounts
+            .map((a) => a.id == confirmed.id ? confirmed : a)
+            .toList());
+      });
+      // 4. Invalidate per-account history so new entry appears immediately.
+      ref.invalidate(accountBalanceHistoryProvider(id));
     } catch (_) {
-      // Rollback on failure
+      // Rollback on failure.
       revertAccountOptimistic(id, original.toJson());
       rethrow;
     }
@@ -159,11 +175,20 @@ class AccountsNotifier extends AsyncNotifier<List<Account>> {
   }
 
   Future<void> togglePin(String id, bool currentPinned) async {
-    await ref.read(accountsRepositoryProvider).updateAccountData(
-      id,
-      {'isPinned': !currentPinned},
-    );
-    await refresh();
+    // Optimistic toggle.
+    updateAccountOptimistic(id, {'isPinned': !currentPinned});
+    try {
+      final confirmed = await ref
+          .read(cachedAccountsProvider)
+          .updateAccount(id, {'isPinned': !currentPinned});
+      state.whenData((accounts) {
+        state = AsyncData(
+            accounts.map((a) => a.id == confirmed.id ? confirmed : a).toList());
+      });
+    } catch (_) {
+      updateAccountOptimistic(id, {'isPinned': currentPinned});
+      rethrow;
+    }
   }
 
   Future<void> delete(String id) async {
@@ -253,15 +278,24 @@ class TransactionsNotifier extends AsyncNotifier<List<Transaction>> {
     required DateTime date,
     String? description,
   }) async {
-    await ref.read(transactionsRepositoryProvider).createTransaction(
-          accountId: accountId,
-          amount: amount,
-          type: type,
-          category: category,
-          date: date,
-          description: description,
-        );
-    await refresh();
+    final confirmed = await ref
+        .read(cachedTransactionsProvider)
+        .createTransaction({
+      'accountId': accountId,
+      'amount': amount,
+      'type': type,
+      'category': category,
+      'date': date.toIso8601String(),
+      if (description != null) 'description': description,
+    });
+    // Prepend confirmed transaction — no full refresh needed.
+    state.whenData((txns) {
+      state = AsyncData([confirmed, ...txns]);
+    });
+    // Note: account balances are updated server-side. The accounts provider
+    // will reflect the new balance on next pull-to-refresh. We intentionally
+    // do NOT invalidate accountsProvider here to avoid a loading flash on the
+    // accounts screen every time a transaction is added.
   }
 
   Future<void> updateTransaction({
@@ -273,16 +307,31 @@ class TransactionsNotifier extends AsyncNotifier<List<Transaction>> {
     DateTime? date,
     String? description,
   }) async {
-    await ref.read(transactionsRepositoryProvider).updateTransaction(
-          id: id,
-          accountId: accountId,
-          amount: amount,
-          type: type,
-          category: category,
-          date: date,
-          description: description,
-        );
-    await refresh();
+    final original =
+        state.valueOrNull?.where((t) => t.id == id).firstOrNull;
+    if (original == null) return;
+    // Optimistic.
+    final patch = <String, dynamic>{
+      if (accountId != null) 'accountId': accountId,
+      if (amount != null) 'amount': amount,
+      if (type != null) 'type': type,
+      if (category != null) 'category': category,
+      if (date != null) 'date': date.toIso8601String(),
+      if (description != null) 'description': description,
+    };
+    updateOptimistic(id, patch);
+    try {
+      final confirmed = await ref
+          .read(cachedTransactionsProvider)
+          .updateTransaction(id, patch);
+      state.whenData((txns) {
+        state = AsyncData(
+            txns.map((t) => t.id == confirmed.id ? confirmed : t).toList());
+      });
+    } catch (_) {
+      updateOptimistic(id, original.toJson());
+      rethrow;
+    }
   }
 
   Future<void> delete(String id) async {
@@ -345,12 +394,12 @@ class BudgetsNotifier extends AsyncNotifier<List<Budget>> {
     required double limit,
     required String month,
   }) async {
-    await ref.read(budgetsRepositoryProvider).createBudget(
-          category: category,
-          limit: limit,
-          month: month,
-        );
-    await refresh();
+    final confirmed = await ref
+        .read(budgetsRepositoryProvider)
+        .createBudget(category: category, limit: limit, month: month);
+    state.whenData((budgets) {
+      state = AsyncData([...budgets, confirmed]);
+    });
   }
 
   Future<void> updateBudget({
@@ -359,13 +408,27 @@ class BudgetsNotifier extends AsyncNotifier<List<Budget>> {
     double? limit,
     String? month,
   }) async {
-    await ref.read(budgetsRepositoryProvider).updateBudget(
-          id: id,
-          category: category,
-          limit: limit,
-          month: month,
-        );
-    await refresh();
+    final original =
+        state.valueOrNull?.where((b) => b.id == id).firstOrNull;
+    if (original == null) return;
+    final patch = <String, dynamic>{
+      if (category != null) 'category': category,
+      if (limit != null) 'limit': limit,
+      if (month != null) 'month': month,
+    };
+    updateOptimistic(id, patch);
+    try {
+      final confirmed = await ref
+          .read(budgetsRepositoryProvider)
+          .updateBudget(id: id, category: category, limit: limit, month: month);
+      state.whenData((budgets) {
+        state = AsyncData(
+            budgets.map((b) => b.id == confirmed.id ? confirmed : b).toList());
+      });
+    } catch (_) {
+      updateOptimistic(id, original.toJson());
+      rethrow;
+    }
   }
 
   Future<void> delete(String id) async {
@@ -421,6 +484,32 @@ class LoansNotifier extends AsyncNotifier<List<Loan>> {
     });
   }
 
+  Future<Loan> createLoan({
+    required String name,
+    required double principal,
+    required double interestRate,
+    required int tenureMonths,
+    required double emiAmount,
+    required DateTime startDate,
+    String? loanProvider,
+    String? loanAccountNumber,
+  }) async {
+    final confirmed = await ref.read(loansRepositoryProvider).createLoan(
+          name: name,
+          principal: principal,
+          interestRate: interestRate,
+          tenureMonths: tenureMonths,
+          emiAmount: emiAmount,
+          startDate: startDate,
+          loanProvider: loanProvider,
+          loanAccountNumber: loanAccountNumber,
+        );
+    state.whenData((loans) {
+      state = AsyncData([...loans, confirmed]);
+    });
+    return confirmed;
+  }
+
   Future<void> updateLoan({
     required String id,
     String? name,
@@ -432,18 +521,40 @@ class LoansNotifier extends AsyncNotifier<List<Loan>> {
     String? loanProvider,
     String? loanAccountNumber,
   }) async {
-    await ref.read(loansRepositoryProvider).updateLoan(
-          id: id,
-          name: name,
-          principal: principal,
-          interestRate: interestRate,
-          tenureMonths: tenureMonths,
-          emiAmount: emiAmount,
-          startDate: startDate,
-          loanProvider: loanProvider,
-          loanAccountNumber: loanAccountNumber,
-        );
-    await refresh();
+    final original =
+        state.valueOrNull?.where((l) => l.id == id).firstOrNull;
+    if (original == null) return;
+    final patch = <String, dynamic>{
+      if (name != null) 'name': name,
+      if (principal != null) 'principal': principal,
+      if (interestRate != null) 'interestRate': interestRate,
+      if (tenureMonths != null) 'tenureMonths': tenureMonths,
+      if (emiAmount != null) 'emiAmount': emiAmount,
+      if (startDate != null) 'startDate': startDate.toIso8601String(),
+      if (loanProvider != null) 'loanProvider': loanProvider,
+      if (loanAccountNumber != null) 'loanAccountNumber': loanAccountNumber,
+    };
+    updateOptimistic(id, patch);
+    try {
+      final confirmed = await ref.read(loansRepositoryProvider).updateLoan(
+            id: id,
+            name: name,
+            principal: principal,
+            interestRate: interestRate,
+            tenureMonths: tenureMonths,
+            emiAmount: emiAmount,
+            startDate: startDate,
+            loanProvider: loanProvider,
+            loanAccountNumber: loanAccountNumber,
+          );
+      state.whenData((loans) {
+        state = AsyncData(
+            loans.map((l) => l.id == confirmed.id ? confirmed : l).toList());
+      });
+    } catch (_) {
+      updateOptimistic(id, original.toJson());
+      rethrow;
+    }
   }
 
   Future<void> delete(String id) async {
@@ -505,13 +616,15 @@ class GoalsNotifier extends AsyncNotifier<List<Goal>> {
     double currentAmount = 0,
     DateTime? deadline,
   }) async {
-    await ref.read(goalsRepositoryProvider).createGoal(
+    final confirmed = await ref.read(goalsRepositoryProvider).createGoal(
           name: name,
           targetAmount: targetAmount,
           currentAmount: currentAmount,
           deadline: deadline,
         );
-    await refresh();
+    state.whenData((goals) {
+      state = AsyncData([...goals, confirmed]);
+    });
   }
 
   Future<void> updateGoal({
@@ -521,22 +634,53 @@ class GoalsNotifier extends AsyncNotifier<List<Goal>> {
     double? currentAmount,
     DateTime? deadline,
   }) async {
-    await ref.read(goalsRepositoryProvider).updateGoal(
-          id: id,
-          name: name,
-          targetAmount: targetAmount,
-          currentAmount: currentAmount,
-          deadline: deadline,
-        );
-    await refresh();
+    final original =
+        state.valueOrNull?.where((g) => g.id == id).firstOrNull;
+    if (original == null) return;
+    final patch = <String, dynamic>{
+      if (name != null) 'name': name,
+      if (targetAmount != null) 'targetAmount': targetAmount,
+      if (currentAmount != null) 'currentAmount': currentAmount,
+      if (deadline != null) 'deadline': deadline.toIso8601String(),
+    };
+    updateOptimistic(id, patch);
+    try {
+      final confirmed = await ref.read(goalsRepositoryProvider).updateGoal(
+            id: id,
+            name: name,
+            targetAmount: targetAmount,
+            currentAmount: currentAmount,
+            deadline: deadline,
+          );
+      state.whenData((goals) {
+        state = AsyncData(
+            goals.map((g) => g.id == confirmed.id ? confirmed : g).toList());
+      });
+    } catch (_) {
+      updateOptimistic(id, original.toJson());
+      rethrow;
+    }
   }
 
   Future<void> contribute({required String id, required double amount}) async {
-    await ref.read(goalsRepositoryProvider).contributeToGoal(
-          id: id,
-          amount: amount,
-        );
-    await refresh();
+    final original =
+        state.valueOrNull?.where((g) => g.id == id).firstOrNull;
+    if (original == null) return;
+    updateOptimistic(id, {
+      'currentAmount': (original.currentAmount) + amount,
+    });
+    try {
+      final confirmed = await ref
+          .read(goalsRepositoryProvider)
+          .contributeToGoal(id: id, amount: amount);
+      state.whenData((goals) {
+        state = AsyncData(
+            goals.map((g) => g.id == confirmed.id ? confirmed : g).toList());
+      });
+    } catch (_) {
+      updateOptimistic(id, original.toJson());
+      rethrow;
+    }
   }
 
   Future<void> delete(String id) async {

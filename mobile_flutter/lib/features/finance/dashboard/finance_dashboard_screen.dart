@@ -36,11 +36,28 @@ const _categoryColors = <String, Color>{
   'Other': Color(0xFF94A3B8),
 };
 
-class FinanceDashboardScreen extends ConsumerWidget {
+class FinanceDashboardScreen extends ConsumerStatefulWidget {
   const FinanceDashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<FinanceDashboardScreen> createState() =>
+      _FinanceDashboardScreenState();
+}
+
+class _FinanceDashboardScreenState
+    extends ConsumerState<FinanceDashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Ensure transactions are fresh on every dashboard open so income/expense
+    // cards always reflect the current month's data.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(transactionsProvider.notifier).refresh();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final balance = ref.watch(totalBalanceProvider);
     final income = ref.watch(monthlyIncomeProvider);
     final expense = ref.watch(monthlyExpenseProvider);
@@ -144,57 +161,63 @@ class FinanceDashboardScreen extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.md),
-        Row(
-          children: [
-            Expanded(
-              child: income.when(
-                loading: () => const LoadingSkeleton(type: SkeletonType.card, count: 1),
-                error: (_, __) => const SizedBox.shrink(),
-                data: (val) => _AnimatedSummaryCard(title: 'Income', value: val, icon: Icons.trending_up, masked: masked),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: expense.when(
-                loading: () => const LoadingSkeleton(type: SkeletonType.card, count: 1),
-                error: (_, __) => const SizedBox.shrink(),
-                data: (val) => _AnimatedSummaryCard(title: 'Expenses', value: val, icon: Icons.trending_down, masked: masked),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.md),
-        Row(
-          children: [
-            Expanded(
-              child: income.when(
-                loading: () => const LoadingSkeleton(type: SkeletonType.card, count: 1),
-                error: (_, __) => const SizedBox.shrink(),
-                data: (incVal) {
-                  final expVal = expense.valueOrNull ?? 0.0;
-                  return _AnimatedSummaryCard(
-                    title: 'Cash Flow',
-                    value: incVal - expVal,
-                    icon: Icons.swap_vert,
-                    masked: masked,
-                  );
-                },
-              ),
-            ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: savingsRate.when(
-                loading: () => const LoadingSkeleton(type: SkeletonType.card, count: 1),
-                error: (_, __) => const SizedBox.shrink(),
-                data: (val) => _AnimatedPercentCard(
-                  title: 'Savings Rate',
-                  value: val,
-                  icon: Icons.savings_outlined,
-                  masked: masked,
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: income.when(
+                  loading: () => const LoadingSkeleton(type: SkeletonType.card, count: 1),
+                  error: (_, __) => const SizedBox.shrink(),
+                  data: (val) => _AnimatedSummaryCard(title: 'Income', value: val, icon: Icons.trending_up, masked: masked),
                 ),
               ),
-            ),
-          ],
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: expense.when(
+                  loading: () => const LoadingSkeleton(type: SkeletonType.card, count: 1),
+                  error: (_, __) => const SizedBox.shrink(),
+                  data: (val) => _AnimatedSummaryCard(title: 'Expenses', value: val, icon: Icons.trending_down, masked: masked),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: income.when(
+                  loading: () => const LoadingSkeleton(type: SkeletonType.card, count: 1),
+                  error: (_, __) => const SizedBox.shrink(),
+                  data: (incVal) {
+                    final expVal = expense.valueOrNull ?? 0.0;
+                    return _AnimatedSummaryCard(
+                      title: 'Cash Flow',
+                      value: incVal - expVal,
+                      icon: Icons.swap_vert,
+                      masked: masked,
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: savingsRate.when(
+                  loading: () => const LoadingSkeleton(type: SkeletonType.card, count: 1),
+                  error: (_, __) => const SizedBox.shrink(),
+                  data: (val) => _AnimatedPercentCard(
+                    title: 'Savings Rate',
+                    value: val,
+                    icon: Icons.savings_outlined,
+                    masked: masked,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
