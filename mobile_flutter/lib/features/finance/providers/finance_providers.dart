@@ -103,9 +103,8 @@ class AccountsNotifier extends AsyncNotifier<List<Account>> {
   Future<void> refresh() async {
     state = const AsyncLoading<List<Account>>().copyWithPrevious(state);
     state = await AsyncValue.guard(() => _fetchAccounts());
-    // Invalidate balance history so it refetches with fresh data.
+    // Invalidate per-account balance history so it refetches with fresh data.
     ref.invalidate(accountBalanceHistoryProvider);
-    ref.invalidateSelf(); // triggers overallBalanceHistoryProvider dependents
   }
 
   Future<void> create({
@@ -293,8 +292,10 @@ class TransactionsNotifier extends AsyncNotifier<List<Transaction>> {
     state.whenData((txns) {
       state = AsyncData([confirmed, ...txns]);
     });
-    // Also refresh accounts so the balance reflects the new transaction.
-    ref.invalidate(accountsProvider);
+    // Note: account balances are updated server-side. The accounts provider
+    // will reflect the new balance on next pull-to-refresh. We intentionally
+    // do NOT invalidate accountsProvider here to avoid a loading flash on the
+    // accounts screen every time a transaction is added.
   }
 
   Future<void> updateTransaction({
