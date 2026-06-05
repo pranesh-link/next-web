@@ -25,12 +25,22 @@ class _BackupSettingsPageState extends ConsumerState<BackupSettingsPage> {
   }
 
   Future<void> _loadConfig() async {
-    final service = ref.read(backupServiceProvider);
-    final config = await service.getConfig();
-    setState(() {
-      _config = config;
-      _loading = false;
-    });
+    try {
+      final service = ref.read(backupServiceProvider);
+      final config = await service.getConfig();
+      if (!mounted) return;
+      setState(() {
+        _config = config;
+        _loading = false;
+      });
+    } catch (_) {
+      // Fallback to defaults so the spinner always clears.
+      if (!mounted) return;
+      setState(() {
+        _config = const BackupConfig();
+        _loading = false;
+      });
+    }
   }
 
   Future<void> _updateConfig(BackupConfig newConfig) async {

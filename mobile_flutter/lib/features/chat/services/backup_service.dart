@@ -3,11 +3,11 @@ import 'dart:convert';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:googleapis_auth/auth_io.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:luvverse/features/chat/services/message_sync_service.dart';
 import 'package:luvverse/features/chat/services/chat_key_bootstrap.dart';
 
@@ -83,20 +83,36 @@ class BackupService {
   final MessageSyncService _syncService;
   final ChatKeyBootstrap _bootstrap;
   static const _configKey = 'chat_backup_config';
-  static const _storage = FlutterSecureStorage();
   static const _backupPrefix = 'luvverse-chat-backup-';
   static const _maxBackups = 3;
 
-  /// Load backup configuration from secure storage.
+  /// Load backup configuration from SharedPreferences.
+  ///
+  /// Backup config (frequency, network, account email, last backup date) is
+  /// not secret — storing it in the iOS Keychain via FlutterSecureStorage
+  /// caused the backup settings screen spinner to hang because keychain ops
+  /// serialize and can block behind concurrent auth/token reads.
   Future<BackupConfig> getConfig() async {
-    final raw = await _storage.read(key: _configKey);
-    if (raw == null) return const BackupConfig();
-    return BackupConfig.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    try {
+      final prefs = await SharedPreferences.getInstance()
+          .timeout(const Duration(seconds: 5));
+      final raw = prefs.getString(_configKey);
+      if (raw == null) return const BackupConfig();
+      return BackupConfig.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    } catch (_) {
+      return const BackupConfig();
+    }
   }
 
-  /// Save backup configuration.
+  /// Save backup configuration to SharedPreferences.
   Future<void> saveConfig(BackupConfig config) async {
-    await _storage.write(key: _configKey, value: jsonEncode(config.toJson()));
+    try {
+      final prefs = await SharedPreferences.getInstance()
+          .timeout(const Duration(seconds: 5));
+      await prefs.setString(_configKey, jsonEncode(config.toJson()));
+    } catch (_) {
+      // Non-critical — preference will be re-saved on next interaction.
+    }
   }
 
   /// Check if a backup is due based on frequency and last backup time.
