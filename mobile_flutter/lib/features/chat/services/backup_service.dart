@@ -290,29 +290,17 @@ class BackupService {
   ///
   /// HKDF info context: utf8("luvverse-backup-v1") ensures the derived key is
   /// domain-separated from any other key material.
+  ///
+  /// Returns null if no key pair has been generated yet (user has never opened
+  /// Chat). Key generation is handled by ChatKeyBootstrap at sign-in; by the
+  /// time Backup Settings is accessible, the key will always be present.
   Future<SecretKey?> _deriveBackupKey() async {
     try {
       final privateJwkStr = await _storage.read(key: _privateKeyStorageKey);
-      if (privateJwkStr == null) {
-        // No key pair yet — generate one so backup can proceed.
-        final ecdh = Ecdh.p256(length: 32);
-        final keyPair = await ecdh.newKeyPair();
-        final keyPairData = await keyPair.extract();
-        final d = keyPairData.d;
-        // Persist a minimal JWK so CryptoService finds it later.
-        await _storage.write(
-          key: _privateKeyStorageKey,
-          value: '{}', // placeholder; CryptoService.generateKeyPair() will overwrite
-        );
-        return await _hkdfBackupKey(Uint8List.fromList(d));
-      }
+      if (privateJwkStr == null) return null;
       final jwk = jsonDecode(privateJwkStr) as Map<String, dynamic>;
       final dBase64 = jwk['d'] as String?;
-      if (dBase64 == null || dBase64.isEmpty) {
-        // JWK has no private key bytes (placeholder) — cannot derive key.
-        return null;
-      }
-      // Base64url decode the private key scalar.
+      if (dBase64 == null || dBase64.isEmpty) return null;
       final dBytes = base64Url.decode(base64Url.normalize(dBase64));
       return await _hkdfBackupKey(Uint8List.fromList(dBytes));
     } catch (e) {
