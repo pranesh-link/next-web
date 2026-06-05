@@ -7,6 +7,7 @@ import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/finance/loans/widgets/prepayment_simulator.dart';
 import 'package:luvverse/features/finance/providers/finance_providers.dart';
 import 'package:luvverse/models/loan.dart';
+import 'package:luvverse/_services/finance/loan_emi_utils.dart';
 import 'package:luvverse/shared/widgets/currency_display.dart';
 import 'package:luvverse/shared/widgets/loading_skeleton.dart';
 import 'package:luvverse/shared/widgets/offline_error_state.dart';
@@ -90,12 +91,8 @@ class LoanDetailScreen extends ConsumerWidget {
   }
 
   Widget _buildStatsRow(BuildContext context, Loan loan) {
-    final now = DateTime.now();
-    final currentEmi = loan.schedule
-        ?.where((e) => !DateTime.parse(e.date).isBefore(now))
-        .fold<LoanScheduleEntry?>(null, (prev, e) =>
-            prev == null || DateTime.parse(e.date).isBefore(DateTime.parse(prev.date)) ? e : prev)
-        ?.emi ?? loan.emiAmount;
+    // Use shared util: current-month schedule entry, falls back to emiAmount.
+    final currentEmi = currentMonthEmi(loan, DateTime.now());
     return Row(
       children: [
         _statCard(context, 'Principal', _fmt.format(loan.principal)),

@@ -106,7 +106,11 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
     final masked = ref.watch(balanceMaskedProvider);
 
     return RefreshIndicator(
-      onRefresh: () => ref.read(accountsProvider.notifier).refresh(),
+      onRefresh: () async {
+        await ref.read(accountsProvider.notifier).refresh();
+        // Also refresh overall balance history so pull-to-refresh shows new entries.
+        ref.invalidate(overallBalanceHistoryProvider);
+      },
       child: ListView(
         children: [
           _buildTotalBalanceBar(context, totalBalance, masked),

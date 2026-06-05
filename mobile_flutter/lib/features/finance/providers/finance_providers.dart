@@ -103,6 +103,9 @@ class AccountsNotifier extends AsyncNotifier<List<Account>> {
   Future<void> refresh() async {
     state = const AsyncLoading<List<Account>>().copyWithPrevious(state);
     state = await AsyncValue.guard(() => _fetchAccounts());
+    // Invalidate balance history so it refetches with fresh data.
+    ref.invalidate(accountBalanceHistoryProvider);
+    ref.invalidateSelf(); // triggers overallBalanceHistoryProvider dependents
   }
 
   Future<void> create({
@@ -133,6 +136,9 @@ class AccountsNotifier extends AsyncNotifier<List<Account>> {
 
     try {
       await ref.read(accountsRepositoryProvider).updateAccountData(id, data);
+      // Invalidate per-account and overall balance history so the history
+      // section shows the newly recorded entry immediately.
+      ref.invalidate(accountBalanceHistoryProvider(id));
     } catch (_) {
       // Rollback on failure
       revertAccountOptimistic(id, original.toJson());
