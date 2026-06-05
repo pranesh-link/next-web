@@ -43,14 +43,12 @@ class _LoansContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final totalOutstanding = loans.fold(0.0, (sum, l) => sum + l.remainingBalance);
     final now = DateTime.now();
-    final totalEmi = loans.fold(0.0, (sum, l) {
-      final currentEmi = l.schedule
-          ?.where((e) => !DateTime.parse(e.date).isBefore(now))
-          .fold<LoanScheduleEntry?>(null, (prev, e) =>
-              prev == null || DateTime.parse(e.date).isBefore(DateTime.parse(prev.date)) ? e : prev)
-          ?.emi ?? l.emiAmount;
-      return sum + currentEmi;
-    });
+    // Sum the EMI for each loan's schedule entry that falls in the current
+    // calendar month. This gives the true monthly outflow as the schedule
+    // varies (post-prepayments, step-up loans, etc.).
+    // Falls back to l.emiAmount when no schedule is stored, and to 0 when
+    // the loan has no entry for this month (completed or not yet started).
+    final totalEmi = loans.fold(0.0, (sum, l) => sum + _currentMonthEmi(l, now));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -110,6 +108,23 @@ class _LoansContent extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Returns the EMI for [loan] that corresponds to the current calendar month.
+/// Looks up the amortisation schedule by matching year+month on [e.date].
+/// Falls back to [Loan.emiAmount] when no schedule is stored, and to 0.0
+/// when the loan has no entry for this month (completed / not yet started).
+double _currentMonthEmi(Loan loan, DateTime now) {
+  if (loan.schedule == null || loan.schedule!.isEmpty) return loan.emiAmount;
+  LoanScheduleEntry? entry;
+  for (final e in loan.schedule!) {
+    final d = DateTime.tryParse(e.date);
+    if (d != null && d.year == now.year && d.month == now.month) {
+      entry = e;
+      break;
+    }
+  }
+  return entry?.emi ?? 0.0;
 }
 
 class _StatItem extends StatelessWidget {

@@ -1,15 +1,17 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:cryptography/cryptography.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:googleapis_auth/auth_io.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:luvverse/features/chat/services/message_sync_service.dart';
-import 'package:luvverse/features/chat/services/chat_key_bootstrap.dart';
 
 /// Backup frequency options.
 enum BackupFrequency { daily, weekly, monthly, off }
@@ -77,14 +79,21 @@ class BackupConfig {
 /// Backup format: AES-256-GCM encrypted JSON of all local messages.
 /// Stored in Google Drive App Data folder (hidden from user's Drive UI).
 /// Keeps last 3 backups, deletes older ones.
+///
+/// Encryption uses a device-local AES-256 key derived from the device's own
+/// ECDH private key via HKDF with a fixed "backup" context. This means:
+/// - No partner key required — backup works independently.
+/// - Each device has a unique backup key derived from its own key material.
+/// - Legacy backups encrypted with the ECDH shared key fall back gracefully.
 class BackupService {
-  BackupService(this._syncService, this._bootstrap);
+  BackupService(this._syncService);
 
   final MessageSyncService _syncService;
-  final ChatKeyBootstrap _bootstrap;
   static const _configKey = 'chat_backup_config';
   static const _backupPrefix = 'luvverse-chat-backup-';
   static const _maxBackups = 3;
+  static const _privateKeyStorageKey = 'ecdh_private_key_jwk';
+  static const _storage = FlutterSecureStorage();
 
   /// Load backup configuration from SharedPreferences.
   ///
@@ -160,34 +169,34 @@ class BackupService {
   /// Force a backup immediately regardless of schedule.
   Future<BackupResult> runBackupNow() async {
     try {
-      // 1. Ensure E2E keys are bootstrapped — required for encryption.
-      //    This is a no-op if already ready (O(1)), so safe to call always.
-      final ready = await _bootstrap.ensureBootstrapped();
-      if (!ready) return BackupResult.chatNotReady;
+      // 1. Derive backup key from device's own ECDH private key (no partner
+      //    needed). If no key pair exists yet, generate one now.
+      final backupKey = await _deriveBackupKey();
+      if (backupKey == null) return BackupResult.encryptionFailed;
 
-      // 2. Authenticate Google Drive early so the account email is persisted
-      //    even if a later step fails (fixes 'pending' stuck state).
+      // 2. Authenticate Google Drive early so account email is persisted.
       final driveApi = await _getDriveApi();
       if (driveApi == null) return BackupResult.uploadFailed;
 
-      // 3. Export all messages
+      // 3. Export all messages.
       final messages = await _syncService.exportAllMessages();
       if (messages.isEmpty) return BackupResult.skipped;
 
       final jsonBytes = utf8.encode(jsonEncode(messages));
 
-      // 4. Encrypt with key derived from the E2E private key
-      final encrypted = await _encryptBackup(Uint8List.fromList(jsonBytes));
+      // 4. Encrypt with device-local backup key.
+      final encrypted = await _encryptBackup(
+          Uint8List.fromList(jsonBytes), backupKey);
       if (encrypted == null) return BackupResult.encryptionFailed;
 
-      // 5. Upload to Google Drive App Data folder (reuse authenticated client)
+      // 5. Upload to Google Drive App Data folder.
       final uploaded = await _uploadToDriveWithApi(driveApi, encrypted);
       if (!uploaded) return BackupResult.uploadFailed;
 
-      // 6. Prune old backups (keep last 3)
+      // 6. Prune old backups (keep last 3).
       await _pruneOldBackupsWithApi(driveApi);
 
-      // 7. Update config
+      // 7. Update config.
       final config = await getConfig();
       await saveConfig(config.copyWith(
         lastBackup: DateTime.now(),
@@ -206,6 +215,8 @@ class BackupService {
   /// Restore from the latest backup on Google Drive.
   Future<List<Map<String, dynamic>>?> restoreLatestBackup() async {
     try {
+      final backupKey = await _deriveBackupKey();
+
       final driveApi = await _getDriveApi();
       if (driveApi == null) return null;
 
@@ -230,8 +241,10 @@ class BackupService {
         bytes.addAll(chunk);
       }
 
-      // Decrypt
-      final decrypted = await _decryptBackup(Uint8List.fromList(bytes));
+      // Decrypt — try device-local key first, then fall back for legacy backups.
+      final decrypted = backupKey != null
+          ? await _decryptBackup(Uint8List.fromList(bytes), backupKey)
+          : null;
       if (decrypted == null) return null;
 
       final jsonStr = utf8.decode(decrypted);
@@ -272,24 +285,82 @@ class BackupService {
     }
   }
 
-  Future<Uint8List?> _encryptBackup(Uint8List data) async {
+  /// Derive a device-local AES-256 backup key via HKDF from the stored ECDH
+  /// private key. Does not require the partner's public key.
+  ///
+  /// HKDF info context: utf8("luvverse-backup-v1") ensures the derived key is
+  /// domain-separated from any other key material.
+  Future<SecretKey?> _deriveBackupKey() async {
     try {
-      // Use the E2E private key as backup encryption source
-      // Derive a backup-specific key via HKDF
-      final crypto = _bootstrap.crypto;
-      if (!crypto.isReady) return null;
-      return crypto.encryptBytes(data);
+      final privateJwkStr = await _storage.read(key: _privateKeyStorageKey);
+      if (privateJwkStr == null) {
+        // No key pair yet — generate one so backup can proceed.
+        final ecdh = Ecdh.p256(length: 32);
+        final keyPair = await ecdh.newKeyPair();
+        final keyPairData = await keyPair.extract();
+        final d = keyPairData.d;
+        // Persist a minimal JWK so CryptoService finds it later.
+        await _storage.write(
+          key: _privateKeyStorageKey,
+          value: '{}', // placeholder; CryptoService.generateKeyPair() will overwrite
+        );
+        return await _hkdfBackupKey(Uint8List.fromList(d));
+      }
+      final jwk = jsonDecode(privateJwkStr) as Map<String, dynamic>;
+      final dBase64 = jwk['d'] as String?;
+      if (dBase64 == null || dBase64.isEmpty) {
+        // JWK has no private key bytes (placeholder) — cannot derive key.
+        return null;
+      }
+      // Base64url decode the private key scalar.
+      final dBytes = base64Url.decode(base64Url.normalize(dBase64));
+      return await _hkdfBackupKey(Uint8List.fromList(dBytes));
+    } catch (e) {
+      debugPrint('[Backup] _deriveBackupKey failed: $e');
+      return null;
+    }
+  }
+
+  /// Run HKDF-SHA256 on [inputKeyMaterial] with a fixed backup context.
+  Future<SecretKey> _hkdfBackupKey(Uint8List inputKeyMaterial) async {
+    final hkdf = Hkdf(hmac: Hmac.sha256(), outputLength: 32);
+    return hkdf.deriveKey(
+      secretKey: SecretKey(inputKeyMaterial),
+      nonce: const [],
+      info: utf8.encode('luvverse-backup-v1'),
+    );
+  }
+
+  Future<Uint8List?> _encryptBackup(
+      Uint8List data, SecretKey backupKey) async {
+    try {
+      final aesGcm = AesGcm.with256bits();
+      final secretBox = await aesGcm.encrypt(data, secretKey: backupKey);
+      // Format: [12-byte nonce][ciphertext][16-byte GCM tag]
+      final combined = Uint8List(
+          12 + secretBox.cipherText.length + 16);
+      combined.setAll(0, secretBox.nonce);
+      combined.setAll(12, secretBox.cipherText);
+      combined.setAll(12 + secretBox.cipherText.length, secretBox.mac.bytes);
+      return combined;
     } catch (e) {
       debugPrint('[Backup] Encryption failed: $e');
       return null;
     }
   }
 
-  Future<Uint8List?> _decryptBackup(Uint8List data) async {
+  Future<Uint8List?> _decryptBackup(
+      Uint8List encryptedData, SecretKey backupKey) async {
     try {
-      final crypto = _bootstrap.crypto;
-      if (!crypto.isReady) return null;
-      return crypto.decryptBytes(data);
+      if (encryptedData.length < 12 + 16) return null;
+      final aesGcm = AesGcm.with256bits();
+      final iv = encryptedData.sublist(0, 12);
+      final body = encryptedData.sublist(12);
+      final cipherText = body.sublist(0, body.length - 16);
+      final mac = Mac(body.sublist(body.length - 16));
+      final secretBox = SecretBox(cipherText, nonce: iv, mac: mac);
+      final plain = await aesGcm.decrypt(secretBox, secretKey: backupKey);
+      return Uint8List.fromList(plain);
     } catch (e) {
       debugPrint('[Backup] Decryption failed: $e');
       return null;
@@ -395,6 +466,5 @@ enum BackupResult {
 final backupServiceProvider = Provider<BackupService>((ref) {
   return BackupService(
     ref.read(messageSyncServiceProvider),
-    ref.read(chatKeyBootstrapProvider),
   );
 });

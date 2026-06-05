@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:luvverse/features/chat/services/backup_service.dart';
-import 'package:luvverse/features/chat/services/chat_key_bootstrap.dart';
 
 /// Backup settings page. Configures frequency, network conditions,
 /// Google account, and provides manual backup/restore/delete actions.
@@ -68,22 +67,6 @@ class _BackupSettingsPageState extends ConsumerState<BackupSettingsPage> {
 
   Future<void> _backupNow() async {
     setState(() => _backingUp = true);
-    // Ensure E2E keys are bootstrapped before attempting backup.
-    // This runs even if the Chat screen hasn't been opened yet.
-    final bootstrap = ref.read(chatKeyBootstrapProvider);
-    final ready = await bootstrap.forceRetry();
-    if (!ready) {
-      setState(() => _backingUp = false);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Encryption is not ready. Ask your partner to open the Chat screen to set up their encryption keys, then retry.',
-          ),
-        ),
-      );
-      return;
-    }
     final service = ref.read(backupServiceProvider);
     final result = await service.runBackupNow();
     setState(() => _backingUp = false);
@@ -94,8 +77,8 @@ class _BackupSettingsPageState extends ConsumerState<BackupSettingsPage> {
       BackupResult.skipped => 'No messages to back up',
       BackupResult.networkUnavailable => 'Network unavailable',
       BackupResult.chatNotReady =>
-          'Encryption keys not ready. Please open Chat first, then retry.',
-      BackupResult.encryptionFailed => 'Encryption failed — is chat enabled?',
+          'No messages to back up yet.',
+      BackupResult.encryptionFailed => 'Backup encryption failed. Please try again.',
       BackupResult.uploadFailed => 'Upload to Google Drive failed',
       BackupResult.error => 'Backup failed. Please try again.',
     };
