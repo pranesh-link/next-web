@@ -16,10 +16,19 @@ import 'package:luvverse/shared/widgets/app_button.dart';
 import 'package:luvverse/shared/widgets/empty_state.dart';
 import 'package:luvverse/shared/widgets/loading_skeleton.dart';
 import 'package:luvverse/shared/widgets/offline_error_state.dart';
+import 'package:luvverse/core/finance/balance_masked_provider.dart';
 import 'package:luvverse/features/finance/forms/add_account_form.dart';
+import 'package:luvverse/features/finance/providers/extended_providers.dart';
 
-class AccountsScreen extends ConsumerWidget {
+class AccountsScreen extends ConsumerStatefulWidget {
   const AccountsScreen({super.key});
+
+  @override
+  ConsumerState<AccountsScreen> createState() => _AccountsScreenState();
+}
+
+class _AccountsScreenState extends ConsumerState<AccountsScreen> {
+  bool _showHistory = false;
 
   static final _currencyFmt = NumberFormat.currency(
     locale: 'en_IN',
@@ -28,7 +37,7 @@ class AccountsScreen extends ConsumerWidget {
   );
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final asyncAccounts = ref.watch(accountsProvider);
 
     return Padding(
@@ -71,6 +80,7 @@ class AccountsScreen extends ConsumerWidget {
                   : _buildAccountsList(context, ref, accounts),
             ),
           ),
+          _buildHistorySection(context, ref),
         ],
       ),
     );
@@ -93,12 +103,13 @@ class AccountsScreen extends ConsumerWidget {
       0,
       (sum, a) => sum + a.balance,
     );
+    final masked = ref.watch(balanceMaskedProvider);
 
     return RefreshIndicator(
       onRefresh: () => ref.read(accountsProvider.notifier).refresh(),
       child: ListView(
         children: [
-          _buildTotalBalanceBar(context, totalBalance),
+          _buildTotalBalanceBar(context, totalBalance, masked),
           const SizedBox(height: AppSpacing.lg),
           ...sorted.map(
             (account) => Padding(
@@ -177,7 +188,147 @@ class AccountsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTotalBalanceBar(BuildContext context, double total) {
+  Widget _buildHistorySection(BuildContext context, WidgetRef ref) {
+    final historyAsync = ref.watch(overallBalanceHistoryProvider);
+    final masked = ref.watch(balanceMaskedProvider);
+    final fmt = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: AppSpacing.xl),
+        InkWell(
+          onTap: () => setState(() => _showHistory = !_showHistory),
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+            child: Row(
+              children: [
+                Text(
+                  'Balance History',
+                  style: AppTypography.sectionTitle,
+                ),
+                const Spacer(),
+                Icon(
+                  _showHistory ? Icons.expand_less : Icons.expand_more,
+                  size: 20,
+                  color: context.colors.textMuted,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_showHistory)
+          historyAsync.when(
+            loading: () => const LoadingSkeleton(
+                type: SkeletonType.list, count: 4),
+            error: (_, __) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+              child: Text('Could not load history',
+                  style: AppTypography.small
+                      .copyWith(color: context.colors.textMuted)),
+            ),
+            data: (items) {
+              if (items.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.md),
+                  child: Text('No balance history yet',
+                      style: AppTypography.small
+                          .copyWith(color: context.colors.textMuted)),
+                );
+              }
+              return Column(
+                children: items.map((e) {
+                  final isPositive = e.change >= 0;
+                  final reasonLabel = switch (e.reason) {
+                    'ACCOUNT_ADDED' => 'Account added',
+                    'ACCOUNT_REMOVED' => 'Account removed',
+                    _ => 'Balance updated',
+                  };
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Container(
+                      width: 8,
+                      height: 8,
+                      margin: const EdgeInsets.only(top: 4),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isPositive
+                            ? context.colors.success
+                            : context.colors.danger,
+                      ),
+                    ),
+                    title: Row(
+                      children: [
+                        Expanded(
+                          child: Text(reasonLabel,
+                              style: AppTypography.small.copyWith(
+                                  fontWeight: FontWeight.w600)),
+                        ),
+                        Text(
+                          masked
+                              ? '₹ ••••'
+                              : '${isPositive ? '+' : ''}${fmt.format(e.change)}',
+                          style: AppTypography.small.copyWith(
+                            color: isPositive
+                                ? context.colors.success
+                                : context.colors.danger,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    subtitle: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            e.accountName,
+                            style: AppTypography.xs.copyWith(
+                                color: context.colors.textMuted),
+                          ),
+                        ),
+                        Text(
+                          masked
+                              ? '₹ ••••'
+                              : fmt.format(e.totalBalance),
+                          style: AppTypography.xs.copyWith(
+                              color: context.colors.textMuted),
+                        ),
+                      ],
+                    ),
+                    trailing: Text(
+                      _fmtDate(e.createdAt),
+                      style: AppTypography.xs
+                          .copyWith(color: context.colors.textMuted),
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+          ),
+        const SizedBox(height: AppSpacing.xxl),
+      ],
+    );
+  }
+
+  String _fmtDate(DateTime d) {
+    final now = DateTime.now();
+    if (d.year == now.year && d.month == now.month && d.day == now.day) {
+      return '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+    }
+    return '${d.day} ${_monthAbbr(d.month)}';
+  }
+
+  String _monthAbbr(int m) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    return months[m - 1];
+  }
+
+  Widget _buildTotalBalanceBar(BuildContext context, double total, bool masked) {
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.xxl,
@@ -202,7 +353,7 @@ class AccountsScreen extends ConsumerWidget {
             ),
           ),
           Text(
-            _currencyFmt.format(total),
+            masked ? '₹ ••••' : _currencyFmt.format(total),
             style: AppTypography.summaryValue.copyWith(
               color: Colors.white,
               fontSize: 22,

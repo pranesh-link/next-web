@@ -2,6 +2,7 @@ abstract final class ApiEndpoints {
   static const auth = '/api/v1/auth/mobile';
   static const refreshToken = '/api/v1/auth/refresh';
   static const accounts = '/api/v1/finance/accounts';
+  static const accountsBalanceHistory = '/api/v1/finance/accounts/balance-history';
   static const transactions = '/api/v1/finance/transactions';
   static const budgets = '/api/v1/finance/budgets';
   static const loans = '/api/v1/finance/loans';

@@ -123,3 +123,37 @@ class BalanceHistoryEntry {
     );
   }
 }
+
+/// A single entry in the overall (all-accounts) balance history log.
+@immutable
+class OverallBalanceLogEntry {
+  final String id;
+  final String? accountId;
+  final String accountName;
+  final String reason; // ACCOUNT_ADDED | BALANCE_UPDATED | ACCOUNT_REMOVED
+  final double change;
+  final double totalBalance;
+  final DateTime createdAt;
+
+  const OverallBalanceLogEntry({
+    required this.id,
+    this.accountId,
+    required this.accountName,
+    required this.reason,
+    required this.change,
+    required this.totalBalance,
+    required this.createdAt,
+  });
+
+  factory OverallBalanceLogEntry.fromJson(Map<String, dynamic> json) {
+    return OverallBalanceLogEntry(
+      id: json['id'] as String,
+      accountId: json['accountId'] as String?,
+      accountName: json['accountName'] as String,
+      reason: json['reason'] as String,
+      change: (json['change'] as num).toDouble(),
+      totalBalance: (json['totalBalance'] as num).toDouble(),
+      createdAt: DateTime.parse(json['createdAt'] as String),
+    );
+  }
+}
