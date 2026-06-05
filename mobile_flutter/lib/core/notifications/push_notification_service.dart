@@ -178,6 +178,21 @@ class PushNotificationService {
     return settings.authorizationStatus == AuthorizationStatus.notDetermined;
   }
 
+  /// Force-refresh the FCM token then register with the backend.
+  ///
+  /// Use this before sending a test notification or after reinstall to ensure
+  /// the token is fresh. Calls [FirebaseMessaging.deleteToken] to invalidate
+  /// the cached token, then immediately requests a new one.
+  Future<TokenRegistrationResult> refreshAndRegisterToken() async {
+    try {
+      await FirebaseMessaging.instance.deleteToken();
+    } catch (e) {
+      // deleteToken() can throw on some devices/simulators — not fatal.
+      if (kDebugMode) debugPrint('[Push] deleteToken failed (non-fatal): $e');
+    }
+    return registerToken();
+  }
+
   /// Get FCM token and register with the backend.
   /// Returns detailed result for UI feedback.
   Future<TokenRegistrationResult> registerToken() async {

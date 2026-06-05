@@ -252,8 +252,9 @@ class _TestNotificationTileState extends ConsumerState<_TestNotificationTile> {
         return;
       }
 
-      // Re-register to ensure the device token is active.
-      final regResult = await pushService.registerToken();
+      // Force a fresh FCM token before the test so we don't send against a
+      // stale/deactivated token (common after reinstall or OS update).
+      final regResult = await pushService.refreshAndRegisterToken();
       if (!regResult.success) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -270,13 +271,17 @@ class _TestNotificationTileState extends ConsumerState<_TestNotificationTile> {
 
       final String text;
       if (result.success) {
-        text = 'Test sent to ${result.sent}/${result.deviceCount} device(s)';
+        text = '✓ Test sent to ${result.sent}/${result.deviceCount} device(s)';
       } else if (result.rateLimited) {
         text = '⏱  ${result.message}';
+      } else if (result.reason == 'ALL_FAILED') {
+        text = 'FCM rejected the token — sign out and back in, then retry.';
       } else if (result.deviceCount == 0) {
         text = 'No active devices found. Sign out and back in, then try again.';
+      } else if (result.reason == 'FCM_NOT_CONFIGURED') {
+        text = 'Push service not configured on server.';
       } else {
-        text = result.message;
+        text = result.message.isNotEmpty ? result.message : 'Unknown error (${result.reason})';
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -336,39 +341,52 @@ class _ListDevicesTileState extends ConsumerState<_ListDevicesTile> {
                 else
                   ...result.devices.map((device) => Padding(
                         padding: const EdgeInsets.only(bottom: 12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  device.platform == 'ios' ? Icons.phone_iphone : Icons.phone_android,
-                                  size: 18,
-                                  color: context.colors.textMuted,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(device.platform.toUpperCase(), style: AppTypography.small.copyWith(fontWeight: FontWeight.w600)),
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: device.active ? Colors.green.withValues(alpha: 0.2) : Colors.grey.withValues(alpha: 0.2),
-                                    borderRadius: BorderRadius.circular(4),
+                        child: Opacity(
+                          opacity: device.active ? 1.0 : 0.45,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    device.platform == 'ios' ? Icons.phone_iphone : Icons.phone_android,
+                                    size: 18,
+                                    color: device.active ? context.colors.textDim : context.colors.textMuted,
                                   ),
-                                  child: Text(
-                                    device.active ? 'ACTIVE' : 'INACTIVE',
-                                    style: AppTypography.xs.copyWith(
-                                      color: device.active ? Colors.green : Colors.grey,
-                                      fontWeight: FontWeight.w700,
+                                  const SizedBox(width: 4),
+                                  Text(device.platform.toUpperCase(),
+                                      style: AppTypography.small.copyWith(fontWeight: FontWeight.w600)),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: device.active
+                                          ? Colors.green.withValues(alpha: 0.2)
+                                          : Colors.orange.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      device.active ? 'ACTIVE' : 'EXPIRED',
+                                      style: AppTypography.xs.copyWith(
+                                        color: device.active ? Colors.green : Colors.orange,
+                                        fontWeight: FontWeight.w700,
+                                      ),
                                     ),
                                   ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              if (!device.active)
+                                Text(
+                                  'Token rejected by FCM. Sign out and back in to re-register.',
+                                  style: AppTypography.xs.copyWith(color: Colors.orange),
                                 ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Text('Created: ${device.createdAt}', style: AppTypography.xs.copyWith(color: context.colors.textMuted)),
-                            Text('Updated: ${device.updatedAt}', style: AppTypography.xs.copyWith(color: context.colors.textMuted)),
-                          ],
+                              Text('Registered: ${device.createdAt}',
+                                  style: AppTypography.xs.copyWith(color: context.colors.textMuted)),
+                              Text('Last seen: ${device.updatedAt}',
+                                  style: AppTypography.xs.copyWith(color: context.colors.textMuted)),
+                            ],
+                          ),
                         ),
                       )),
               ],
