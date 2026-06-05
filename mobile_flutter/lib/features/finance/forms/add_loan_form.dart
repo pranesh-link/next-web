@@ -76,7 +76,7 @@ class _AddLoanFormState extends ConsumerState<AddLoanForm> {
     if (!_validate()) return;
     setState(() => _loading = true);
     try {
-      await ref.read(loansRepositoryProvider).createLoan(
+      await ref.read(loansProvider.notifier).createLoan(
             name: _nameCtrl.text.trim(),
             principal: double.parse(_principalCtrl.text),
             interestRate: double.parse(_rateCtrl.text),
@@ -86,7 +86,6 @@ class _AddLoanFormState extends ConsumerState<AddLoanForm> {
             loanProvider: _providerCtrl.text.trim().isEmpty ? null : _providerCtrl.text.trim(),
             loanAccountNumber: _accountNumCtrl.text.trim().isEmpty ? null : _accountNumCtrl.text.trim(),
           );
-      await ref.read(loansProvider.notifier).refresh();
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(

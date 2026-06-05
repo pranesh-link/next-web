@@ -146,20 +146,18 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
                   onEditNickname: () => EditNicknameModal.show(
                     context: context,
                     account: account,
-                    onSuccess: () =>
-                        ref.read(accountsProvider.notifier).refresh(),
+                    // Notifier handles state update optimistically; no refresh needed.
+                    onSuccess: () {},
                   ),
                   onUpdateBalance: () => UpdateBalanceModal.show(
                     context: context,
                     account: account,
-                    onSuccess: () =>
-                        ref.read(accountsProvider.notifier).refresh(),
+                    onSuccess: () {},
                   ),
                   onAddIncome: () => AddIncomeModal.show(
                     context: context,
                     account: account,
-                    onSuccess: () =>
-                        ref.read(accountsProvider.notifier).refresh(),
+                    onSuccess: () {},
                   ),
                 ),
               ),
