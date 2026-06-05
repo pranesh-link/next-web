@@ -26,14 +26,14 @@ import 'package:luvverse/shared/widgets/summary_card.dart';
 final _currencyFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
 
 const _categoryColors = <String, Color>{
-  'Food': Color(0xFFF59E0B),
-  'Transport': Color(0xFF3B82F6),
-  'Shopping': Color(0xFFEC4899),
-  'Bills': Color(0xFF8B5CF6),
-  'Entertainment': Color(0xFF06B6D4),
-  'Health': Color(0xFF10B981),
-  'Education': Color(0xFF6366F1),
-  'Other': Color(0xFF94A3B8),
+  'Food': Color(0xFFF59E0B),       // amber
+  'Transport': Color(0xFF6366F1),  // indigo
+  'Shopping': Color(0xFFEC4899),   // pink
+  'Bills': Color(0xFF8B5CF6),      // violet
+  'Entertainment': Color(0xFF06B6D4), // cyan
+  'Health': Color(0xFF10B981),     // emerald
+  'Education': Color(0xFF818CF8),  // indigo-light
+  'Other': Color(0xFF9090B0),      // muted
 };
 
 class FinanceDashboardScreen extends ConsumerStatefulWidget {

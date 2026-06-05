@@ -15,7 +15,7 @@ abstract final class AppShadows {
     BoxShadow(
       offset: Offset(0, 8),
       blurRadius: 24,
-      color: Color(0x143B82F6),
+      color: Color(0x1A6366F1), // indigo glow
     ),
   ];
 
@@ -23,7 +23,7 @@ abstract final class AppShadows {
     BoxShadow(
       offset: Offset(0, 4),
       blurRadius: 12,
-      color: Color(0x403B82F6),
+      color: Color(0x406366F1), // indigo glow
     ),
   ];
 

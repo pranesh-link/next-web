@@ -292,7 +292,7 @@ class _BackOnlineBanner extends StatelessWidget {
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
-        color: const Color(0xFF4CAF50),
+        color: const Color(0xFF059669), // emerald — matches AppColors.success
         child: const Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
