@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -65,7 +66,9 @@ class ChatLocalDatabase extends _$ChatLocalDatabase {
   }
 
   /// Get cached messages ordered by createdAt (chronological).
-  Future<List<ChatMessage>> getMessages({int limit = 200}) async {
+  /// Default limit 1000 so the local store acts as a true accumulative history
+  /// rather than a fixed-size ring buffer.
+  Future<List<ChatMessage>> getMessages({int limit = 1000}) async {
     final query = select(chatMessages)
       ..orderBy([(t) => OrderingTerm.asc(t.createdAt)])
       ..limit(limit);
@@ -175,10 +178,15 @@ Future<ChatLocalDatabase> openChatDatabase() async {
     final wasInitialized = prefs.getBool(_kDbInitSentinel) ?? false;
 
     if (wasInitialized) {
-      // The key was written before — retry once after a short delay.
-      // Some OEM Android variants need a moment for the Keystore to be ready.
-      await Future.delayed(const Duration(milliseconds: 200));
-      encKey = await storage.read(key: keyStorageKey);
+      // Retry up to 3 times with increasing delays before giving up.
+      // Some OEM Android variants (and iOS fresh-install keychain init)
+      // need a moment for the Keystore/Keychain to become available.
+      for (int attempt = 1; attempt <= 3; attempt++) {
+        await Future.delayed(Duration(milliseconds: 300 * attempt));
+        encKey = await storage.read(key: keyStorageKey);
+        if (encKey != null) break;
+        debugPrint('[ChatDB] Key read null on attempt $attempt/3');
+      }
     }
 
     if (encKey == null) {
