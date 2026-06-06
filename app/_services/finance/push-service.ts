@@ -202,7 +202,8 @@ export async function sendPushToUser(
     const tokens = await getActiveTokens(userId);
     if (tokens.length === 0) return { sent: 0, failed: 0 };
 
-    const result = await sendToTokens(messaging, userId, tokens, title, body, data); (notification generator)
+    const result = await sendToTokens(messaging, userId, tokens, title, body, data);
+    // DB notification is created by the caller (notification generator)
     // to avoid duplicate entries. Push service only sends notifications.
 
     return result;
