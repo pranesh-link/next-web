@@ -343,44 +343,80 @@ class _ListDevicesTileState extends ConsumerState<_ListDevicesTile> {
       return;
     }
 
-    // If any device is expired, auto-trigger re-registration in the background
-    // so the list reflects the fresh token when the user sees it.
+    // If any device is expired, hasExpired=true triggers auto-heal inside the
+    // StatefulBuilder on first open (with a spinner + setDialogState rebuild).
     final hasExpired = result.devices.any((d) => !d.active);
-    if (hasExpired) {
-      // Fire-and-forget — result will be reflected when user taps Re-register
-      // or pulls to refresh. This initiates the heal without blocking the dialog.
-      pushService.refreshAndRegisterToken().then((_) async {
-        // Re-fetch so if the user dismisses and re-opens they see fresh state.
-        await pushService.listDevices();
-      }).ignore();
-    }
 
     showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) {
-          // Per-device loading map: deviceId -> isLoading
-          final Map<String, bool> reregLoading = {};
+      builder: (ctx) {
+        // Declare mutable state outside the StatefulBuilder.builder so it is
+        // NOT reset on every setDialogState() call.
+        var dialogResult = result;
+        var autoHealRunning = hasExpired;
+        final Map<String, bool> reregLoading = {};
 
-          return AlertDialog(
-            title: Text('Registered Devices (${result.activeCount}/${result.totalCount} active)'),
+        // Immediately trigger auto-heal and rebuild dialog when done.
+        Future<void> autoHeal(StateSetter setDialogState) async {
+          try {
+            await pushService.refreshAndRegisterToken();
+            final fresh = await pushService.listDevices();
+            if (!ctx.mounted) return;
+            setDialogState(() {
+              if (fresh.success) dialogResult = fresh;
+              autoHealRunning = false;
+            });
+          } catch (e) {
+            if (!ctx.mounted) return;
+            setDialogState(() => autoHealRunning = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Auto re-register failed: ${e.toString().replaceFirst('Exception: ', '')}'),
+                duration: const Duration(seconds: 4),
+              ),
+            );
+          }
+        }
+
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            // Trigger auto-heal once on first build when there are expired tokens.
+            if (autoHealRunning && reregLoading.isEmpty) {
+              // Mark as in-progress so we don't fire again on rebuild.
+              reregLoading['__auto__'] = true;
+              autoHeal(setDialogState).then((_) {
+                reregLoading.remove('__auto__');
+              }).ignore();
+            }
+
+            return AlertDialog(
+              title: Text('Registered Devices (${dialogResult.activeCount}/${dialogResult.totalCount} active)'),
             content: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (hasExpired)
+                  if (autoHealRunning)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
-                      child: Text(
-                        'Expired tokens are being refreshed automatically.',
-                        style: AppTypography.xs.copyWith(color: Colors.orange),
+                      child: Row(
+                        children: [
+                          const SizedBox(
+                            width: 14, height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Re-registering expired token…',
+                            style: AppTypography.xs.copyWith(color: Colors.orange),
+                          ),
+                        ],
                       ),
                     ),
-                  if (result.devices.isEmpty)
+                  if (dialogResult.devices.isEmpty)
                     const Text('No devices registered.')
                   else
-                    ...result.devices.map((device) => Padding(
+                    ...dialogResult.devices.map((device) => Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: Opacity(
                             opacity: device.active ? 1.0 : 0.45,
@@ -444,10 +480,14 @@ class _ListDevicesTileState extends ConsumerState<_ListDevicesTile> {
                                                   final r = await pushService.refreshAndRegisterToken();
                                                   if (!ctx.mounted) return;
                                                   if (r.success) {
-                                                    // Re-fetch and rebuild dialog content
                                                     final fresh = await pushService.listDevices();
                                                     if (!ctx.mounted) return;
-                                                    result = fresh.success ? fresh : result;
+                                                    setDialogState(() {
+                                                      if (fresh.success) dialogResult = fresh;
+                                                      reregLoading.remove(device.id);
+                                                    });
+                                                  } else {
+                                                    setDialogState(() => reregLoading.remove(device.id));
                                                   }
                                                   ScaffoldMessenger.of(context).showSnackBar(
                                                     SnackBar(
@@ -457,9 +497,15 @@ class _ListDevicesTileState extends ConsumerState<_ListDevicesTile> {
                                                       duration: const Duration(seconds: 4),
                                                     ),
                                                   );
-                                                } finally {
-                                                  if (ctx.mounted) {
-                                                    setDialogState(() => reregLoading.remove(device.id));
+                                                } catch (e) {
+                                                  if (ctx.mounted) setDialogState(() => reregLoading.remove(device.id));
+                                                  if (context.mounted) {
+                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                      SnackBar(
+                                                        content: Text('Re-registration error: ${e.toString().replaceFirst('Exception: ', '')}'),
+                                                        duration: const Duration(seconds: 4),
+                                                      ),
+                                                    );
                                                   }
                                                 }
                                               },
@@ -481,7 +527,7 @@ class _ListDevicesTileState extends ConsumerState<_ListDevicesTile> {
                 ],
               ),
             ),
-            actions: [
+              actions: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(),
                 child: const Text('Close'),
@@ -489,7 +535,8 @@ class _ListDevicesTileState extends ConsumerState<_ListDevicesTile> {
             ],
           );
         },
-      ),
+        );
+      },
     );
   }
 }
