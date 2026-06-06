@@ -287,6 +287,17 @@ class _TestNotificationTileState extends ConsumerState<_TestNotificationTile> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(text), duration: const Duration(seconds: 5)),
       );
+    } catch (e) {
+      // Catch silent errors (e.g. Firebase not initialised, network timeout)
+      // that previously caused the button to appear to do nothing.
+      debugPrint('[TestPush] error: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Push test failed: ${e.toString().replaceFirst('Exception: ', '')}'),
+          duration: const Duration(seconds: 5),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -321,120 +332,164 @@ class _ListDevicesTileState extends ConsumerState<_ListDevicesTile> {
   Future<void> _listDevices() async {
     setState(() => _busy = true);
     final pushService = ref.read(pushNotificationServiceProvider);
-    final result = await pushService.listDevices();
+    var result = await pushService.listDevices();
     if (!mounted) return;
     setState(() => _busy = false);
 
-    if (result.success) {
-      // Show dialog with device list
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text('Registered Devices (${result.activeCount}/${result.totalCount} active)'),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (result.devices.isEmpty)
-                  const Text('No devices registered.')
-                else
-                  ...result.devices.map((device) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Opacity(
-                          opacity: device.active ? 1.0 : 0.45,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    device.platform == 'ios' ? Icons.phone_iphone : Icons.phone_android,
-                                    size: 18,
-                                    color: device.active ? context.colors.textDim : context.colors.textMuted,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(device.platform.toUpperCase(),
-                                      style: AppTypography.small.copyWith(fontWeight: FontWeight.w600)),
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: device.active
-                                          ? Colors.green.withValues(alpha: 0.2)
-                                          : Colors.orange.withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      device.active ? 'ACTIVE' : 'EXPIRED',
-                                      style: AppTypography.xs.copyWith(
-                                        color: device.active ? Colors.green : Colors.orange,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              if (!device.active)
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        'Token rejected by FCM \u2014 tap Re-register to fix.',
-                                        style: AppTypography.xs.copyWith(color: Colors.orange),
-                                      ),
-                                    ),
-                                    TextButton(
-                                      style: TextButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                                        minimumSize: Size.zero,
-                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                      ),
-                                      onPressed: () async {
-                                        Navigator.of(context).pop();
-                                        final pushService = ref.read(pushNotificationServiceProvider);
-                                        final result = await pushService.refreshAndRegisterToken();
-                                        if (!context.mounted) return;
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text(result.success
-                                                ? '\u2713 Device re-registered successfully'
-                                                : 'Re-registration failed: ${result.error ?? 'Unknown error'}'),
-                                            duration: const Duration(seconds: 4),
-                                          ),
-                                        );
-                                      },
-                                      child: Text('Re-register',
-                                          style: AppTypography.xs.copyWith(
-                                              color: Colors.orange,
-                                              fontWeight: FontWeight.w700)),
-                                    ),
-                                  ],
-                                ),
-                              Text('Registered: ${device.createdAt}',
-                                  style: AppTypography.xs.copyWith(color: context.colors.textMuted)),
-                              Text('Last seen: ${device.updatedAt}',
-                                  style: AppTypography.xs.copyWith(color: context.colors.textMuted)),
-                            ],
-                          ),
-                        ),
-                      )),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
-            ),
-          ],
-        ),
-      );
-    } else {
+    if (!result.success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to list devices: ${result.error}'), duration: const Duration(seconds: 4)),
       );
+      return;
     }
+
+    // If any device is expired, auto-trigger re-registration in the background
+    // so the list reflects the fresh token when the user sees it.
+    final hasExpired = result.devices.any((d) => !d.active);
+    if (hasExpired) {
+      // Fire-and-forget — result will be reflected when user taps Re-register
+      // or pulls to refresh. This initiates the heal without blocking the dialog.
+      pushService.refreshAndRegisterToken().then((_) async {
+        // Re-fetch so if the user dismisses and re-opens they see fresh state.
+        await pushService.listDevices();
+      }).ignore();
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          // Per-device loading map: deviceId -> isLoading
+          final Map<String, bool> reregLoading = {};
+
+          return AlertDialog(
+            title: Text('Registered Devices (${result.activeCount}/${result.totalCount} active)'),
+            content: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (hasExpired)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        'Expired tokens are being refreshed automatically.',
+                        style: AppTypography.xs.copyWith(color: Colors.orange),
+                      ),
+                    ),
+                  if (result.devices.isEmpty)
+                    const Text('No devices registered.')
+                  else
+                    ...result.devices.map((device) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Opacity(
+                            opacity: device.active ? 1.0 : 0.45,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      device.platform == 'ios' ? Icons.phone_iphone : Icons.phone_android,
+                                      size: 18,
+                                      color: device.active ? context.colors.textDim : context.colors.textMuted,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(device.platform.toUpperCase(),
+                                        style: AppTypography.small.copyWith(fontWeight: FontWeight.w600)),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: device.active
+                                            ? Colors.green.withValues(alpha: 0.2)
+                                            : Colors.orange.withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        device.active ? 'ACTIVE' : 'EXPIRED',
+                                        style: AppTypography.xs.copyWith(
+                                          color: device.active ? Colors.green : Colors.orange,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                if (!device.active)
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          'Token rejected by FCM.',
+                                          style: AppTypography.xs.copyWith(color: Colors.orange),
+                                        ),
+                                      ),
+                                      // Inline re-register with spinner — dialog stays open
+                                      reregLoading[device.id] == true
+                                          ? const SizedBox(
+                                              width: 20, height: 20,
+                                              child: CircularProgressIndicator(strokeWidth: 2),
+                                            )
+                                          : TextButton(
+                                              style: TextButton.styleFrom(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                                minimumSize: Size.zero,
+                                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                              ),
+                                              onPressed: () async {
+                                                setDialogState(() => reregLoading[device.id] = true);
+                                                try {
+                                                  final r = await pushService.refreshAndRegisterToken();
+                                                  if (!ctx.mounted) return;
+                                                  if (r.success) {
+                                                    // Re-fetch and rebuild dialog content
+                                                    final fresh = await pushService.listDevices();
+                                                    if (!ctx.mounted) return;
+                                                    result = fresh.success ? fresh : result;
+                                                  }
+                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(r.success
+                                                          ? '\u2713 Device re-registered successfully'
+                                                          : 'Re-registration failed: ${r.error ?? 'Unknown error'}'),
+                                                      duration: const Duration(seconds: 4),
+                                                    ),
+                                                  );
+                                                } finally {
+                                                  if (ctx.mounted) {
+                                                    setDialogState(() => reregLoading.remove(device.id));
+                                                  }
+                                                }
+                                              },
+                                              child: Text('Re-register',
+                                                  style: AppTypography.xs.copyWith(
+                                                      color: Colors.orange,
+                                                      fontWeight: FontWeight.w700)),
+                                            ),
+                                    ],
+                                  ),
+                                Text('Registered: ${device.createdAt}',
+                                    style: AppTypography.xs.copyWith(color: context.colors.textMuted)),
+                                Text('Last seen: ${device.updatedAt}',
+                                    style: AppTypography.xs.copyWith(color: context.colors.textMuted)),
+                              ],
+                            ),
+                          ),
+                        )),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Close'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 }
