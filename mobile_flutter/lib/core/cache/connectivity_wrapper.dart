@@ -19,6 +19,7 @@ import 'package:luvverse/features/finance/providers/extended_providers.dart';
 import 'package:luvverse/core/config/app_config_provider.dart';
 import 'package:luvverse/core/notifications/push_providers.dart';
 import 'package:luvverse/shared/widgets/offline_widgets.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Wraps the app to handle connectivity changes and auto-refresh.
 class ConnectivityWrapper extends ConsumerStatefulWidget {
@@ -98,24 +99,59 @@ class _ConnectivityWrapperState extends ConsumerState<ConnectivityWrapper>
         }),
       );
       // Re-register FCM token to ensure push notifications stay active.
-      // Guard with isAuthenticated: on iOS a reinstall leaves push permission
-      // and keychain credentials intact, so without this guard registerToken()
-      // fires with a stale/cleared JWT, triggers a 401, and the interceptor's
-      // token-refresh loop can block any concurrent explicit sign-in request.
+      // Guard with isAuthenticated so this never fires on the login screen.
+      // Use refreshAndRegisterToken() (delete + reissue) rather than plain
+      // registerToken(): if the server previously deactivated the token after
+      // an FCM rejection, calling registerToken() re-posts the SAME stale
+      // cached token, which FCM will reject again — creating an infinite cycle.
+      // Rate-limited to once per 7 days to avoid unnecessary token churn;
+      // onTokenRefresh fires for OS-driven rotations in between.
       if (ref.read(authProvider).isAuthenticated) {
         unawaited(
           ref.read(pushNotificationServiceProvider).hasPermission().then((granted) {
             if (!granted) return;
-            // Chain .then((_){}) to convert to Future<void> so catchError is type-safe
-            ref.read(pushNotificationServiceProvider).registerToken().then((_) {}).catchError((Object e) {
-              debugPrint('[Resume] FCM token re-registration failed: $e');
-            });
+            _maybeRefreshFcmToken();
           }),
         );
       }
     }
     
     _isHandlingResume = false;
+  }
+
+  /// Force-refresh the FCM token at most once every 7 days.
+  ///
+  /// Plain registerToken() reuses the cached token: if FCM previously rejected
+  /// it, the server deactivated it and any re-post of the same value immediately
+  /// gets deactivated again. refreshAndRegisterToken() calls deleteToken() first
+  /// so Firebase must issue a genuinely new token from FCM.
+  Future<void> _maybeRefreshFcmToken() async {
+    try {
+      const refreshKey = 'fcm_token_last_refresh_ts';
+      const refreshIntervalMs = 7 * 24 * 60 * 60 * 1000; // 7 days
+      final prefs = await SharedPreferences.getInstance();
+      final lastRefresh = prefs.getInt(refreshKey) ?? 0;
+      if (DateTime.now().millisecondsSinceEpoch - lastRefresh < refreshIntervalMs) {
+        // Not yet due — use plain registerToken (fast, no FCM round-trip).
+        ref.read(pushNotificationServiceProvider).registerToken()
+            .then((_) {})
+            .catchError((Object e) {
+          debugPrint('[Resume] FCM token register failed: $e');
+        });
+        return;
+      }
+      // Due for a force-refresh: delete + reissue.
+      ref.read(pushNotificationServiceProvider).refreshAndRegisterToken()
+          .then((_) async {
+        await prefs.setInt(
+            refreshKey, DateTime.now().millisecondsSinceEpoch);
+      })
+          .catchError((Object e) {
+        debugPrint('[Resume] FCM token force-refresh failed: $e');
+      });
+    } catch (e) {
+      debugPrint('[Resume] _maybeRefreshFcmToken error: $e');
+    }
   }
 
   /// Silently refresh the JWT using the stored refresh token.

@@ -376,6 +376,13 @@ class PushNotificationService {
       }
 
       // Partner accepted invite — trigger couple state refresh
+      if (type == 'FCM_TOKEN_REFRESH') {
+        // Server deactivated our token after FCM rejection.
+        // Force a fresh token so the next push succeeds without sign-out/in.
+        debugPrint('[Push] Server requested token refresh');
+        refreshAndRegisterToken().catchError((_) {});
+        return;
+      }
       if (type == 'COUPLE_FORMED') {
         _onCoupleFormed?.call();
         return;
