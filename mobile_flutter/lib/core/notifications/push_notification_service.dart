@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -179,12 +180,21 @@ class PushNotificationService {
     return settings.authorizationStatus == AuthorizationStatus.notDetermined;
   }
 
+  /// Ensure Firebase is initialized before using FCM.
+  /// Safe to call multiple times — a no-op when already initialized.
+  Future<void> _ensureFirebaseInitialized() async {
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp();
+    }
+  }
+
   /// Force-refresh the FCM token then register with the backend.
   ///
   /// Use this before sending a test notification or after reinstall to ensure
   /// the token is fresh. Calls [FirebaseMessaging.deleteToken] to invalidate
   /// the cached token, then immediately requests a new one.
   Future<TokenRegistrationResult> refreshAndRegisterToken() async {
+    await _ensureFirebaseInitialized();
     try {
       await FirebaseMessaging.instance.deleteToken();
     } catch (e) {
@@ -197,6 +207,7 @@ class PushNotificationService {
   /// Get FCM token and register with the backend.
   /// Returns detailed result for UI feedback.
   Future<TokenRegistrationResult> registerToken() async {
+    await _ensureFirebaseInitialized();
     try {
       final token = await FirebaseMessaging.instance.getToken();
       if (token == null) {
