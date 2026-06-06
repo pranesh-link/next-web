@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -380,7 +381,7 @@ class PushNotificationService {
         // Server deactivated our token after FCM rejection.
         // Force a fresh token so the next push succeeds without sign-out/in.
         debugPrint('[Push] Server requested token refresh');
-        refreshAndRegisterToken().catchError((_) {});
+        refreshAndRegisterToken().ignore();
         return;
       }
       if (type == 'COUPLE_FORMED') {
