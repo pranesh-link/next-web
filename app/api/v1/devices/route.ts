@@ -48,6 +48,12 @@ export async function GET() {
       },
     });
 
+    // Prune inactive tokens older than 30 days so the list stays clean.
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    prisma.deviceToken.deleteMany({
+      where: { userId, active: false, updatedAt: { lt: thirtyDaysAgo } },
+    }).catch(() => {});
+
     const sanitizedDevices = devices.map((d) => ({
       id: d.id,
       platform: d.platform,

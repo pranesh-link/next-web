@@ -377,9 +377,40 @@ class _ListDevicesTileState extends ConsumerState<_ListDevicesTile> {
                               ),
                               const SizedBox(height: 4),
                               if (!device.active)
-                                Text(
-                                  'Token rejected by FCM. Sign out and back in to re-register.',
-                                  style: AppTypography.xs.copyWith(color: Colors.orange),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        'Token rejected by FCM \u2014 tap Re-register to fix.',
+                                        style: AppTypography.xs.copyWith(color: Colors.orange),
+                                      ),
+                                    ),
+                                    TextButton(
+                                      style: TextButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                                        minimumSize: Size.zero,
+                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                      onPressed: () async {
+                                        Navigator.of(context).pop();
+                                        final pushService = ref.read(pushNotificationServiceProvider);
+                                        final result = await pushService.refreshAndRegisterToken();
+                                        if (!context.mounted) return;
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text(result.success
+                                                ? '\u2713 Device re-registered successfully'
+                                                : 'Re-registration failed: ${result.error ?? 'Unknown error'}'),
+                                            duration: const Duration(seconds: 4),
+                                          ),
+                                        );
+                                      },
+                                      child: Text('Re-register',
+                                          style: AppTypography.xs.copyWith(
+                                              color: Colors.orange,
+                                              fontWeight: FontWeight.w700)),
+                                    ),
+                                  ],
                                 ),
                               Text('Registered: ${device.createdAt}',
                                   style: AppTypography.xs.copyWith(color: context.colors.textMuted)),

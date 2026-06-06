@@ -13,7 +13,8 @@ class ChatRepository {
   ChatRepository(this._api);
 
   /// Fetch recent messages (newest first from API, reversed for display).
-  Future<List<ChatMessage>> getMessages({int limit = 50}) async {
+  /// Default limit 100 gives more history to merge into local DB on each sync.
+  Future<List<ChatMessage>> getMessages({int limit = 100}) async {
     final response = await _api.get<Map<String, dynamic>>(
       '${ApiEndpoints.chatMessages}?limit=$limit',
     );

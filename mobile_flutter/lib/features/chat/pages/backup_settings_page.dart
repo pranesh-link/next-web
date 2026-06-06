@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:luvverse/features/chat/services/backup_service.dart';
+import 'package:luvverse/features/chat/models/chat_message.dart';
+import 'package:luvverse/features/chat/cache/chat_db_providers.dart';
+import 'package:luvverse/features/chat/providers/chat_providers.dart'
+    show chatNotifierProvider;
 
 /// Backup settings page. Configures frequency, network conditions,
 /// Google account, and provides manual backup/restore/delete actions.
@@ -16,6 +20,7 @@ class _BackupSettingsPageState extends ConsumerState<BackupSettingsPage> {
   bool _loading = true;
   bool _backingUp = false;
   bool _connectingAccount = false;
+  bool _restoring = false;
 
   @override
   void initState() {
@@ -63,6 +68,54 @@ class _BackupSettingsPageState extends ConsumerState<BackupSettingsPage> {
       ),
     );
     if (success) await _loadConfig();
+  }
+
+  Future<void> _restoreFromBackup() async {
+    setState(() => _restoring = true);
+    final service = ref.read(backupServiceProvider);
+    final rawMessages = await service.restoreLatestBackup();
+    if (!mounted) return;
+
+    if (rawMessages == null || rawMessages.isEmpty) {
+      setState(() => _restoring = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No backup found to restore from Google Drive.'),
+          duration: Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
+    try {
+      // Convert raw JSON maps to ChatMessage objects and write to local DB.
+      final messages = rawMessages
+          .map((e) => ChatMessage.fromJson(e))
+          .toList();
+      final db = ref.read(chatLocalDatabaseProvider);
+      await db.upsertMessages(messages);
+
+      // Invalidate chat provider so it reloads from the newly populated DB.
+      ref.invalidate(chatNotifierProvider);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✓ Restored ${messages.length} messages from backup'),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Restore failed: ${e.toString().replaceFirst('Exception: ', '')}'),
+          duration: const Duration(seconds: 5),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _restoring = false);
+    }
   }
 
   Future<void> _backupNow() async {
@@ -229,6 +282,20 @@ class _BackupSettingsPageState extends ConsumerState<BackupSettingsPage> {
             subtitle: const Text('Local messages are not affected'),
             leading: Icon(Icons.delete_forever, color: theme.colorScheme.error),
             onTap: _deleteAllBackups,
+          ),
+          const Divider(),
+          // Restore from backup
+          ListTile(
+            title: const Text('Restore from backup'),
+            subtitle: const Text('Reload chat history from Google Drive'),
+            leading: _restoring
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.restore),
+            onTap: _restoring ? null : _restoreFromBackup,
           ),
         ],
       ),

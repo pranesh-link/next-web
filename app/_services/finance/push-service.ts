@@ -202,8 +202,7 @@ export async function sendPushToUser(
     const tokens = await getActiveTokens(userId);
     if (tokens.length === 0) return { sent: 0, failed: 0 };
 
-    const result = await sendToTokens(messaging, tokens, title, body, data);
-
+    const result = await sendToTokens(messaging, userId, tokens, title, body, data);
     // DB notification is created by the caller (notification generator)
     // to avoid duplicate entries. Push service only sends notifications.
 
@@ -276,7 +275,7 @@ export async function sendPushToUsers(
     const tokens = devices.map((d) => d.token);
     if (tokens.length === 0) return { sent: 0, failed: 0 };
 
-    return await sendToTokens(messaging, tokens, title, body, data);
+    return await sendToTokens(messaging, userIds[0] ?? '', tokens, title, body, data);
   } catch (error) {
     console.error('[push-service] sendPushToUsers error:', error);
     return { sent: 0, failed: 0 };
@@ -368,6 +367,7 @@ export async function sendTestPushDiagnostic(userId: string): Promise<{
   try {
     const { sent, failed } = await sendToTokens(
       messaging,
+      userId,
       tokens,
       '🔔 LuvVerse Test',
       'Push notifications are working! You will receive alerts for budgets, reminders, and more.',
@@ -404,6 +404,7 @@ export async function sendTestPushDiagnostic(userId: string): Promise<{
  */
 async function sendToTokens(
   messaging: any, // firebase-admin Messaging instance
+  userId: string,
   tokens: string[],
   title: string,
   body: string,
@@ -479,11 +480,19 @@ async function sendToTokens(
     }
   }
 
-  // Cleanup stale tokens asynchronously
+  // Cleanup stale tokens asynchronously and send a silent TOKEN_REFRESH push
+  // to the affected user's remaining active devices. This triggers the mobile
+  // app to call refreshAndRegisterToken() without requiring a sign-out/in,
+  // breaking the spin cycle where the same rejected token keeps getting re-posted.
   if (staleTokens.length > 0) {
     deactivateTokens(staleTokens).catch((err) =>
       console.error('[push-service] Failed to deactivate stale tokens:', err)
     );
+    // Notify the user's remaining devices to re-register with a fresh token.
+    sendPushToUser(userId, '', '', {
+      type: 'FCM_TOKEN_REFRESH',
+      silent: 'true',
+    }).catch(() => {});
   }
 
   return { sent: totalSent, failed: totalFailed };

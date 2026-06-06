@@ -66,13 +66,12 @@ export async function POST(request: Request) {
       }
     }
 
-    // Ephemeral: delete delivered messages immediately (local DB is source of truth)
-    prisma.coupleMessage.deleteMany({
-      where: {
-        id: { in: messageIds },
-        coupleId: member.coupleId,
-      },
-    }).catch(() => {});
+    // Ephemeral relay model — deliveredAt is now stamped. The cron job at
+    // /api/v1/couple/chat/purge handles deletion of delivered messages after
+    // a 1-hour grace window, giving any device time to re-fetch history
+    // if its local DB was reset. Do NOT delete immediately here.
+    // (Previous behaviour: deleteMany immediately after ACK — this caused
+    // permanent history loss on reinstall / local DB reset.)
 
     return NextResponse.json({ success: true, acknowledged: result.count });
   } catch (error) {

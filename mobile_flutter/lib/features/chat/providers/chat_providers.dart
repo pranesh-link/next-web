@@ -17,7 +17,9 @@ import 'package:luvverse/features/chat/repositories/chat_repository.dart';
 import 'package:luvverse/features/chat/services/chat_key_bootstrap.dart';
 import 'package:luvverse/features/chat/services/crypto_service.dart';
 import 'package:luvverse/features/chat/services/message_sync_service.dart';
-import 'package:luvverse/features/finance/providers/finance_providers.dart';
+import 'package:luvverse/features/chat/providers/online_status_provider.dart';
+import 'package:luvverse/features/finance/providers/finance_providers.dart'
+    show dbUserIdProvider;
 
 // -- Repository --
 
@@ -59,6 +61,7 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
   late final ChatLocalDatabase _localDb;
   String? _currentUserId;
   bool _isOnline = true;
+  bool _disposed = false;  // guards delayed callbacks after notifier disposal
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
   Timer? _pollTimer;
   HttpClient? _sseClient;
@@ -133,6 +136,7 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
         if (_sseSub == null) _pollForNewMessages();
       });
       ref.onDispose(() {
+        _disposed = true;
         _pollTimer?.cancel();
         _disconnectSSE();
       });
@@ -143,8 +147,8 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
     }
   }
 
-  /// Fetch remote messages and sync to local DB without blocking UI.
-  /// Never produces AsyncError — silently logs on failure.
+  /// Fetch remote messages, upsert to local DB, then read back from local DB
+  /// so accumulated local history is never replaced by the server's page window.
   Future<void> _fetchAndSyncRemote() async {
     try {
       final messages = await _fetchMessages();
@@ -153,13 +157,16 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
       } catch (e) {
         debugPrint('[ChatNotifier] Local DB upsert failed: $e');
       }
-      // Only update state if we are not in error mode
-      state = AsyncData(messages);
-      if (messages.isNotEmpty) {
-        _lastKnownMessageId = messages.last.id;
+      // Read back the full local history — local DB is the accumulative store.
+      // Using the server slice directly would shrink visible history to 100 msgs.
+      final allMessages = await _localDb.getMessages();
+      state = AsyncData(allMessages.isNotEmpty ? allMessages : messages);
+      final canonical = allMessages.isNotEmpty ? allMessages : messages;
+      if (canonical.isNotEmpty) {
+        _lastKnownMessageId = canonical.last.id;
       }
       // ACK delivery for messages from partner
-      _acknowledgeReceivedMessages(messages);
+      _acknowledgeReceivedMessages(canonical);
     } catch (e) {
       debugPrint('[ChatNotifier] Background sync failed: $e');
     }
@@ -197,9 +204,20 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
 
   /// Start or restart the SSE stream connection.
   Future<void> _startSSEStream() async {
+    // Guard: do not start if the notifier has been disposed or client is gone.
+    if (_disposed || _sseClient == null) return;
     try {
       final token = await SecureStorage.getToken();
-      if (token == null) return;
+      if (token == null) {
+        // Token temporarily unavailable (e.g. mid-refresh). Retry in 5 s so
+        // SSE doesn't die permanently — this was the root cause of one-way
+        // typing indicators where one partner's SSE silently stopped.
+        debugPrint('[ChatSSE] Token unavailable — retrying SSE in 5 s');
+        Future.delayed(const Duration(seconds: 5), () {
+          if (_isOnline && !_disposed && _sseClient != null) _startSSEStream();
+        });
+        return;
+      }
 
       final uri = Uri.parse('$kApiBaseUrl/api/couple/chat/stream');
       final request = await _sseClient!.getUrl(uri);
@@ -239,6 +257,12 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
 
       ref.read(partnerTypingProvider.notifier).state = partnerTyping;
 
+      // Update partner's last-activity time for the online-status indicator.
+      // Any SSE event that arrives implies the partner's connection is alive.
+      if (partnerTyping) {
+        ref.read(partnerLastActivityProvider.notifier).state = DateTime.now();
+      }
+
       // If the latest message ID differs, fetch fresh messages
       if (latest != null && latest['id'] != _lastKnownMessageId) {
         _lastKnownMessageId = latest['id'] as String?;
@@ -257,9 +281,10 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
   void _scheduleSSEReconnect() {
     _sseSub?.cancel();
     _sseSub = null;
-    // Reconnect after a short delay
+    // Guard disposal + null client in delayed callback to avoid NPE when the
+    // notifier is disposed before the 2 s timer fires.
     Future.delayed(const Duration(seconds: 2), () {
-      if (_isOnline) _startSSEStream();
+      if (_isOnline && !_disposed && _sseClient != null) _startSSEStream();
     });
   }
 
@@ -286,11 +311,14 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
   }
 
   /// Silently poll for new messages without showing loading state.
+  /// Upserts remote messages into local DB and reads back full history.
   Future<void> _pollForNewMessages() async {
     try {
       final messages = await _fetchMessages();
       await _localDb.upsertMessages(messages);
-      state = AsyncData(messages);
+      // Read full local history — never shrink to the server page window.
+      final allMessages = await _localDb.getMessages();
+      state = AsyncData(allMessages.isNotEmpty ? allMessages : messages);
     } catch (_) {
       // Silent failure — don't disrupt UI on poll failure
     }
@@ -303,9 +331,10 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
     try {
       final messages = await _fetchMessages();
       _lastFetchError = null;
-      // Persist to local DB
       await _localDb.upsertMessages(messages);
-      return messages;
+      // Return full local history after upsert, not just the server slice.
+      final allMessages = await _localDb.getMessages();
+      return allMessages.isNotEmpty ? allMessages : messages;
     } catch (e) {
       _lastFetchError = e;
       debugPrint('[ChatNotifier] Fetch failed, trying local DB: $e');
@@ -474,11 +503,27 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
   }
 
   /// Refresh messages from the server. Never produces AsyncError.
+  /// Upserts remote messages into local DB, then reads full history from DB.
   Future<void> refresh() async {
     final previous = state.value ?? [];
     state = const AsyncLoading<List<ChatMessage>>().copyWithPrevious(state);
-    final messages = await _fetchMessagesWithFallback();
-    state = AsyncData(messages.isNotEmpty ? messages : previous);
+    try {
+      final fetched = await _fetchMessages();
+      _lastFetchError = null;
+      await _localDb.upsertMessages(fetched);
+      final allMessages = await _localDb.getMessages();
+      state = AsyncData(
+          allMessages.isNotEmpty ? allMessages : (fetched.isNotEmpty ? fetched : previous));
+      if (allMessages.isNotEmpty) _lastKnownMessageId = allMessages.last.id;
+    } catch (e) {
+      _lastFetchError = e;
+      try {
+        final cached = await _localDb.getMessages();
+        state = AsyncData(cached.isNotEmpty ? cached : previous);
+      } catch (_) {
+        state = AsyncData(previous);
+      }
+    }
   }
 
   /// Mark all partner messages as read (triggers double-tick on partner's side).
@@ -554,6 +599,12 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
 
     try {
       await _repo.deleteMessage(messageId);
+      // Also remove from local DB so it doesn't reappear on next sync.
+      try {
+        await _localDb.deleteMessageById(messageId);
+      } catch (e) {
+        debugPrint('[ChatNotifier] Local DB delete failed: $e');
+      }
     } catch (e) {
       // Revert on failure
       if (previous != null) state = AsyncData(previous);
