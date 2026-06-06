@@ -275,6 +275,8 @@ export async function sendPushToUsers(
     if (tokens.length === 0) return { sent: 0, failed: 0 };
 
     return await sendToTokens(messaging, userIds[0] ?? '', tokens, title, body, data);
+  } catch (error) {
+    console.error('[push-service] sendPushToUsers error:', error);
     return { sent: 0, failed: 0 };
   }
 }

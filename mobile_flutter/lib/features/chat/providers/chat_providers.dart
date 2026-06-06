@@ -17,7 +17,9 @@ import 'package:luvverse/features/chat/repositories/chat_repository.dart';
 import 'package:luvverse/features/chat/services/chat_key_bootstrap.dart';
 import 'package:luvverse/features/chat/services/crypto_service.dart';
 import 'package:luvverse/features/chat/services/message_sync_service.dart';
-import 'package:luvverse/features/finance/providers/finance_providers.dart';
+import 'package:luvverse/features/chat/providers/online_status_provider.dart';
+import 'package:luvverse/features/finance/providers/finance_providers.dart'
+    show dbUserIdProvider;
 
 // -- Repository --
 
@@ -254,6 +256,12 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
       final partnerTyping = json['partnerTyping'] as bool? ?? false;
 
       ref.read(partnerTypingProvider.notifier).state = partnerTyping;
+
+      // Update partner's last-activity time for the online-status indicator.
+      // Any SSE event that arrives implies the partner's connection is alive.
+      if (partnerTyping) {
+        ref.read(partnerLastActivityProvider.notifier).state = DateTime.now();
+      }
 
       // If the latest message ID differs, fetch fresh messages
       if (latest != null && latest['id'] != _lastKnownMessageId) {
@@ -591,6 +599,12 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
 
     try {
       await _repo.deleteMessage(messageId);
+      // Also remove from local DB so it doesn't reappear on next sync.
+      try {
+        await _localDb.deleteMessageById(messageId);
+      } catch (e) {
+        debugPrint('[ChatNotifier] Local DB delete failed: $e');
+      }
     } catch (e) {
       // Revert on failure
       if (previous != null) state = AsyncData(previous);
