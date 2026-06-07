@@ -15,6 +15,7 @@ import 'package:luvverse/core/cache/platform.dart';
 import 'package:luvverse/core/notifications/push_notification_service.dart';
 import 'package:luvverse/features/chat/cache/chat_database.dart';
 import 'package:luvverse/features/chat/cache/chat_db_providers.dart';
+import 'package:luvverse/firebase_options.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
@@ -23,7 +24,9 @@ void main() async {
 
     // Initialize Firebase — must not crash the app if misconfigured.
     try {
-      await Firebase.initializeApp();
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
       FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
       // Enable Crashlytics — captures native + Flutter crashes remotely.
