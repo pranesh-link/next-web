@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:luvverse/core/theme/app_colors_extension.dart';
@@ -140,6 +141,7 @@ class _NotificationPermissionReminderState
     _dismiss();
     if (Platform.isAndroid) {
       // On Android, check if the permission can still be requested directly.
+      if (Firebase.apps.isEmpty) await Firebase.initializeApp();
       final settings =
           await FirebaseMessaging.instance.getNotificationSettings();
       if (settings.authorizationStatus ==

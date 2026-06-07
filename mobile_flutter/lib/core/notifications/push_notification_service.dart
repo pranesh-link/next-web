@@ -111,6 +111,9 @@ class DeviceListResult {
   });
 }
 
+/// SharedPreferences key for persisting the current FCM token across restarts.
+const _kCurrentTokenKey = 'fcm_current_token';
+
 /// Manages FCM token lifecycle, permission requests, and message handling.
 class PushNotificationService {
   final ApiClient _apiClient;
@@ -120,7 +123,14 @@ class PushNotificationService {
   /// CHAT_MESSAGE notifications.
   static bool isChatActive = false;
 
+  /// In-memory cache of the current FCM token. Persisted to SharedPreferences
+  /// so unregister() can find it even after the app is killed and restarted.
   String? _currentToken;
+
+  /// Guards against concurrent registerToken() calls (e.g. onTokenRefresh +
+  /// _initPush firing simultaneously). Only one registration is sent to the
+  /// backend at a time; subsequent callers return immediately.
+  bool _isRegistering = false;
 
   void Function()? _onChatMessageReceived;
   void Function(List<String>)? _onMessageDelivered;
@@ -198,7 +208,11 @@ class PushNotificationService {
   /// Safe to call multiple times — a no-op when already initialized.
   Future<void> _ensureFirebaseInitialized() async {
     if (Firebase.apps.isEmpty) {
-      await Firebase.initializeApp();
+      try {
+        await Firebase.initializeApp();
+      } catch (e) {
+        if (kDebugMode) debugPrint('[Push] Firebase.initializeApp failed (non-fatal): $e');
+      }
     }
   }
 
@@ -220,10 +234,24 @@ class PushNotificationService {
 
   /// Get FCM token and register with the backend.
   /// Returns detailed result for UI feedback.
+  /// Concurrent calls are coalesced — only one registration runs at a time.
   Future<TokenRegistrationResult> registerToken() async {
     await _ensureFirebaseInitialized();
+
+    // Concurrency guard: if a registration is already in flight, return early.
+    if (_isRegistering) {
+      return const TokenRegistrationResult(
+        success: false,
+        error: 'Registration already in progress',
+      );
+    }
+    _isRegistering = true;
+
     try {
-      final token = await FirebaseMessaging.instance.getToken();
+      // Timeout prevents indefinite hang on iOS if APNs token is delayed.
+      final token = await FirebaseMessaging.instance
+          .getToken()
+          .timeout(const Duration(seconds: 30));
       if (token == null) {
         return const TokenRegistrationResult(
           success: false,
@@ -231,7 +259,11 @@ class PushNotificationService {
         );
       }
 
+      // Persist so unregister() can find it after an app restart.
       _currentToken = token;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kCurrentTokenKey, token);
+
       final platform = Platform.isIOS ? 'ios' : 'android';
 
       // Build aggregated device info string: "Model | OS Version | App Version | Locale | Timezone"
@@ -272,21 +304,34 @@ class PushNotificationService {
     } catch (e) {
       if (kDebugMode) debugPrint('[Push] Token registration failed: $e');
       return TokenRegistrationResult(success: false, error: e.toString());
+    } finally {
+      _isRegistering = false;
     }
   }
 
   /// Unregister the current token on sign-out.
+  /// Falls back to the SharedPreferences-persisted token if _currentToken is
+  /// null (app was killed and restarted before sign-out).
   Future<void> unregister() async {
+    // Load from prefs if in-memory cache was lost on restart.
+    if (_currentToken == null) {
+      final prefs = await SharedPreferences.getInstance();
+      _currentToken = prefs.getString(_kCurrentTokenKey);
+    }
     if (_currentToken == null) return;
     try {
       await _apiClient.delete(
         ApiEndpoints.devices,
         data: {'token': _currentToken},
       );
-      _currentToken = null;
       if (kDebugMode) debugPrint('[Push] Token unregistered');
     } catch (e) {
       if (kDebugMode) debugPrint('[Push] Token unregister failed: $e');
+    } finally {
+      // Always clear both caches regardless of server response.
+      _currentToken = null;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_kCurrentTokenKey);
     }
   }
 
@@ -449,8 +494,15 @@ class PushNotificationService {
 
   void _setupTokenRefreshListener() {
     FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
-      if (kDebugMode) debugPrint('[Push] Token refreshed');
+      if (kDebugMode) debugPrint('[Push] OS token refresh: ${newToken.substring(0, 20)}...');
+      // The OS already issued a fresh token — update the in-memory + prefs
+      // cache, then POST to backend directly. Do NOT call deleteToken() here
+      // (refreshAndRegisterToken) — the old token is already invalidated by
+      // the OS, and a second deleteToken() would just error or cause a
+      // third unnecessary getToken() round-trip.
       _currentToken = newToken;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kCurrentTokenKey, newToken);
       await registerToken();
     });
   }
