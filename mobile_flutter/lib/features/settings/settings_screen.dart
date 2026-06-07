@@ -359,7 +359,18 @@ class _ListDevicesTileState extends ConsumerState<_ListDevicesTile> {
         // Immediately trigger auto-heal and rebuild dialog when done.
         Future<void> autoHeal(StateSetter setDialogState) async {
           try {
-            await pushService.refreshAndRegisterToken();
+            final regResult = await pushService.refreshAndRegisterToken();
+            if (!regResult.success) {
+              if (!ctx.mounted) return;
+              setDialogState(() => autoHealRunning = false);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Re-register failed: ${regResult.error ?? 'Unknown error'}'),
+                  duration: const Duration(seconds: 4),
+                ),
+              );
+              return;
+            }
             final fresh = await pushService.listDevices();
             if (!ctx.mounted) return;
             setDialogState(() {
