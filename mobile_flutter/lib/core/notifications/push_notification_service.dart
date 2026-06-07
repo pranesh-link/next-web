@@ -10,6 +10,7 @@ import 'package:luvverse/core/network/api_client.dart';
 import 'package:luvverse/core/network/api_endpoints.dart';
 import 'package:luvverse/core/network/api_exceptions.dart';
 import 'package:luvverse/core/notifications/notification_channel.dart';
+import 'package:luvverse/firebase_options.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -209,7 +210,9 @@ class PushNotificationService {
   Future<void> _ensureFirebaseInitialized() async {
     if (Firebase.apps.isEmpty) {
       try {
-        await Firebase.initializeApp();
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
       } catch (e) {
         if (kDebugMode) debugPrint('[Push] Firebase.initializeApp failed (non-fatal): $e');
       }

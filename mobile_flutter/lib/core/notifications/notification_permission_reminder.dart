@@ -7,6 +7,7 @@ import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:luvverse/firebase_options.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -141,7 +142,11 @@ class _NotificationPermissionReminderState
     _dismiss();
     if (Platform.isAndroid) {
       // On Android, check if the permission can still be requested directly.
-      if (Firebase.apps.isEmpty) await Firebase.initializeApp();
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
+      }
       final settings =
           await FirebaseMessaging.instance.getNotificationSettings();
       if (settings.authorizationStatus ==
