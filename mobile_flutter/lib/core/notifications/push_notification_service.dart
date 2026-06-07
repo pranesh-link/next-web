@@ -235,21 +235,34 @@ class PushNotificationService {
     return registerToken();
   }
 
+  /// In-flight registration future — concurrent callers await this instead of
+  /// starting a duplicate registration.
+  Future<TokenRegistrationResult>? _registrationFuture;
+
   /// Get FCM token and register with the backend.
   /// Returns detailed result for UI feedback.
-  /// Concurrent calls are coalesced — only one registration runs at a time.
+  /// Concurrent calls coalesce: if a registration is already in flight,
+  /// callers await the same future instead of starting a duplicate.
   Future<TokenRegistrationResult> registerToken() async {
     await _ensureFirebaseInitialized();
 
-    // Concurrency guard: if a registration is already in flight, return early.
-    if (_isRegistering) {
-      return const TokenRegistrationResult(
-        success: false,
-        error: 'Registration already in progress',
-      );
+    // Coalesce: if a registration is already in flight, wait for it.
+    if (_isRegistering && _registrationFuture != null) {
+      if (kDebugMode) debugPrint('[Push] Registration in flight, coalescing...');
+      return _registrationFuture!;
     }
-    _isRegistering = true;
 
+    _isRegistering = true;
+    _registrationFuture = _doRegisterToken();
+    try {
+      return await _registrationFuture!;
+    } finally {
+      _isRegistering = false;
+      _registrationFuture = null;
+    }
+  }
+
+  Future<TokenRegistrationResult> _doRegisterToken() async {
     try {
       // Timeout prevents indefinite hang on iOS if APNs token is delayed.
       final token = await FirebaseMessaging.instance
@@ -307,8 +320,6 @@ class PushNotificationService {
     } catch (e) {
       if (kDebugMode) debugPrint('[Push] Token registration failed: $e');
       return TokenRegistrationResult(success: false, error: e.toString());
-    } finally {
-      _isRegistering = false;
     }
   }
 
