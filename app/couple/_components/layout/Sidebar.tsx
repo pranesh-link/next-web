@@ -9,6 +9,7 @@ import {
   coupleNavItems,
   financeNavItems,
   lifestyleNavItems,
+  adminNavItem,
 } from "./_Sidebar/nav-items";
 import { SignOutModal } from "./_Sidebar/SignOutModal";
 import {
@@ -49,6 +50,8 @@ interface SidebarUser {
 interface SidebarProps {
   /** Currently signed-in user, or null if anonymous. */
   user: SidebarUser | null;
+  /** Whether the current user is the admin — shows the Admin nav item. */
+  isAdmin?: boolean;
 }
 
 /**
@@ -60,7 +63,7 @@ interface SidebarProps {
  *
  * @param props - See {@link SidebarProps}.
  */
-export default function Sidebar({ user }: SidebarProps) {
+export default function Sidebar({ user, isAdmin }: SidebarProps) {
   const pathname = usePathname();
   const { isDark, toggleTheme } = useFinanceTheme();
   const [expanded, setExpanded] = useState(false);
@@ -73,7 +76,11 @@ export default function Sidebar({ user }: SidebarProps) {
     ? lifestyleNavItems
     : isFinanceRoute
       ? financeNavItems
-      : coupleNavItems;
+      : [
+          ...coupleNavItems,
+          // Admin link only visible to the configured admin email.
+          ...(isAdmin ? [adminNavItem] : []),
+        ];
 
   const isActive = useCallback(
     (href: string) => {

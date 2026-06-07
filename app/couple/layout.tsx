@@ -46,12 +46,14 @@ export default async function CoupleRootLayout({
       }
     : null;
 
+  const isAdmin = session?.user?.email === (process.env.ADMIN_EMAIL ?? "prans1991@gmail.com");
+
   return (
     <SessionProvider session={session}>
       <StyledComponentsRegistry>
         <CoupleProviders>
           <OnboardingCheck hasCouple={hasCouple} />
-          <FinanceLayout user={user}>{children}</FinanceLayout>
+          <FinanceLayout user={user} isAdmin={isAdmin}>{children}</FinanceLayout>
         </CoupleProviders>
       </StyledComponentsRegistry>
     </SessionProvider>

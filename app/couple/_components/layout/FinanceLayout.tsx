@@ -13,6 +13,7 @@ interface FinanceLayoutUser {
 interface FinanceLayoutProps {
   children: React.ReactNode;
   user: FinanceLayoutUser | null;
+  isAdmin?: boolean;
 }
 
 const LayoutContainer = styled.div`
@@ -33,10 +34,10 @@ const MainContent = styled.main<{ $hasSidebar: boolean }>`
   }
 `;
 
-export default function FinanceLayout({ children, user }: FinanceLayoutProps) {
+export default function FinanceLayout({ children, user, isAdmin }: FinanceLayoutProps) {
   return (
     <LayoutContainer>
-      {user && <Sidebar user={user} />}
+      {user && <Sidebar user={user} isAdmin={isAdmin} />}
       <MainContent $hasSidebar={!!user}>{children}</MainContent>
     </LayoutContainer>
   );
