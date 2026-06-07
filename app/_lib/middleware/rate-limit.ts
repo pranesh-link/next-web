@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import redis from '../redis';
 import { auth } from '../auth';
+import { logApiError } from '../error-logger';
 
 /**
  * Configuration options for rate limiting.
@@ -152,7 +153,27 @@ export function withRateLimit(
     // avoids Redis calls that can timeout due to DNS issues on cold starts.
     const authHeader = req.headers.get('authorization');
     if (authHeader?.startsWith('Bearer ')) {
-      return handler(req, context);
+      const bearerResponse = await handler(req, context);
+      if (bearerResponse.status >= 400) {
+        let bearerUserId: string | null = null;
+        try {
+          const secret = process.env.NEXTAUTH_SECRET || 'fallback-dev-secret';
+          const decoded = jwt.verify(authHeader.slice(7), secret) as { sub?: string; type?: string };
+          if (decoded.sub && decoded.type !== 'refresh') {
+            bearerUserId = decoded.sub;
+          }
+        } catch { /* ignore — rely on null userId */ }
+        logApiError({
+          userId: bearerUserId,
+          route: new URL(req.url).pathname,
+          method: req.method,
+          statusCode: bearerResponse.status,
+          error: `HTTP ${bearerResponse.status}`,
+          platform: req.headers.get('x-client-platform'),
+          appVersion: req.headers.get('x-app-version'),
+        });
+      }
+      return bearerResponse;
     }
 
     // Apply rate limit multiplier
@@ -163,6 +184,7 @@ export function withRateLimit(
     const byIP = config.byIP !== false;
 
     const checks: Promise<RateLimitResult>[] = [];
+    let sessionUserId: string | null = null;
 
     // Check per-user rate limit if enabled and user is authenticated
     if (byUser) {
@@ -190,6 +212,7 @@ export function withRateLimit(
         }
 
         if (rateUserId) {
+          sessionUserId = rateUserId;
           const userKey = `ratelimit:user:${keyPrefix}:${rateUserId}`;
           checks.push(checkRateLimit(userKey, actualMax, config.window));
         }
@@ -249,6 +272,18 @@ export function withRateLimit(
     response.headers.set('X-RateLimit-Limit', limitingResult.limit.toString());
     response.headers.set('X-RateLimit-Remaining', limitingResult.remaining.toString());
     response.headers.set('X-RateLimit-Reset', limitingResult.reset.toString());
+
+    if (response.status >= 400) {
+      logApiError({
+        userId: sessionUserId,
+        route: new URL(req.url).pathname,
+        method: req.method,
+        statusCode: response.status,
+        error: `HTTP ${response.status}`,
+        platform: req.headers.get('x-client-platform'),
+        appVersion: req.headers.get('x-app-version'),
+      });
+    }
 
     return response;
   };

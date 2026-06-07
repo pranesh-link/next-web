@@ -841,3 +841,25 @@ model AppConfig {
 
   @@map("app_config")
 }
+
+// ─── Error Tracing ──────────────────────────────────────────
+
+/// Server-side API error log. Written fire-and-forget by withRateLimit middleware
+/// for every response with statusCode >= 400. Never throws or blocks the response.
+model AppError {
+  id         String   @id @default(uuid())
+  userId     String?                @map("user_id")
+  route      String                 // "/api/v1/finance/accounts"
+  method     String                 // "GET" | "POST" | etc.
+  statusCode Int                    @map("status_code")
+  message    String   @db.Text
+  stack      String?  @db.Text
+  platform   String?                // from X-Client-Platform header
+  appVersion String?                @map("app_version")  // from X-App-Version header
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@index([route, createdAt])
+  @@index([statusCode, createdAt])
+  @@map("app_errors")
+}

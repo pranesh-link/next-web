@@ -6,6 +6,7 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "prans1991@gmail.com";
 
 async function getStats() {
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
   const [
     totalUsers,
@@ -20,6 +21,9 @@ async function getStats() {
     expiredDevices,
     devicesByPlatform,
     recentUsers,
+    recentErrors,
+    errors24h,
+    errors7d,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { lastSeenAt: { gte: sevenDaysAgo } } }),
@@ -46,12 +50,20 @@ async function getStats() {
         },
       },
     }),
+    prisma.appError.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      select: { id: true, userId: true, route: true, method: true, statusCode: true, message: true, platform: true, appVersion: true, createdAt: true },
+    }),
+    prisma.appError.count({ where: { createdAt: { gte: oneDayAgo } } }),
+    prisma.appError.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
   ]);
 
   return {
     overview: { totalUsers, activeUsers7d, totalCouples, totalMessages, messages7d, totalTransactions, totalLoans, totalAccounts },
     push: { activeDevices, expiredDevices, byPlatform: devicesByPlatform },
     users: recentUsers,
+    errors: { recent: recentErrors, count24h: errors24h, count7d: errors7d },
   };
 }
 
@@ -132,7 +144,7 @@ export default async function AdminDashboard() {
       </div>
 
       {/* User + Device table */}
-      <div>
+      <div style={{ marginBottom: 28 }}>
         <h2 style={{ fontSize: 13, fontWeight: 700, color: "#9090c0", letterSpacing: 2, textTransform: "uppercase", margin: "0 0 12px" }}>Users — Recent Activity</h2>
         <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid #1c1c1c" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
@@ -162,6 +174,46 @@ export default async function AdminDashboard() {
               {stats.users.length === 0 && (
                 <tr>
                   <td colSpan={5} style={{ padding: "24px", textAlign: "center", color: "#6060a0" }}>No users yet</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Error Log */}
+      <div>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 12 }}>
+          <h2 style={{ fontSize: 13, fontWeight: 700, color: "#9090c0", letterSpacing: 2, textTransform: "uppercase", margin: 0 }}>API Error Log</h2>
+          <span style={{ fontSize: 11, color: "#6060a0" }}>{stats.errors.count24h} in 24h · {stats.errors.count7d} in 7d</span>
+        </div>
+        <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid #1c1c1c" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <thead>
+              <tr style={{ background: "#0a0a0a" }}>
+                {["Time", "Status", "Method", "Route", "Platform", "Version", "Message"].map((h) => (
+                  <th key={h} style={{ padding: "10px 14px", textAlign: "left", color: "#6060a0", fontWeight: 600, letterSpacing: 1, borderBottom: "1px solid #1c1c1c", whiteSpace: "nowrap" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {stats.errors.recent.map((e, i) => {
+                const statusColor = e.statusCode >= 500 ? "#f87171" : e.statusCode >= 400 ? "#fbbf24" : "#9090c0";
+                return (
+                  <tr key={e.id} style={{ background: i % 2 === 0 ? "#0f0f0f" : "#000" }}>
+                    <td style={{ padding: "9px 14px", color: "#6060a0", borderBottom: "1px solid #1a1a1a", whiteSpace: "nowrap" }}>{fmt(e.createdAt)}</td>
+                    <td style={{ padding: "9px 14px", fontWeight: 700, color: statusColor, borderBottom: "1px solid #1a1a1a" }}>{e.statusCode}</td>
+                    <td style={{ padding: "9px 14px", color: "#818cf8", borderBottom: "1px solid #1a1a1a", fontFamily: "monospace" }}>{e.method}</td>
+                    <td style={{ padding: "9px 14px", color: "#f0f0ff", borderBottom: "1px solid #1a1a1a", fontFamily: "monospace", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={e.route}>{e.route}</td>
+                    <td style={{ padding: "9px 14px", color: "#9090c0", borderBottom: "1px solid #1a1a1a" }}>{e.platform ?? "—"}</td>
+                    <td style={{ padding: "9px 14px", color: "#9090c0", borderBottom: "1px solid #1a1a1a" }}>{e.appVersion ?? "—"}</td>
+                    <td style={{ padding: "9px 14px", color: "#9090c0", borderBottom: "1px solid #1a1a1a", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={e.message}>{e.message}</td>
+                  </tr>
+                );
+              })}
+              {stats.errors.recent.length === 0 && (
+                <tr>
+                  <td colSpan={7} style={{ padding: "24px", textAlign: "center", color: "#6060a0" }}>No errors logged yet</td>
                 </tr>
               )}
             </tbody>
