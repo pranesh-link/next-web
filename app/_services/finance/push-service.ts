@@ -489,10 +489,11 @@ async function sendToTokens(
       console.error('[push-service] Failed to deactivate stale tokens:', err)
     );
     // Notify the user's remaining devices to re-register with a fresh token.
-    sendPushToUser(userId, '', '', {
-      type: 'FCM_TOKEN_REFRESH',
-      silent: 'true',
-    }).catch(() => {});
+    // Must use sendSilentPushToUser (data-only, no `notification` key) so that
+    // Android does not attempt to render a notification with an empty title —
+    // which causes a NullPointerException in NotificationCompat when the app
+    // is in background or terminated.
+    sendSilentPushToUser(userId, { type: 'FCM_TOKEN_REFRESH' }).catch(() => {});
   }
 
   return { sent: totalSent, failed: totalFailed };

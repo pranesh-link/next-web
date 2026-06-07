@@ -84,9 +84,12 @@ class ApiClient {
           if (newToken != null) {
             _refreshFailCount = 0;
             await SecureStorage.saveToken(newToken);
-            // Re-register FCM token with the new auth token (only if permission granted)
+            // Re-register FCM token with the new auth token. Use
+            // refreshAndRegisterToken() (delete + reissue) rather than
+            // registerToken() so we never re-activate a stale cached token
+            // that FCM may have already rejected.
             _ref.read(pushNotificationServiceProvider).hasPermission().then((granted) {
-              if (granted) _ref.read(pushNotificationServiceProvider).registerToken();
+              if (granted) _ref.read(pushNotificationServiceProvider).refreshAndRegisterToken();
             });
             // Retry the original request
             final opts = error.requestOptions;

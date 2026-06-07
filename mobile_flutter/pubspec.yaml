@@ -33,6 +33,7 @@ dependencies:
   # Device Info
   shared_preferences: ^2.3.5
   package_info_plus: ^8.1.2
+  device_info_plus: ^10.1.2
   battery_plus: ^7.0.0
 
   # Firebase

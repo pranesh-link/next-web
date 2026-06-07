@@ -107,6 +107,20 @@ export const coupleNavItems: NavItem[] = [
   },
 ];
 
+/** Admin nav item — only injected for the configured ADMIN_EMAIL. */
+export const adminNavItem: NavItem = {
+  label: "Admin",
+  href: "/couple/admin",
+  iconPath: (
+    <>
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <path d="M14 17.5h7M17.5 14v7" />
+    </>
+  ),
+};
+
 /** Finance-context navigation items (`/couple/finance/*` routes). */
 export const financeNavItems: NavItem[] = [
   {

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -9,15 +10,24 @@ import 'package:luvverse/core/network/api_client.dart';
 import 'package:luvverse/core/network/api_endpoints.dart';
 import 'package:luvverse/core/network/api_exceptions.dart';
 import 'package:luvverse/core/notifications/notification_channel.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Top-level background message handler (must be top-level function).
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   if (kDebugMode) debugPrint('[Push] Background message: ${message.messageId}');
-  if (message.data['type'] == 'COUPLE_FORMED') {
-    final prefs = await SharedPreferences.getInstance();
+  final type = message.data['type'] as String?;
+  final prefs = await SharedPreferences.getInstance();
+  if (type == 'COUPLE_FORMED') {
     await prefs.setBool('pendingE2EBootstrap', true);
+  } else if (type == 'FCM_TOKEN_REFRESH') {
+    // Server detected our token was rejected by FCM. We cannot call
+    // refreshAndRegisterToken() here (no Riverpod in isolate), so flag it.
+    // connectivity_wrapper checks this flag on next resume and forces a
+    // refreshAndRegisterToken() regardless of the 7-day throttle.
+    await prefs.setBool('pendingFcmTokenRefresh', true);
+    if (kDebugMode) debugPrint('[Push] Background FCM_TOKEN_REFRESH flagged for next resume');
   }
 }
 
@@ -136,6 +146,7 @@ class PushNotificationService {
 
   /// Initialize local notifications and FCM handlers.
   Future<void> init() async {
+    await _ensureFirebaseInitialized();
     await _initLocalNotifications();
     _setupForegroundHandler();
     _setupTokenRefreshListener();
@@ -146,6 +157,7 @@ class PushNotificationService {
   /// Handles iOS APNs prompt and Android 13+ POST_NOTIFICATIONS.
   /// Returns true if the user granted permission.
   Future<bool> requestPermission() async {
+    await _ensureFirebaseInitialized();
     final settings = await FirebaseMessaging.instance.requestPermission(
       alert: true,
       badge: true,
@@ -168,6 +180,7 @@ class PushNotificationService {
 
   /// Check current permission status without prompting the user.
   Future<bool> hasPermission() async {
+    await _ensureFirebaseInitialized();
     final settings = await FirebaseMessaging.instance.getNotificationSettings();
     return settings.authorizationStatus == AuthorizationStatus.authorized ||
         settings.authorizationStatus == AuthorizationStatus.provisional;
@@ -176,6 +189,7 @@ class PushNotificationService {
   /// Returns true if the user has never been asked for push permission
   /// (i.e. status is notDetermined — first install or after a settings reset).
   Future<bool> isPermissionNotDetermined() async {
+    await _ensureFirebaseInitialized();
     final settings = await FirebaseMessaging.instance.getNotificationSettings();
     return settings.authorizationStatus == AuthorizationStatus.notDetermined;
   }
@@ -220,9 +234,31 @@ class PushNotificationService {
       _currentToken = token;
       final platform = Platform.isIOS ? 'ios' : 'android';
 
+      // Build aggregated device info string: "Model | OS Version | App Version | Locale | Timezone"
+      String deviceInfo;
+      try {
+        final deviceInfoPlugin = DeviceInfoPlugin();
+        final packageInfo = await PackageInfo.fromPlatform();
+        final locale = Platform.localeName;
+        final timezone = DateTime.now().timeZoneName;
+        String model, osVersion;
+        if (Platform.isAndroid) {
+          final android = await deviceInfoPlugin.androidInfo;
+          model = android.model;
+          osVersion = 'Android ${android.version.release}';
+        } else {
+          final ios = await deviceInfoPlugin.iosInfo;
+          model = ios.model;
+          osVersion = 'iOS ${ios.systemVersion}';
+        }
+        deviceInfo = '$model | $osVersion | ${packageInfo.version} | $locale | $timezone';
+      } catch (_) {
+        deviceInfo = '$platform | unknown';
+      }
+
       final response = await _apiClient.post<Map<String, dynamic>>(
         ApiEndpoints.devices,
-        data: {'token': token, 'platform': platform},
+        data: {'token': token, 'platform': platform, 'deviceInfo': deviceInfo},
       );
 
       final data = response['data'] as Map<String, dynamic>?;
@@ -230,6 +266,7 @@ class PushNotificationService {
 
       if (kDebugMode) {
         debugPrint('[Push] Token registered: ${token.substring(0, 20)}...');
+        debugPrint('[Push] Device info: $deviceInfo');
       }
       return TokenRegistrationResult(success: true, token: token, message: message);
     } catch (e) {

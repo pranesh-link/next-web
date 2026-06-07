@@ -128,11 +128,20 @@ class _ConnectivityWrapperState extends ConsumerState<ConnectivityWrapper>
   Future<void> _maybeRefreshFcmToken() async {
     try {
       const refreshKey = 'fcm_token_last_refresh_ts';
+      const pendingRefreshKey = 'pendingFcmTokenRefresh';
       const refreshIntervalMs = 7 * 24 * 60 * 60 * 1000; // 7 days
       final prefs = await SharedPreferences.getInstance();
+
+      // If the background handler flagged a server-requested token refresh
+      // (FCM rejected our token while the app was backgrounded), force a
+      // fresh token immediately regardless of the 7-day throttle.
+      final pendingRefresh = prefs.getBool(pendingRefreshKey) ?? false;
       final lastRefresh = prefs.getInt(refreshKey) ?? 0;
-      if (DateTime.now().millisecondsSinceEpoch - lastRefresh < refreshIntervalMs) {
-        // Not yet due — use plain registerToken (fast, no FCM round-trip).
+      final isDue = DateTime.now().millisecondsSinceEpoch - lastRefresh >= refreshIntervalMs;
+
+      if (!pendingRefresh && !isDue) {
+        // Not yet due and no server-requested refresh — use plain registerToken
+        // (fast, no FCM round-trip).
         ref.read(pushNotificationServiceProvider).registerToken()
             .then((_) {})
             .catchError((Object e) {
@@ -140,11 +149,15 @@ class _ConnectivityWrapperState extends ConsumerState<ConnectivityWrapper>
         });
         return;
       }
+
       // Due for a force-refresh: delete + reissue.
+      if (pendingRefresh) {
+        debugPrint('[Resume] Forcing FCM token refresh (server-requested via background push)');
+      }
       ref.read(pushNotificationServiceProvider).refreshAndRegisterToken()
           .then((_) async {
-        await prefs.setInt(
-            refreshKey, DateTime.now().millisecondsSinceEpoch);
+        await prefs.setInt(refreshKey, DateTime.now().millisecondsSinceEpoch);
+        await prefs.remove(pendingRefreshKey);
       })
           .catchError((Object e) {
         debugPrint('[Resume] FCM token force-refresh failed: $e');

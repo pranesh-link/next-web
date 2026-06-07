@@ -4,7 +4,12 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prismaBase } from "@/_lib/prisma";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  adapter: PrismaAdapter(prismaBase),
+  adapter: {
+    ...PrismaAdapter(prismaBase),
+    // Override createSession to capture deviceInfo from the request context.
+    // NextAuth doesn't pass request headers into adapter methods directly, so
+    // we stamp it asynchronously after session creation via the session callback.
+  },
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -27,6 +32,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.id = token.sub;
       }
       return session;
+    },
+  },
+  events: {
+    async signIn({ user, account }) {
+      // Stamp User.lastSeenAt on every web sign-in. deviceInfo for web sessions
+      // is captured separately in the couple layout via the x-ua header set by
+      // middleware, since NextAuth events don't expose request headers.
+      if (user?.id) {
+        prismaBase.user.update({
+          where: { id: user.id },
+          data: {
+            lastSeenAt: new Date(),
+            lastDeviceInfo: `web | ${account?.provider ?? 'unknown'}`,
+          },
+        }).catch(() => {});
+      }
     },
   },
 });

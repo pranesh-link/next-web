@@ -37,6 +37,10 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
+  /// Aggregated device info for web sessions: "Browser | OS | Locale | Timezone"
+  /// Example: "Chrome 124 | macOS 14 | en-IN | Asia/Kolkata"
+  /// Set at session creation from request headers.
+  deviceInfo   String?  @db.Text  @map("device_info")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -71,6 +75,10 @@ model User {
   keyRotatedAt   DateTime?
   /// AES-256-GCM encrypted private key blob, locked by user's PIN-derived key.
   encryptedKeyVault Bytes?
+  /// Last seen device info — aggregated string updated on each authenticated
+  /// API request. Same format as DeviceToken.deviceInfo.
+  lastDeviceInfo  String?  @db.Text  @map("last_device_info")
+  lastSeenAt      DateTime?            @map("last_seen_at")
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -805,6 +813,10 @@ model DeviceToken {
   token     String   @unique
   platform  String   // "android" | "ios" | "web"
   active    Boolean  @default(true)
+  /// Aggregated device info string: "Model | OS Version | App Version | Locale | Timezone"
+  /// Example: "iPhone 15 Pro | iOS 17.4 | 1.4.2 | en-IN | Asia/Kolkata"
+  /// Populated by the mobile/web client at token registration.
+  deviceInfo String?  @db.Text  @map("device_info")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -828,4 +840,26 @@ model AppConfig {
   updatedAt          DateTime @updatedAt
 
   @@map("app_config")
+}
+
+// ─── Error Tracing ──────────────────────────────────────────
+
+/// Server-side API error log. Written fire-and-forget by withRateLimit middleware
+/// for every response with statusCode >= 400. Never throws or blocks the response.
+model AppError {
+  id         String   @id @default(uuid())
+  userId     String?                @map("user_id")
+  route      String                 // "/api/v1/finance/accounts"
+  method     String                 // "GET" | "POST" | etc.
+  statusCode Int                    @map("status_code")
+  message    String   @db.Text
+  stack      String?  @db.Text
+  platform   String?                // from X-Client-Platform header
+  appVersion String?                @map("app_version")  // from X-App-Version header
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@index([route, createdAt])
+  @@index([statusCode, createdAt])
+  @@map("app_errors")
 }

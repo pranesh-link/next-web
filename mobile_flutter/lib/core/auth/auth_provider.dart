@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:luvverse/core/auth/auth_repository.dart';
 import 'package:luvverse/core/auth/secure_storage.dart';
@@ -159,6 +163,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       // Use the token returned directly from the repository — avoids a
       // SecureStorage read-back that can block indefinitely on iOS.
       state = AuthState(user: result.user, token: result.token);
+      // Stamp Crashlytics user identity for crash correlation.
+      _stampCrashlyticsIdentity(result.user.id);
       // Eagerly populate cache so offline mode works immediately.
       _warmCache();
       _initPush();
@@ -175,6 +181,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
   void _warmCache() {
     // Fire-and-forget — don't block auth flow.
     CacheWarmer.warmAll(_ref);
+  }
+
+  /// Set Crashlytics user identifier for crash correlation.
+  /// Fire-and-forget, non-blocking.
+  void _stampCrashlyticsIdentity(String userId) {
+    Future(() async {
+      try {
+        final packageInfo = await PackageInfo.fromPlatform();
+        FirebaseCrashlytics.instance.setUserIdentifier(userId);
+        FirebaseCrashlytics.instance.setCustomKey('appVersion', packageInfo.version);
+        FirebaseCrashlytics.instance.setCustomKey('buildNumber', packageInfo.buildNumber);
+        FirebaseCrashlytics.instance.setCustomKey('platform', Platform.isIOS ? 'ios' : 'android');
+      } catch (_) {} // non-critical
+    });
   }
 
   void _initPush() {
