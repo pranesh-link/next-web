@@ -42,19 +42,19 @@ android {
                 storePassword = keyProperties["storePassword"] as String
             }
         }
+    }
 
-        buildTypes {
-            release {
-                signingConfig = signingConfigs.getByName("release")
-                proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+    buildTypes {
+        release {
+            signingConfig = if (signingConfigs.names.contains("release")) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
             }
-        }
-    } else {
-        buildTypes {
-            release {
-                signingConfig = signingConfigs.getByName("debug")
-                proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            }
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }
