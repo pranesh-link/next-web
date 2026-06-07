@@ -400,6 +400,19 @@ class _ListDevicesTileState extends ConsumerState<_ListDevicesTile> {
               }).ignore();
             }
 
+            // Current device token prefix for "This device" badge.
+            final currentToken = pushService.currentToken;
+            final currentTokenPrefix = currentToken != null && currentToken.length >= 16
+                ? currentToken.substring(0, 16)
+                : null;
+
+            // Show all active devices + at most 2 expired ones.
+            final activeDevices = dialogResult.devices.where((d) => d.active).toList();
+            final expiredDevices = dialogResult.devices.where((d) => !d.active).toList();
+            final shownExpired = expiredDevices.take(2).toList();
+            final hiddenExpiredCount = expiredDevices.length - shownExpired.length;
+            final shownDevices = [...activeDevices, ...shownExpired];
+
             return AlertDialog(
               title: Text('Registered Devices (${dialogResult.activeCount}/${dialogResult.totalCount} active)'),
             content: SingleChildScrollView(
@@ -424,10 +437,13 @@ class _ListDevicesTileState extends ConsumerState<_ListDevicesTile> {
                         ],
                       ),
                     ),
-                  if (dialogResult.devices.isEmpty)
+                  if (shownDevices.isEmpty)
                     const Text('No devices registered.')
                   else
-                    ...dialogResult.devices.map((device) => Padding(
+                    ...shownDevices.map((device) {
+                      final isCurrentDevice = currentTokenPrefix != null &&
+                          device.tokenPrefix.startsWith(currentTokenPrefix);
+                      return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: Opacity(
                             opacity: device.active ? 1.0 : 0.45,
@@ -461,6 +477,23 @@ class _ListDevicesTileState extends ConsumerState<_ListDevicesTile> {
                                         ),
                                       ),
                                     ),
+                                    if (isCurrentDevice) ...[
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue.withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          'This device',
+                                          style: AppTypography.xs.copyWith(
+                                            color: Colors.blue,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ],
                                 ),
                                 const SizedBox(height: 4),
@@ -534,7 +567,16 @@ class _ListDevicesTileState extends ConsumerState<_ListDevicesTile> {
                               ],
                             ),
                           ),
-                        )),
+                        );
+                    }),
+                  if (hiddenExpiredCount > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        '+$hiddenExpiredCount more expired token${hiddenExpiredCount > 1 ? 's' : ''} hidden',
+                        style: AppTypography.xs.copyWith(color: context.colors.textMuted),
+                      ),
+                    ),
                 ],
               ),
             ),
