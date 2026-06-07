@@ -5,6 +5,29 @@ import prisma from "@/_lib/prisma";
 
 const JWT_SECRET = process.env.NEXTAUTH_SECRET || "fallback-dev-secret";
 
+/** In-memory debounce: userId → last lastSeenAt stamp timestamp (ms). */
+const _lastSeenCache = new Map<string, number>();
+const LAST_SEEN_DEBOUNCE_MS = 60 * 60 * 1000; // 1 hour
+
+/**
+ * Fire-and-forget: stamp User.lastSeenAt at most once per hour per user.
+ * Also captures the X-Device-Info header if present (sent by mobile clients).
+ */
+function _stampLastSeen(userId: string, headersList: Awaited<ReturnType<typeof headers>>): void {
+  const now = Date.now();
+  const last = _lastSeenCache.get(userId) ?? 0;
+  if (now - last < LAST_SEEN_DEBOUNCE_MS) return;
+  _lastSeenCache.set(userId, now);
+  const deviceInfo = headersList.get('x-device-info');
+  prisma.user.update({
+    where: { id: userId },
+    data: {
+      lastSeenAt: new Date(),
+      ...(deviceInfo ? { lastDeviceInfo: deviceInfo } : {}),
+    },
+  }).catch(() => {});
+}
+
 /**
  * Signs a short-lived access token for mobile clients.
  *
@@ -59,6 +82,7 @@ export async function getAuthUserId(): Promise<string | null> {
       }
       if (decoded.sub) {
         console.log("[getAuthUserId] via JWT:", decoded.sub);
+        _stampLastSeen(decoded.sub, headersList);
         return decoded.sub;
       }
     } catch {
@@ -105,6 +129,7 @@ export async function getAuthUserId(): Promise<string | null> {
   const session = await auth();
   if (session?.user?.id) {
     console.log("[getAuthUserId] via NextAuth session:", session.user.id);
+    _stampLastSeen(session.user.id, headersList);
     return session.user.id;
   }
 

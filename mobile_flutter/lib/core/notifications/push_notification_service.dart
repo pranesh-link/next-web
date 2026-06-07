@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -9,6 +10,7 @@ import 'package:luvverse/core/network/api_client.dart';
 import 'package:luvverse/core/network/api_endpoints.dart';
 import 'package:luvverse/core/network/api_exceptions.dart';
 import 'package:luvverse/core/notifications/notification_channel.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Top-level background message handler (must be top-level function).
@@ -220,9 +222,31 @@ class PushNotificationService {
       _currentToken = token;
       final platform = Platform.isIOS ? 'ios' : 'android';
 
+      // Build aggregated device info string: "Model | OS Version | App Version | Locale | Timezone"
+      String deviceInfo;
+      try {
+        final deviceInfoPlugin = DeviceInfoPlugin();
+        final packageInfo = await PackageInfo.fromPlatform();
+        final locale = Platform.localeName;
+        final timezone = DateTime.now().timeZoneName;
+        String model, osVersion;
+        if (Platform.isAndroid) {
+          final android = await deviceInfoPlugin.androidInfo;
+          model = android.model;
+          osVersion = 'Android ${android.version.release}';
+        } else {
+          final ios = await deviceInfoPlugin.iosInfo;
+          model = ios.model;
+          osVersion = 'iOS ${ios.systemVersion}';
+        }
+        deviceInfo = '$model | $osVersion | ${packageInfo.version} | $locale | $timezone';
+      } catch (_) {
+        deviceInfo = '$platform | unknown';
+      }
+
       final response = await _apiClient.post<Map<String, dynamic>>(
         ApiEndpoints.devices,
-        data: {'token': token, 'platform': platform},
+        data: {'token': token, 'platform': platform, 'deviceInfo': deviceInfo},
       );
 
       final data = response['data'] as Map<String, dynamic>?;
@@ -230,6 +254,7 @@ class PushNotificationService {
 
       if (kDebugMode) {
         debugPrint('[Push] Token registered: ${token.substring(0, 20)}...');
+        debugPrint('[Push] Device info: $deviceInfo');
       }
       return TokenRegistrationResult(success: true, token: token, message: message);
     } catch (e) {

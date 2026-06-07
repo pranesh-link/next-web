@@ -7,6 +7,8 @@ import { z } from "zod/v4";
 const registerSchema = z.object({
   token: z.string().min(1).max(256),
   platform: z.enum(["android", "ios", "web"]),
+  /// Optional aggregated device info: "Model | OS | AppVersion | Locale | Timezone"
+  deviceInfo: z.string().max(512).optional(),
 });
 
 const deleteSchema = z.object({
@@ -45,6 +47,7 @@ export async function GET() {
         createdAt: true,
         updatedAt: true,
         token: true,
+        deviceInfo: true,
       },
     });
 
@@ -58,6 +61,7 @@ export async function GET() {
       id: d.id,
       platform: d.platform,
       active: d.active,
+      deviceInfo: d.deviceInfo ?? null,
       createdAt: d.createdAt.toISOString(),
       updatedAt: d.updatedAt.toISOString(),
       tokenPrefix: d.token.substring(0, 20) + "...",
@@ -114,14 +118,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { token, platform } = parsed.data;
+    const { token, platform, deviceInfo } = parsed.data;
 
     // Upsert: reassign token if it exists for another user
     const device = await prisma.deviceToken.upsert({
       where: { token },
-      update: { userId, platform, active: true, updatedAt: new Date() },
-      create: { userId, token, platform, active: true },
+      update: { userId, platform, active: true, updatedAt: new Date(), ...(deviceInfo ? { deviceInfo } : {}) },
+      create: { userId, token, platform, active: true, ...(deviceInfo ? { deviceInfo } : {}) },
     });
+
+    // Stamp User.lastDeviceInfo and lastSeenAt
+    if (deviceInfo) {
+      prisma.user.update({
+        where: { id: userId },
+        data: { lastDeviceInfo: deviceInfo, lastSeenAt: new Date() },
+      }).catch(() => {});
+    }
 
     // Immediately verify: count active devices for this user
     const activeCount = await prisma.deviceToken.count({
