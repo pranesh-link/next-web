@@ -206,16 +206,20 @@ class PushNotificationService {
   }
 
   /// Ensure Firebase is initialized before using FCM.
-  /// Safe to call multiple times — a no-op when already initialized.
+  /// Throws if initialization fails so callers can surface the real error
+  /// instead of a misleading downstream [core/no-app] exception.
   Future<void> _ensureFirebaseInitialized() async {
-    if (Firebase.apps.isEmpty) {
-      try {
-        await Firebase.initializeApp(
-          options: DefaultFirebaseOptions.currentPlatform,
-        );
-      } catch (e) {
-        if (kDebugMode) debugPrint('[Push] Firebase.initializeApp failed (non-fatal): $e');
-      }
+    if (Firebase.apps.isNotEmpty) return;
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      if (kDebugMode) debugPrint('[Push] Firebase.initializeApp succeeded');
+    } catch (e) {
+      // Re-throw so callers see the real error (e.g. duplicate-app,
+      // missing config) rather than a confusing [core/no-app] further down.
+      if (kDebugMode) debugPrint('[Push] Firebase.initializeApp failed: $e');
+      rethrow;
     }
   }
 

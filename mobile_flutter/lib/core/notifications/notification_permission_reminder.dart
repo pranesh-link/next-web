@@ -146,8 +146,7 @@ class _NotificationPermissionReminderState
         await Firebase.initializeApp(
           options: DefaultFirebaseOptions.currentPlatform,
         );
-      }
-      final settings =
+      }      final settings =
           await FirebaseMessaging.instance.getNotificationSettings();
       if (settings.authorizationStatus ==
           AuthorizationStatus.notDetermined) {
