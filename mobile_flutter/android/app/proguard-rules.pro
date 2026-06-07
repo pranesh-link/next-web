@@ -6,6 +6,12 @@
 -keep class io.flutter.** { *; }
 -keep class io.flutter.plugins.** { *; }
 
+# Flutter engine references Google Play Core for deferred components (dynamic
+# feature modules). We don't use this feature, but the classes are referenced
+# by PlayStoreDeferredComponentManager. R8 treats missing references as errors,
+# so suppress them.
+-dontwarn com.google.android.play.core.**
+
 # Firebase Core — prevent R8 from stripping ComponentRegistrar classes
 -keep class com.google.firebase.** { *; }
 -keep class com.google.android.gms.** { *; }
