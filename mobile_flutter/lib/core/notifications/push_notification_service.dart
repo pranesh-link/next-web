@@ -17,9 +17,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   if (kDebugMode) debugPrint('[Push] Background message: ${message.messageId}');
-  if (message.data['type'] == 'COUPLE_FORMED') {
-    final prefs = await SharedPreferences.getInstance();
+  final type = message.data['type'] as String?;
+  final prefs = await SharedPreferences.getInstance();
+  if (type == 'COUPLE_FORMED') {
     await prefs.setBool('pendingE2EBootstrap', true);
+  } else if (type == 'FCM_TOKEN_REFRESH') {
+    // Server detected our token was rejected by FCM. We cannot call
+    // refreshAndRegisterToken() here (no Riverpod in isolate), so flag it.
+    // connectivity_wrapper checks this flag on next resume and forces a
+    // refreshAndRegisterToken() regardless of the 7-day throttle.
+    await prefs.setBool('pendingFcmTokenRefresh', true);
+    if (kDebugMode) debugPrint('[Push] Background FCM_TOKEN_REFRESH flagged for next resume');
   }
 }
 
