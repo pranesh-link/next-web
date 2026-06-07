@@ -69,10 +69,10 @@ async function getStats() {
 
 function StatCard({ label, value, sub }: { label: string; value: number | string; sub?: string }) {
   return (
-    <div style={{ background: "var(--bg-elevated, #0f0f0f)", border: "1px solid #1c1c1c", borderRadius: 12, padding: "16px 20px", minWidth: 0 }}>
-      <div style={{ fontSize: 12, color: "#6060a0", fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 28, fontWeight: 800, color: "#f0f0ff", letterSpacing: -1 }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: "#6060a0", marginTop: 2 }}>{sub}</div>}
+    <div style={{ background: "var(--admin-card-bg)", border: "1px solid var(--admin-border)", borderRadius: 12, padding: "16px 20px", minWidth: 0 }}>
+      <div style={{ fontSize: 12, color: "var(--admin-label)", fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 28, fontWeight: 800, color: "var(--admin-text)", letterSpacing: -1 }}>{value}</div>
+      {sub && <div style={{ fontSize: 11, color: "var(--admin-label)", marginTop: 2 }}>{sub}</div>}
     </div>
   );
 }
@@ -96,12 +96,53 @@ export default async function AdminDashboard() {
   const stats = await getStats();
 
   return (
-    <div style={{ padding: "24px 28px", maxWidth: 1200, margin: "0 auto", color: "#f0f0ff", fontFamily: "Inter, sans-serif" }}>
+    <>
+      <style>{`
+        .admin-root {
+          --admin-bg: #ffffff;
+          --admin-card-bg: #f8f8fc;
+          --admin-border: #e2e2ee;
+          --admin-text: #111122;
+          --admin-text-dim: #333355;
+          --admin-label: #6666aa;
+          --admin-muted: #9999bb;
+          --admin-accent: #6366f1;
+          --admin-table-head-bg: #f0f0f8;
+          --admin-table-row-even: #f8f8fc;
+          --admin-table-row-odd: #ffffff;
+          --admin-table-border: #e8e8f0;
+          --admin-green: #059669;
+          --admin-red: #dc2626;
+          --admin-amber: #d97706;
+          --admin-mono: #4f4f8f;
+        }
+        @media (prefers-color-scheme: dark) {
+          .admin-root {
+            --admin-bg: #09090f;
+            --admin-card-bg: #0f0f1a;
+            --admin-border: #1e1e2e;
+            --admin-text: #e8e8ff;
+            --admin-text-dim: #c0c0e0;
+            --admin-label: #7070b0;
+            --admin-muted: #505080;
+            --admin-accent: #818cf8;
+            --admin-table-head-bg: #0a0a14;
+            --admin-table-row-even: #0f0f1a;
+            --admin-table-row-odd: #09090f;
+            --admin-table-border: #1a1a2a;
+            --admin-green: #34d399;
+            --admin-red: #f87171;
+            --admin-amber: #fbbf24;
+            --admin-mono: #9090c8;
+          }
+        }
+      `}</style>
+    <div className="admin-root" style={{ padding: "24px 28px", maxWidth: 1200, margin: "0 auto", background: "var(--admin-bg)", color: "var(--admin-text)", fontFamily: "Inter, sans-serif", minHeight: "100vh" }}>
       {/* Header */}
       <div style={{ marginBottom: 28 }}>
-        <div style={{ fontSize: 11, color: "#818cf8", fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", marginBottom: 4 }}>LuvVerse</div>
-        <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>Admin Dashboard</h1>
-        <div style={{ fontSize: 12, color: "#6060a0", marginTop: 4 }}>Signed in as {session.user.email}</div>
+        <div style={{ fontSize: 11, color: "var(--admin-accent)", fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", marginBottom: 4 }}>LuvVerse</div>
+        <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0, letterSpacing: -0.5, color: "var(--admin-text)" }}>Admin Dashboard</h1>
+        <div style={{ fontSize: 12, color: "var(--admin-muted)", marginTop: 4 }}>Signed in as {session.user.email}</div>
       </div>
 
       {/* Overview cards */}
@@ -117,7 +158,7 @@ export default async function AdminDashboard() {
 
       {/* Push notification health */}
       <div style={{ marginBottom: 28 }}>
-        <h2 style={{ fontSize: 13, fontWeight: 700, color: "#9090c0", letterSpacing: 2, textTransform: "uppercase", margin: "0 0 12px" }}>Push Notification Health</h2>
+        <h2 style={{ fontSize: 13, fontWeight: 700, color: "var(--admin-label)", letterSpacing: 2, textTransform: "uppercase", margin: "0 0 12px" }}>Push Notification Health</h2>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12 }}>
           <StatCard label="Active Tokens" value={stats.push.activeDevices} />
           <StatCard label="Expired Tokens" value={stats.push.expiredDevices} sub="awaiting re-registration" />
@@ -128,16 +169,16 @@ export default async function AdminDashboard() {
       </div>
 
       {/* Crashlytics link */}
-      <div style={{ marginBottom: 28, padding: "14px 18px", background: "#0f0f0f", border: "1px solid #1c1c1c", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ marginBottom: 28, padding: "14px 18px", background: "var(--admin-card-bg)", border: "1px solid var(--admin-border)", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#f0f0ff" }}>Mobile Crash Reports</div>
-          <div style={{ fontSize: 12, color: "#6060a0", marginTop: 2 }}>Crash-level detail with userId correlation is in Firebase Crashlytics</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--admin-text)" }}>Mobile Crash Reports</div>
+          <div style={{ fontSize: 12, color: "var(--admin-muted)", marginTop: 2 }}>Crash-level detail with userId correlation is in Firebase Crashlytics</div>
         </div>
         <a
           href="https://console.firebase.google.com/project/luvverse-pranaish/crashlytics"
           target="_blank"
           rel="noopener noreferrer"
-          style={{ padding: "8px 16px", background: "#818cf8", color: "#fff", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}
+          style={{ padding: "8px 16px", background: "var(--admin-accent)", color: "#fff", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}
         >
           Open Crashlytics →
         </a>
@@ -145,35 +186,35 @@ export default async function AdminDashboard() {
 
       {/* User + Device table */}
       <div style={{ marginBottom: 28 }}>
-        <h2 style={{ fontSize: 13, fontWeight: 700, color: "#9090c0", letterSpacing: 2, textTransform: "uppercase", margin: "0 0 12px" }}>Users — Recent Activity</h2>
-        <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid #1c1c1c" }}>
+        <h2 style={{ fontSize: 13, fontWeight: 700, color: "var(--admin-label)", letterSpacing: 2, textTransform: "uppercase", margin: "0 0 12px" }}>Users — Recent Activity</h2>
+        <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid var(--admin-border)" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
-              <tr style={{ background: "#0a0a0a" }}>
+              <tr style={{ background: "var(--admin-table-head-bg)" }}>
                 {["Email", "Name", "Last Seen", "Device Info", "Joined"].map((h) => (
-                  <th key={h} style={{ padding: "10px 14px", textAlign: "left", color: "#6060a0", fontWeight: 600, letterSpacing: 1, borderBottom: "1px solid #1c1c1c", whiteSpace: "nowrap" }}>{h}</th>
+                  <th key={h} style={{ padding: "10px 14px", textAlign: "left", color: "var(--admin-label)", fontWeight: 600, letterSpacing: 1, borderBottom: "1px solid var(--admin-border)", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {stats.users.map((u, i) => (
-                <tr key={u.id} style={{ background: i % 2 === 0 ? "#0f0f0f" : "#000" }}>
-                  <td style={{ padding: "9px 14px", color: "#f0f0ff", borderBottom: "1px solid #1a1a1a" }}>{u.email}</td>
-                  <td style={{ padding: "9px 14px", color: "#9090c0", borderBottom: "1px solid #1a1a1a" }}>{u.name ?? "—"}</td>
-                  <td style={{ padding: "9px 14px", color: u.lastSeenAt ? "#34d399" : "#6060a0", borderBottom: "1px solid #1a1a1a", whiteSpace: "nowrap" }}>
+                <tr key={u.id} style={{ background: i % 2 === 0 ? "var(--admin-table-row-even)" : "var(--admin-table-row-odd)" }}>
+                  <td style={{ padding: "9px 14px", color: "var(--admin-text)", borderBottom: "1px solid var(--admin-table-border)" }}>{u.email}</td>
+                  <td style={{ padding: "9px 14px", color: "var(--admin-text-dim)", borderBottom: "1px solid var(--admin-table-border)" }}>{u.name ?? "—"}</td>
+                  <td style={{ padding: "9px 14px", color: u.lastSeenAt ? "var(--admin-green)" : "var(--admin-muted)", borderBottom: "1px solid var(--admin-table-border)", whiteSpace: "nowrap" }}>
                     {fmt(u.lastSeenAt)}
                   </td>
-                  <td style={{ padding: "9px 14px", color: "#9090c0", borderBottom: "1px solid #1a1a1a", maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <td style={{ padding: "9px 14px", color: "var(--admin-text-dim)", borderBottom: "1px solid var(--admin-table-border)", maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {u.deviceTokens[0]?.deviceInfo ?? u.lastDeviceInfo ?? "—"}
                   </td>
-                  <td style={{ padding: "9px 14px", color: "#6060a0", borderBottom: "1px solid #1a1a1a", whiteSpace: "nowrap" }}>
+                  <td style={{ padding: "9px 14px", color: "var(--admin-muted)", borderBottom: "1px solid var(--admin-table-border)", whiteSpace: "nowrap" }}>
                     {fmt(u.createdAt)}
                   </td>
                 </tr>
               ))}
               {stats.users.length === 0 && (
                 <tr>
-                  <td colSpan={5} style={{ padding: "24px", textAlign: "center", color: "#6060a0" }}>No users yet</td>
+                  <td colSpan={5} style={{ padding: "24px", textAlign: "center", color: "var(--admin-muted)" }}>No users yet</td>
                 </tr>
               )}
             </tbody>
@@ -184,36 +225,36 @@ export default async function AdminDashboard() {
       {/* Error Log */}
       <div>
         <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 12 }}>
-          <h2 style={{ fontSize: 13, fontWeight: 700, color: "#9090c0", letterSpacing: 2, textTransform: "uppercase", margin: 0 }}>API Error Log</h2>
-          <span style={{ fontSize: 11, color: "#6060a0" }}>{stats.errors.count24h} in 24h · {stats.errors.count7d} in 7d</span>
+          <h2 style={{ fontSize: 13, fontWeight: 700, color: "var(--admin-label)", letterSpacing: 2, textTransform: "uppercase", margin: 0 }}>API Error Log</h2>
+          <span style={{ fontSize: 11, color: "var(--admin-muted)" }}>{stats.errors.count24h} in 24h · {stats.errors.count7d} in 7d</span>
         </div>
-        <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid #1c1c1c" }}>
+        <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid var(--admin-border)" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
-              <tr style={{ background: "#0a0a0a" }}>
+              <tr style={{ background: "var(--admin-table-head-bg)" }}>
                 {["Time", "Status", "Method", "Route", "Platform", "Version", "Message"].map((h) => (
-                  <th key={h} style={{ padding: "10px 14px", textAlign: "left", color: "#6060a0", fontWeight: 600, letterSpacing: 1, borderBottom: "1px solid #1c1c1c", whiteSpace: "nowrap" }}>{h}</th>
+                  <th key={h} style={{ padding: "10px 14px", textAlign: "left", color: "var(--admin-label)", fontWeight: 600, letterSpacing: 1, borderBottom: "1px solid var(--admin-border)", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {stats.errors.recent.map((e, i) => {
-                const statusColor = e.statusCode >= 500 ? "#f87171" : e.statusCode >= 400 ? "#fbbf24" : "#9090c0";
+                const statusColor = e.statusCode >= 500 ? "var(--admin-red)" : e.statusCode >= 400 ? "var(--admin-amber)" : "var(--admin-muted)";
                 return (
-                  <tr key={e.id} style={{ background: i % 2 === 0 ? "#0f0f0f" : "#000" }}>
-                    <td style={{ padding: "9px 14px", color: "#6060a0", borderBottom: "1px solid #1a1a1a", whiteSpace: "nowrap" }}>{fmt(e.createdAt)}</td>
-                    <td style={{ padding: "9px 14px", fontWeight: 700, color: statusColor, borderBottom: "1px solid #1a1a1a" }}>{e.statusCode}</td>
-                    <td style={{ padding: "9px 14px", color: "#818cf8", borderBottom: "1px solid #1a1a1a", fontFamily: "monospace" }}>{e.method}</td>
-                    <td style={{ padding: "9px 14px", color: "#f0f0ff", borderBottom: "1px solid #1a1a1a", fontFamily: "monospace", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={e.route}>{e.route}</td>
-                    <td style={{ padding: "9px 14px", color: "#9090c0", borderBottom: "1px solid #1a1a1a" }}>{e.platform ?? "—"}</td>
-                    <td style={{ padding: "9px 14px", color: "#9090c0", borderBottom: "1px solid #1a1a1a" }}>{e.appVersion ?? "—"}</td>
-                    <td style={{ padding: "9px 14px", color: "#9090c0", borderBottom: "1px solid #1a1a1a", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={e.message}>{e.message}</td>
+                  <tr key={e.id} style={{ background: i % 2 === 0 ? "var(--admin-table-row-even)" : "var(--admin-table-row-odd)" }}>
+                    <td style={{ padding: "9px 14px", color: "var(--admin-muted)", borderBottom: "1px solid var(--admin-table-border)", whiteSpace: "nowrap" }}>{fmt(e.createdAt)}</td>
+                    <td style={{ padding: "9px 14px", fontWeight: 700, color: statusColor, borderBottom: "1px solid var(--admin-table-border)" }}>{e.statusCode}</td>
+                    <td style={{ padding: "9px 14px", color: "var(--admin-mono)", borderBottom: "1px solid var(--admin-table-border)", fontFamily: "monospace" }}>{e.method}</td>
+                    <td style={{ padding: "9px 14px", color: "var(--admin-text)", borderBottom: "1px solid var(--admin-table-border)", fontFamily: "monospace", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={e.route}>{e.route}</td>
+                    <td style={{ padding: "9px 14px", color: "var(--admin-text-dim)", borderBottom: "1px solid var(--admin-table-border)" }}>{e.platform ?? "—"}</td>
+                    <td style={{ padding: "9px 14px", color: "var(--admin-text-dim)", borderBottom: "1px solid var(--admin-table-border)" }}>{e.appVersion ?? "—"}</td>
+                    <td style={{ padding: "9px 14px", color: "var(--admin-text-dim)", borderBottom: "1px solid var(--admin-table-border)", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={e.message}>{e.message}</td>
                   </tr>
                 );
               })}
               {stats.errors.recent.length === 0 && (
                 <tr>
-                  <td colSpan={7} style={{ padding: "24px", textAlign: "center", color: "#6060a0" }}>No errors logged yet</td>
+                  <td colSpan={7} style={{ padding: "24px", textAlign: "center", color: "var(--admin-muted)" }}>No errors logged yet</td>
                 </tr>
               )}
             </tbody>
@@ -221,5 +262,6 @@ export default async function AdminDashboard() {
         </div>
       </div>
     </div>
+    </>
   );
 }
