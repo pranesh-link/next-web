@@ -146,6 +146,7 @@ class PushNotificationService {
 
   /// Initialize local notifications and FCM handlers.
   Future<void> init() async {
+    await _ensureFirebaseInitialized();
     await _initLocalNotifications();
     _setupForegroundHandler();
     _setupTokenRefreshListener();
@@ -156,6 +157,7 @@ class PushNotificationService {
   /// Handles iOS APNs prompt and Android 13+ POST_NOTIFICATIONS.
   /// Returns true if the user granted permission.
   Future<bool> requestPermission() async {
+    await _ensureFirebaseInitialized();
     final settings = await FirebaseMessaging.instance.requestPermission(
       alert: true,
       badge: true,
@@ -178,6 +180,7 @@ class PushNotificationService {
 
   /// Check current permission status without prompting the user.
   Future<bool> hasPermission() async {
+    await _ensureFirebaseInitialized();
     final settings = await FirebaseMessaging.instance.getNotificationSettings();
     return settings.authorizationStatus == AuthorizationStatus.authorized ||
         settings.authorizationStatus == AuthorizationStatus.provisional;
@@ -186,6 +189,7 @@ class PushNotificationService {
   /// Returns true if the user has never been asked for push permission
   /// (i.e. status is notDetermined — first install or after a settings reset).
   Future<bool> isPermissionNotDetermined() async {
+    await _ensureFirebaseInitialized();
     final settings = await FirebaseMessaging.instance.getNotificationSettings();
     return settings.authorizationStatus == AuthorizationStatus.notDetermined;
   }
