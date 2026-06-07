@@ -198,7 +198,11 @@ class PushNotificationService {
   /// Safe to call multiple times — a no-op when already initialized.
   Future<void> _ensureFirebaseInitialized() async {
     if (Firebase.apps.isEmpty) {
-      await Firebase.initializeApp();
+      try {
+        await Firebase.initializeApp();
+      } catch (e) {
+        if (kDebugMode) debugPrint('[Push] Firebase.initializeApp failed (non-fatal): $e');
+      }
     }
   }
 
