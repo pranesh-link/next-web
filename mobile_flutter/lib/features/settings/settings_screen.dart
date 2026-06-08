@@ -343,23 +343,38 @@ class _ListDevicesTileState extends ConsumerState<_ListDevicesTile> {
       return;
     }
 
-    // If any device is expired, hasExpired=true triggers auto-heal inside the
-    // StatefulBuilder on first open (with a spinner + setDialogState rebuild).
-    final hasExpired = result.devices.any((d) => !d.active);
+    // Auto-heal only if THIS device has an expired token (not just any
+    // old device's stale token). Opening the dialog should not trigger
+    // a token refresh just because a months-old device entry is expired.
+    final currentToken = pushService.currentToken;
+    final currentTokenPrefix = currentToken != null && currentToken.length >= 20
+        ? currentToken.substring(0, 20)
+        : null;
+    final currentDeviceExpired = currentTokenPrefix != null &&
+        result.devices.any((d) => d.tokenPrefix.startsWith(currentTokenPrefix) && !d.active);
+    // Also heal if this device has no token registered at all yet.
+    final currentDeviceNotRegistered = currentToken != null &&
+        !result.devices.any((d) => d.tokenPrefix.startsWith(currentTokenPrefix!));
+    final hasExpired = currentDeviceExpired || currentDeviceNotRegistered;
 
     showDialog(
       context: context,
       builder: (ctx) {
-        // Declare mutable state outside the StatefulBuilder.builder so it is
-        // NOT reset on every setDialogState() call.
         var dialogResult = result;
         var autoHealRunning = hasExpired;
         final Map<String, bool> reregLoading = {};
 
-        // Immediately trigger auto-heal and rebuild dialog when done.
         Future<void> autoHeal(StateSetter setDialogState) async {
           try {
-            final regResult = await pushService.refreshAndRegisterToken();
+            // If the current device's token is expired, force a fresh token.
+            // If the token is simply not registered, use registerToken()
+            // (no need to deleteToken() when there's nothing to delete).
+            final regResult;
+            if (currentDeviceExpired) {
+              regResult = await pushService.refreshAndRegisterToken();
+            } else {
+              regResult = await pushService.registerToken();
+            }
             if (!regResult.success) {
               if (!ctx.mounted) return;
               setDialogState(() => autoHealRunning = false);
@@ -401,10 +416,7 @@ class _ListDevicesTileState extends ConsumerState<_ListDevicesTile> {
             }
 
             // Current device token prefix for "This device" badge.
-            final currentToken = pushService.currentToken;
-            final currentTokenPrefix = currentToken != null && currentToken.length >= 16
-                ? currentToken.substring(0, 16)
-                : null;
+            final currentTokenPrefix2 = currentTokenPrefix;
 
             // Show all active devices + at most 2 expired ones.
             final activeDevices = dialogResult.devices.where((d) => d.active).toList();
@@ -441,8 +453,8 @@ class _ListDevicesTileState extends ConsumerState<_ListDevicesTile> {
                     const Text('No devices registered.')
                   else
                     ...shownDevices.map((device) {
-                      final isCurrentDevice = currentTokenPrefix != null &&
-                          device.tokenPrefix.startsWith(currentTokenPrefix);
+                      final isCurrentDevice = currentTokenPrefix2 != null &&
+                          device.tokenPrefix.startsWith(currentTokenPrefix2);
                       return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: Opacity(
