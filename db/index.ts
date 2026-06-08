@@ -34,9 +34,12 @@ import * as schema from "./schema";
 const connectionString =
   process.env.DATABASE_URL_POOLER ?? process.env.DATABASE_URL ?? "";
 
-// Strip pgbouncer param so pg driver doesn't reject the URL
+// Strip pgbouncer and Prisma-specific schema param so pg driver doesn't reject
+// the URL. The ?schema=public param is Prisma-only; pg ignores it but it can
+// confuse some drivers. We set search_path explicitly via options instead.
 const cleanUrl = connectionString
   .replace(/[?&]pgbouncer=true/g, "")
+  .replace(/[?&]schema=[^&]*/g, "")
   .replace(/[?&]$/, "");
 
 // Supabase's SSL cert chain is not always in Node.js's built-in CA bundle.
@@ -46,6 +49,11 @@ const cleanUrl = connectionString
 const pool = new Pool({
   connectionString: cleanUrl || undefined,
   ssl: { rejectUnauthorized: false },
+  // Explicitly set search_path to public so table names resolve correctly.
+  // Prisma sets this via the ?schema=public URL param; pg.Pool ignores that
+  // param so we must set it here. Without this, the pooler may default to a
+  // different schema and raise 'relation "users" does not exist'.
+  options: "-c search_path=public",
 });
 
 export const db = drizzle(pool, { schema });
