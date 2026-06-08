@@ -127,6 +127,16 @@ export async function POST(request: NextRequest) {
       create: { userId, token, platform, active: true, ...(deviceInfo ? { deviceInfo } : {}) },
     });
 
+    // Deactivate all OTHER active tokens for the same user+platform.
+    // When refreshAndRegisterToken() issues a new FCM token, the old token
+    // remains active in the DB unless we explicitly deactivate it here.
+    // Without this, every token refresh creates an additional active row
+    // for the same physical device, causing duplicate push deliveries.
+    prisma.deviceToken.updateMany({
+      where: { userId, platform, active: true, token: { not: token } },
+      data: { active: false },
+    }).catch(() => {});
+
     // Stamp User.lastDeviceInfo and lastSeenAt
     if (deviceInfo) {
       prisma.user.update({
