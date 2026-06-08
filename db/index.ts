@@ -39,7 +39,14 @@ const cleanUrl = connectionString
   .replace(/[?&]pgbouncer=true/g, "")
   .replace(/[?&]$/, "");
 
-const pool = new Pool({ connectionString: cleanUrl || undefined });
+// Supabase's SSL cert chain is not always in Node.js's built-in CA bundle.
+// Disable cert verification for the Drizzle pool — the connection is still
+// encrypted (TLS), we just skip hostname/chain verification. This matches
+// what Prisma does internally for Supabase connections.
+const pool = new Pool({
+  connectionString: cleanUrl || undefined,
+  ssl: { rejectUnauthorized: false },
+});
 
 export const db = drizzle(pool, { schema });
 export type DB = typeof db;
