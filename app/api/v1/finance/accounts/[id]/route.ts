@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
-import { AccountType } from "@prisma/client";
+import { db } from "@db";
+import { financialAccounts, balanceHistory, transactions } from "@db/schema";
+import { and, eq, inArray, count } from "drizzle-orm";
 import { accountSchema } from "@/_lib/validations/finance";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 import { getUserIdsForCouple } from "@/_services/finance/couple-service";
@@ -28,21 +29,11 @@ async function getHandler(_request: NextRequest, context: RouteContext) {
     const coupleUserIds = await getUserIdsForCouple(userId);
     const { id } = await context.params;
 
-    const account = await prisma.financialAccount.findFirst({
-      where: { id, userId: { in: coupleUserIds } },
-      include: {
-        balanceHistory: {
-          orderBy: { createdAt: "desc" },
-          take: 20,
-          select: {
-            id: true,
-            balance: true,
-            change: true,
-            note: true,
-            createdAt: true,
-          },
-        },
-      },
+    const account = await db.query.financialAccounts.findFirst({
+      where: and(
+        eq(financialAccounts.id, id),
+        inArray(financialAccounts.userId, coupleUserIds)
+      ),
     });
 
     if (!account) {
@@ -52,8 +43,16 @@ async function getHandler(_request: NextRequest, context: RouteContext) {
       );
     }
 
+    // Fetch balance history separately (Drizzle doesn't have include)
+    const history = await db.query.balanceHistory.findMany({
+      where: eq(balanceHistory.accountId, id),
+      orderBy: (h, { desc: d }) => [d(h.createdAt)],
+      limit: 20,
+      columns: { id: true, balance: true, change: true, note: true, createdAt: true },
+    });
+
     return NextResponse.json(
-      { success: true, data: account },
+      { success: true, data: { ...account, balanceHistory: history } },
       { headers: corsHeaders("private, max-age=30") },
     );
   } catch (error) {
@@ -85,8 +84,11 @@ async function putHandler(request: NextRequest, context: RouteContext) {
     const coupleUserIds = await getUserIdsForCouple(userId);
     const { id } = await context.params;
 
-    const existing = await prisma.financialAccount.findFirst({
-      where: { id, userId: { in: coupleUserIds } },
+    const existing = await db.query.financialAccounts.findFirst({
+      where: and(
+        eq(financialAccounts.id, id),
+        inArray(financialAccounts.userId, coupleUserIds)
+      ),
     });
 
     if (!existing) {
@@ -105,14 +107,15 @@ async function putHandler(request: NextRequest, context: RouteContext) {
 
     const validated = accountSchema.parse(merged);
 
-    const account = await prisma.financialAccount.update({
-      where: { id },
-      data: {
+    const [account] = await db
+      .update(financialAccounts)
+      .set({
         name: validated.name,
-        type: validated.type as AccountType,
+        type: validated.type as typeof financialAccounts.$inferInsert['type'],
         balance: validated.balance,
-      },
-    });
+      })
+      .where(eq(financialAccounts.id, id))
+      .returning();
 
     await CacheInvalidation.onAccountChange(userId);
 
@@ -152,8 +155,11 @@ async function deleteHandler(_request: NextRequest, context: RouteContext) {
     const coupleUserIds = await getUserIdsForCouple(userId);
     const { id } = await context.params;
 
-    const existing = await prisma.financialAccount.findFirst({
-      where: { id, userId: { in: coupleUserIds } },
+    const existing = await db.query.financialAccounts.findFirst({
+      where: and(
+        eq(financialAccounts.id, id),
+        inArray(financialAccounts.userId, coupleUserIds)
+      ),
     });
 
     if (!existing) {
@@ -163,9 +169,11 @@ async function deleteHandler(_request: NextRequest, context: RouteContext) {
       );
     }
 
-    const linkedTransactions = await prisma.transaction.count({
-      where: { accountId: id },
-    });
+    const [linkedCount] = await db
+      .select({ value: count() })
+      .from(transactions)
+      .where(eq(transactions.accountId, id));
+    const linkedTransactions = linkedCount.value;
 
     if (linkedTransactions > 0) {
       return NextResponse.json(
@@ -177,7 +185,7 @@ async function deleteHandler(_request: NextRequest, context: RouteContext) {
       );
     }
 
-    await prisma.financialAccount.delete({ where: { id } });
+    await db.delete(financialAccounts).where(eq(financialAccounts.id, id));
 
     await CacheInvalidation.onAccountChange(userId);
 

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
-import { AccountType } from "@prisma/client";
+import { db } from "@db";
+import { financialAccounts, users } from "@db/schema";
+import { inArray, desc, eq } from "drizzle-orm";
 import { accountSchema } from "@/_lib/validations/finance";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
@@ -25,14 +26,29 @@ async function getHandler() {
 
     const coupleUserIds = await getUserIdsForCouple(userId);
 
-    const accounts = await prisma.financialAccount.findMany({
-      where: { userId: { in: coupleUserIds } },
-      include: { user: { select: { id: true, name: true } } },
-      orderBy: { createdAt: "desc" },
-    });
+    const accountRows = await db
+      .select({
+        id: financialAccounts.id,
+        userId: financialAccounts.userId,
+        name: financialAccounts.name,
+        nickname: financialAccounts.nickname,
+        type: financialAccounts.type,
+        balance: financialAccounts.balance,
+        isSalaryAccount: financialAccounts.isSalaryAccount,
+        isEmergencyFund: financialAccounts.isEmergencyFund,
+        isPinned: financialAccounts.isPinned,
+        coupleId: financialAccounts.coupleId,
+        createdAt: financialAccounts.createdAt,
+        updatedAt: financialAccounts.updatedAt,
+        user: { id: users.id, name: users.name },
+      })
+      .from(financialAccounts)
+      .leftJoin(users, eq(financialAccounts.userId, users.id))
+      .where(inArray(financialAccounts.userId, coupleUserIds))
+      .orderBy(desc(financialAccounts.createdAt));
 
     return NextResponse.json(
-      { success: true, data: accounts, currentUserId: userId },
+      { success: true, data: accountRows, currentUserId: userId },
       { headers: corsHeaders("private, max-age=30") },
     );
   } catch (error) {
@@ -66,15 +82,16 @@ async function postHandler(request: Request) {
     const body = await request.json();
     const validated = accountSchema.parse(body);
 
-    const account = await prisma.financialAccount.create({
-      data: {
-        userId: userId,
+    const [account] = await db
+      .insert(financialAccounts)
+      .values({
+        userId,
         ...(coupleId ? { coupleId } : {}),
         name: validated.name,
-        type: validated.type as AccountType,
+        type: validated.type as typeof financialAccounts.$inferInsert['type'],
         balance: validated.balance,
-      },
-    });
+      })
+      .returning();
 
     await CacheInvalidation.onAccountChange(userId);
 
