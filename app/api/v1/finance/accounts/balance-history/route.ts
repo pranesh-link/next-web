@@ -3,7 +3,7 @@ import { getAuthUserId } from "@/api/v1/_lib/auth";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 import { db } from "@db";
 import { overallBalanceLog } from "@db/schema";
-import { eq, inArray, desc, and, lt } from "drizzle-orm";
+import { eq, inArray, and, lt } from "drizzle-orm";
 import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
 import { withRateLimit } from "@/_lib/middleware/rate-limit";
 
