@@ -227,8 +227,12 @@ export async function syncIncomeReminder(userId: string) {
   const monthName = prevMonth.toLocaleString('en-US', { month: 'long', year: 'numeric' });
 
   // Check if reminder already exists for this month
-  const existing = await prisma.notification.findFirst({
-    where: { userId, type: 'INCOME_REMINDER', featureId: monthKey },
+  const existing = await db.query.notifications.findFirst({
+    where: and(
+      eq(notifications.userId, userId),
+      eq(notifications.type, 'INCOME_REMINDER'),
+      eq(notifications.featureId, monthKey)
+    ),
   });
 
   if (existing) {
