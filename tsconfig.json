@@ -21,6 +21,8 @@
     ],
     "paths": {
       "@/*": ["./app/*"],
+      "@db": ["./db/index.ts"],
+      "@db/*": ["./db/*"],
       "@next-web/shared": ["./packages/shared/src"],
       "@next-web/shared/*": ["./packages/shared/src/*"],
       "@next-web/ui": ["./packages/ui/src"],
