@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
+import { db } from "@/db";
+import { notifications } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 import { withCache } from "@/_lib/middleware/cache";
 import { withRateLimit } from "@/_lib/middleware/rate-limit";
@@ -19,20 +21,25 @@ async function getHandler(_request: NextRequest) {
       );
     }
 
-    const notifications = await prisma.notification.findMany({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
-      take: 50,
+    const notificationsList = await db.query.notifications.findMany({
+      where: eq(notifications.userId, userId),
+      orderBy: (n, { desc }) => [desc(n.createdAt)],
+      limit: 50,
     });
 
-    const unreadCount = await prisma.notification.count({
-      where: { userId, read: false },
+    const unreadRows = await db.query.notifications.findMany({
+      where: and(
+        eq(notifications.userId, userId),
+        eq(notifications.read, false)
+      ),
+      columns: { id: true },
     });
+    const unreadCount = unreadRows.length;
 
     return NextResponse.json(
       {
         success: true,
-        data: { notifications, unreadCount },
+        data: { notifications: notificationsList, unreadCount },
       },
       { headers: corsHeaders() },
     );

@@ -1,6 +1,8 @@
-import prisma from '@/_lib/prisma';
-import { getUserIdsForCouple } from '@/_services/finance/couple-service';
-import { sendPushToUser } from '@/_services/finance/push-service';
+import { db } from "@/db";
+import { notifications, coupleInvites, transactions } from "@/db/schema";
+import { eq, and, lt, inArray } from "drizzle-orm";
+import { getUserIdsForCouple } from "@/_services/finance/couple-service";
+import { sendPushToUser } from "@/_services/finance/push-service";
 
 /** Maps notification type to a human-readable title for push. */
 function getPushTitle(type: string): string {
@@ -37,15 +39,20 @@ export async function createNotification(
 ) {
   // Dedup: don't create if one already exists for this type+featureId
   if (featureId) {
-    const existing = await prisma.notification.findFirst({
-      where: { userId, type, featureId },
+    const existing = await db.query.notifications.findFirst({
+      where: and(
+        eq(notifications.userId, userId),
+        eq(notifications.type, type),
+        eq(notifications.featureId, featureId)
+      ),
     });
     if (existing) return existing;
   }
 
-  const notification = await prisma.notification.create({
-    data: { userId, type, featureId },
-  });
+  const [notification] = await db
+    .insert(notifications)
+    .values({ userId, type, featureId: featureId ?? null })
+    .returning();
 
   // Fire-and-forget push notification
   sendPushToUser(userId, getPushTitle(type), getPushBody(type), {
@@ -58,86 +65,108 @@ export async function createNotification(
 }
 
 export async function getNotificationsForUser(userId: string, includeArchived = false) {
-  return prisma.notification.findMany({
-    where: includeArchived ? { userId } : { userId, archived: false },
-    orderBy: { createdAt: 'desc' },
-    take: 50,
+  return db.query.notifications.findMany({
+    where: includeArchived
+      ? eq(notifications.userId, userId)
+      : and(eq(notifications.userId, userId), eq(notifications.archived, false)),
+    orderBy: (n, { desc }) => [desc(n.createdAt)],
+    limit: 50,
   });
 }
 
 export async function getUnreadCount(userId: string) {
-  return prisma.notification.count({
-    where: { userId, read: false, archived: false },
+  const rows = await db.query.notifications.findMany({
+    where: and(
+      eq(notifications.userId, userId),
+      eq(notifications.read, false),
+      eq(notifications.archived, false)
+    ),
+    columns: { id: true },
   });
+  return rows.length;
 }
 
 export async function markAsRead(notificationId: string, userId: string) {
-  const notification = await prisma.notification.findFirst({
-    where: { id: notificationId, userId },
+  const existing = await db.query.notifications.findFirst({
+    where: and(eq(notifications.id, notificationId), eq(notifications.userId, userId)),
   });
-  if (!notification) throw new Error('Notification not found');
+  if (!existing) throw new Error('Notification not found');
 
-  return prisma.notification.update({
-    where: { id: notificationId },
-    data: { read: true },
-  });
+  const [updated] = await db
+    .update(notifications)
+    .set({ read: true })
+    .where(eq(notifications.id, notificationId))
+    .returning();
+  return updated;
 }
 
 export async function markAsUnread(notificationId: string, userId: string) {
-  const notification = await prisma.notification.findFirst({
-    where: { id: notificationId, userId },
+  const existing = await db.query.notifications.findFirst({
+    where: and(eq(notifications.id, notificationId), eq(notifications.userId, userId)),
   });
-  if (!notification) throw new Error('Notification not found');
+  if (!existing) throw new Error('Notification not found');
 
-  return prisma.notification.update({
-    where: { id: notificationId },
-    data: { read: false },
-  });
+  const [updated] = await db
+    .update(notifications)
+    .set({ read: false })
+    .where(eq(notifications.id, notificationId))
+    .returning();
+  return updated;
 }
 
 export async function markAllAsRead(userId: string) {
-  return prisma.notification.updateMany({
-    where: { userId, read: false },
-    data: { read: true },
-  });
+  return db
+    .update(notifications)
+    .set({ read: true })
+    .where(and(eq(notifications.userId, userId), eq(notifications.read, false)));
 }
 
 export async function archiveNotification(notificationId: string, userId: string) {
-  const notification = await prisma.notification.findFirst({
-    where: { id: notificationId, userId },
+  const existing = await db.query.notifications.findFirst({
+    where: and(eq(notifications.id, notificationId), eq(notifications.userId, userId)),
   });
-  if (!notification) throw new Error('Notification not found');
+  if (!existing) throw new Error('Notification not found');
 
-  return prisma.notification.update({
-    where: { id: notificationId },
-    data: { archived: true, archivedAt: new Date() },
-  });
+  const [updated] = await db
+    .update(notifications)
+    .set({ archived: true, archivedAt: new Date() })
+    .where(eq(notifications.id, notificationId))
+    .returning();
+  return updated;
 }
 
 export async function unarchiveNotification(notificationId: string, userId: string) {
-  const notification = await prisma.notification.findFirst({
-    where: { id: notificationId, userId },
+  const existing = await db.query.notifications.findFirst({
+    where: and(eq(notifications.id, notificationId), eq(notifications.userId, userId)),
   });
-  if (!notification) throw new Error('Notification not found');
+  if (!existing) throw new Error('Notification not found');
 
-  return prisma.notification.update({
-    where: { id: notificationId },
-    data: { archived: false, archivedAt: null },
-  });
+  const [updated] = await db
+    .update(notifications)
+    .set({ archived: false, archivedAt: null })
+    .where(eq(notifications.id, notificationId))
+    .returning();
+  return updated;
 }
 
 export async function archiveAllRead(userId: string) {
-  return prisma.notification.updateMany({
-    where: { userId, read: true, archived: false },
-    data: { archived: true, archivedAt: new Date() },
-  });
+  return db
+    .update(notifications)
+    .set({ archived: true, archivedAt: new Date() })
+    .where(
+      and(
+        eq(notifications.userId, userId),
+        eq(notifications.read, true),
+        eq(notifications.archived, false)
+      )
+    );
 }
 
 export async function getArchivedNotifications(userId: string) {
-  return prisma.notification.findMany({
-    where: { userId, archived: true },
-    orderBy: { archivedAt: 'desc' },
-    take: 50,
+  return db.query.notifications.findMany({
+    where: and(eq(notifications.userId, userId), eq(notifications.archived, true)),
+    orderBy: (n, { desc }) => [desc(n.archivedAt)],
+    limit: 50,
   });
 }
 
@@ -149,17 +178,19 @@ export async function autoArchiveOldNotifications(userId: string) {
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  const result = await prisma.notification.updateMany({
-    where: {
-      userId,
-      read: true,
-      archived: false,
-      createdAt: { lt: thirtyDaysAgo },
-    },
-    data: { archived: true, archivedAt: new Date() },
-  });
+  const result = await db
+    .update(notifications)
+    .set({ archived: true, archivedAt: new Date() })
+    .where(
+      and(
+        eq(notifications.userId, userId),
+        eq(notifications.read, true),
+        eq(notifications.archived, false),
+        lt(notifications.createdAt, thirtyDaysAgo)
+      )
+    );
 
-  return { archivedCount: result.count };
+  return { archivedCount: result.rowCount ?? 0 };
 }
 
 /**
@@ -170,9 +201,12 @@ export async function syncMissingInviteNotifications(
   userId: string,
   email: string
 ) {
-  const pendingInvites = await prisma.coupleInvite.findMany({
-    where: { email, status: 'PENDING' },
-    select: { id: true },
+  const pendingInvites = await db.query.coupleInvites.findMany({
+    where: and(
+      eq(coupleInvites.email, email),
+      eq(coupleInvites.status, 'PENDING')
+    ),
+    columns: { id: true },
   });
 
   for (const invite of pendingInvites) {
@@ -207,15 +241,20 @@ export async function syncIncomeReminder(userId: string) {
   const startOfMonth = new Date(prevMonth.getFullYear(), prevMonth.getMonth(), 1);
   const endOfMonth = new Date(prevMonth.getFullYear(), prevMonth.getMonth() + 1, 0, 23, 59, 59, 999);
 
-  const incomeCount = await prisma.transaction.count({
-    where: {
-      userId: { in: coupleUserIds },
-      type: 'INCOME',
-      date: { gte: startOfMonth, lte: endOfMonth },
-    },
+  const incomeCount = await db.query.transactions.findMany({
+    where: and(
+      inArray(transactions.userId, coupleUserIds),
+      eq(transactions.type, 'INCOME')
+    ),
+    columns: { date: true },
   });
 
-  if (incomeCount > 0) {
+  const hasIncome = incomeCount.some((t) => {
+    const d = new Date(t.date!);
+    return d >= startOfMonth && d <= endOfMonth;
+  });
+
+  if (hasIncome) {
     return { created: false, month: monthName, unread: false };
   }
 
