@@ -6,10 +6,13 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createClient(): PrismaClient {
-  // On Vercel serverless each cold start creates a new process. Without a
-  // pool size cap, concurrent invocations exhaust the Postgres connection
-  // limit (P2037). connection_limit=1 keeps each serverless function to a
-  // single connection; pool_timeout=10 prevents hangs on saturated DBs.
+  // Use DIRECT_URL for migrations and schema introspection.
+  // Use DATABASE_URL (Supabase Transaction Pooler, port 6543) for all
+  // application queries. The pooler multiplexes connections across
+  // serverless invocations so Postgres never sees more connections than
+  // the pool size (default 15 per project on Supabase free tier).
+  // connection_limit=1 + pool_timeout=10 are retained as a safety net
+  // for local/CI environments that use a direct connection string.
   const base = process.env.DATABASE_URL ?? "";
   const sep = base.includes("?") ? "&" : "?";
   const connectionString = base
