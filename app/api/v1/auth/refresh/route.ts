@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { users } from "@db/schema";
+import { eq } from "drizzle-orm";
 import { signMobileToken, signMobileRefreshToken } from "@/api/v1/_lib/auth";
 
 const JWT_SECRET = process.env.NEXTAUTH_SECRET || "fallback-dev-secret";
@@ -48,9 +50,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify user still exists
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.sub },
-      select: { id: true, name: true, email: true, image: true },
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, decoded.sub),
+      columns: { id: true, name: true, email: true, image: true },
     });
 
     if (!user) {

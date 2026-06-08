@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/_lib/prisma";
-import { signMobileToken } from "@/api/v1/_lib/auth";
+import { signMobileToken, findOrCreateGoogleUser } from "@/api/v1/_lib/auth";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET!;
@@ -75,29 +74,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Find or create user
-    let user = await prisma.user.findUnique({ where: { email } });
-
-    if (!user) {
-      user = await prisma.user.create({
-        data: { email, name: name || null, image: picture || null },
-      });
-      await prisma.account.create({
-        data: {
-          userId: user.id,
-          type: "oauth",
-          provider: "google",
-          providerAccountId: googleId,
-        },
-      });
-    } else if ((name && !user.name) || (picture && !user.image)) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          ...(name && !user.name ? { name } : {}),
-          ...(picture && !user.image ? { image: picture } : {}),
-        },
-      });
-    }
+    const user = await findOrCreateGoogleUser({ googleId, email, name, picture });
 
     const token = signMobileToken(user.id);
     const userData = encodeURIComponent(JSON.stringify({
