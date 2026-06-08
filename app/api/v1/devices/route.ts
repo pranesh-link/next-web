@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { deviceTokens, users } from "@db/schema";
+import { eq, and, lt, not } from "drizzle-orm";
 import { z } from "zod/v4";
 
 const registerSchema = z.object({
@@ -37,25 +39,20 @@ export async function GET() {
       );
     }
 
-    const devices = await prisma.deviceToken.findMany({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        platform: true,
-        active: true,
-        createdAt: true,
-        updatedAt: true,
-        token: true,
-        deviceInfo: true,
-      },
+    const devices = await db.query.deviceTokens.findMany({
+      where: eq(deviceTokens.userId, userId),
+      orderBy: (d, { desc }) => [desc(d.createdAt)],
     });
 
     // Prune inactive tokens older than 30 days so the list stays clean.
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    prisma.deviceToken.deleteMany({
-      where: { userId, active: false, updatedAt: { lt: thirtyDaysAgo } },
-    }).catch(() => {});
+    db.delete(deviceTokens)
+      .where(and(
+        eq(deviceTokens.userId, userId),
+        eq(deviceTokens.active, false),
+        lt(deviceTokens.updatedAt, thirtyDaysAgo)
+      ))
+      .catch(() => {});
 
     const sanitizedDevices = devices.map((d) => ({
       id: d.id,
@@ -121,34 +118,51 @@ export async function POST(request: NextRequest) {
     const { token, platform, deviceInfo } = parsed.data;
 
     // Upsert: reassign token if it exists for another user
-    const device = await prisma.deviceToken.upsert({
-      where: { token },
-      update: { userId, platform, active: true, updatedAt: new Date(), ...(deviceInfo ? { deviceInfo } : {}) },
-      create: { userId, token, platform, active: true, ...(deviceInfo ? { deviceInfo } : {}) },
-    });
+    const [device] = await db
+      .insert(deviceTokens)
+      .values({
+        userId,
+        token,
+        platform,
+        active: true,
+        ...(deviceInfo ? { deviceInfo } : {}),
+      })
+      .onConflictDoUpdate({
+        target: deviceTokens.token,
+        set: {
+          userId,
+          platform,
+          active: true,
+          updatedAt: new Date(),
+          ...(deviceInfo ? { deviceInfo } : {}),
+        },
+      })
+      .returning();
 
-    // Deactivate all OTHER active tokens for the same user+platform.
-    // When refreshAndRegisterToken() issues a new FCM token, the old token
-    // remains active in the DB unless we explicitly deactivate it here.
-    // Without this, every token refresh creates an additional active row
-    // for the same physical device, causing duplicate push deliveries.
-    prisma.deviceToken.updateMany({
-      where: { userId, platform, active: true, token: { not: token } },
-      data: { active: false },
-    }).catch(() => {});
+    db.update(deviceTokens)
+      .set({ active: false })
+      .where(and(
+        eq(deviceTokens.userId, userId),
+        eq(deviceTokens.platform, platform),
+        eq(deviceTokens.active, true),
+        not(eq(deviceTokens.token, token))
+      ))
+      .catch(() => {});
 
     // Stamp User.lastDeviceInfo and lastSeenAt
     if (deviceInfo) {
-      prisma.user.update({
-        where: { id: userId },
-        data: { lastDeviceInfo: deviceInfo, lastSeenAt: new Date() },
-      }).catch(() => {});
+      db.update(users)
+        .set({ lastDeviceInfo: deviceInfo, lastSeenAt: new Date() })
+        .where(eq(users.id, userId))
+        .catch(() => {});
     }
 
     // Immediately verify: count active devices for this user
-    const activeCount = await prisma.deviceToken.count({
-      where: { userId, active: true },
+    const activeDeviceRows = await db.query.deviceTokens.findMany({
+      where: and(eq(deviceTokens.userId, userId), eq(deviceTokens.active, true)),
+      columns: { id: true },
     });
+    const activeCount = activeDeviceRows.length;
 
     const tokenPrefix = token.substring(0, 16);
     console.log(
@@ -218,10 +232,10 @@ export async function DELETE(request: NextRequest) {
     const { token } = parsed.data;
 
     // Only allow deactivating own tokens
-    await prisma.deviceToken.updateMany({
-      where: { token, userId },
-      data: { active: false },
-    });
+    await db
+      .update(deviceTokens)
+      .set({ active: false })
+      .where(and(eq(deviceTokens.token, token), eq(deviceTokens.userId, userId)));
 
     return NextResponse.json(
       { success: true },
