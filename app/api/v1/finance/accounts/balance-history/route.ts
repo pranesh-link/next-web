@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { overallBalanceLog } from "@db/schema";
+import { eq, inArray, desc, and, lt } from "drizzle-orm";
 import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
 import { withRateLimit } from "@/_lib/middleware/rate-limit";
 
@@ -36,11 +38,14 @@ async function getHandler(request: NextRequest) {
     const cursor = searchParams.get("cursor");
     const limit = Math.min(Number(searchParams.get("limit")) || 20, 50);
 
-    const logs = await prisma.overallBalanceLog.findMany({
-      where: coupleId ? { coupleId } : { userId: { in: coupleUserIds } },
-      orderBy: { createdAt: "desc" },
-      take: limit + 1,
-      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    const whereClause = coupleId
+      ? and(eq(overallBalanceLog.coupleId, coupleId), cursor ? lt(overallBalanceLog.id, cursor) : undefined)
+      : and(inArray(overallBalanceLog.userId, coupleUserIds), cursor ? lt(overallBalanceLog.id, cursor) : undefined);
+
+    const logs = await db.query.overallBalanceLog.findMany({
+      where: whereClause,
+      orderBy: (l, { desc: d }) => [d(l.createdAt)],
+      limit: limit + 1,
     });
 
     const hasMore = logs.length > limit;
