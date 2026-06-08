@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { transactions, financialAccounts } from "@db/schema";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { transactionSchema } from "@/_lib/validations/finance";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 import { getUserIdsForCouple } from "@/_services/finance/couple-service";
@@ -27,9 +29,11 @@ async function getHandler(_request: NextRequest, context: RouteContext) {
     const coupleUserIds = await getUserIdsForCouple(userId);
     const { id } = await context.params;
 
-    const transaction = await prisma.transaction.findFirst({
-      where: { id, userId: { in: coupleUserIds } },
-      include: { account: { select: { name: true } } },
+    const transaction = await db.query.transactions.findFirst({
+      where: and(
+        eq(transactions.id, id),
+        inArray(transactions.userId, coupleUserIds)
+      ),
     });
 
     if (!transaction) {
@@ -39,8 +43,14 @@ async function getHandler(_request: NextRequest, context: RouteContext) {
       );
     }
 
+    // Fetch account name separately
+    const acct = await db.query.financialAccounts.findFirst({
+      where: eq(financialAccounts.id, transaction.accountId),
+      columns: { name: true },
+    });
+
     return NextResponse.json(
-      { success: true, data: transaction },
+      { success: true, data: { ...transaction, account: { name: acct?.name ?? null } } },
       { headers: corsHeaders("private, max-age=30") },
     );
   } catch (error) {
@@ -75,8 +85,11 @@ async function putHandler(request: NextRequest, context: RouteContext) {
     const coupleUserIds = await getUserIdsForCouple(userId);
     const { id } = await context.params;
 
-    const existing = await prisma.transaction.findFirst({
-      where: { id, userId: { in: coupleUserIds } },
+    const existing = await db.query.transactions.findFirst({
+      where: and(
+        eq(transactions.id, id),
+        inArray(transactions.userId, coupleUserIds)
+      ),
     });
 
     if (!existing) {
@@ -99,8 +112,11 @@ async function putHandler(request: NextRequest, context: RouteContext) {
     const validated = transactionSchema.parse(merged);
 
     if (validated.accountId !== existing.accountId) {
-      const newAccount = await prisma.financialAccount.findFirst({
-        where: { id: validated.accountId, userId: { in: coupleUserIds } },
+      const newAccount = await db.query.financialAccounts.findFirst({
+        where: and(
+          eq(financialAccounts.id, validated.accountId),
+          inArray(financialAccounts.userId, coupleUserIds)
+        ),
       });
       if (!newAccount) {
         return NextResponse.json(
@@ -115,33 +131,34 @@ async function putHandler(request: NextRequest, context: RouteContext) {
     const newAdjustment =
       validated.type === "INCOME" ? validated.amount : -validated.amount;
 
-    const transaction = await prisma.$transaction(async (tx: any) => {
-      const updated = await tx.transaction.update({
-        where: { id },
-        data: {
+    const transaction = await db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(transactions)
+        .set({
           accountId: validated.accountId,
           amount: validated.amount,
           type: validated.type,
           category: validated.category,
-          description: validated.description,
+          description: validated.description ?? null,
           date: validated.date,
-        },
-      });
+        })
+        .where(eq(transactions.id, id))
+        .returning();
 
       if (validated.accountId === existing.accountId) {
-        await tx.financialAccount.update({
-          where: { id: existing.accountId },
-          data: { balance: { increment: oldReversal + newAdjustment } },
-        });
+        await tx
+          .update(financialAccounts)
+          .set({ balance: sql`${financialAccounts.balance} + ${oldReversal + newAdjustment}` })
+          .where(eq(financialAccounts.id, existing.accountId));
       } else {
-        await tx.financialAccount.update({
-          where: { id: existing.accountId },
-          data: { balance: { increment: oldReversal } },
-        });
-        await tx.financialAccount.update({
-          where: { id: validated.accountId },
-          data: { balance: { increment: newAdjustment } },
-        });
+        await tx
+          .update(financialAccounts)
+          .set({ balance: sql`${financialAccounts.balance} + ${oldReversal}` })
+          .where(eq(financialAccounts.id, existing.accountId));
+        await tx
+          .update(financialAccounts)
+          .set({ balance: sql`${financialAccounts.balance} + ${newAdjustment}` })
+          .where(eq(financialAccounts.id, validated.accountId));
       }
 
       return updated;
@@ -188,11 +205,14 @@ async function deleteHandler(_request: NextRequest, context: RouteContext) {
     const coupleUserIds = await getUserIdsForCouple(userId);
     const { id } = await context.params;
 
-    const existing = await prisma.transaction.findFirst({
-      where: { id, userId: { in: coupleUserIds } },
+    const existing2 = await db.query.transactions.findFirst({
+      where: and(
+        eq(transactions.id, id),
+        inArray(transactions.userId, coupleUserIds)
+      ),
     });
 
-    if (!existing) {
+    if (!existing2) {
       return NextResponse.json(
         { success: false, error: "Transaction not found" },
         { status: 404, headers: corsHeaders() },
@@ -200,17 +220,17 @@ async function deleteHandler(_request: NextRequest, context: RouteContext) {
     }
 
     const reversal =
-      existing.type === "INCOME" ? -existing.amount : existing.amount;
+      existing2.type === "INCOME" ? -existing2.amount : existing2.amount;
 
-    await prisma.$transaction([
-      prisma.transaction.delete({ where: { id } }),
-      prisma.financialAccount.update({
-        where: { id: existing.accountId },
-        data: { balance: { increment: reversal } },
-      }),
-    ]);
+    await db.transaction(async (tx) => {
+      await tx.delete(transactions).where(eq(transactions.id, id));
+      await tx
+        .update(financialAccounts)
+        .set({ balance: sql`${financialAccounts.balance} + ${reversal}` })
+        .where(eq(financialAccounts.id, existing2.accountId));
+    });
 
-    await CacheInvalidation.onTransactionChange(userId, existing.accountId);
+    await CacheInvalidation.onTransactionChange(userId, existing2.accountId);
 
     return NextResponse.json(
       { success: true, data: { id } },
