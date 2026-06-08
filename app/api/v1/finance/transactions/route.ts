@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { transactions, financialAccounts } from "@db/schema";
+import { inArray, desc, eq, and, gte, lt, sql } from "drizzle-orm";
 import { transactionSchema } from "@/_lib/validations/finance";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
@@ -30,38 +32,41 @@ async function getHandler(request: NextRequest) {
     const accountId = searchParams.get("accountId");
     const limitParam = searchParams.get("limit");
 
-    const where: {
-      userId: { in: string[] };
-      date?: { gte: Date; lt: Date };
-      category?: string;
-      accountId?: string;
-    } = { userId: { in: coupleUserIds } };
+    // Build where conditions
+    const conditions = [inArray(transactions.userId, coupleUserIds)];
 
     if (month) {
       const [year, m] = month.split("-").map(Number);
-      where.date = {
-        gte: new Date(year, m - 1, 1),
-        lt: new Date(year, m, 1),
-      };
+      conditions.push(gte(transactions.date, new Date(year, m - 1, 1)));
+      conditions.push(lt(transactions.date, new Date(year, m, 1)));
     }
+    if (category) conditions.push(eq(transactions.category, category));
+    if (accountId) conditions.push(eq(transactions.accountId, accountId));
 
-    if (category) {
-      where.category = category;
-    }
-
-    if (accountId) {
-      where.accountId = accountId;
-    }
-
-    const transactions = await prisma.transaction.findMany({
-      where,
-      orderBy: { date: "desc" },
-      take: limitParam ? parseInt(limitParam, 10) : undefined,
-      include: { account: { select: { name: true } } },
-    });
+    const txRows = await db
+      .select({
+        id: transactions.id,
+        userId: transactions.userId,
+        accountId: transactions.accountId,
+        amount: transactions.amount,
+        type: transactions.type,
+        category: transactions.category,
+        description: transactions.description,
+        receiptSource: transactions.receiptSource,
+        date: transactions.date,
+        coupleId: transactions.coupleId,
+        createdAt: transactions.createdAt,
+        updatedAt: transactions.updatedAt,
+        account: { name: financialAccounts.name },
+      })
+      .from(transactions)
+      .leftJoin(financialAccounts, eq(transactions.accountId, financialAccounts.id))
+      .where(and(...conditions))
+      .orderBy(desc(transactions.date))
+      .limit(limitParam ? parseInt(limitParam, 10) : 1000);
 
     return NextResponse.json(
-      { success: true, data: transactions },
+      { success: true, data: txRows },
       { headers: corsHeaders("private, max-age=30") },
     );
   } catch (error) {
@@ -99,8 +104,11 @@ async function postHandler(request: Request) {
     const body = await request.json();
     const validated = transactionSchema.parse(body);
 
-    const account = await prisma.financialAccount.findFirst({
-      where: { id: validated.accountId, userId: { in: coupleUserIds } },
+    const account = await db.query.financialAccounts.findFirst({
+      where: and(
+        eq(financialAccounts.id, validated.accountId),
+        inArray(financialAccounts.userId, coupleUserIds)
+      ),
     });
 
     if (!account) {
@@ -113,24 +121,26 @@ async function postHandler(request: Request) {
     const balanceAdjustment =
       validated.type === "INCOME" ? validated.amount : -validated.amount;
 
-    const [transaction] = await prisma.$transaction([
-      prisma.transaction.create({
-        data: {
-          userId: userId,
+    const [transaction] = await db.transaction(async (tx) => {
+      const created = await tx
+        .insert(transactions)
+        .values({
+          userId,
           ...(coupleId ? { coupleId } : {}),
           accountId: validated.accountId,
           amount: validated.amount,
           type: validated.type,
           category: validated.category,
-          description: validated.description,
+          description: validated.description ?? null,
           date: validated.date,
-        },
-      }),
-      prisma.financialAccount.update({
-        where: { id: validated.accountId },
-        data: { balance: { increment: balanceAdjustment } },
-      }),
-    ]);
+        })
+        .returning();
+      await tx
+        .update(financialAccounts)
+        .set({ balance: sql`${financialAccounts.balance} + ${balanceAdjustment}` })
+        .where(eq(financialAccounts.id, validated.accountId));
+      return created;
+    });
 
     await CacheInvalidation.onTransactionChange(userId, validated.accountId);
 
