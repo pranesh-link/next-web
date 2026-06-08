@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { users } from "@db/schema";
+import { eq } from "drizzle-orm";
 import jwt from "jsonwebtoken";
-import { signMobileToken, signMobileRefreshToken } from "@/api/v1/_lib/auth";
+import { signMobileToken, signMobileRefreshToken, findOrCreateGoogleUser } from "@/api/v1/_lib/auth";
 
 /**
  * POST /api/v1/auth/mobile
@@ -110,8 +112,8 @@ export async function POST(request: NextRequest) {
           type?: string;
         } | null;
         if (decoded?.sub && decoded.type === "access") {
-          const existingUser = await prisma.user.findUnique({
-            where: { id: decoded.sub },
+          const existingUser = await db.query.users.findFirst({
+            where: eq(users.id, decoded.sub),
           });
           if (existingUser?.email) {
             // It's our own JWT — skip Google verification, re-issue tokens
@@ -169,29 +171,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Find or create user
-    let user = await prisma.user.findUnique({ where: { email } });
-
-    if (!user) {
-      user = await prisma.user.create({
-        data: { email, name: name || null, image: picture || null },
-      });
-      await prisma.account.create({
-        data: {
-          userId: user.id,
-          type: "oauth",
-          provider: "google",
-          providerAccountId: googleId,
-        },
-      });
-    } else if (name || picture) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          ...(name && { name }),
-          ...(picture && { image: picture }),
-        },
-      });
-    }
+    const user = await findOrCreateGoogleUser({ googleId, email, name, picture });
 
     const token = signMobileToken(user.id);
     const refreshToken = signMobileRefreshToken(user.id);

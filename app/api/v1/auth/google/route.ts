@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import prisma from "@/_lib/prisma";
-import { signMobileToken } from "@/api/v1/_lib/auth";
+import { signMobileToken, findOrCreateGoogleUser } from "@/api/v1/_lib/auth";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 
 export async function OPTIONS() {
@@ -114,36 +113,7 @@ export async function POST(request: Request) {
     }
 
     // Find existing user by email, or create new one
-    let user = await prisma.user.findUnique({ where: { email } });
-
-    if (!user) {
-      user = await prisma.user.create({
-        data: {
-          email,
-          name: name || null,
-          image: picture || null,
-        },
-      });
-
-      // Also create an Account record for the OAuth link (NextAuth convention)
-      await prisma.account.create({
-        data: {
-          userId: user.id,
-          type: "oauth",
-          provider: "google",
-          providerAccountId: googleId,
-        },
-      });
-    } else if (name || picture) {
-      // Update profile if changed
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          ...(name && !user.name ? { name } : {}),
-          ...(picture && !user.image ? { image: picture } : {}),
-        },
-      });
-    }
+    const user = await findOrCreateGoogleUser({ googleId, email, name, picture });
 
     const token = signMobileToken(user.id);
 

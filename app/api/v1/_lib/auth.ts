@@ -1,7 +1,9 @@
 import { auth } from "@/_lib/auth";
 import { headers } from "next/headers";
 import jwt from "jsonwebtoken";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { users, authAccounts } from "@db/schema";
+import { eq } from "drizzle-orm";
 
 const JWT_SECRET = process.env.NEXTAUTH_SECRET || "fallback-dev-secret";
 
@@ -19,13 +21,13 @@ function _stampLastSeen(userId: string, headersList: Awaited<ReturnType<typeof h
   if (now - last < LAST_SEEN_DEBOUNCE_MS) return;
   _lastSeenCache.set(userId, now);
   const deviceInfo = headersList.get('x-device-info');
-  prisma.user.update({
-    where: { id: userId },
-    data: {
+  db.update(users)
+    .set({
       lastSeenAt: new Date(),
       ...(deviceInfo ? { lastDeviceInfo: deviceInfo } : {}),
-    },
-  }).catch(() => {});
+    })
+    .where(eq(users.id, userId))
+    .catch(() => {});
 }
 
 /**
@@ -105,18 +107,17 @@ export async function getAuthUserId(): Promise<string | null> {
       if (!email) return null;
 
       // Find or create user
-      let user = await prisma.user.findUnique({ where: { email } });
+      let user = await db.query.users.findFirst({ where: eq(users.email, email) });
       if (!user) {
-        user = await prisma.user.create({
-          data: { email, name: name || null, image: picture || null },
-        });
-        await prisma.account.create({
-          data: {
-            userId: user.id,
-            type: "oauth",
-            provider: "google",
-            providerAccountId: googleId,
-          },
+        const [created] = await db.insert(users)
+          .values({ email, name: name || null, image: picture || null })
+          .returning();
+        user = created;
+        await db.insert(authAccounts).values({
+          userId: user.id,
+          type: "oauth",
+          provider: "google",
+          providerAccountId: googleId,
         });
       }
       return user.id;
@@ -139,4 +140,48 @@ export async function getAuthUserId(): Promise<string | null> {
     console.error("[getAuthUserId] unexpected error, returning null");
     return null;
   }
+}
+
+/**
+ * Shared helper: find or create a Google-authenticated user.
+ * Used by all OAuth callback routes (google, mobile, device-poll, etc.)
+ * Also updates name/image if missing on an existing account.
+ */
+export async function findOrCreateGoogleUser(params: {
+  googleId: string;
+  email: string;
+  name?: string | null;
+  picture?: string | null;
+}) {
+  const { googleId, email, name, picture } = params;
+
+  let user = await db.query.users.findFirst({ where: eq(users.email, email) });
+
+  if (!user) {
+    const [created] = await db
+      .insert(users)
+      .values({ email, name: name || null, image: picture || null })
+      .returning();
+    user = created;
+    await db.insert(authAccounts).values({
+      userId: user.id,
+      type: "oauth",
+      provider: "google",
+      providerAccountId: googleId,
+    });
+  } else if (name || picture) {
+    const update: Record<string, string | null> = {};
+    if (name && !user.name) update.name = name;
+    if (picture && !user.image) update.image = picture;
+    if (Object.keys(update).length > 0) {
+      const [updated] = await db
+        .update(users)
+        .set(update)
+        .where(eq(users.id, user.id))
+        .returning();
+      user = updated;
+    }
+  }
+
+  return user;
 }
