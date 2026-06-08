@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
 import { db } from "@db";
 import { financialAccounts, balanceHistory, transactions } from "@db/schema";
-import { and, eq, inArray, desc, count } from "drizzle-orm";
+import { and, eq, inArray, count } from "drizzle-orm";
 import { accountSchema } from "@/_lib/validations/finance";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 import { getUserIdsForCouple } from "@/_services/finance/couple-service";
