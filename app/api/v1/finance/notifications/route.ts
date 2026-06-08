@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import { db } from "@/db";
-import { notifications } from "@/db/schema";
+import { db } from "@db";
+import { notifications } from "@db/schema";
 import { eq, and } from "drizzle-orm";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 import { withCache } from "@/_lib/middleware/cache";

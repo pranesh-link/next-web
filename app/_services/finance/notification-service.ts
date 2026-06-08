@@ -1,5 +1,5 @@
-import { db } from "@/db";
-import { notifications, coupleInvites, transactions } from "@/db/schema";
+import { db } from "@db";
+import { notifications, coupleInvites, transactions } from "@db/schema";
 import { eq, and, lt, inArray } from "drizzle-orm";
 import { getUserIdsForCouple } from "@/_services/finance/couple-service";
 import { sendPushToUser } from "@/_services/finance/push-service";
