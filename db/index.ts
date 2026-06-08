@@ -18,46 +18,30 @@
  * Uses DATABASE_URL_POOLER (Supabase Transaction Pooler, port 6543) so
  * existing DATABASE_URL and Prisma are completely untouched during migration.
  *
- * PgBouncer (Supabase pooler) in Transaction mode does NOT support PostgreSQL
- * prepared statements. drizzle-orm/node-postgres uses the pg `Pool` which
- * sends queries via the extended query protocol (prepared statements).
+ * IMPORTANT: Do NOT use DATABASE_URL_POOLER with PgBouncer (port 6543).
+ * PgBouncer Transaction mode does not support prepared statements, which
+ * drizzle-orm/node-postgres uses by default. Use the DIRECT connection
+ * (port 5432) for DATABASE_URL_POOLER to avoid "prepared statement" errors.
  *
- * Fix: when routing through PgBouncer, use the `postgres` package (postgres.js)
- * via `drizzle-orm/postgres-js` which has a `prepare: false` option.
- * When using a direct connection (local dev / CI), use the standard pg Pool.
- *
- * After migration is verified: swap DATABASE_URL to the pooler value
- * and remove DATABASE_URL_POOLER.
+ * Alternatively, leave DATABASE_URL_POOLER unset and Drizzle will fall
+ * back to DATABASE_URL (also direct connection).
  */
 
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 import * as schema from "./schema";
 
 const connectionString =
   process.env.DATABASE_URL_POOLER ?? process.env.DATABASE_URL ?? "";
 
-// Detect PgBouncer by port 6543 or explicit pgbouncer=true param.
-const isPgBouncer =
-  connectionString.includes("pgbouncer=true") ||
-  connectionString.includes(":6543/");
+// Strip pgbouncer param so pg driver doesn't reject the URL
+const cleanUrl = connectionString
+  .replace(/[?&]pgbouncer=true/g, "")
+  .replace(/[?&]$/, "");
 
-let db: ReturnType<typeof import("drizzle-orm/node-postgres").drizzle>;
+const pool = new Pool({ connectionString: cleanUrl || undefined });
 
-if (isPgBouncer) {
-  // PgBouncer path: use postgres.js with prepare:false to avoid prepared stmts
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const postgres = require("postgres");
-  const { drizzle } = require("drizzle-orm/postgres-js");
-  const client = postgres(connectionString, { prepare: false });
-  db = drizzle(client, { schema });
-} else {
-  // Direct connection path: standard pg Pool
-  const { Pool } = require("pg");
-  const { drizzle } = require("drizzle-orm/node-postgres");
-  const pool = new Pool({ connectionString: connectionString || undefined });
-  db = drizzle(pool, { schema });
-}
-
-export { db };
+export const db = drizzle(pool, { schema });
 export type DB = typeof db;
 
 // Re-export schema for convenience
