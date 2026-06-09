@@ -36,28 +36,29 @@ const connectionString =
 
 // Strip pgbouncer and Prisma-specific schema param so pg driver doesn't reject
 // the URL. The ?schema=public param is Prisma-only; pg ignores it but it can
-// confuse some drivers. We set search_path explicitly via options instead.
+// confuse some drivers. We embed search_path in the URL using PostgreSQL's
+// native `options` connection parameter instead — this is handled at the
+// protocol level before any queries run, making it fully race-condition-free.
 const cleanUrl = connectionString
   .replace(/[?&]pgbouncer=true/g, "")
   .replace(/[?&]schema=[^&]*/g, "")
   .replace(/[?&]$/, "");
+
+// Append ?options=-c%20search_path%3Dpublic to set the schema at the
+// PostgreSQL protocol level. This is the only approach guaranteed to run
+// before the first query — pool.on('connect') races with Drizzle's first
+// query and triggers "Calling client.query() when already executing" errors.
+const urlWithSchema = cleanUrl
+  ? cleanUrl + (cleanUrl.includes("?") ? "&" : "?") + "options=-c%20search_path%3Dpublic"
+  : cleanUrl;
 
 // Supabase's SSL cert chain is not always in Node.js's built-in CA bundle.
 // Disable cert verification for the Drizzle pool — the connection is still
 // encrypted (TLS), we just skip hostname/chain verification. This matches
 // what Prisma does internally for Supabase connections.
 const pool = new Pool({
-  connectionString: cleanUrl || undefined,
+  connectionString: urlWithSchema || undefined,
   ssl: { rejectUnauthorized: false },
-});
-
-// Set search_path=public on every new connection.
-// The Pool constructor's `options` field is not reliably applied in all
-// pg versions. Using a 'connect' event listener is the most reliable way
-// to ensure every connection targets the public schema — same approach
-// used by @prisma/adapter-pg internally.
-pool.on("connect", (client) => {
-  client.query("SET search_path TO public").catch(() => {});
 });
 
 export const db = drizzle(pool, { schema });
