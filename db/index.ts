@@ -49,11 +49,15 @@ const cleanUrl = connectionString
 const pool = new Pool({
   connectionString: cleanUrl || undefined,
   ssl: { rejectUnauthorized: false },
-  // Explicitly set search_path to public so table names resolve correctly.
-  // Prisma sets this via the ?schema=public URL param; pg.Pool ignores that
-  // param so we must set it here. Without this, the pooler may default to a
-  // different schema and raise 'relation "users" does not exist'.
-  options: "-c search_path=public",
+});
+
+// Set search_path=public on every new connection.
+// The Pool constructor's `options` field is not reliably applied in all
+// pg versions. Using a 'connect' event listener is the most reliable way
+// to ensure every connection targets the public schema — same approach
+// used by @prisma/adapter-pg internally.
+pool.on("connect", (client) => {
+  client.query("SET search_path TO public").catch(() => {});
 });
 
 export const db = drizzle(pool, { schema });
