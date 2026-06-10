@@ -2,15 +2,17 @@
  * Drizzle database client.
  *
  * DATABASE_URL points to db.prisma.io which strips PostgreSQL startup
- * parameters. We can't set search_path via URL options.
+ * parameters, so search_path cannot be set via URL options.
  *
- * Solution: use a lazy singleton Pool with afterConnect hook via
- * the 'query' event on the pool itself, which fires after a client
- * is acquired but before returning it. This guarantees search_path
- * is set before any Drizzle query runs on that connection.
+ * Solution: subclass pg.Pool and override connect() to issue
+ * SET search_path TO public — but only ONCE per physical connection,
+ * tracked via a WeakSet. This avoids an extra round-trip on every
+ * query checkout (which was causing 504 timeouts on Vercel).
  *
- * Alternative taken: configure Pool with `statement_timeout` and use
- * an initialization query via pg-pool's `connect` factory pattern.
+ * Pool config is tuned for Vercel serverless:
+ * - max:1        — one connection per function instance (serverless)
+ * - connectionTimeoutMillis:8000 — fail fast before Vercel's 10s limit
+ * - idleTimeoutMillis:20000      — keep warm between requests
  */
 
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -21,17 +23,25 @@ const { Pool } = pg;
 
 // Strip Prisma-specific ?schema= param that pg driver doesn't understand.
 const rawUrl = process.env.DATABASE_URL ?? "";
-const connectionString = rawUrl.replace(/[?&]schema=[^&]*/g, "").replace(/[?&]$/, "");
+const connectionString = rawUrl
+  .replace(/[?&]schema=[^&]*/g, "")
+  .replace(/[?&]$/, "");
+
+// Track which physical connections have already had search_path set.
+// WeakSet allows GC when the client is destroyed.
+const initializedClients = new WeakSet<pg.PoolClient>();
 
 class SchemaPool extends Pool {
-  async connect() {
+  async connect(): Promise<pg.PoolClient> {
     const client = await super.connect();
-    // SET search_path synchronously before returning client to caller.
-    // Using acquireClient pattern — this runs before Drizzle sends any query.
-    try {
-      await (client as pg.PoolClient).query("SET search_path TO public");
-    } catch {
-      // Non-fatal: if this fails, the query will fail anyway
+    // Only SET search_path on new physical connections, not every checkout.
+    if (!initializedClients.has(client)) {
+      try {
+        await client.query("SET search_path TO public");
+        initializedClients.add(client);
+      } catch {
+        // Non-fatal: downstream query will fail with a clearer error
+      }
     }
     return client;
   }
@@ -40,7 +50,10 @@ class SchemaPool extends Pool {
 const pool = new SchemaPool({
   connectionString: connectionString || undefined,
   ssl: { rejectUnauthorized: false },
-  max: 3,
+  // Serverless-optimised pool config:
+  max: 1,                        // one connection per cold-start instance
+  connectionTimeoutMillis: 8000, // fail before Vercel's 10s function timeout
+  idleTimeoutMillis: 20000,      // keep connection warm between requests
 });
 
 export const db = drizzle(pool as unknown as pg.Pool, { schema });
