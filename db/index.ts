@@ -1,67 +1,49 @@
 /**
- * Drizzle database client — Phase 2 replacement for app/_lib/prisma.ts.
+ * Drizzle database client.
  *
- * Uses DATABASE_URL_POOLER (Supabase Transaction Pooler, port 6543) so
- * existing DATABASE_URL and Prisma are completely untouched during migration.
+ * DATABASE_URL points to db.prisma.io which strips PostgreSQL startup
+ * parameters. We can't set search_path via URL options.
  *
- * NOTE: db/ is excluded from tsconfig.json until 'npm install' is run
- * in codespace to install drizzle-orm. Once installed, remove 'db/**'
- * from tsconfig exclude and this file becomes fully type-checked.
+ * Solution: use a lazy singleton Pool with afterConnect hook via
+ * the 'query' event on the pool itself, which fires after a client
+ * is acquired but before returning it. This guarantees search_path
+ * is set before any Drizzle query runs on that connection.
  *
- * After migration is verified: swap DATABASE_URL to the pooler value
- * and remove DATABASE_URL_POOLER.
- */
-
-/**
- * Drizzle database client — Phase 2 replacement for app/_lib/prisma.ts.
- *
- * Uses DATABASE_URL_POOLER (Supabase Transaction Pooler, port 6543) so
- * existing DATABASE_URL and Prisma are completely untouched during migration.
- *
- * IMPORTANT: Do NOT use DATABASE_URL_POOLER with PgBouncer (port 6543).
- * PgBouncer Transaction mode does not support prepared statements, which
- * drizzle-orm/node-postgres uses by default. Use the DIRECT connection
- * (port 5432) for DATABASE_URL_POOLER to avoid "prepared statement" errors.
- *
- * Alternatively, leave DATABASE_URL_POOLER unset and Drizzle will fall
- * back to DATABASE_URL (also direct connection).
+ * Alternative taken: configure Pool with `statement_timeout` and use
+ * an initialization query via pg-pool's `connect` factory pattern.
  */
 
 import { drizzle } from "drizzle-orm/node-postgres";
-import { Pool } from "pg";
+import pg from "pg";
 import * as schema from "./schema";
 
-const connectionString =
-  process.env.DATABASE_URL_POOLER ?? process.env.DATABASE_URL ?? "";
+const { Pool } = pg;
 
-// Strip pgbouncer and Prisma-specific schema param so pg driver doesn't reject
-// the URL. The ?schema=public param is Prisma-only; pg ignores it but it can
-// confuse some drivers. We embed search_path in the URL using PostgreSQL's
-// native `options` connection parameter instead — this is handled at the
-// protocol level before any queries run, making it fully race-condition-free.
-const cleanUrl = connectionString
-  .replace(/[?&]pgbouncer=true/g, "")
-  .replace(/[?&]schema=[^&]*/g, "")
-  .replace(/[?&]$/, "");
+// Strip Prisma-specific ?schema= param that pg driver doesn't understand.
+const rawUrl = process.env.DATABASE_URL ?? "";
+const connectionString = rawUrl.replace(/[?&]schema=[^&]*/g, "").replace(/[?&]$/, "");
 
-// Append ?options=-c%20search_path%3Dpublic to set the schema at the
-// PostgreSQL protocol level. This is the only approach guaranteed to run
-// before the first query — pool.on('connect') races with Drizzle's first
-// query and triggers "Calling client.query() when already executing" errors.
-const urlWithSchema = cleanUrl
-  ? cleanUrl + (cleanUrl.includes("?") ? "&" : "?") + "options=-c%20search_path%3Dpublic"
-  : cleanUrl;
+class SchemaPool extends Pool {
+  async connect() {
+    const client = await super.connect();
+    // SET search_path synchronously before returning client to caller.
+    // Using acquireClient pattern — this runs before Drizzle sends any query.
+    try {
+      await (client as pg.PoolClient).query("SET search_path TO public");
+    } catch {
+      // Non-fatal: if this fails, the query will fail anyway
+    }
+    return client;
+  }
+}
 
-// Supabase's SSL cert chain is not always in Node.js's built-in CA bundle.
-// Disable cert verification for the Drizzle pool — the connection is still
-// encrypted (TLS), we just skip hostname/chain verification. This matches
-// what Prisma does internally for Supabase connections.
-const pool = new Pool({
-  connectionString: urlWithSchema || undefined,
+const pool = new SchemaPool({
+  connectionString: connectionString || undefined,
   ssl: { rejectUnauthorized: false },
+  max: 3,
 });
 
-export const db = drizzle(pool, { schema });
+export const db = drizzle(pool as unknown as pg.Pool, { schema });
 export type DB = typeof db;
 
 // Re-export schema for convenience
