@@ -57,7 +57,7 @@ export async function POST(request: Request) {
       // Now fetch user info with the access_token
       const googleRes = await fetch(
         "https://www.googleapis.com/oauth2/v3/userinfo",
-        { headers: { Authorization: `Bearer ${tokens.access_token}` } },
+        { headers: { Authorization: `Bearer ${tokens.access_token}` }, signal: AbortSignal.timeout(8000) },
       );
       if (!googleRes.ok) {
         return NextResponse.json(
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
       // Verify via Google userinfo endpoint
       const googleRes = await fetch(
         "https://www.googleapis.com/oauth2/v3/userinfo",
-        { headers: { Authorization: `Bearer ${accessToken}` } },
+        { headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(8000) },
       );
       if (!googleRes.ok) {
         return NextResponse.json(
@@ -91,6 +91,7 @@ export async function POST(request: Request) {
       // Verify via Google tokeninfo endpoint
       const googleRes = await fetch(
         `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`,
+        { signal: AbortSignal.timeout(8000) },
       );
       if (!googleRes.ok) {
         return NextResponse.json(
