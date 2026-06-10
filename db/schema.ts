@@ -14,7 +14,6 @@
 import { sql } from "drizzle-orm";
 import {
   pgTable,
-  pgSchema,
   pgEnum,
   text,
   integer,
@@ -28,17 +27,6 @@ import {
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
-
-// All tables are defined under the public schema so Drizzle generates
-// fully-qualified SQL: SELECT ... FROM "public"."users"
-// This is required when the Postgres proxy (db.prisma.io) strips startup
-// parameters and search_path cannot be set per-connection.
-const publicSchema = pgSchema("public");
-
-// Re-export pgTable as schema-qualified pgTable
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const schemaTable: typeof pgTable = (name: string, columns: any, extraConfig?: any) =>
-  publicSchema.table(name, columns, extraConfig) as any;
 
 // ─── Custom Types ────────────────────────────────────────────
 
@@ -124,7 +112,7 @@ export const tripStatusEnum = pgEnum("TripStatus", [
 
 // ─── NextAuth Models ─────────────────────────────────────────
 
-export const authAccounts = schemaTable(
+export const authAccounts = pgTable(
   "auth_accounts",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -149,7 +137,7 @@ export const authAccounts = schemaTable(
   })
 );
 
-export const sessions = schemaTable("sessions", {
+export const sessions = pgTable("sessions", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   sessionToken: text("sessionToken").notNull().unique(),
   userId: text("userId").notNull(),
@@ -157,7 +145,7 @@ export const sessions = schemaTable("sessions", {
   deviceInfo: text("device_info"),
 });
 
-export const verificationTokens = schemaTable(
+export const verificationTokens = pgTable(
   "verification_tokens",
   {
     identifier: text("identifier").notNull(),
@@ -174,7 +162,7 @@ export const verificationTokens = schemaTable(
 
 // ─── Core Models ─────────────────────────────────────────────
 
-export const users = schemaTable("users", {
+export const users = pgTable("users", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text("name"),
   email: text("email").notNull().unique(),
@@ -194,7 +182,7 @@ export const users = schemaTable("users", {
 
 // ─── Finance Models ──────────────────────────────────────────
 
-export const financialAccounts = schemaTable(
+export const financialAccounts = pgTable(
   "financial_accounts",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -213,7 +201,7 @@ export const financialAccounts = schemaTable(
   (t) => ({ userIdIdx: index("financial_accounts_userId_idx").on(t.userId) })
 );
 
-export const balanceHistory = schemaTable(
+export const balanceHistory = pgTable(
   "balance_history",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -231,7 +219,7 @@ export const balanceHistory = schemaTable(
   })
 );
 
-export const overallBalanceLog = schemaTable(
+export const overallBalanceLog = pgTable(
   "overall_balance_log",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -250,7 +238,7 @@ export const overallBalanceLog = schemaTable(
   })
 );
 
-export const transactions = schemaTable(
+export const transactions = pgTable(
   "transactions",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -275,7 +263,7 @@ export const transactions = schemaTable(
   })
 );
 
-export const investmentHoldings = schemaTable(
+export const investmentHoldings = pgTable(
   "investment_holdings",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -305,7 +293,7 @@ export const investmentHoldings = schemaTable(
   })
 );
 
-export const depositInstruments = schemaTable(
+export const depositInstruments = pgTable(
   "deposit_instruments",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -339,7 +327,7 @@ export const depositInstruments = schemaTable(
   })
 );
 
-export const depositInstallments = schemaTable(
+export const depositInstallments = pgTable(
   "deposit_installments",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -357,7 +345,7 @@ export const depositInstallments = schemaTable(
   })
 );
 
-export const budgets = schemaTable(
+export const budgets = pgTable(
   "budgets",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -376,7 +364,7 @@ export const budgets = schemaTable(
   })
 );
 
-export const loans = schemaTable(
+export const loans = pgTable(
   "loans",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -400,7 +388,7 @@ export const loans = schemaTable(
   (t) => ({ userIdIdx: index("loans_userId_idx").on(t.userId) })
 );
 
-export const savingsGoals = schemaTable(
+export const savingsGoals = pgTable(
   "savings_goals",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -418,7 +406,7 @@ export const savingsGoals = schemaTable(
 
 // ─── Budget Plans ─────────────────────────────────────────────
 
-export const budgetPlans = schemaTable(
+export const budgetPlans = pgTable(
   "budget_plans",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -441,7 +429,7 @@ export const budgetPlans = schemaTable(
 
 // ─── Notifications ────────────────────────────────────────────
 
-export const notifications = schemaTable(
+export const notifications = pgTable(
   "notifications",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -464,7 +452,7 @@ export const notifications = schemaTable(
 
 // ─── Lifestyle / Wellness ─────────────────────────────────────
 
-export const bodyMetrics = schemaTable(
+export const bodyMetrics = pgTable(
   "body_metrics",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -487,7 +475,7 @@ export const bodyMetrics = schemaTable(
   })
 );
 
-export const bodyProfiles = schemaTable(
+export const bodyProfiles = pgTable(
   "body_profiles",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -507,7 +495,7 @@ export const bodyProfiles = schemaTable(
   })
 );
 
-export const nutritionLogs = schemaTable(
+export const nutritionLogs = pgTable(
   "nutrition_logs",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -530,7 +518,7 @@ export const nutritionLogs = schemaTable(
   })
 );
 
-export const exerciseLogs = schemaTable(
+export const exerciseLogs = pgTable(
   "exercise_logs",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -551,7 +539,7 @@ export const exerciseLogs = schemaTable(
   })
 );
 
-export const sleepLogs = schemaTable(
+export const sleepLogs = pgTable(
   "sleep_logs",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -572,7 +560,7 @@ export const sleepLogs = schemaTable(
   })
 );
 
-export const habits = schemaTable(
+export const habits = pgTable(
   "habits",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -592,7 +580,7 @@ export const habits = schemaTable(
   })
 );
 
-export const habitLogs = schemaTable(
+export const habitLogs = pgTable(
   "habit_logs",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -612,14 +600,14 @@ export const habitLogs = schemaTable(
 
 // ─── Couple Models ────────────────────────────────────────────
 
-export const couples = schemaTable("couples", {
+export const couples = pgTable("couples", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text("name"),
   createdAt: timestamp("createdAt").notNull().default(sql`now()`),
   updatedAt: timestamp("updatedAt").notNull().default(sql`now()`),
 });
 
-export const coupleMembers = schemaTable(
+export const coupleMembers = pgTable(
   "couple_members",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -634,7 +622,7 @@ export const coupleMembers = schemaTable(
   })
 );
 
-export const coupleInvites = schemaTable("couple_invites", {
+export const coupleInvites = pgTable("couple_invites", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   coupleId: text("coupleId").notNull(),
   email: text("email").notNull(),
@@ -646,7 +634,7 @@ export const coupleInvites = schemaTable("couple_invites", {
 
 // ─── Couple: Chat ─────────────────────────────────────────────
 
-export const coupleMessages = schemaTable(
+export const coupleMessages = pgTable(
   "couple_messages",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -671,7 +659,7 @@ export const coupleMessages = schemaTable(
   })
 );
 
-export const coupleChats = schemaTable(
+export const coupleChats = pgTable(
   "couple_chats",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -683,7 +671,7 @@ export const coupleChats = schemaTable(
   (t) => ({ coupleIdIdx: index("couple_chats_coupleId_idx").on(t.coupleId) })
 );
 
-export const coupleChatMessages = schemaTable(
+export const coupleChatMessages = pgTable(
   "couple_chat_messages",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -699,7 +687,7 @@ export const coupleChatMessages = schemaTable(
 
 // ─── Travel ───────────────────────────────────────────────────
 
-export const trips = schemaTable(
+export const trips = pgTable(
   "trips",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -721,7 +709,7 @@ export const trips = schemaTable(
   })
 );
 
-export const tripItineraryItems = schemaTable(
+export const tripItineraryItems = pgTable(
   "trip_itinerary_items",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -737,7 +725,7 @@ export const tripItineraryItems = schemaTable(
   (t) => ({ tripIdIdx: index("trip_itinerary_items_tripId_idx").on(t.tripId) })
 );
 
-export const tripExpenses = schemaTable(
+export const tripExpenses = pgTable(
   "trip_expenses",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -759,7 +747,7 @@ export const tripExpenses = schemaTable(
   })
 );
 
-export const tripChecklist = schemaTable(
+export const tripChecklist = pgTable(
   "trip_checklist",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -776,7 +764,7 @@ export const tripChecklist = schemaTable(
 
 // ─── Push Notifications ───────────────────────────────────────
 
-export const deviceTokens = schemaTable(
+export const deviceTokens = pgTable(
   "device_tokens",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -796,7 +784,7 @@ export const deviceTokens = schemaTable(
 
 // ─── App Config ───────────────────────────────────────────────
 
-export const appConfig = schemaTable("app_config", {
+export const appConfig = pgTable("app_config", {
   id: text("id").primaryKey().default("singleton"),
   minAppVersion: text("minAppVersion").notNull().default("1.0.0"),
   enabledFeatures: text("enabledFeatures").array().notNull().default(sql`'{finance,chat}'::text[]`),
@@ -807,7 +795,7 @@ export const appConfig = schemaTable("app_config", {
 
 // ─── Error Tracing ────────────────────────────────────────────
 
-export const appErrors = schemaTable(
+export const appErrors = pgTable(
   "app_errors",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
