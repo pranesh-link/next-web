@@ -81,7 +81,7 @@ export async function POST(request: Request) {
 
   const userRes = await fetch(
     "https://www.googleapis.com/oauth2/v3/userinfo",
-    { headers: { Authorization: `Bearer ${data.access_token}` } },
+    { headers: { Authorization: `Bearer ${data.access_token}` }, signal: AbortSignal.timeout(8000) },
   );
 
   if (!userRes.ok) {

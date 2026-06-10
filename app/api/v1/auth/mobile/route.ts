@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
       // Native mode: verify ID token directly
       const verifyRes = await fetch(
         `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`,
+        { signal: AbortSignal.timeout(8000) },
       );
 
       if (!verifyRes.ok) {
@@ -72,6 +73,7 @@ export async function POST(request: NextRequest) {
           redirect_uri: redirectUri,
           grant_type: "authorization_code",
         }),
+        signal: AbortSignal.timeout(8000),
       });
 
       if (!tokenRes.ok) {
@@ -88,7 +90,7 @@ export async function POST(request: NextRequest) {
       // Fetch user info with access token
       const userRes = await fetch(
         "https://www.googleapis.com/oauth2/v3/userinfo",
-        { headers: { Authorization: `Bearer ${tokens.access_token}` } },
+        { headers: { Authorization: `Bearer ${tokens.access_token}` }, signal: AbortSignal.timeout(8000) },
       );
 
       if (!userRes.ok) {
@@ -138,7 +140,7 @@ export async function POST(request: NextRequest) {
       // Access token mode: verify with Google userinfo endpoint
       const userRes = await fetch(
         "https://www.googleapis.com/oauth2/v3/userinfo",
-        { headers: { Authorization: `Bearer ${body.accessToken}` } },
+        { headers: { Authorization: `Bearer ${body.accessToken}` }, signal: AbortSignal.timeout(8000) },
       );
 
       if (!userRes.ok) {

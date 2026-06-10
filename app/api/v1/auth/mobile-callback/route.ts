@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
   // Fetch Google user info
   const userRes = await fetch(
     "https://www.googleapis.com/oauth2/v3/userinfo",
-    { headers: { Authorization: `Bearer ${tokens.access_token}` } },
+    { headers: { Authorization: `Bearer ${tokens.access_token}` }, signal: AbortSignal.timeout(8000) },
   );
 
   if (!userRes.ok) {
