@@ -29,35 +29,30 @@ async function getFirebaseAdmin(): Promise<any | null> {
 
 /**
  * Verify a Google ID token using Firebase Admin SDK (local, no outbound call).
- * Falls back to tokeninfo endpoint if Firebase Admin is unavailable.
+ * On first cold start, verifyIdToken() fetches Google's JWK keys (cached after).
+ * We wrap with a 4s timeout. If it times out → return null → caller returns 401.
+ * Flutter handles 401 and retries; second call is fast (keys cached or warm TCP).
+ * NO fallback to tokeninfo — that endpoint hangs identically and makes things worse.
  */
 async function verifyGoogleIdToken(idToken: string): Promise<{ sub: string; email: string; name?: string; picture?: string } | null> {
-  // Try local verification first (no network call — Firebase Admin caches Google's public keys)
   const admin = await getFirebaseAdmin();
-  if (admin) {
-    try {
-      const decoded = await admin.auth().verifyIdToken(idToken);
-      return { sub: decoded.uid, email: decoded.email, name: decoded.name, picture: decoded.picture };
-    } catch (err) {
-      console.warn("[mobile-auth] Firebase Admin verifyIdToken failed:", err);
-      // Fall through to network verification
-    }
+  if (!admin) {
+    console.warn("[mobile-auth] Firebase Admin not available, cannot verify idToken");
+    return null;
   }
 
-  // Fallback: tokeninfo endpoint with hard timeout
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 6000);
   try {
-    const res = await fetch(
-      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`,
-      { signal: controller.signal },
-    );
-    clearTimeout(timer);
-    if (!res.ok) return null;
-    const payload = await res.json();
-    return { sub: payload.sub, email: payload.email, name: payload.name, picture: payload.picture };
-  } catch {
-    clearTimeout(timer);
+    // Promise.race: reject after 4s so Vercel can return 401 quickly on cold start.
+    // On retry the JWK keys are cached and verification is sub-millisecond.
+    const decoded = await Promise.race([
+      admin.auth().verifyIdToken(idToken),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("verifyIdToken timeout after 4s")), 4000)
+      ),
+    ]);
+    return { sub: decoded.uid, email: decoded.email, name: decoded.name, picture: decoded.picture };
+  } catch (err) {
+    console.warn("[mobile-auth] verifyGoogleIdToken failed:", err);
     return null;
   }
 }
