@@ -52,7 +52,7 @@ const pool = new SchemaPool({
   ssl: { rejectUnauthorized: false },
   // Serverless-optimised pool config:
   max: 1,                        // one connection per cold-start instance
-  connectionTimeoutMillis: 8000, // fail before Vercel's 10s function timeout
+  connectionTimeoutMillis: 5000, // fail fast — DB cold-connect must finish well within Vercel's limit
   idleTimeoutMillis: 20000,      // keep connection warm between requests
 });
 
