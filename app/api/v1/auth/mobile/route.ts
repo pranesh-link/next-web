@@ -256,8 +256,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find or create user
-    const user = await findOrCreateGoogleUser({ googleId, email, name, picture });
+    // Find or create user — wrap in timeout so a cold DB connection can't
+    // hang the whole request. 8s is generous; Supabase cold TCP is <5s normally.
+    let user: Awaited<ReturnType<typeof findOrCreateGoogleUser>>;
+    try {
+      user = await Promise.race([
+        findOrCreateGoogleUser({ googleId, email, name, picture }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("DB timeout after 8s")), 8000)
+        ),
+      ]);
+    } catch (dbErr) {
+      console.error("[mobile-auth] DB error/timeout:", dbErr);
+      return NextResponse.json(
+        { error: "Service temporarily unavailable — please retry" },
+        { status: 503 },
+      );
+    }
 
     const token = signMobileToken(user.id);
     const refreshToken = signMobileRefreshToken(user.id);
