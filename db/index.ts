@@ -1,18 +1,16 @@
 /**
  * Drizzle database client.
  *
- * DATABASE_URL points to db.prisma.io which strips PostgreSQL startup
- * parameters, so search_path cannot be set via URL options.
- *
- * Solution: subclass pg.Pool and override connect() to issue
- * SET search_path TO public — but only ONCE per physical connection,
- * tracked via a WeakSet. This avoids an extra round-trip on every
- * query checkout (which was causing 504 timeouts on Vercel).
+ * DATABASE_URL points to Supabase direct or Transaction Pooler.
+ * search_path cannot be set via URL options on the Prisma proxy, so
+ * SchemaPool.connect() issues SET search_path TO public on each new
+ * physical connection (tracked via WeakSet to avoid redundant round-trips).
  *
  * Pool config is tuned for Vercel serverless:
- * - max:1        — one connection per function instance (serverless)
- * - connectionTimeoutMillis:8000 — fail fast before Vercel's 10s limit
- * - idleTimeoutMillis:20000      — keep warm between requests
+ * - max:1                      — one connection per function instance
+ * - connectionTimeoutMillis:12000 — covers cold TCP + SSL + SET search_path
+ * - idleTimeoutMillis:20000    — keep warm between requests
+ * - connect_timeout=10         — PostgreSQL-level TCP timeout (seconds)
  */
 
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -22,10 +20,22 @@ import * as schema from "./schema";
 const { Pool } = pg;
 
 // Strip Prisma-specific ?schema= param that pg driver doesn't understand.
+// Add connect_timeout=10 (PostgreSQL protocol-level TCP timeout) so the OS
+// doesn't hold the socket open for 30s+ on a cold Supabase connection.
+// Use sslmode=verify-full to silence the pg SSL deprecation warning.
 const rawUrl = process.env.DATABASE_URL ?? "";
-const connectionString = rawUrl
-  .replace(/[?&]schema=[^&]*/g, "")
-  .replace(/[?&]$/, "");
+const connectionString = (() => {
+  let url = rawUrl
+    .replace(/[?&]schema=[^&]*/g, "")
+    .replace(/[?&]$/, "");
+  if (!url.includes("connect_timeout")) {
+    url += (url.includes("?") ? "&" : "?") + "connect_timeout=10";
+  }
+  if (!url.includes("sslmode")) {
+    url += "&sslmode=verify-full";
+  }
+  return url;
+})();
 
 // Track which physical connections have already had search_path set.
 // WeakSet allows GC when the client is destroyed.
@@ -49,11 +59,10 @@ class SchemaPool extends Pool {
 
 const pool = new SchemaPool({
   connectionString: connectionString || undefined,
-  ssl: { rejectUnauthorized: false },
   // Serverless-optimised pool config:
-  max: 1,                        // one connection per cold-start instance
-  connectionTimeoutMillis: 5000, // fail fast — DB cold-connect must finish well within Vercel's limit
-  idleTimeoutMillis: 20000,      // keep connection warm between requests
+  max: 1,                         // one connection per cold-start instance
+  connectionTimeoutMillis: 12000, // covers cold TCP + SSL handshake + SET search_path
+  idleTimeoutMillis: 20000,       // keep connection warm between requests
 });
 
 export const db = drizzle(pool as unknown as pg.Pool, { schema });
