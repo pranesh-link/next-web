@@ -30,19 +30,33 @@ const TABLES = [
   "notifications", "device_tokens", "app_config", "app_errors",
 ];
 
+// Known array columns (table → set of column names that are Postgres TEXT[] arrays).
+// Derived from prisma/schema.prisma String[] fields with @@map table names.
+const ARRAY_COLUMNS: Record<string, Set<string>> = {
+  couple_messages: new Set(["readby"]),
+  trip_expenses:   new Set(["splitwith"]),
+  app_config:      new Set(["enabledfeatures"]),
+};
+
 /** Returns a map of column_name → 'json' | 'array' | 'other' for a table. */
 async function getColumnTypes(client: Client, table: string): Promise<Map<string, string>> {
   const result = await client.query(
-    `SELECT column_name, data_type, udt_name
+    `SELECT column_name, udt_name
      FROM information_schema.columns
      WHERE table_schema = 'public' AND table_name = $1`,
     [table]
   );
+  const knownArrays = ARRAY_COLUMNS[table.toLowerCase()] ?? new Set();
   const map = new Map<string, string>();
   for (const row of result.rows) {
-    if (row.data_type === "ARRAY") map.set(row.column_name, "array");
-    else if (row.udt_name === "json" || row.udt_name === "jsonb") map.set(row.column_name, "json");
-    else map.set(row.column_name, "other");
+    const col = row.column_name as string;
+    if (knownArrays.has(col.toLowerCase())) {
+      map.set(col.toLowerCase(), "array");
+    } else if (row.udt_name === "json" || row.udt_name === "jsonb") {
+      map.set(col.toLowerCase(), "json");
+    } else {
+      map.set(col.toLowerCase(), "other");
+    }
   }
   return map;
 }
