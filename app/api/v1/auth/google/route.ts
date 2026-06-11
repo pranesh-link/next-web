@@ -2,8 +2,12 @@ import { NextResponse } from "next/server";
 import { signMobileToken, findOrCreateGoogleUser } from "@/api/v1/_lib/auth";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 
-export async function OPTIONS() {
-  return handleOptions();
+export const maxDuration = 25;
+
+async function fetchWT(url: string, opts: RequestInit = {}, ms = 7000): Promise<Response> {
+  const c = new AbortController();
+  const t = setTimeout(() => c.abort(), ms);
+  try { return await fetch(url, { ...opts, signal: c.signal }); } finally { clearTimeout(t); }
 }
 
 /**
@@ -57,7 +61,7 @@ export async function POST(request: Request) {
       // Now fetch user info with the access_token
       const googleRes = await fetch(
         "https://www.googleapis.com/oauth2/v3/userinfo",
-        { headers: { Authorization: `Bearer ${tokens.access_token}` }, signal: AbortSignal.timeout(8000) },
+        { headers: { Authorization: `Bearer ${tokens.access_token}` } },
       );
       if (!googleRes.ok) {
         return NextResponse.json(
@@ -74,7 +78,7 @@ export async function POST(request: Request) {
       // Verify via Google userinfo endpoint
       const googleRes = await fetch(
         "https://www.googleapis.com/oauth2/v3/userinfo",
-        { headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(8000) },
+        { headers: { Authorization: `Bearer ${accessToken}` } },
       );
       if (!googleRes.ok) {
         return NextResponse.json(
@@ -91,7 +95,7 @@ export async function POST(request: Request) {
       // Verify via Google tokeninfo endpoint
       const googleRes = await fetch(
         `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`,
-        { signal: AbortSignal.timeout(8000) },
+        {},
       );
       if (!googleRes.ok) {
         return NextResponse.json(
