@@ -6,41 +6,76 @@ import jwt from "jsonwebtoken";
 import { signMobileToken, signMobileRefreshToken, findOrCreateGoogleUser } from "@/api/v1/_lib/auth";
 
 // Give this route 25 seconds — enough for Google API cold starts + DB query.
-// Default Vercel serverless limit is 10s which is too tight for external APIs.
 export const maxDuration = 25;
 
+/** Lazy-loaded firebase-admin instance (shared with push-service). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _firebaseAdmin: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getFirebaseAdmin(): Promise<any | null> {
+  if (_firebaseAdmin) return _firebaseAdmin;
+  try {
+    const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+    if (!serviceAccountJson) return null;
+    const mod = await import(/* webpackIgnore: true */ "firebase-admin");
+    _firebaseAdmin = mod.default || mod;
+    if (!_firebaseAdmin.apps?.length) {
+      const cred = JSON.parse(Buffer.from(serviceAccountJson, "base64").toString("utf-8"));
+      _firebaseAdmin.initializeApp({ credential: _firebaseAdmin.credential.cert(cred) });
+    }
+    return _firebaseAdmin;
+  } catch { return null; }
+}
+
 /**
- * Fetch with a hard timeout using Promise.race.
- *
- * AbortController.abort() does NOT reliably cancel fetch() in Node.js 22
- * on Vercel — the underlying TCP connection keeps running and the function
- * hangs until the Vercel limit. Promise.race rejects immediately when the
- * timeout fires, letting the function return a 401/502 while the background
- * fetch drains on its own (acceptable in serverless — the instance recycles).
+ * Verify a Google ID token using Firebase Admin SDK (local, no outbound call).
+ * Falls back to tokeninfo endpoint if Firebase Admin is unavailable.
+ */
+async function verifyGoogleIdToken(idToken: string): Promise<{ sub: string; email: string; name?: string; picture?: string } | null> {
+  // Try local verification first (no network call — Firebase Admin caches Google's public keys)
+  const admin = await getFirebaseAdmin();
+  if (admin) {
+    try {
+      const decoded = await admin.auth().verifyIdToken(idToken);
+      return { sub: decoded.uid, email: decoded.email, name: decoded.name, picture: decoded.picture };
+    } catch (err) {
+      console.warn("[mobile-auth] Firebase Admin verifyIdToken failed:", err);
+      // Fall through to network verification
+    }
+  }
+
+  // Fallback: tokeninfo endpoint with hard timeout
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 6000);
+  try {
+    const res = await fetch(
+      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`,
+      { signal: controller.signal },
+    );
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    const payload = await res.json();
+    return { sub: payload.sub, email: payload.email, name: payload.name, picture: payload.picture };
+  } catch {
+    clearTimeout(timer);
+    return null;
+  }
+}
+
+/**
+ * Fetch with timeout using AbortController + Promise.race.
  */
 async function fetchWithTimeout(url: string, options: RequestInit = {}, ms = 6000): Promise<Response> {
   const controller = new AbortController();
   let timerId: ReturnType<typeof setTimeout>;
-
   const timeout = new Promise<never>((_, reject) => {
-    timerId = setTimeout(() => {
-      controller.abort();
-      reject(new Error(`Timeout after ${ms}ms: ${url}`));
-    }, ms);
+    timerId = setTimeout(() => { controller.abort(); reject(new Error(`Timeout after ${ms}ms`)); }, ms);
   });
-
   try {
-    const response = await Promise.race([
-      fetch(url, { ...options, signal: controller.signal }),
-      timeout,
-    ]);
+    const response = await Promise.race([fetch(url, { ...options, signal: controller.signal }), timeout]);
     clearTimeout(timerId!);
     return response;
-  } catch (err) {
-    clearTimeout(timerId!);
-    controller.abort();
-    throw err;
-  }
+  } catch (err) { clearTimeout(timerId!); controller.abort(); throw err; }
 }
 
 /**
@@ -65,39 +100,19 @@ export async function POST(request: NextRequest) {
     let picture: string | undefined;
 
     if (idToken) {
-      // Native mode: verify ID token directly
-      const verifyRes = await fetchWithTimeout(
-        `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`,
-      );
-
-      if (!verifyRes.ok) {
+      // Native mode: verify ID token using Firebase Admin (local, no network call)
+      // Falls back to tokeninfo endpoint if Firebase Admin is unavailable.
+      const verified = await verifyGoogleIdToken(idToken);
+      if (!verified) {
         return NextResponse.json(
           { error: "Invalid Google ID token" },
           { status: 401 },
         );
       }
-
-      const payload = await verifyRes.json();
-      // Accept tokens from either the web client (NextAuth) or the mobile
-      // serverClientId (Firebase project). Both are trusted audiences.
-      const trustedAudiences = [
-        process.env.GOOGLE_CLIENT_ID,
-        process.env.GOOGLE_MOBILE_CLIENT_ID,
-      ].filter(Boolean);
-      if (
-        trustedAudiences.length > 0 &&
-        !trustedAudiences.includes(payload.aud)
-      ) {
-        return NextResponse.json(
-          { error: "Token audience mismatch" },
-          { status: 401 },
-        );
-      }
-
-      googleId = payload.sub;
-      email = payload.email;
-      name = payload.name;
-      picture = payload.picture;
+      googleId = verified.sub;
+      email = verified.email;
+      name = verified.name;
+      picture = verified.picture;
     } else if (code && redirectUri) {
       // Web mode: exchange auth code for tokens
       const tokenRes = await fetchWithTimeout("https://oauth2.googleapis.com/token", {
