@@ -19,16 +19,26 @@ export const maxDuration = 25;
  * fetch drains on its own (acceptable in serverless — the instance recycles).
  */
 async function fetchWithTimeout(url: string, options: RequestInit = {}, ms = 6000): Promise<Response> {
+  const controller = new AbortController();
   let timerId: ReturnType<typeof setTimeout>;
+
   const timeout = new Promise<never>((_, reject) => {
-    timerId = setTimeout(() => reject(new Error(`Request timed out after ${ms}ms: ${url}`)), ms);
+    timerId = setTimeout(() => {
+      controller.abort();
+      reject(new Error(`Timeout after ${ms}ms: ${url}`));
+    }, ms);
   });
+
   try {
-    const response = await Promise.race([fetch(url, options), timeout]);
+    const response = await Promise.race([
+      fetch(url, { ...options, signal: controller.signal }),
+      timeout,
+    ]);
     clearTimeout(timerId!);
     return response;
   } catch (err) {
     clearTimeout(timerId!);
+    controller.abort();
     throw err;
   }
 }

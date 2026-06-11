@@ -4,15 +4,16 @@ import { signMobileToken, findOrCreateGoogleUser } from "@/api/v1/_lib/auth";
 export const maxDuration = 25;
 
 async function fetchWithTimeout(url: string, options: RequestInit = {}, ms = 6000): Promise<Response> {
+  const controller = new AbortController();
   let timerId: ReturnType<typeof setTimeout>;
   const timeout = new Promise<never>((_, reject) => {
-    timerId = setTimeout(() => reject(new Error(`Timeout: ${url}`)), ms);
+    timerId = setTimeout(() => { controller.abort(); reject(new Error(`Timeout: ${url}`)); }, ms);
   });
   try {
-    const res = await Promise.race([fetch(url, options), timeout]);
+    const res = await Promise.race([fetch(url, { ...options, signal: controller.signal }), timeout]);
     clearTimeout(timerId!);
     return res;
-  } catch (err) { clearTimeout(timerId!); throw err; }
+  } catch (err) { clearTimeout(timerId!); controller.abort(); throw err; }
 }
 
 /**
