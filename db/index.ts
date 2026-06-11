@@ -22,10 +22,19 @@ import * as schema from "./schema";
 const { Pool } = pg;
 
 // Strip Prisma-specific ?schema= param that pg driver doesn't understand.
+// Add connect_timeout=10 (PostgreSQL-level TCP+SSL timeout in seconds) so the
+// OS doesn't hold the socket open for 30s+ on a cold Supabase connection.
 const rawUrl = process.env.DATABASE_URL ?? "";
-const connectionString = rawUrl
-  .replace(/[?&]schema=[^&]*/g, "")
-  .replace(/[?&]$/, "");
+const connectionString = (() => {
+  const stripped = rawUrl
+    .replace(/[?&]schema=[^&]*/g, "")
+    .replace(/[?&]$/, "");
+  // Append connect_timeout only if not already present
+  if (!stripped.includes("connect_timeout")) {
+    return stripped + (stripped.includes("?") ? "&" : "?") + "connect_timeout=10";
+  }
+  return stripped;
+})();
 
 // Track which physical connections have already had search_path set.
 // WeakSet allows GC when the client is destroyed.
@@ -52,8 +61,8 @@ const pool = new SchemaPool({
   ssl: { rejectUnauthorized: false },
   // Serverless-optimised pool config:
   max: 1,                        // one connection per cold-start instance
-  connectionTimeoutMillis: 5000, // fail fast — DB cold-connect must finish well within Vercel's limit
-  idleTimeoutMillis: 20000,      // keep connection warm between requests
+  connectionTimeoutMillis: 12000, // time to acquire a connection from pool (covers TCP + SSL + SET search_path)
+  idleTimeoutMillis: 20000,       // keep connection warm between requests
 });
 
 export const db = drizzle(pool as unknown as pg.Pool, { schema });

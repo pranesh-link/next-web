@@ -263,7 +263,7 @@ export async function POST(request: NextRequest) {
       user = await Promise.race([
         findOrCreateGoogleUser({ googleId, email, name, picture }),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("DB timeout after 8s")), 8000)
+          setTimeout(() => reject(new Error("DB timeout after 20s")), 20000)
         ),
       ]);
     } catch (dbErr) {
