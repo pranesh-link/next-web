@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/_lib/auth";
-import { prisma } from "@/_lib/prisma";
+import { db } from "@db";
+import { financialAccounts, loans, coupleMembers, users } from "@db/schema";
+import { eq, count } from "drizzle-orm";
 
 /**
  * Temporary diagnostic endpoint.
@@ -15,17 +17,20 @@ export async function GET() {
 
   const userId = session.user.id;
 
-  const [accountCount, loanCount, coupleMemberRecord, userRecord] = await Promise.all([
-    prisma.financialAccount.count({ where: { userId } }),
-    prisma.loan.count({ where: { userId } }),
+  const [accountCountResult, loanCountResult, coupleMemberRecord, userRecord] = await Promise.all([
+    db.select({ count: count() }).from(financialAccounts).where(eq(financialAccounts.userId, userId)),
+    db.select({ count: count() }).from(loans).where(eq(loans.userId, userId)),
     // Select only from couple_members (no join to couples) so this works even
     // when the couples table is missing.
-    prisma.coupleMember.findFirst({
-      where: { userId },
-      select: { id: true, coupleId: true },
+    db.query.coupleMembers.findFirst({
+      where: eq(coupleMembers.userId, userId),
+      columns: { id: true, coupleId: true },
     }),
-    prisma.user.findUnique({ where: { id: userId }, select: { id: true, email: true, name: true } }),
+    db.query.users.findFirst({ where: eq(users.id, userId), columns: { id: true, email: true, name: true } }),
   ]);
+
+  const accountCount = accountCountResult[0]?.count ?? 0;
+  const loanCount = loanCountResult[0]?.count ?? 0;
 
   return NextResponse.json({
     sessionUserId: userId,

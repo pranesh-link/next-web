@@ -7,7 +7,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { users } from "@db/schema";
+import { eq } from "drizzle-orm";
 
 export function OPTIONS() {
   return handleOptions();
@@ -36,9 +38,9 @@ export async function GET() {
       );
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { publicKey: true },
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+      columns: { publicKey: true },
     });
 
     return NextResponse.json(
@@ -77,23 +79,20 @@ export async function POST(request: Request) {
     const { publicKey, force } = publicKeySchema.parse(body);
 
     // Check if user already has a public key
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { publicKey: true, keyVersion: true },
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+      columns: { publicKey: true, keyVersion: true },
     });
 
     if (user?.publicKey && user.publicKey !== publicKey) {
       if (force) {
         // Force rotation — overwrite key and bump version
         const newVersion = (user.keyVersion ?? 1) + 1;
-        await prisma.user.update({
-          where: { id: userId },
-          data: {
-            publicKey,
-            keyVersion: newVersion,
-            keyRotatedAt: new Date(),
-          },
-        });
+        await db.update(users).set({
+          publicKey,
+          keyVersion: newVersion,
+          keyRotatedAt: new Date(),
+        }).where(eq(users.id, userId));
         return NextResponse.json(
           { ok: true, rotated: true, keyVersion: newVersion },
           { headers: corsHeaders() },
@@ -113,11 +112,11 @@ export async function POST(request: Request) {
     }
 
     // Key matches or no key exists — save normally
-    const updated = await prisma.user.update({
-      where: { id: userId },
-      data: { publicKey },
-      select: { keyVersion: true },
-    });
+    const [updated] = await db
+      .update(users)
+      .set({ publicKey })
+      .where(eq(users.id, userId))
+      .returning({ keyVersion: users.keyVersion });
 
     return NextResponse.json(
       { ok: true, keyVersion: updated.keyVersion ?? 1 },

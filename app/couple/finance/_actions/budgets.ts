@@ -1,9 +1,10 @@
 "use server";
 
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { budgets, transactions } from "@db/schema";
+import { eq, and, inArray, gte, lt, asc, sum } from "drizzle-orm";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { budgetSchema } from "@/_lib/validations/finance";
-import type { Budget } from "@prisma/client";
 import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
 import { unstable_cache, revalidatePath, revalidateTag, unstable_noStore as noStore } from "next/cache";
 import { CACHE_TAGS, invalidateAfterBudgetChange } from "@/_lib/cache";
@@ -17,31 +18,31 @@ const fetchBudgetsWithSpending = unstable_cache(
   async (coupleUserIds: string[], targetMonth: string) => {
     const [year, m] = targetMonth.split("-").map(Number);
 
-    const budgetsPromise = prisma.budget.findMany({
-      where: { userId: { in: coupleUserIds }, month: targetMonth },
-      orderBy: { category: "asc" },
+    const budgetRowsPromise = db.query.budgets.findMany({
+      where: and(inArray(budgets.userId, coupleUserIds), eq(budgets.month, targetMonth)),
+      orderBy: [asc(budgets.category)],
     });
-    const spentPromise = prisma.transaction.groupBy({
-      by: ["category"] as const,
-      where: {
-        userId: { in: coupleUserIds },
-        type: "EXPENSE" as const,
-        date: {
-          gte: new Date(year, m - 1, 1),
-          lt: new Date(year, m, 1),
-        },
-      },
-      _sum: { amount: true },
-    });
+    const spentPromise = db
+      .select({ category: transactions.category, total: sum(transactions.amount) })
+      .from(transactions)
+      .where(
+        and(
+          inArray(transactions.userId, coupleUserIds),
+          eq(transactions.type, "EXPENSE"),
+          gte(transactions.date, new Date(year, m - 1, 1)),
+          lt(transactions.date, new Date(year, m, 1)),
+        ),
+      )
+      .groupBy(transactions.category);
 
-    const budgets: Budget[] = await budgetsPromise;
+    const budgetRows = await budgetRowsPromise;
     const spentByCategory = await spentPromise;
 
     const spentMap = new Map<string, number>(
-      spentByCategory.map((s: { category: string; _sum: { amount: number | null } }) => [s.category, s._sum.amount ?? 0]),
+      spentByCategory.map((s) => [s.category, Number(s.total ?? 0)]),
     );
 
-    return { budgets, spentMap: Object.fromEntries(spentMap) };
+    return { budgets: budgetRows, spentMap: Object.fromEntries(spentMap) };
   },
   ["budgets-with-spending"],
   { revalidate: 30, tags: [CACHE_TAGS.FINANCE_BUDGETS] },
@@ -85,23 +86,20 @@ export async function createBudget(data: {
 
     const coupleId = await getCoupleIdForUser(user.id);
 
-    const budget = await prisma.budget.upsert({
-      where: {
-        userId_category_month: {
-          userId: user.id,
-          category: validated.category,
-          month: validated.month,
-        },
-      },
-      update: { limit: validated.limit },
-      create: {
+    const [budget] = await db
+      .insert(budgets)
+      .values({
         userId: user.id,
         category: validated.category,
         limit: validated.limit,
         month: validated.month,
         ...(coupleId ? { coupleId } : {}),
-      },
-    });
+      })
+      .onConflictDoUpdate({
+        target: [budgets.userId, budgets.category, budgets.month],
+        set: { limit: validated.limit },
+      })
+      .returning();
 
     invalidateAfterBudgetChange();
     revalidateTag(CACHE_TAGS.FINANCE_BUDGETS);
@@ -123,11 +121,11 @@ export async function updateBudget(id: string, data: { limit?: number }) {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
 
-    const existing = await prisma.budget.findFirst({
-      where: { id, userId: { in: await getUserIdsForCouple(user.id) } },
+    const existingBudget = await db.query.budgets.findFirst({
+      where: and(eq(budgets.id, id), inArray(budgets.userId, await getUserIdsForCouple(user.id))),
     });
 
-    if (!existing) {
+    if (!existingBudget) {
       return { success: false as const, error: "Budget not found" };
     }
 
@@ -135,10 +133,11 @@ export async function updateBudget(id: string, data: { limit?: number }) {
       return { success: false as const, error: "Limit must be positive" };
     }
 
-    const budget = await prisma.budget.update({
-      where: { id },
-      data: { limit: data.limit ?? existing.limit },
-    });
+    const [budget] = await db
+      .update(budgets)
+      .set({ limit: data.limit ?? existingBudget.limit })
+      .where(eq(budgets.id, id))
+      .returning();
 
     invalidateAfterBudgetChange();
     revalidateTag(CACHE_TAGS.FINANCE_BUDGETS);
@@ -160,15 +159,15 @@ export async function deleteBudget(id: string) {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
 
-    const existing = await prisma.budget.findFirst({
-      where: { id, userId: { in: await getUserIdsForCouple(user.id) } },
+    const existingToDelete = await db.query.budgets.findFirst({
+      where: and(eq(budgets.id, id), inArray(budgets.userId, await getUserIdsForCouple(user.id))),
     });
 
-    if (!existing) {
+    if (!existingToDelete) {
       return { success: false as const, error: "Budget not found" };
     }
 
-    await prisma.budget.delete({ where: { id } });
+    await db.delete(budgets).where(eq(budgets.id, id));
 
     invalidateAfterBudgetChange();
     revalidateTag(CACHE_TAGS.FINANCE_BUDGETS);

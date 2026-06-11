@@ -17,7 +17,9 @@ import fs from "fs";
 import OpenAI from "openai";
 import type { ChatCompletionMessageToolCall } from "openai/resources/chat/completions";
 import { auth } from "@/_lib/auth";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { users } from "@db/schema";
+import { inArray } from "drizzle-orm";
 import { getUserIdsForCouple } from "@/_services/finance/couple-service";
 import { FINANCE_TOOLS, executeToolCall } from "@/couple/finance/_lib/chat-tools";
 
@@ -50,9 +52,9 @@ export async function POST(req: Request): Promise<Response> {
   const { systemPrompt } = loadCmsChatConfig();
 
   // Fetch real names so the LLM never says "Person 1" / "Person 2"
-  const members = await prisma.user.findMany({
-    where: { id: { in: coupleUserIds } },
-    select: { id: true, name: true, email: true },
+  const members = await db.query.users.findMany({
+    where: inArray(users.id, coupleUserIds),
+    columns: { id: true, name: true, email: true },
   });
   const memberNames = members.map((m) => `  '${m.id}' → ${m.name ?? m.email}`).join("\n");
 

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { coupleMembers, financialAccounts, transactions, budgets, loans, savingsGoals } from "@db/schema";
+import { and, eq, isNull } from "drizzle-orm";
 
 /**
  * POST /api/v1/finance/backfill-couple-id
@@ -19,9 +21,9 @@ export async function POST(request: Request) {
   }
 
   // Get all couple memberships
-  const memberships = await prisma.coupleMember.findMany({
-    select: { userId: true, coupleId: true },
-  });
+  const memberships = await db
+    .select({ userId: coupleMembers.userId, coupleId: coupleMembers.coupleId })
+    .from(coupleMembers);
 
   if (memberships.length === 0) {
     return NextResponse.json({ message: "No couples found", updated: {} });
@@ -36,67 +38,72 @@ export async function POST(request: Request) {
   const userIds = [...userCoupleMap.keys()];
 
   // Backfill each table in parallel
-  const [accounts, transactions, budgets, loans, goals] = await Promise.all([
+  const [accountUpdates, txUpdates, budgetUpdates, loanUpdates, goalUpdates] = await Promise.all([
     // FinancialAccount
     Promise.all(
       userIds.map((userId) =>
-        prisma.financialAccount.updateMany({
-          where: { userId, coupleId: null },
-          data: { coupleId: userCoupleMap.get(userId)! },
-        })
+        db
+          .update(financialAccounts)
+          .set({ coupleId: userCoupleMap.get(userId)! })
+          .where(and(eq(financialAccounts.userId, userId), isNull(financialAccounts.coupleId)))
+          .returning({ id: financialAccounts.id })
       )
     ),
     // Transaction
     Promise.all(
       userIds.map((userId) =>
-        prisma.transaction.updateMany({
-          where: { userId, coupleId: null },
-          data: { coupleId: userCoupleMap.get(userId)! },
-        })
+        db
+          .update(transactions)
+          .set({ coupleId: userCoupleMap.get(userId)! })
+          .where(and(eq(transactions.userId, userId), isNull(transactions.coupleId)))
+          .returning({ id: transactions.id })
       )
     ),
     // Budget
     Promise.all(
       userIds.map((userId) =>
-        prisma.budget.updateMany({
-          where: { userId, coupleId: null },
-          data: { coupleId: userCoupleMap.get(userId)! },
-        })
+        db
+          .update(budgets)
+          .set({ coupleId: userCoupleMap.get(userId)! })
+          .where(and(eq(budgets.userId, userId), isNull(budgets.coupleId)))
+          .returning({ id: budgets.id })
       )
     ),
     // Loan
     Promise.all(
       userIds.map((userId) =>
-        prisma.loan.updateMany({
-          where: { userId, coupleId: null },
-          data: { coupleId: userCoupleMap.get(userId)! },
-        })
+        db
+          .update(loans)
+          .set({ coupleId: userCoupleMap.get(userId)! })
+          .where(and(eq(loans.userId, userId), isNull(loans.coupleId)))
+          .returning({ id: loans.id })
       )
     ),
     // SavingsGoal
     Promise.all(
       userIds.map((userId) =>
-        prisma.savingsGoal.updateMany({
-          where: { userId, coupleId: null },
-          data: { coupleId: userCoupleMap.get(userId)! },
-        })
+        db
+          .update(savingsGoals)
+          .set({ coupleId: userCoupleMap.get(userId)! })
+          .where(and(eq(savingsGoals.userId, userId), isNull(savingsGoals.coupleId)))
+          .returning({ id: savingsGoals.id })
       )
     ),
   ]);
 
-  const sum = (results: { count: number }[]) =>
-    results.reduce((s, r) => s + r.count, 0);
+  const sum = (results: { id: string }[][]) =>
+    results.reduce((s, r) => s + r.length, 0);
 
   return NextResponse.json({
     message: "Backfill complete",
     couplesProcessed: new Set(userCoupleMap.values()).size,
     usersProcessed: userIds.length,
     updated: {
-      accounts: sum(accounts),
-      transactions: sum(transactions),
-      budgets: sum(budgets),
-      loans: sum(loans),
-      goals: sum(goals),
+      accounts: sum(accountUpdates),
+      transactions: sum(txUpdates),
+      budgets: sum(budgetUpdates),
+      loans: sum(loanUpdates),
+      goals: sum(goalUpdates),
     },
   });
 }

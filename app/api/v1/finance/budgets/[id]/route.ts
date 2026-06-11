@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { budgets } from "@db/schema";
+import { and, eq, inArray } from "drizzle-orm";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 import { getUserIdsForCouple } from "@/_services/finance/couple-service";
 
@@ -23,8 +25,8 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     const coupleUserIds = await getUserIdsForCouple(userId);
     const { id } = await context.params;
 
-    const existing = await prisma.budget.findFirst({
-      where: { id, userId: { in: coupleUserIds } },
+    const existing = await db.query.budgets.findFirst({
+      where: and(eq(budgets.id, id), inArray(budgets.userId, coupleUserIds)),
     });
 
     if (!existing) {
@@ -43,10 +45,9 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       );
     }
 
-    const budget = await prisma.budget.update({
-      where: { id },
-      data: { limit: body.limit ?? existing.limit },
-    });
+    const [budget] = await db.update(budgets).set({
+      limit: body.limit ?? existing.limit,
+    }).where(eq(budgets.id, id)).returning();
 
     return NextResponse.json(
       { success: true, data: budget },
@@ -79,18 +80,18 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
     const coupleUserIds = await getUserIdsForCouple(userId);
     const { id } = await context.params;
 
-    const existing = await prisma.budget.findFirst({
-      where: { id, userId: { in: coupleUserIds } },
+    const existing2 = await db.query.budgets.findFirst({
+      where: and(eq(budgets.id, id), inArray(budgets.userId, coupleUserIds)),
     });
 
-    if (!existing) {
+    if (!existing2) {
       return NextResponse.json(
         { success: false, error: "Budget not found" },
         { status: 404, headers: corsHeaders() },
       );
     }
 
-    await prisma.budget.delete({ where: { id } });
+    await db.delete(budgets).where(eq(budgets.id, id));
 
     return NextResponse.json(
       { success: true, data: { id } },

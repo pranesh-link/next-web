@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { financialAccounts, transactions, budgets, loans, savingsGoals } from "@db/schema";
+import { and, inArray, eq, gte, lt, desc, sql } from "drizzle-orm";
 import {
   calculateMonthlyCashFlow,
   calculateMonthlyTrends,
@@ -10,13 +12,6 @@ import {
   calculateGoalProgress,
 } from "@/_services/finance";
 import type { TransactionData } from "@/_services/finance";
-import type {
-  FinancialAccount,
-  Transaction,
-  Budget,
-  Loan,
-  SavingsGoal,
-} from "@prisma/client";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 import { getUserIdsForCouple } from "@/_services/finance/couple-service";
 import { withCache } from "@/_lib/middleware/cache";
@@ -49,51 +44,73 @@ async function getHandler() {
     const monthEnd = new Date(year, m, 1);
 
     // Fire all queries in parallel
-    const accountsP = prisma.financialAccount.findMany({
-      where: { userId: { in: coupleUserIds } },
+    const accountsP = db.query.financialAccounts.findMany({
+      where: inArray(financialAccounts.userId, coupleUserIds),
     });
-    const allTransactionsP = prisma.transaction.findMany({
-      where: { userId: { in: coupleUserIds } },
-      orderBy: { date: "desc" as const },
+    const allTransactionsP = db.query.transactions.findMany({
+      where: inArray(transactions.userId, coupleUserIds),
+      orderBy: (t, { desc: d }) => [d(t.date)],
     });
-    const currentMonthTxP = prisma.transaction.findMany({
-      where: {
-        userId: { in: coupleUserIds },
-        date: { gte: monthStart, lt: monthEnd },
-      },
+    const currentMonthTxP = db.query.transactions.findMany({
+      where: and(
+        inArray(transactions.userId, coupleUserIds),
+        gte(transactions.date, monthStart),
+        lt(transactions.date, monthEnd),
+      ),
     });
-    const budgetsP = prisma.budget.findMany({
-      where: { userId: { in: coupleUserIds }, month },
+    const budgetsP = db.query.budgets.findMany({
+      where: and(inArray(budgets.userId, coupleUserIds), eq(budgets.month, month)),
     });
-    const budgetSpentP = prisma.transaction.groupBy({
-      by: ["category"] as const,
-      where: {
-        userId: { in: coupleUserIds },
-        type: "EXPENSE" as const,
-        date: { gte: monthStart, lt: monthEnd },
-      },
-      _sum: { amount: true },
+    const budgetSpentP = db
+      .select({
+        category: transactions.category,
+        total: sql<number>`sum(${transactions.amount})`,
+      })
+      .from(transactions)
+      .where(
+        and(
+          inArray(transactions.userId, coupleUserIds),
+          eq(transactions.type, "EXPENSE"),
+          gte(transactions.date, monthStart),
+          lt(transactions.date, monthEnd),
+        ),
+      )
+      .groupBy(transactions.category);
+    const loansP = db.query.loans.findMany({
+      where: inArray(loans.userId, coupleUserIds),
     });
-    const loansP = prisma.loan.findMany({
-      where: { userId: { in: coupleUserIds } },
+    const goalsP = db.query.savingsGoals.findMany({
+      where: inArray(savingsGoals.userId, coupleUserIds),
     });
-    const goalsP = prisma.savingsGoal.findMany({
-      where: { userId: { in: coupleUserIds } },
-    });
-    const recentTxP = prisma.transaction.findMany({
-      where: { userId: { in: coupleUserIds } },
-      orderBy: { date: "desc" as const },
-      take: 5,
-      include: { account: { select: { name: true } } },
-    });
+    const recentTxP = db
+      .select({
+        id: transactions.id,
+        userId: transactions.userId,
+        accountId: transactions.accountId,
+        amount: transactions.amount,
+        type: transactions.type,
+        category: transactions.category,
+        description: transactions.description,
+        receiptSource: transactions.receiptSource,
+        date: transactions.date,
+        coupleId: transactions.coupleId,
+        createdAt: transactions.createdAt,
+        updatedAt: transactions.updatedAt,
+        account: { name: financialAccounts.name },
+      })
+      .from(transactions)
+      .leftJoin(financialAccounts, eq(transactions.accountId, financialAccounts.id))
+      .where(inArray(transactions.userId, coupleUserIds))
+      .orderBy(desc(transactions.date))
+      .limit(5);
 
-    const accounts: FinancialAccount[] = await accountsP;
-    const allTransactions: Transaction[] = await allTransactionsP;
-    const currentMonthTransactions: Transaction[] = await currentMonthTxP;
-    const budgets: Budget[] = await budgetsP;
+    const accounts = await accountsP;
+    const allTransactions = await allTransactionsP;
+    const currentMonthTransactions = await currentMonthTxP;
+    const budgetRows = await budgetsP;
     const budgetSpent = await budgetSpentP;
-    const loans: Loan[] = await loansP;
-    const goals: SavingsGoal[] = await goalsP;
+    const loanRows = await loansP;
+    const goals = await goalsP;
     const recentTransactions = await recentTxP;
 
     // 1. Total balance
@@ -118,14 +135,9 @@ async function getHandler() {
 
     // 5. Budget status
     const spentMap = new Map<string, number>(
-      budgetSpent.map(
-        (s: { category: string; _sum: { amount: number | null } }) => [
-          s.category,
-          s._sum.amount ?? 0,
-        ],
-      ),
+      budgetSpent.map((s) => [s.category, s.total ?? 0]),
     );
-    const budgetStatus = budgets.map((budget) => {
+    const budgetStatus = budgetRows.map((budget) => {
       const spent = spentMap.get(budget.category) ?? 0;
       return {
         budget,
@@ -137,9 +149,9 @@ async function getHandler() {
 
     // 6. Loans summary
     const loansSummary = {
-      count: loans.length,
-      totalRemaining: loans.reduce((sum, l) => sum + l.remainingBalance, 0),
-      totalEMI: loans.reduce((sum, l) => sum + l.emiAmount, 0),
+      count: loanRows.length,
+      totalRemaining: loanRows.reduce((sum, l) => sum + l.remainingBalance, 0),
+      totalEMI: loanRows.reduce((sum, l) => sum + l.emiAmount, 0),
     };
 
     // 7. Goals summary
@@ -166,8 +178,8 @@ async function getHandler() {
     const emergencyFundMonths =
       cashFlow.expenses > 0 ? totalBalance / cashFlow.expenses : 0;
 
-    const totalBudgetLimit = budgets.reduce((sum, b) => sum + b.limit, 0);
-    const totalBudgetSpent = budgets.reduce(
+    const totalBudgetLimit = budgetRows.reduce((sum, b) => sum + b.limit, 0);
+    const totalBudgetSpent = budgetRows.reduce(
       (sum, b) => sum + (spentMap.get(b.category) ?? 0),
       0,
     );

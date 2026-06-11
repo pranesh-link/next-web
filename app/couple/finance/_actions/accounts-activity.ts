@@ -1,7 +1,9 @@
 "use server";
 
 import { unstable_noStore as noStore } from "next/cache";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { financialAccounts, balanceHistory, transactions } from "@db/schema";
+import { eq, and, inArray, lte, desc } from "drizzle-orm";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { getUserIdsForCouple } from "@/_services/finance/couple-service";
 
@@ -37,8 +39,8 @@ export async function getAccountActivity(accountId: string, cursor?: string) {
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
 
-    const account = await prisma.financialAccount.findFirst({
-      where: { id: accountId, userId: { in: coupleUserIds } },
+    const account = await db.query.financialAccounts.findFirst({
+      where: and(eq(financialAccounts.id, accountId), inArray(financialAccounts.userId, coupleUserIds)),
     });
 
     if (!account) {
@@ -54,23 +56,33 @@ export async function getAccountActivity(accountId: string, cursor?: string) {
       cursorId = id;
     }
 
-    const [balanceHistory, transactions] = await Promise.all([
-      prisma.balanceHistory.findMany({
-        where: { accountId, userId: { in: coupleUserIds } },
-        orderBy: { createdAt: "desc" },
-        take: pageSize + 1,
-        ...(cursorDate ? { where: { accountId, userId: { in: coupleUserIds }, createdAt: { lte: cursorDate } } } : {}),
+    const [balHistRows, txRows] = await Promise.all([
+      db.query.balanceHistory.findMany({
+        where: cursorDate
+          ? and(
+              eq(balanceHistory.accountId, accountId),
+              inArray(balanceHistory.userId, coupleUserIds),
+              lte(balanceHistory.createdAt, cursorDate),
+            )
+          : and(eq(balanceHistory.accountId, accountId), inArray(balanceHistory.userId, coupleUserIds)),
+        orderBy: [desc(balanceHistory.createdAt)],
+        limit: pageSize + 1,
       }),
-      prisma.transaction.findMany({
-        where: { accountId, userId: { in: coupleUserIds } },
-        orderBy: { date: "desc" },
-        take: pageSize + 1,
-        ...(cursorDate ? { where: { accountId, userId: { in: coupleUserIds }, date: { lte: cursorDate } } } : {}),
+      db.query.transactions.findMany({
+        where: cursorDate
+          ? and(
+              eq(transactions.accountId, accountId),
+              inArray(transactions.userId, coupleUserIds),
+              lte(transactions.date, cursorDate),
+            )
+          : and(eq(transactions.accountId, accountId), inArray(transactions.userId, coupleUserIds)),
+        orderBy: [desc(transactions.date)],
+        limit: pageSize + 1,
       }),
     ]);
 
     const items: ActivityItem[] = [
-      ...balanceHistory.map((h) => ({
+      ...balHistRows.map((h) => ({
         id: h.id,
         date: h.createdAt,
         source: "balance" as const,
@@ -82,7 +94,7 @@ export async function getAccountActivity(accountId: string, cursor?: string) {
         category: null,
         type: null,
       })),
-      ...transactions.map((t) => ({
+      ...txRows.map((t) => ({
         id: t.id,
         date: t.date,
         source: "transaction" as const,
@@ -118,9 +130,8 @@ export async function getAccountActivity(accountId: string, cursor?: string) {
     const page = filtered.slice(0, pageSize);
     const hasMore = filtered.length > pageSize;
     const lastItem = page[page.length - 1];
-    const nextCursor = hasMore && lastItem
-      ? `${lastItem.date.toISOString()}|${lastItem.id}`
-      : null;
+    const nextCursor =
+      hasMore && lastItem ? `${lastItem.date.toISOString()}|${lastItem.id}` : null;
 
     return { success: true as const, data: { items: page, nextCursor } };
   } catch (error) {

@@ -1,7 +1,9 @@
 "use server";
 
 import { unstable_noStore as noStore } from "next/cache";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { loans } from "@db/schema";
+import { eq, and, inArray, desc } from "drizzle-orm";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import {
   simulatePrepayment,
@@ -26,12 +28,12 @@ export async function getLoans() {
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
 
-    const loans = await prisma.loan.findMany({
-      where: { userId: { in: coupleUserIds } },
-      orderBy: { createdAt: "desc" },
+    const loanRows = await db.query.loans.findMany({
+      where: inArray(loans.userId, coupleUserIds),
+      orderBy: [desc(loans.createdAt)],
     });
 
-    return { success: true as const, data: loans };
+    return { success: true as const, data: loanRows };
   } catch (error) {
     return {
       success: false as const,
@@ -53,8 +55,8 @@ export async function getLoan(id: string) {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
 
-    const loan = await prisma.loan.findFirst({
-      where: { id, userId: { in: await getUserIdsForCouple(user.id) } },
+    const loan = await db.query.loans.findFirst({
+      where: and(eq(loans.id, id), inArray(loans.userId, await getUserIdsForCouple(user.id))),
     });
 
     if (!loan) {
@@ -84,8 +86,8 @@ export async function simulateLoanPrepayment(id: string, prepaymentAmount: numbe
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
 
-    const loan = await prisma.loan.findFirst({
-      where: { id, userId: { in: await getUserIdsForCouple(user.id) } },
+    const loan = await db.query.loans.findFirst({
+      where: and(eq(loans.id, id), inArray(loans.userId, await getUserIdsForCouple(user.id))),
     });
 
     if (!loan) {
@@ -120,8 +122,8 @@ export async function getLoanInsightsAction(id: string) {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
 
-    const loan = await prisma.loan.findFirst({
-      where: { id, userId: { in: await getUserIdsForCouple(user.id) } },
+    const loan = await db.query.loans.findFirst({
+      where: and(eq(loans.id, id), inArray(loans.userId, await getUserIdsForCouple(user.id))),
     });
 
     if (!loan) {
@@ -153,8 +155,8 @@ export async function getLoanSchedule(id: string) {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
 
-    const loan = await prisma.loan.findFirst({
-      where: { id, userId: { in: await getUserIdsForCouple(user.id) } },
+    const loan = await db.query.loans.findFirst({
+      where: and(eq(loans.id, id), inArray(loans.userId, await getUserIdsForCouple(user.id))),
     });
 
     if (!loan) {

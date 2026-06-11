@@ -6,7 +6,9 @@ import StyledComponentsRegistry from "@/_lib/registry";
 import CoupleProviders from "@/couple/_components/CoupleProviders";
 import FinanceLayout from "@/couple/_components/layout/FinanceLayout";
 import OnboardingCheck from "@/couple/_components/OnboardingCheck";
-import { prisma } from "@/_lib/prisma";
+import { db } from "@db";
+import { coupleMembers } from "@db/schema";
+import { eq } from "drizzle-orm";
 
 export const metadata = {
   title: "LuvVerse",
@@ -23,9 +25,9 @@ export default async function CoupleRootLayout({
   const pathname = headersList.get("x-pathname") || "";
 
   const hasCouple = session?.user?.id
-    ? !!(await prisma.coupleMember.findFirst({
-        where: { userId: session.user.id },
-        select: { id: true },
+    ? !!(await db.query.coupleMembers.findFirst({
+        where: eq(coupleMembers.userId, session.user.id),
+        columns: { id: true },
       }))
     : false;
 

@@ -3,7 +3,22 @@
  * Combines finance and lifestyle tools — all read-only, all couple-scoped.
  */
 
-import { prisma } from "@/_lib/prisma";
+import { db } from "@db";
+import {
+  transactions,
+  financialAccounts,
+  loans,
+  savingsGoals,
+  budgets,
+  investmentHoldings,
+  depositInstruments,
+  nutritionLogs,
+  exerciseLogs,
+  sleepLogs,
+  habits,
+  habitLogs,
+} from "@db/schema";
+import { eq, and, inArray, desc, gte, lt, sum, isNotNull } from "drizzle-orm";
 
 export type ToolParam = {
   type: "function";
@@ -256,18 +271,25 @@ export async function executeCoupleDataToolCall(
       const [y, m] = month.split("-").map(Number);
       const start = new Date(y, m - 1, 1);
       const end = new Date(y, m, 1);
-      const rows = await prisma.transaction.groupBy({
-        by: ["category"],
-        where: { userId: { in: coupleUserIds }, type: "EXPENSE", date: { gte: start, lt: end } },
-        _sum: { amount: true },
-        orderBy: { _sum: { amount: "desc" } },
-      });
+      const rows = await db
+        .select({ category: transactions.category, total: sum(transactions.amount) })
+        .from(transactions)
+        .where(
+          and(
+            inArray(transactions.userId, coupleUserIds),
+            eq(transactions.type, "EXPENSE"),
+            gte(transactions.date, start),
+            lt(transactions.date, end),
+          ),
+        )
+        .groupBy(transactions.category)
+        .orderBy(desc(sum(transactions.amount)));
       if (rows.length === 0) {
         // Fallback: find the latest month that actually has data
-        const latestTx = await prisma.transaction.findFirst({
-          where: { userId: { in: coupleUserIds }, type: "EXPENSE" },
-          orderBy: { date: "desc" },
-          select: { date: true },
+        const latestTx = await db.query.transactions.findFirst({
+          where: and(inArray(transactions.userId, coupleUserIds), eq(transactions.type, "EXPENSE")),
+          orderBy: [desc(transactions.date)],
+          columns: { date: true },
         });
         if (!latestTx) return { note: "No expense transactions found." };
         const ld = latestTx.date;
@@ -276,33 +298,40 @@ export async function executeCoupleDataToolCall(
         const latestMonth = `${ly}-${String(lm).padStart(2, "0")}`;
         const lStart = new Date(ly, lm - 1, 1);
         const lEnd = new Date(ly, lm, 1);
-        const fallbackRows = await prisma.transaction.groupBy({
-          by: ["category"],
-          where: { userId: { in: coupleUserIds }, type: "EXPENSE", date: { gte: lStart, lt: lEnd } },
-          _sum: { amount: true },
-          orderBy: { _sum: { amount: "desc" } },
-        });
+        const fallbackRows = await db
+          .select({ category: transactions.category, total: sum(transactions.amount) })
+          .from(transactions)
+          .where(
+            and(
+              inArray(transactions.userId, coupleUserIds),
+              eq(transactions.type, "EXPENSE"),
+              gte(transactions.date, lStart),
+              lt(transactions.date, lEnd),
+            ),
+          )
+          .groupBy(transactions.category)
+          .orderBy(desc(sum(transactions.amount)));
         return {
           note: `No data for ${month}. Showing latest available month: ${latestMonth}.`,
-          data: fallbackRows.map((r) => ({ category: r.category, total: r._sum.amount ?? 0 })),
+          data: fallbackRows.map((r) => ({ category: r.category, total: Number(r.total ?? 0) })),
         };
       }
-      return rows.map((r) => ({ category: r.category, total: r._sum.amount ?? 0 }));
+      return rows.map((r) => ({ category: r.category, total: Number(r.total ?? 0) }));
     }
 
     case "getMonthlyTrend": {
       const months = Math.min(Math.max(Number(args.months) || 6, 1), 12);
       // Anchor to the latest transaction date so old datasets work correctly
-      const latestTx = await prisma.transaction.findFirst({
-        where: { userId: { in: coupleUserIds } },
-        orderBy: { date: "desc" },
-        select: { date: true },
+      const latestTx = await db.query.transactions.findFirst({
+        where: inArray(transactions.userId, coupleUserIds),
+        orderBy: [desc(transactions.date)],
+        columns: { date: true },
       });
       const anchor = latestTx?.date ?? new Date();
       const startDate = new Date(anchor.getFullYear(), anchor.getMonth() - months + 1, 1);
-      const txs = await prisma.transaction.findMany({
-        where: { userId: { in: coupleUserIds }, date: { gte: startDate } },
-        select: { date: true, type: true, amount: true },
+      const txs = await db.query.transactions.findMany({
+        where: and(inArray(transactions.userId, coupleUserIds), gte(transactions.date, startDate)),
+        columns: { date: true, type: true, amount: true },
       });
       const map: Record<string, { income: number; expense: number }> = {};
       for (const tx of txs) {
@@ -317,34 +346,40 @@ export async function executeCoupleDataToolCall(
     }
 
     case "getAccountBalances":
-      return prisma.financialAccount.findMany({
-        where: { userId: { in: coupleUserIds } },
-        select: { name: true, type: true, balance: true },
-        orderBy: { balance: "desc" },
+      return db.query.financialAccounts.findMany({
+        where: inArray(financialAccounts.userId, coupleUserIds),
+        columns: { name: true, type: true, balance: true },
+        orderBy: [desc(financialAccounts.balance)],
       });
 
     case "getTopMerchants": {
       const limit = Math.min(Math.max(Number(args.limit) || 10, 1), 20);
-      const rows = await prisma.transaction.groupBy({
-        by: ["description"],
-        where: { userId: { in: coupleUserIds }, type: "EXPENSE", description: { not: null } },
-        _sum: { amount: true },
-        orderBy: { _sum: { amount: "desc" } },
-        take: limit,
-      });
-      return rows.map((r) => ({ merchant: r.description ?? "Unknown", total: r._sum.amount ?? 0 }));
+      const rows = await db
+        .select({ description: transactions.description, total: sum(transactions.amount) })
+        .from(transactions)
+        .where(
+          and(
+            inArray(transactions.userId, coupleUserIds),
+            eq(transactions.type, "EXPENSE"),
+            isNotNull(transactions.description),
+          ),
+        )
+        .groupBy(transactions.description)
+        .orderBy(desc(sum(transactions.amount)))
+        .limit(limit);
+      return rows.map((r) => ({ merchant: r.description ?? "Unknown", total: Number(r.total ?? 0) }));
     }
 
     case "getLoanSummary":
-      return prisma.loan.findMany({
-        where: { userId: { in: coupleUserIds } },
-        select: { name: true, remainingBalance: true, emiAmount: true, interestRate: true },
+      return db.query.loans.findMany({
+        where: inArray(loans.userId, coupleUserIds),
+        columns: { name: true, remainingBalance: true, emiAmount: true, interestRate: true },
       });
 
     case "getGoalProgress": {
-      const goals = await prisma.savingsGoal.findMany({
-        where: { userId: { in: coupleUserIds } },
-        select: { name: true, currentAmount: true, targetAmount: true, deadline: true },
+      const goals = await db.query.savingsGoals.findMany({
+        where: inArray(savingsGoals.userId, coupleUserIds),
+        columns: { name: true, currentAmount: true, targetAmount: true, deadline: true },
       });
       return goals.map((g) => ({
         name: g.name,
@@ -356,28 +391,31 @@ export async function executeCoupleDataToolCall(
     }
 
     case "getNetWorth": {
-      const [accounts, loans, investments, deposits] = await Promise.all([
-        prisma.financialAccount.findMany({
-          where: { userId: { in: coupleUserIds } },
-          select: { balance: true },
+      const [accountRows, loanRows, investmentRows, depositRows] = await Promise.all([
+        db.query.financialAccounts.findMany({
+          where: inArray(financialAccounts.userId, coupleUserIds),
+          columns: { balance: true },
         }),
-        prisma.loan.findMany({
-          where: { userId: { in: coupleUserIds } },
-          select: { remainingBalance: true },
+        db.query.loans.findMany({
+          where: inArray(loans.userId, coupleUserIds),
+          columns: { remainingBalance: true },
         }),
-        prisma.investmentHolding.findMany({
-          where: { userId: { in: coupleUserIds } },
-          select: { currentValue: true },
+        db.query.investmentHoldings.findMany({
+          where: inArray(investmentHoldings.userId, coupleUserIds),
+          columns: { currentValue: true },
         }),
-        prisma.depositInstrument.findMany({
-          where: { userId: { in: coupleUserIds }, status: "ACTIVE" },
-          select: { principalAmount: true },
+        db.query.depositInstruments.findMany({
+          where: and(
+            inArray(depositInstruments.userId, coupleUserIds),
+            eq(depositInstruments.status, "ACTIVE"),
+          ),
+          columns: { principalAmount: true },
         }),
       ]);
-      const totalAccounts = accounts.reduce((s, a) => s + a.balance, 0);
-      const totalInvestments = investments.reduce((s, i) => s + (i.currentValue ?? 0), 0);
-      const totalDeposits = deposits.reduce((s, d) => s + d.principalAmount, 0);
-      const totalLiabilities = loans.reduce((s, l) => s + l.remainingBalance, 0);
+      const totalAccounts = accountRows.reduce((s, a) => s + a.balance, 0);
+      const totalInvestments = investmentRows.reduce((s, i) => s + (i.currentValue ?? 0), 0);
+      const totalDeposits = depositRows.reduce((s, d) => s + d.principalAmount, 0);
+      const totalLiabilities = loanRows.reduce((s, l) => s + l.remainingBalance, 0);
       const totalAssets = totalAccounts + totalInvestments + totalDeposits;
       return { totalAssets, totalLiabilities, netWorth: totalAssets - totalLiabilities };
     }
@@ -387,19 +425,26 @@ export async function executeCoupleDataToolCall(
       const [y, m] = month.split("-").map(Number);
       const start = new Date(y, m - 1, 1);
       const end = new Date(y, m, 1);
-      const [budgets, spent] = await Promise.all([
-        prisma.budget.findMany({
-          where: { userId: { in: coupleUserIds }, month },
-          select: { category: true, limit: true },
+      const [budgetRows, spentRows] = await Promise.all([
+        db.query.budgets.findMany({
+          where: and(inArray(budgets.userId, coupleUserIds), eq(budgets.month, month)),
+          columns: { category: true, limit: true },
         }),
-        prisma.transaction.groupBy({
-          by: ["category"],
-          where: { userId: { in: coupleUserIds }, type: "EXPENSE", date: { gte: start, lt: end } },
-          _sum: { amount: true },
-        }),
+        db
+          .select({ category: transactions.category, total: sum(transactions.amount) })
+          .from(transactions)
+          .where(
+            and(
+              inArray(transactions.userId, coupleUserIds),
+              eq(transactions.type, "EXPENSE"),
+              gte(transactions.date, start),
+              lt(transactions.date, end),
+            ),
+          )
+          .groupBy(transactions.category),
       ]);
-      const spentMap = Object.fromEntries(spent.map((s) => [s.category, s._sum.amount ?? 0]));
-      return budgets.map((b) => ({
+      const spentMap = Object.fromEntries(spentRows.map((s) => [s.category, Number(s.total ?? 0)]));
+      return budgetRows.map((b) => ({
         category: b.category,
         limit: b.limit,
         spent: spentMap[b.category] ?? 0,
@@ -410,14 +455,16 @@ export async function executeCoupleDataToolCall(
     case "getRecentTransactions": {
       const limit = Math.min(Math.max(Number(args.limit) || 10, 1), 50);
       const typeFilter = (args.type as string | undefined)?.toUpperCase();
-      const txs = await prisma.transaction.findMany({
-        where: {
-          userId: { in: coupleUserIds },
-          ...(typeFilter && typeFilter !== "ALL" ? { type: typeFilter as "INCOME" | "EXPENSE" } : {}),
-        },
-        orderBy: { date: "desc" },
-        take: limit,
-        select: { date: true, type: true, amount: true, category: true, description: true },
+      const baseWhere = inArray(transactions.userId, coupleUserIds);
+      const typeWhere =
+        typeFilter && typeFilter !== "ALL"
+          ? eq(transactions.type, typeFilter as "INCOME" | "EXPENSE")
+          : undefined;
+      const txs = await db.query.transactions.findMany({
+        where: typeWhere ? and(baseWhere, typeWhere) : baseWhere,
+        orderBy: [desc(transactions.date)],
+        limit,
+        columns: { date: true, type: true, amount: true, category: true, description: true },
       });
       return txs.map((t) => ({
         date: t.date.toISOString().split("T")[0],
@@ -434,9 +481,12 @@ export async function executeCoupleDataToolCall(
       const days = Math.min(Math.max(Number(args.days) || 7, 1), 30);
       const since = new Date();
       since.setDate(since.getDate() - days);
-      const logs = await prisma.nutritionLog.findMany({
-        where: { userId: { in: coupleUserIds }, loggedOn: { gte: since } },
-        select: { calories: true, proteinG: true, carbsG: true, fatG: true, loggedOn: true },
+      const logs = await db.query.nutritionLogs.findMany({
+        where: and(
+          inArray(nutritionLogs.userId, coupleUserIds),
+          gte(nutritionLogs.loggedOn, since.toISOString().split("T")[0]),
+        ),
+        columns: { calories: true, proteinG: true, carbsG: true, fatG: true, loggedOn: true },
       });
       if (logs.length === 0) return { note: "No nutrition logs found for this period." };
       const totals = logs.reduce(
@@ -460,11 +510,11 @@ export async function executeCoupleDataToolCall(
 
     case "getRecentMeals": {
       const limit = Math.min(Math.max(Number(args.limit) || 10, 1), 50);
-      const meals = await prisma.nutritionLog.findMany({
-        where: { userId: { in: coupleUserIds } },
-        orderBy: { loggedOn: "desc" },
-        take: limit,
-        select: { loggedOn: true, mealType: true, name: true, calories: true, proteinG: true },
+      const meals = await db.query.nutritionLogs.findMany({
+        where: inArray(nutritionLogs.userId, coupleUserIds),
+        orderBy: [desc(nutritionLogs.loggedOn)],
+        limit,
+        columns: { loggedOn: true, mealType: true, name: true, calories: true, proteinG: true },
       });
       return meals.map((m) => ({
         date: m.loggedOn.toISOString().split("T")[0],
@@ -479,9 +529,12 @@ export async function executeCoupleDataToolCall(
       const days = Math.min(Math.max(Number(args.days) || 7, 1), 30);
       const since = new Date();
       since.setDate(since.getDate() - days);
-      const logs = await prisma.exerciseLog.findMany({
-        where: { userId: { in: coupleUserIds }, loggedOn: { gte: since } },
-        select: { durationMins: true, caloriesBurned: true, loggedOn: true },
+      const logs = await db.query.exerciseLogs.findMany({
+        where: and(
+          inArray(exerciseLogs.userId, coupleUserIds),
+          gte(exerciseLogs.loggedOn, since.toISOString().split("T")[0]),
+        ),
+        columns: { durationMins: true, caloriesBurned: true, loggedOn: true },
       });
       if (logs.length === 0) return { note: "No exercise logs found for this period." };
       const uniqueDays = new Set(logs.map((l) => l.loggedOn.toISOString().split("T")[0])).size;
@@ -495,14 +548,14 @@ export async function executeCoupleDataToolCall(
 
     case "getRecentWorkouts": {
       const limit = Math.min(Math.max(Number(args.limit) || 10, 1), 30);
-      const workouts = await prisma.exerciseLog.findMany({
-        where: { userId: { in: coupleUserIds } },
-        orderBy: { loggedOn: "desc" },
-        take: limit,
-        select: { loggedOn: true, type: true, name: true, durationMins: true, caloriesBurned: true },
+      const workouts = await db.query.exerciseLogs.findMany({
+        where: inArray(exerciseLogs.userId, coupleUserIds),
+        orderBy: [desc(exerciseLogs.loggedOn)],
+        limit,
+        columns: { loggedOn: true, type: true, name: true, durationMins: true, caloriesBurned: true },
       });
       return workouts.map((w) => ({
-        date: w.loggedOn.toISOString().split("T")[0],
+        date: w.loggedOn,
         type: w.type,
         name: w.name,
         durationMins: w.durationMins,
@@ -514,9 +567,12 @@ export async function executeCoupleDataToolCall(
       const days = Math.min(Math.max(Number(args.days) || 7, 1), 30);
       const since = new Date();
       since.setDate(since.getDate() - days);
-      const logs = await prisma.sleepLog.findMany({
-        where: { userId: { in: coupleUserIds }, date: { gte: since } },
-        select: { durationMins: true, quality: true },
+      const logs = await db.query.sleepLogs.findMany({
+        where: and(
+          inArray(sleepLogs.userId, coupleUserIds),
+          gte(sleepLogs.date, since.toISOString().split("T")[0]),
+        ),
+        columns: { durationMins: true, quality: true },
       });
       if (logs.length === 0) return { note: "No sleep logs found for this period." };
       const avg = (arr: number[]) => Math.round(arr.reduce((a, b) => a + b, 0) / arr.length);
@@ -533,23 +589,29 @@ export async function executeCoupleDataToolCall(
       const days = Math.min(Math.max(Number(args.days) || 7, 1), 30);
       const since = new Date();
       since.setDate(since.getDate() - days);
-      const habits = await prisma.habit.findMany({
-        where: { userId: { in: coupleUserIds }, isActive: true },
-        select: {
-          id: true,
-          name: true,
-          targetDays: true,
-          logs: {
-            where: { loggedOn: { gte: since }, completed: true },
-            select: { loggedOn: true },
-          },
-        },
+      const habitRows = await db.query.habits.findMany({
+        where: and(inArray(habits.userId, coupleUserIds), eq(habits.isActive, true)),
+        columns: { id: true, name: true, targetDays: true },
       });
-      return habits.map((h) => ({
+      if (habitRows.length === 0) return [];
+      const habitIds = habitRows.map((h) => h.id);
+      const completedLogs = await db.query.habitLogs.findMany({
+        where: and(
+          inArray(habitLogs.habitId, habitIds),
+          gte(habitLogs.loggedOn, since.toISOString().split("T")[0]),
+          eq(habitLogs.completed, true),
+        ),
+        columns: { habitId: true },
+      });
+      const logCountByHabit = new Map<string, number>();
+      for (const log of completedLogs) {
+        logCountByHabit.set(log.habitId, (logCountByHabit.get(log.habitId) ?? 0) + 1);
+      }
+      return habitRows.map((h) => ({
         name: h.name,
         targetDaysPerWeek: h.targetDays,
-        completedDays: h.logs.length,
-        completionPct: Math.round((h.logs.length / days) * 100),
+        completedDays: logCountByHabit.get(h.id) ?? 0,
+        completionPct: Math.round(((logCountByHabit.get(h.id) ?? 0) / days) * 100),
       }));
     }
 

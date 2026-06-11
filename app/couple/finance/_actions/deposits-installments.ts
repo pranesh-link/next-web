@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath, unstable_noStore as noStore } from "next/cache";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { depositInstruments, depositInstallments } from "@db/schema";
+import { eq, and, inArray, gte, lte, isNotNull, sql } from "drizzle-orm";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { depositInstallmentSchema } from "@/_lib/validations/finance";
 import { getUserIdsForCouple } from "@/_services/finance/couple-service";
@@ -35,27 +37,28 @@ export async function addDepositInstallment(data: {
 
     const validated = depositInstallmentSchema.parse(data);
 
-    const deposit = await prisma.depositInstrument.findFirst({
-      where: {
-        id: validated.depositId,
-        userId: { in: await getUserIdsForCouple(user.id) },
-      },
+    const deposit = await db.query.depositInstruments.findFirst({
+      where: and(
+        eq(depositInstruments.id, validated.depositId),
+        inArray(depositInstruments.userId, await getUserIdsForCouple(user.id)),
+      ),
     });
 
     if (!deposit) {
       return { success: false as const, error: "Deposit not found" };
     }
 
-    const installment = await prisma.$transaction(async (tx) => {
-      const created = await tx.depositInstallment.create({
-        data: {
+    const installment = await db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(depositInstallments)
+        .values({
           depositId: validated.depositId,
           amount: validated.amount,
           dueDate: validated.dueDate,
           paidDate: validated.paidDate,
           status: validated.status,
-        },
-      });
+        })
+        .returning();
 
       if (deposit.type === "RECURRING_DEPOSIT" && validated.status === "PAID") {
         const nextInstallmentDate = getNextScheduledInstallmentDate({
@@ -64,13 +67,13 @@ export async function addDepositInstallment(data: {
           installmentFrequency: deposit.installmentFrequency,
         });
 
-        await tx.depositInstrument.update({
-          where: { id: deposit.id },
-          data: {
-            paidInstallments: { increment: 1 },
+        await tx
+          .update(depositInstruments)
+          .set({
+            paidInstallments: sql`${depositInstruments.paidInstallments} + 1`,
             nextInstallmentDate,
-          },
-        });
+          })
+          .where(eq(depositInstruments.id, deposit.id));
       } else if (deposit.type === "RECURRING_DEPOSIT") {
         const nextInstallmentDate = getNextScheduledInstallmentDate({
           startDate: deposit.startDate,
@@ -78,10 +81,10 @@ export async function addDepositInstallment(data: {
           installmentFrequency: deposit.installmentFrequency,
         });
 
-        await tx.depositInstrument.update({
-          where: { id: deposit.id },
-          data: { nextInstallmentDate },
-        });
+        await tx
+          .update(depositInstruments)
+          .set({ nextInstallmentDate })
+          .where(eq(depositInstruments.id, deposit.id));
       }
 
       return created;
@@ -115,22 +118,24 @@ export async function syncDepositReminders(userId: string) {
   const sevenDaysFromNow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7);
 
   const [maturing, pendingRd] = await Promise.all([
-    prisma.depositInstrument.findMany({
-      where: {
-        userId: { in: coupleUserIds },
-        status: "ACTIVE",
-        maturityDate: { lte: new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7) },
-      },
-      select: { id: true },
+    db.query.depositInstruments.findMany({
+      where: and(
+        inArray(depositInstruments.userId, coupleUserIds),
+        eq(depositInstruments.status, "ACTIVE"),
+        lte(depositInstruments.maturityDate, new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7)),
+      ),
+      columns: { id: true },
     }),
-    prisma.depositInstrument.findMany({
-      where: {
-        userId: { in: coupleUserIds },
-        type: "RECURRING_DEPOSIT",
-        status: "ACTIVE",
-        nextInstallmentDate: { not: null, gte: now, lte: sevenDaysFromNow },
-      },
-      select: { id: true },
+    db.query.depositInstruments.findMany({
+      where: and(
+        inArray(depositInstruments.userId, coupleUserIds),
+        eq(depositInstruments.type, "RECURRING_DEPOSIT"),
+        eq(depositInstruments.status, "ACTIVE"),
+        isNotNull(depositInstruments.nextInstallmentDate),
+        gte(depositInstruments.nextInstallmentDate, now),
+        lte(depositInstruments.nextInstallmentDate, sevenDaysFromNow),
+      ),
+      columns: { id: true },
     }),
   ]);
 

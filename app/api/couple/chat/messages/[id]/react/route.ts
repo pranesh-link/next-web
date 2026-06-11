@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { coupleMembers, coupleMessages } from "@db/schema";
+import { eq, and } from "drizzle-orm";
 
 /**
  * POST — Toggle a reaction emoji on a message.
@@ -29,14 +31,14 @@ export async function POST(
     }
 
     // Verify user is in the couple that owns this message
-    const member = await prisma.coupleMember.findFirst({ where: { userId } });
+    const member = await db.query.coupleMembers.findFirst({ where: eq(coupleMembers.userId, userId) });
     if (!member) {
       return NextResponse.json({ success: false, error: "No couple found" }, { status: 404 });
     }
 
-    const message = await prisma.coupleMessage.findFirst({
-      where: { id: messageId, coupleId: member.coupleId },
-      select: { id: true, payload: true },
+    const message = await db.query.coupleMessages.findFirst({
+      where: and(eq(coupleMessages.id, messageId), eq(coupleMessages.coupleId, member.coupleId)),
+      columns: { id: true, payload: true },
     });
     if (!message) {
       return NextResponse.json({ success: false, error: "Message not found" }, { status: 404 });
@@ -68,10 +70,9 @@ export async function POST(
       delete (updatedPayload as Record<string, unknown>).reactions;
     }
 
-    await prisma.coupleMessage.update({
-      where: { id: messageId },
-      data: { payload: Object.keys(updatedPayload).length > 0 ? updatedPayload : undefined },
-    });
+    await db.update(coupleMessages)
+      .set({ payload: Object.keys(updatedPayload).length > 0 ? updatedPayload : undefined })
+      .where(eq(coupleMessages.id, messageId));
 
     return NextResponse.json({ success: true, data: { reactions: updatedReactions } });
   } catch (error) {

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { coupleMembers, coupleMessages } from "@db/schema";
+import { eq, and } from "drizzle-orm";
 
 /**
  * POST /api/couple/chat/messages/:id/pin
@@ -21,13 +23,13 @@ export async function POST(
 
   const { id } = await params;
 
-  const member = await prisma.coupleMember.findFirst({ where: { userId } });
+  const member = await db.query.coupleMembers.findFirst({ where: eq(coupleMembers.userId, userId) });
   if (!member) {
     return NextResponse.json({ error: "No couple found" }, { status: 404 });
   }
 
-  const message = await prisma.coupleMessage.findFirst({
-    where: { id, coupleId: member.coupleId },
+  const message = await db.query.coupleMessages.findFirst({
+    where: and(eq(coupleMessages.id, id), eq(coupleMessages.coupleId, member.coupleId)),
   });
   if (!message) {
     return NextResponse.json({ error: "Message not found" }, { status: 404 });
@@ -35,10 +37,7 @@ export async function POST(
 
   const pinnedAt = message.pinnedAt ? null : new Date();
 
-  await prisma.coupleMessage.update({
-    where: { id },
-    data: { pinnedAt },
-  });
+  await db.update(coupleMessages).set({ pinnedAt }).where(eq(coupleMessages.id, id));
 
   return NextResponse.json({ success: true, pinnedAt });
 }

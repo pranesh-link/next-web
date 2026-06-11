@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { depositInstruments, depositInstallments } from "@db/schema";
+import { inArray } from "drizzle-orm";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 import {
   getUserIdsForCouple,
@@ -26,11 +28,30 @@ export async function GET() {
 
     const coupleUserIds = await getUserIdsForCouple(userId);
 
-    const deposits = await prisma.depositInstrument.findMany({
-      where: { userId: { in: coupleUserIds } },
-      include: { installments: { orderBy: { dueDate: "asc" } } },
-      orderBy: { createdAt: "desc" },
+    const depositRows = await db.query.depositInstruments.findMany({
+      where: inArray(depositInstruments.userId, coupleUserIds),
+      orderBy: (t, { desc: d }) => [d(t.createdAt)],
     });
+
+    const depositIds = depositRows.map((d) => d.id);
+    const installmentRows = depositIds.length > 0
+      ? await db.query.depositInstallments.findMany({
+          where: inArray(depositInstallments.depositId, depositIds),
+          orderBy: (t, { asc: a }) => [a(t.dueDate)],
+        })
+      : [];
+
+    const installmentsByDeposit = new Map<string, typeof installmentRows>();
+    for (const inst of installmentRows) {
+      const arr = installmentsByDeposit.get(inst.depositId) ?? [];
+      arr.push(inst);
+      installmentsByDeposit.set(inst.depositId, arr);
+    }
+
+    const deposits = depositRows.map((d) => ({
+      ...d,
+      installments: installmentsByDeposit.get(d.id) ?? [],
+    }));
 
     return NextResponse.json(
       { success: true, data: deposits },
@@ -66,28 +87,26 @@ export async function POST(request: Request) {
     const coupleId = await getCoupleIdForUser(userId);
     const body = await request.json();
 
-    const deposit = await prisma.depositInstrument.create({
-      data: {
-        userId,
-        ...(coupleId ? { coupleId } : {}),
-        name: body.name,
-        provider: body.provider || null,
-        type: body.type,
-        principalAmount: body.principalAmount,
-        interestRate: body.interestRate,
-        tenureMonths: body.tenureMonths,
-        installmentAmount: body.installmentAmount || null,
-        installmentFrequency: body.installmentFrequency || "MONTHLY",
-        totalInstallments: body.totalInstallments || null,
-        startDate: new Date(body.startDate),
-        maturityDate: new Date(body.maturityDate),
-        maturityAmount: body.maturityAmount,
-        nextInstallmentDate: body.nextInstallmentDate
-          ? new Date(body.nextInstallmentDate)
-          : null,
-        sourceAccountId: body.sourceAccountId || null,
-      },
-    });
+    const [deposit] = await db.insert(depositInstruments).values({
+      userId,
+      ...(coupleId ? { coupleId } : {}),
+      name: body.name,
+      provider: body.provider || null,
+      type: body.type,
+      principalAmount: body.principalAmount,
+      interestRate: body.interestRate,
+      tenureMonths: body.tenureMonths,
+      installmentAmount: body.installmentAmount || null,
+      installmentFrequency: body.installmentFrequency || "MONTHLY",
+      totalInstallments: body.totalInstallments || null,
+      startDate: new Date(body.startDate),
+      maturityDate: new Date(body.maturityDate),
+      maturityAmount: body.maturityAmount,
+      nextInstallmentDate: body.nextInstallmentDate
+        ? new Date(body.nextInstallmentDate)
+        : null,
+      sourceAccountId: body.sourceAccountId || null,
+    }).returning();
 
     return NextResponse.json(
       { success: true, data: deposit },

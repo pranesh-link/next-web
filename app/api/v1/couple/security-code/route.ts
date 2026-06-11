@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { coupleMembers, users } from "@db/schema";
+import { eq, inArray } from "drizzle-orm";
 
 /**
  * GET — Retrieve the security code (safety number) for the current couple.
@@ -18,22 +20,31 @@ export async function GET() {
       );
     }
 
-    const member = await prisma.coupleMember.findFirst({
-      where: { userId },
-      select: { coupleId: true },
+    const member = await db.query.coupleMembers.findFirst({
+      where: eq(coupleMembers.userId, userId),
+      columns: { coupleId: true },
     });
     if (!member) {
       return NextResponse.json({ success: true, code: null });
     }
 
     // Get both members' public keys
-    const members = await prisma.coupleMember.findMany({
-      where: { coupleId: member.coupleId },
-      select: { user: { select: { publicKey: true } } },
-    });
+    const memberRows = await db
+      .select({ userId: coupleMembers.userId })
+      .from(coupleMembers)
+      .where(eq(coupleMembers.coupleId, member.coupleId));
 
-    const keys = members
-      .map((m) => m.user.publicKey)
+    const memberUserIds = memberRows.map((m) => m.userId);
+    const memberUsers =
+      memberUserIds.length > 0
+        ? await db
+            .select({ publicKey: users.publicKey })
+            .from(users)
+            .where(inArray(users.id, memberUserIds))
+        : [];
+
+    const keys = memberUsers
+      .map((m) => m.publicKey)
       .filter((k): k is string => !!k)
       .sort();
 

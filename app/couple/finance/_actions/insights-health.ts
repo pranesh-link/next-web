@@ -1,17 +1,18 @@
 "use server";
 
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import {
+  financialAccounts,
+  transactions as transactionsTable,
+  budgets as budgetsTable,
+  loans,
+} from "@db/schema";
+import { and, inArray, eq, gte, lt, sql } from "drizzle-orm";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import {
   calculateSavingsRate,
   calculateFinancialHealthScore,
 } from "@/_services/finance";
-import type {
-  FinancialAccount,
-  Transaction,
-  Budget,
-  Loan,
-} from "@prisma/client";
 import { getUserIdsForCouple } from "@/_services/finance/couple-service";
 import { currentMonth } from "./insights-helpers";
 
@@ -34,43 +35,55 @@ export async function getFinancialHealthScore() {
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
 
-    const accountsP = prisma.financialAccount.findMany({ where: { userId: { in: coupleUserIds } } });
-    const transactionsP = prisma.transaction.findMany({
-      where: {
-        userId: { in: coupleUserIds },
-        date: { gte: new Date(year, m - 1, 1), lt: new Date(year, m, 1) },
-      },
-    });
-    const budgetsP = prisma.budget.findMany({ where: { userId: { in: coupleUserIds }, month } });
-    const budgetSpentP = prisma.transaction.groupBy({
-      by: ["category"] as const,
-      where: {
-        userId: { in: coupleUserIds },
-        type: "EXPENSE" as const,
-        date: { gte: new Date(year, m - 1, 1), lt: new Date(year, m, 1) },
-      },
-      _sum: { amount: true },
-    });
-    const loansP = prisma.loan.findMany({ where: { userId: { in: coupleUserIds } } });
+    const monthStart = new Date(year, m - 1, 1);
+    const monthEnd = new Date(year, m, 1);
 
-    const accounts: FinancialAccount[] = await accountsP;
-    const transactions: Transaction[] = await transactionsP;
-    const budgets: Budget[] = await budgetsP;
-    const budgetSpent = await budgetSpentP;
-    const loans: Loan[] = await loansP;
+    const [accounts, txList, budgetRows, budgetSpent, loanRows] = await Promise.all([
+      db.select().from(financialAccounts).where(inArray(financialAccounts.userId, coupleUserIds)),
+      db
+        .select()
+        .from(transactionsTable)
+        .where(
+          and(
+            inArray(transactionsTable.userId, coupleUserIds),
+            gte(transactionsTable.date, monthStart),
+            lt(transactionsTable.date, monthEnd),
+          ),
+        ),
+      db
+        .select()
+        .from(budgetsTable)
+        .where(and(inArray(budgetsTable.userId, coupleUserIds), eq(budgetsTable.month, month))),
+      db
+        .select({
+          category: transactionsTable.category,
+          total: sql<number>`sum(${transactionsTable.amount})`,
+        })
+        .from(transactionsTable)
+        .where(
+          and(
+            inArray(transactionsTable.userId, coupleUserIds),
+            eq(transactionsTable.type, "EXPENSE"),
+            gte(transactionsTable.date, monthStart),
+            lt(transactionsTable.date, monthEnd),
+          ),
+        )
+        .groupBy(transactionsTable.category),
+      db.select().from(loans).where(inArray(loans.userId, coupleUserIds)),
+    ]);
 
     const totalBalance = accounts.reduce((sum, a) => sum + a.balance, 0);
 
     let income = 0;
     let expenses = 0;
-    for (const t of transactions) {
+    for (const t of txList) {
       if (t.type === "INCOME") income += t.amount;
       else expenses += t.amount;
     }
 
     const savingsRate = calculateSavingsRate(income, expenses);
 
-    const totalMonthlyEMI = loans.reduce((sum, l) => {
+    const totalMonthlyEMI = loanRows.reduce((sum, l) => {
       const schedule = Array.isArray(l.schedule) ? (l.schedule as { date: string; emi: number }[]) : null;
       if (schedule && schedule.length > 0) {
         const today = new Date();
@@ -89,11 +102,11 @@ export async function getFinancialHealthScore() {
     const emergencyFundMonths = expenses > 0 ? totalBalance / expenses : 0;
 
     const spentMap = new Map<string, number>(
-      budgetSpent.map((s: { category: string; _sum: { amount: number | null } }) => [s.category, s._sum.amount ?? 0]),
+      budgetSpent.map((s) => [s.category, s.total ?? 0]),
     );
-    const totalBudgetLimit = budgets.reduce((sum: number, b) => sum + b.limit, 0);
-    const totalBudgetSpent = budgets.reduce(
-      (sum: number, b) => sum + (spentMap.get(b.category) ?? 0),
+    const totalBudgetLimit = budgetRows.reduce((sum, b) => sum + b.limit, 0);
+    const totalBudgetSpent = budgetRows.reduce(
+      (sum, b) => sum + (spentMap.get(b.category) ?? 0),
       0,
     );
     const budgetAdherence =

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { financialAccounts, transactions, budgets, loans } from "@db/schema";
+import { and, inArray, eq, gte, lt, sql } from "drizzle-orm";
 import {
   calculateMonthlyCashFlow,
   calculateSavingsRate,
@@ -44,35 +46,42 @@ async function getHandler() {
     const monthStart = new Date(year, m - 1, 1);
     const monthEnd = new Date(year, m, 1);
 
-    const [accounts, currentMonthTx, budgets, budgetSpent, loans] =
+    const [accounts, currentMonthTx, budgetRows, budgetSpent, loanRows] =
       await Promise.all([
-        prisma.financialAccount.findMany({
-          where: { userId: { in: coupleUserIds } },
-          select: { balance: true },
+        db
+          .select({ balance: financialAccounts.balance })
+          .from(financialAccounts)
+          .where(inArray(financialAccounts.userId, coupleUserIds)),
+        db.query.transactions.findMany({
+          where: and(
+            inArray(transactions.userId, coupleUserIds),
+            gte(transactions.date, monthStart),
+            lt(transactions.date, monthEnd),
+          ),
         }),
-        prisma.transaction.findMany({
-          where: {
-            userId: { in: coupleUserIds },
-            date: { gte: monthStart, lt: monthEnd },
-          },
-        }),
-        prisma.budget.findMany({
-          where: { userId: { in: coupleUserIds }, month },
-          select: { category: true, limit: true },
-        }),
-        prisma.transaction.groupBy({
-          by: ["category"] as const,
-          where: {
-            userId: { in: coupleUserIds },
-            type: "EXPENSE" as const,
-            date: { gte: monthStart, lt: monthEnd },
-          },
-          _sum: { amount: true },
-        }),
-        prisma.loan.findMany({
-          where: { userId: { in: coupleUserIds } },
-          select: { emiAmount: true },
-        }),
+        db
+          .select({ category: budgets.category, limit: budgets.limit })
+          .from(budgets)
+          .where(and(inArray(budgets.userId, coupleUserIds), eq(budgets.month, month))),
+        db
+          .select({
+            category: transactions.category,
+            total: sql<number>`sum(${transactions.amount})`,
+          })
+          .from(transactions)
+          .where(
+            and(
+              inArray(transactions.userId, coupleUserIds),
+              eq(transactions.type, "EXPENSE"),
+              gte(transactions.date, monthStart),
+              lt(transactions.date, monthEnd),
+            ),
+          )
+          .groupBy(transactions.category),
+        db
+          .select({ emiAmount: loans.emiAmount })
+          .from(loans)
+          .where(inArray(loans.userId, coupleUserIds)),
       ]);
 
     const totalBalance = accounts.reduce((sum, a) => sum + a.balance, 0);
@@ -89,22 +98,17 @@ async function getHandler() {
     const cashFlow = calculateMonthlyCashFlow(txData, month);
     const savingsRate = calculateSavingsRate(cashFlow.income, cashFlow.expenses);
 
-    const totalMonthlyEMI = loans.reduce((sum, l) => sum + l.emiAmount, 0);
+    const totalMonthlyEMI = loanRows.reduce((sum, l) => sum + l.emiAmount, 0);
     const monthlyIncome = cashFlow.income || 1;
     const debtToIncomeRatio = (totalMonthlyEMI / monthlyIncome) * 100;
     const emergencyFundMonths =
       cashFlow.expenses > 0 ? totalBalance / cashFlow.expenses : 0;
 
     const spentMap = new Map<string, number>(
-      budgetSpent.map(
-        (s: { category: string; _sum: { amount: number | null } }) => [
-          s.category,
-          s._sum.amount ?? 0,
-        ],
-      ),
+      budgetSpent.map((s) => [s.category, s.total ?? 0]),
     );
-    const totalBudgetLimit = budgets.reduce((sum, b) => sum + b.limit, 0);
-    const totalBudgetSpent = budgets.reduce(
+    const totalBudgetLimit = budgetRows.reduce((sum, b) => sum + b.limit, 0);
+    const totalBudgetSpent = budgetRows.reduce(
       (sum, b) => sum + (spentMap.get(b.category) ?? 0),
       0,
     );

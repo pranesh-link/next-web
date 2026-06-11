@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/_lib/auth";
-import { prisma } from "@/_lib/prisma";
+import { db } from "@db";
+import { nutritionLogs } from "@db/schema";
+import { eq, and, inArray, asc } from "drizzle-orm";
 import {
   getCoupleIdForUser,
   getUserIdsForCouple,
@@ -76,13 +78,14 @@ async function requireUserId(): Promise<string> {
 export async function getNutritionLogs(date: string): Promise<NutritionLogRow[]> {
   const userId = await requireUserId();
   const coupleUserIds = await getUserIdsForCouple(userId);
-  return prisma.nutritionLog.findMany({
-    where: {
-      userId: { in: coupleUserIds },
-      loggedOn: new Date(date),
-    },
-    orderBy: { createdAt: "asc" },
-  }) as Promise<NutritionLogRow[]>;
+  const rows = await db.query.nutritionLogs.findMany({
+    where: and(
+      inArray(nutritionLogs.userId, coupleUserIds),
+      eq(nutritionLogs.loggedOn, date),
+    ),
+    orderBy: [asc(nutritionLogs.createdAt)],
+  });
+  return rows as unknown as NutritionLogRow[];
 }
 
 /**
@@ -95,22 +98,20 @@ export async function getNutritionLogs(date: string): Promise<NutritionLogRow[]>
 export async function logNutrition(data: NutritionLogInput): Promise<NutritionLogRow> {
   const userId = await requireUserId();
   const coupleId = await getCoupleIdForUser(userId);
-  const record = await prisma.nutritionLog.create({
-    data: {
-      userId,
-      ...(coupleId ? { coupleId } : {}),
-      loggedOn: new Date(data.date),
-      mealType: data.mealType,
-      name: data.name,
-      calories: data.calories,
-      proteinG: data.proteinG ?? 0,
-      carbsG: data.carbsG ?? 0,
-      fatG: data.fatG ?? 0,
-      note: data.note ?? null,
-    },
-  });
+  const [record] = await db.insert(nutritionLogs).values({
+    userId,
+    ...(coupleId ? { coupleId } : {}),
+    loggedOn: data.date,
+    mealType: data.mealType,
+    name: data.name,
+    calories: data.calories,
+    proteinG: data.proteinG ?? 0,
+    carbsG: data.carbsG ?? 0,
+    fatG: data.fatG ?? 0,
+    note: data.note ?? null,
+  }).returning();
   revalidatePath(NUTRITION_PATH);
-  return record as NutritionLogRow;
+  return record as unknown as NutritionLogRow;
 }
 
 /**
@@ -123,9 +124,11 @@ export async function logNutrition(data: NutritionLogInput): Promise<NutritionLo
  */
 export async function deleteNutritionLog(id: string): Promise<void> {
   const userId = await requireUserId();
-  const log = await prisma.nutritionLog.findFirst({ where: { id, userId } });
+  const log = await db.query.nutritionLogs.findFirst({
+    where: and(eq(nutritionLogs.id, id), eq(nutritionLogs.userId, userId)),
+  });
   if (!log) throw new Error("Nutrition log not found");
-  await prisma.nutritionLog.delete({ where: { id } });
+  await db.delete(nutritionLogs).where(eq(nutritionLogs.id, id));
   revalidatePath(NUTRITION_PATH);
 }
 
@@ -139,11 +142,11 @@ export async function deleteNutritionLog(id: string): Promise<void> {
 export async function getNutritionSummary(date: string): Promise<NutritionSummary> {
   const userId = await requireUserId();
   const coupleUserIds = await getUserIdsForCouple(userId);
-  const logs = await prisma.nutritionLog.findMany({
-    where: {
-      userId: { in: coupleUserIds },
-      loggedOn: new Date(date),
-    },
+  const logs = await db.query.nutritionLogs.findMany({
+    where: and(
+      inArray(nutritionLogs.userId, coupleUserIds),
+      eq(nutritionLogs.loggedOn, date),
+    ),
   });
   return (logs as Array<{ calories: unknown; proteinG: unknown; carbsG: unknown; fatG: unknown }>).reduce<NutritionSummary>(
     (acc, log) => ({

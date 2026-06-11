@@ -1,4 +1,6 @@
-import prisma from "@/_lib/prisma";
+import { db } from '@db';
+import { loans } from '@db/schema';
+import { eq, and, inArray } from 'drizzle-orm';
 import { getUserIdsForCouple } from "@/_services/finance/couple-service";
 
 type ScheduleRow = {
@@ -81,9 +83,9 @@ export async function updateLoanScheduleFromRawText(
   }
 
   const coupleUserIds = await getUserIdsForCouple(userId);
-  const loan = await prisma.loan.findFirst({
-    where: { id: loanId, userId: { in: coupleUserIds } },
-    select: { id: true },
+  const loan = await db.query.loans.findFirst({
+    where: and(eq(loans.id, loanId), inArray(loans.userId, coupleUserIds)),
+    columns: { id: true },
   });
 
   if (!loan) {
@@ -101,10 +103,7 @@ export async function updateLoanScheduleFromRawText(
     };
   }
 
-  await prisma.loan.update({
-    where: { id: loanId },
-    data: { schedule: rows },
-  });
+  await db.update(loans).set({ schedule: rows }).where(eq(loans.id, loanId));
 
   return {
     ok: true,

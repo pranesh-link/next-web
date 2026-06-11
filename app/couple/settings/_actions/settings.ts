@@ -1,7 +1,9 @@
 "use server";
 
 import { requireAuthForAction } from "@/_lib/auth-utils";
-import { prisma } from "@/_lib/prisma";
+import { db } from "@db";
+import { users } from "@db/schema";
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 /** Profile and finance settings for the signed-in user. */
@@ -39,9 +41,9 @@ export async function getUserSettings(): Promise<
   if (!user) return { success: false, error: "Not authenticated" };
 
   try {
-    const dbUser = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: { name: true, email: true, currency: true, monthlyIncome: true },
+    const dbUser = await db.query.users.findFirst({
+      where: eq(users.id, user.id),
+      columns: { name: true, email: true, currency: true, monthlyIncome: true },
     });
     if (!dbUser) return { success: false, error: "User not found" };
     return { success: true, data: dbUser };
@@ -69,16 +71,16 @@ export async function updateUserSettings(data: {
   if (!user) return { success: false, error: "Not authenticated" };
 
   try {
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
+    await db
+      .update(users)
+      .set({
         ...(data.name !== undefined && { name: data.name }),
         ...(data.currency !== undefined && { currency: data.currency }),
         ...(data.monthlyIncome !== undefined && {
           monthlyIncome: data.monthlyIncome,
         }),
-      },
-    });
+      })
+      .where(eq(users.id, user.id));
     revalidatePath("/couple");
     return { success: true };
   } catch (e) {

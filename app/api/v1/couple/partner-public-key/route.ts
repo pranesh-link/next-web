@@ -9,7 +9,9 @@ import { NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 import { getCoupleIdForUser } from "@/_services/finance/couple-service";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { coupleMembers, users } from "@db/schema";
+import { eq, and, ne } from "drizzle-orm";
 
 export function OPTIONS() {
   return handleOptions();
@@ -44,9 +46,12 @@ export async function GET() {
     }
 
     // Find the other member of the couple (not the caller).
-    const partnerMember = await prisma.coupleMember.findFirst({
-      where: { coupleId, userId: { not: userId } },
-      select: { userId: true },
+    const partnerMember = await db.query.coupleMembers.findFirst({
+      where: and(
+        eq(coupleMembers.coupleId, coupleId),
+        ne(coupleMembers.userId, userId),
+      ),
+      columns: { userId: true },
     });
 
     if (!partnerMember) {
@@ -56,9 +61,9 @@ export async function GET() {
       );
     }
 
-    const partner = await prisma.user.findUnique({
-      where: { id: partnerMember.userId },
-      select: { publicKey: true, keyVersion: true, keyRotatedAt: true },
+    const partner = await db.query.users.findFirst({
+      where: eq(users.id, partnerMember.userId),
+      columns: { publicKey: true, keyVersion: true, keyRotatedAt: true },
     });
 
     return NextResponse.json(

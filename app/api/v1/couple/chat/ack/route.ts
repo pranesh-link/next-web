@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { coupleMembers, coupleMessages } from "@db/schema";
+import { eq, and, ne, inArray, isNull } from "drizzle-orm";
 import { sendPushToUser } from "@/_services/finance/push-service";
 
 const ackSchema = z.object({
@@ -28,9 +30,9 @@ export async function POST(request: Request) {
     const { messageIds } = ackSchema.parse(body);
 
     // Verify user is in a couple and only ACKs messages from their couple
-    const member = await prisma.coupleMember.findFirst({
-      where: { userId },
-      select: { coupleId: true },
+    const member = await db.query.coupleMembers.findFirst({
+      where: eq(coupleMembers.userId, userId),
+      columns: { coupleId: true },
     });
     if (!member) {
       return NextResponse.json(
@@ -40,23 +42,21 @@ export async function POST(request: Request) {
     }
 
     // Mark as delivered (only messages in this couple, not already delivered)
-    const result = await prisma.coupleMessage.updateMany({
-      where: {
-        id: { in: messageIds },
-        coupleId: member.coupleId,
-        senderId: { not: userId },
-        deliveredAt: null,
-      },
-      data: { deliveredAt: new Date() },
-    });
+    const updated = await db.update(coupleMessages)
+      .set({ deliveredAt: new Date() })
+      .where(and(
+        inArray(coupleMessages.id, messageIds),
+        eq(coupleMessages.coupleId, member.coupleId),
+        ne(coupleMessages.senderId, userId),
+        isNull(coupleMessages.deliveredAt),
+      ))
+      .returning({ id: coupleMessages.id });
 
     // Silent push to sender: notify their device to show double-tick
-    if (result.count > 0) {
-      const senderIds = await prisma.coupleMessage.findMany({
-        where: { id: { in: messageIds }, coupleId: member.coupleId },
-        select: { senderId: true },
-        distinct: ['senderId'],
-      });
+    if (updated.length > 0) {
+      const senderIds = await db.selectDistinct({ senderId: coupleMessages.senderId })
+        .from(coupleMessages)
+        .where(and(inArray(coupleMessages.id, messageIds), eq(coupleMessages.coupleId, member.coupleId)));
       for (const { senderId } of senderIds) {
         sendPushToUser(senderId, '', '', {
           type: 'MESSAGE_DELIVERED',
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
     // (Previous behaviour: deleteMany immediately after ACK — this caused
     // permanent history loss on reinstall / local DB reset.)
 
-    return NextResponse.json({ success: true, acknowledged: result.count });
+    return NextResponse.json({ success: true, acknowledged: updated.length });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

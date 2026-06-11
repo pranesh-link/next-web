@@ -7,7 +7,9 @@ import { NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 import { getCoupleIdForUser } from "@/_services/finance/couple-service";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { coupleChats, coupleChatMessages } from "@db/schema";
+import { eq, inArray, desc } from "drizzle-orm";
 
 export function OPTIONS() {
   return handleOptions();
@@ -41,22 +43,38 @@ export async function GET() {
       );
     }
 
-    const chats = await prisma.coupleChat.findMany({
-      where: { coupleId },
-      orderBy: { updatedAt: "desc" },
-      include: {
-        messages: {
-          orderBy: { createdAt: "desc" },
-          take: 1,
-        },
-      },
+    const chats = await db.query.coupleChats.findMany({
+      where: eq(coupleChats.coupleId, coupleId),
+      orderBy: (t, { desc: d }) => [d(t.updatedAt)],
     });
+
+    const chatIds = chats.map((c) => c.id);
+    const lastMessages =
+      chatIds.length > 0
+        ? await db
+            .select({
+              chatId: coupleChatMessages.chatId,
+              content: coupleChatMessages.content,
+              createdAt: coupleChatMessages.createdAt,
+            })
+            .from(coupleChatMessages)
+            .where(inArray(coupleChatMessages.chatId, chatIds))
+            .orderBy(desc(coupleChatMessages.createdAt))
+        : [];
+
+    // Build a map of chatId → last message content (first entry per chatId is newest)
+    const lastMessageMap = new Map<string, string | null>();
+    for (const msg of lastMessages) {
+      if (!lastMessageMap.has(msg.chatId)) {
+        lastMessageMap.set(msg.chatId, msg.content?.slice(0, 80) ?? null);
+      }
+    }
 
     const data = chats.map((chat) => ({
       id: chat.id,
       title: chat.title,
       updatedAt: chat.updatedAt,
-      lastMessage: chat.messages[0]?.content?.slice(0, 80) ?? null,
+      lastMessage: lastMessageMap.get(chat.id) ?? null,
     }));
 
     return NextResponse.json(data, { headers: corsHeaders() });
@@ -97,12 +115,13 @@ export async function POST(request: Request) {
 
     const body = (await request.json()) as { title?: string };
 
-    const chat = await prisma.coupleChat.create({
-      data: {
+    const [chat] = await db
+      .insert(coupleChats)
+      .values({
         coupleId,
         title: body.title ?? "New chat",
-      },
-    });
+      })
+      .returning();
 
     return NextResponse.json(
       { id: chat.id, title: chat.title, createdAt: chat.createdAt },

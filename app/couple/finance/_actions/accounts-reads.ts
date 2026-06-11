@@ -1,7 +1,9 @@
 "use server";
 
 import { unstable_noStore as noStore } from "next/cache";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { financialAccounts, users, overallBalanceLog } from "@db/schema";
+import { eq, and, inArray, desc, sum, lt } from "drizzle-orm";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import {
   getUserIdsForCouple,
@@ -24,11 +26,16 @@ export async function getAccounts() {
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
 
-    const accounts = await prisma.financialAccount.findMany({
-      where: { userId: { in: coupleUserIds } },
-      orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
-      include: { user: { select: { id: true, name: true } } },
+    const accountRows = await db.query.financialAccounts.findMany({
+      where: inArray(financialAccounts.userId, coupleUserIds),
+      orderBy: [desc(financialAccounts.isPinned), desc(financialAccounts.createdAt)],
     });
+    const userIds = [...new Set(accountRows.map((a) => a.userId))];
+    const userRows = userIds.length > 0
+      ? await db.query.users.findMany({ where: inArray(users.id, userIds), columns: { id: true, name: true } })
+      : [];
+    const userMap = new Map(userRows.map((u) => [u.id, { id: u.id, name: u.name }]));
+    const accounts = accountRows.map((a) => ({ ...a, user: userMap.get(a.userId) ?? null }));
 
     return { success: true as const, data: accounts };
   } catch (error) {
@@ -54,14 +61,19 @@ export async function getAccount(id: string) {
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
 
-    const account = await prisma.financialAccount.findFirst({
-      where: { id, userId: { in: coupleUserIds } },
-      include: { user: { select: { id: true, name: true } } },
+    const acctRow = await db.query.financialAccounts.findFirst({
+      where: and(eq(financialAccounts.id, id), inArray(financialAccounts.userId, coupleUserIds)),
     });
 
-    if (!account) {
+    if (!acctRow) {
       return { success: false as const, error: "Account not found" };
     }
+
+    const userRow = await db.query.users.findFirst({
+      where: eq(users.id, acctRow.userId),
+      columns: { id: true, name: true },
+    });
+    const account = { ...acctRow, user: userRow ?? null };
 
     return { success: true as const, data: account };
   } catch (error) {
@@ -86,12 +98,12 @@ export async function getTotalBalance() {
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
 
-    const result = await prisma.financialAccount.aggregate({
-      where: { userId: { in: coupleUserIds } },
-      _sum: { balance: true },
-    });
+    const [{ total }] = await db
+      .select({ total: sum(financialAccounts.balance) })
+      .from(financialAccounts)
+      .where(inArray(financialAccounts.userId, coupleUserIds));
 
-    return { success: true as const, data: result._sum.balance ?? 0 };
+    return { success: true as const, data: Number(total ?? 0) };
   } catch (error) {
     return {
       success: false as const,
@@ -114,28 +126,33 @@ export async function getAccountsPageData() {
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
 
-    const [accounts, totalBalanceResult, coupleUsers] = await Promise.all([
-      prisma.financialAccount.findMany({
-        where: { userId: { in: coupleUserIds } },
-        orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
-        include: { user: { select: { id: true, name: true } } },
+    const [pageAccountRows, totalBalResult, coupleUsersResult] = await Promise.all([
+      db.query.financialAccounts.findMany({
+        where: inArray(financialAccounts.userId, coupleUserIds),
+        orderBy: [desc(financialAccounts.isPinned), desc(financialAccounts.createdAt)],
       }),
-      prisma.financialAccount.aggregate({
-        where: { userId: { in: coupleUserIds } },
-        _sum: { balance: true },
-      }),
-      prisma.user.findMany({
-        where: { id: { in: coupleUserIds } },
-        select: { id: true, name: true, email: true },
+      db.select({ total: sum(financialAccounts.balance) })
+        .from(financialAccounts)
+        .where(inArray(financialAccounts.userId, coupleUserIds)),
+      db.query.users.findMany({
+        where: inArray(users.id, coupleUserIds),
+        columns: { id: true, name: true, email: true },
       }),
     ]);
+
+    const pageUserIds = [...new Set(pageAccountRows.map((a) => a.userId))];
+    const pageUserRows = pageUserIds.length > 0
+      ? await db.query.users.findMany({ where: inArray(users.id, pageUserIds), columns: { id: true, name: true } })
+      : [];
+    const pageUserMap = new Map(pageUserRows.map((u) => [u.id, { id: u.id, name: u.name }]));
+    const accounts = pageAccountRows.map((a) => ({ ...a, user: pageUserMap.get(a.userId) ?? null }));
 
     return {
       success: true as const,
       data: {
         accounts,
-        totalBalance: totalBalanceResult._sum.balance ?? 0,
-        coupleUsers,
+        totalBalance: Number(totalBalResult[0]?.total ?? 0),
+        coupleUsers: coupleUsersResult,
         currentUserId: user.id,
       },
     };
@@ -163,11 +180,11 @@ export async function getAccountBalanceHistory(accountId: string, cursor?: strin
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
 
-    const account = await prisma.financialAccount.findFirst({
-      where: { id: accountId, userId: { in: coupleUserIds } },
+    const acctCheck = await db.query.financialAccounts.findFirst({
+      where: and(eq(financialAccounts.id, accountId), inArray(financialAccounts.userId, coupleUserIds)),
     });
 
-    if (!account) {
+    if (!acctCheck) {
       return { success: false as const, error: "Account not found" };
     }
 
@@ -196,21 +213,21 @@ export async function getCoupleUsers() {
     const coupleId = await getCoupleIdForUser(user.id);
 
     if (!coupleId) {
-      const self = await prisma.user.findUnique({
-        where: { id: user.id },
-        select: { id: true, name: true, email: true },
+      const self = await db.query.users.findFirst({
+        where: eq(users.id, user.id),
+        columns: { id: true, name: true, email: true },
       });
       return { success: true as const, data: self ? [self] : [], currentUserId: user.id };
     }
 
     const members = await getCoupleMembers(coupleId);
-    const users = members.map((m) => ({
+    const coupleUserList = members.map((m) => ({
       id: m.user.id,
       name: m.user.name,
       email: m.user.email,
     }));
 
-    return { success: true as const, data: users, currentUserId: user.id };
+    return { success: true as const, data: coupleUserList, currentUserId: user.id };
   } catch (error) {
     return {
       success: false as const,
@@ -236,11 +253,23 @@ export async function getOverallBalanceHistory(cursor?: string) {
     const coupleId = await getCoupleIdForUser(user.id);
 
     const pageSize = 20;
-    const logs = await prisma.overallBalanceLog.findMany({
-      where: coupleId ? { coupleId } : { userId: { in: coupleUserIds } },
-      orderBy: { createdAt: "desc" },
-      take: pageSize + 1,
-      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    const baseWhere = coupleId
+      ? eq(overallBalanceLog.coupleId, coupleId)
+      : inArray(overallBalanceLog.userId, coupleUserIds);
+
+    let cursorDate: Date | undefined;
+    if (cursor) {
+      const cursorRow = await db.query.overallBalanceLog.findFirst({
+        where: eq(overallBalanceLog.id, cursor),
+        columns: { createdAt: true },
+      });
+      if (cursorRow) cursorDate = cursorRow.createdAt;
+    }
+
+    const logs = await db.query.overallBalanceLog.findMany({
+      where: cursorDate ? and(baseWhere, lt(overallBalanceLog.createdAt, cursorDate)) : baseWhere,
+      orderBy: [desc(overallBalanceLog.createdAt)],
+      limit: pageSize + 1,
     });
 
     const hasMore = logs.length > pageSize;

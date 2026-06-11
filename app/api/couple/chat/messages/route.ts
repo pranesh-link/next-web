@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
-import { MessageType, Prisma } from "@prisma/client";
+import { db } from "@db";
+import { coupleMembers, coupleMessages, messageTypeEnum } from "@db/schema";
+import { eq, and, lt, desc } from "drizzle-orm";
 import { sendChatPushNotification } from "@/_services/chat/push-service";
 
 const sendMessageSchema = z.object({
   content: z.string().min(1).max(20_000),
-  type: z.nativeEnum(MessageType).optional().default(MessageType.TEXT),
+  type: z.enum(messageTypeEnum.enumValues).optional().default("TEXT"),
   iv: z.string().optional(),
   encrypted: z.boolean().optional().default(false),
   payload: z.record(z.string(), z.unknown()).optional(),
@@ -28,7 +29,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 });
     }
 
-    const member = await prisma.coupleMember.findFirst({ where: { userId } });
+    const member = await db.query.coupleMembers.findFirst({ where: eq(coupleMembers.userId, userId) });
     if (!member) {
       return NextResponse.json({ success: true, data: [] });
     }
@@ -37,20 +38,29 @@ export async function GET(request: Request) {
     const cursor = searchParams.get("cursor");
     const limit = Math.min(Number(searchParams.get("limit")) || 50, 100);
 
-    const messages = await prisma.coupleMessage.findMany({
-      where: { coupleId: member.coupleId },
-      orderBy: { createdAt: "desc" },
-      take: limit,
-      ...(cursor
-        ? { skip: 1, cursor: { id: cursor } }
-        : {}),
+    let cursorCreatedAt: Date | undefined;
+    if (cursor) {
+      const cursorMsg = await db.query.coupleMessages.findFirst({
+        where: eq(coupleMessages.id, cursor),
+        columns: { createdAt: true },
+      });
+      cursorCreatedAt = cursorMsg?.createdAt;
+    }
+
+    const messages = await db.query.coupleMessages.findMany({
+      where: and(
+        eq(coupleMessages.coupleId, member.coupleId),
+        cursorCreatedAt ? lt(coupleMessages.createdAt, cursorCreatedAt) : undefined,
+      ),
+      orderBy: (t, { desc: d }) => [d(t.createdAt)],
+      limit,
     });
 
     // Fire-and-forget: purge orphan messages older than 30 days for this couple
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    prisma.coupleMessage.deleteMany({
-      where: { coupleId: member.coupleId, createdAt: { lt: thirtyDaysAgo } },
-    }).catch(() => {});
+    db.delete(coupleMessages).where(
+      and(eq(coupleMessages.coupleId, member.coupleId), lt(coupleMessages.createdAt, thirtyDaysAgo))
+    ).catch(() => {});
 
     return NextResponse.json({ success: true, data: messages });
   } catch (error) {
@@ -75,7 +85,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 });
     }
 
-    const member = await prisma.coupleMember.findFirst({ where: { userId } });
+    const member = await db.query.coupleMembers.findFirst({ where: eq(coupleMembers.userId, userId) });
     if (!member) {
       return NextResponse.json({ success: false, error: "No couple found" }, { status: 404 });
     }
@@ -83,21 +93,17 @@ export async function POST(request: Request) {
     const body = await request.json();
     const validated = sendMessageSchema.parse(body);
 
-    const message = await prisma.coupleMessage.create({
-      data: {
-        coupleId: member.coupleId,
-        senderId: userId,
-        type: validated.type,
-        content: validated.encrypted ? validated.content : validated.content.trim(),
-        iv: validated.encrypted ? validated.iv : undefined,
-        encrypted: validated.encrypted,
-        payload: validated.payload
-          ? (validated.payload as Prisma.InputJsonValue)
-          : undefined,
-        reminderAt: validated.reminderAt ? new Date(validated.reminderAt) : undefined,
-        readBy: [userId],
-      },
-    });
+    const [message] = await db.insert(coupleMessages).values({
+      coupleId: member.coupleId,
+      senderId: userId,
+      type: validated.type,
+      content: validated.encrypted ? validated.content : validated.content.trim(),
+      iv: validated.encrypted ? validated.iv : undefined,
+      encrypted: validated.encrypted,
+      payload: validated.payload ?? null,
+      reminderAt: validated.reminderAt ? new Date(validated.reminderAt) : undefined,
+      readBy: [userId],
+    }).returning();
 
     // Fire-and-forget push notification to partner
     sendChatPushNotification(userId, member.coupleId).catch(() => {});

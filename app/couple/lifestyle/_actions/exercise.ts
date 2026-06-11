@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/_lib/auth";
-import { prisma } from "@/_lib/prisma";
+import { db } from "@db";
+import { exerciseLogs } from "@db/schema";
+import { eq, and, inArray, asc, gte, desc } from "drizzle-orm";
 import {
   getCoupleIdForUser,
   getUserIdsForCouple,
@@ -69,12 +71,12 @@ async function requireUserId(): Promise<string> {
 export async function getExerciseLogs(date: string): Promise<ExerciseLogRow[]> {
   const userId = await requireUserId();
   const coupleUserIds = await getUserIdsForCouple(userId);
-  return prisma.exerciseLog.findMany({
-    where: {
-      userId: { in: coupleUserIds },
-      loggedOn: new Date(date),
-    },
-    orderBy: { createdAt: "asc" },
+  return db.query.exerciseLogs.findMany({
+    where: and(
+      inArray(exerciseLogs.userId, coupleUserIds),
+      eq(exerciseLogs.loggedOn, date),
+    ),
+    orderBy: (t, { asc }) => [asc(t.createdAt)],
   }) as Promise<ExerciseLogRow[]>;
 }
 
@@ -88,18 +90,19 @@ export async function getExerciseLogs(date: string): Promise<ExerciseLogRow[]> {
 export async function logExercise(data: ExerciseLogInput): Promise<ExerciseLogRow> {
   const userId = await requireUserId();
   const coupleId = await getCoupleIdForUser(userId);
-  const record = await prisma.exerciseLog.create({
-    data: {
+  const [record] = await db
+    .insert(exerciseLogs)
+    .values({
       userId,
       ...(coupleId ? { coupleId } : {}),
-      loggedOn: new Date(data.date),
+      loggedOn: data.date,
       type: data.type,
       name: data.name,
       durationMins: data.durationMins,
       caloriesBurned: data.caloriesBurned ?? null,
       note: data.note ?? null,
-    },
-  });
+    })
+    .returning();
   revalidatePath(EXERCISE_PATH);
   return record as ExerciseLogRow;
 }
@@ -114,9 +117,11 @@ export async function logExercise(data: ExerciseLogInput): Promise<ExerciseLogRo
  */
 export async function deleteExerciseLog(id: string): Promise<void> {
   const userId = await requireUserId();
-  const log = await prisma.exerciseLog.findFirst({ where: { id, userId } });
+  const log = await db.query.exerciseLogs.findFirst({
+    where: and(eq(exerciseLogs.id, id), eq(exerciseLogs.userId, userId)),
+  });
   if (!log) throw new Error("Exercise log not found");
-  await prisma.exerciseLog.delete({ where: { id } });
+  await db.delete(exerciseLogs).where(eq(exerciseLogs.id, id));
   revalidatePath(EXERCISE_PATH);
 }
 
@@ -134,22 +139,22 @@ export async function getWeeklyExerciseSummary(): Promise<WeeklyExerciseSummary>
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
   sevenDaysAgo.setHours(0, 0, 0, 0);
 
-  const logs = await prisma.exerciseLog.findMany({
-    where: {
-      userId: { in: coupleUserIds },
-      loggedOn: { gte: sevenDaysAgo },
-    },
+  const sevenDaysAgoStr = sevenDaysAgo.toISOString().split("T")[0];
+  const logs = await db.query.exerciseLogs.findMany({
+    where: and(
+      inArray(exerciseLogs.userId, coupleUserIds),
+      gte(exerciseLogs.loggedOn, sevenDaysAgoStr),
+    ),
   });
 
   const activeDays = new Set(
-    (logs as Array<{ loggedOn: Date }>).map((l) => l.loggedOn.toISOString().split("T")[0]),
+    logs.map((l) => String(l.loggedOn).split("T")[0]),
   );
 
-  return (logs as Array<{ durationMins: number; caloriesBurned: unknown }>).reduce<WeeklyExerciseSummary>(
+  return logs.reduce<WeeklyExerciseSummary>(
     (acc, log) => ({
       totalMins: acc.totalMins + log.durationMins,
-      totalCaloriesBurned:
-        acc.totalCaloriesBurned + Number(log.caloriesBurned ?? 0),
+      totalCaloriesBurned: acc.totalCaloriesBurned + Number(log.caloriesBurned ?? 0),
       daysActive: activeDays.size,
     }),
     { totalMins: 0, totalCaloriesBurned: 0, daysActive: 0 },

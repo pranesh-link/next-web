@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { budgets, transactions } from "@db/schema";
+import { and, eq, inArray, gte, lt, sql } from "drizzle-orm";
 import { budgetSchema } from "@/_lib/validations/finance";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
@@ -30,35 +32,33 @@ async function getHandler(request: NextRequest) {
       searchParams.get("month") ?? currentMonth();
     const [year, m] = month.split("-").map(Number);
 
-    const [budgets, spentByCategory] = await Promise.all([
-      prisma.budget.findMany({
-        where: { userId: { in: coupleUserIds }, month },
-        orderBy: { category: "asc" },
+    const [budgetRows, budgetSpentData] = await Promise.all([
+      db.query.budgets.findMany({
+        where: and(inArray(budgets.userId, coupleUserIds), eq(budgets.month, month)),
+        orderBy: (t, { asc: a }) => [a(t.category)],
       }),
-      prisma.transaction.groupBy({
-        by: ["category"] as const,
-        where: {
-          userId: { in: coupleUserIds },
-          type: "EXPENSE" as const,
-          date: {
-            gte: new Date(year, m - 1, 1),
-            lt: new Date(year, m, 1),
-          },
-        },
-        _sum: { amount: true },
-      }),
+      db
+        .select({
+          category: transactions.category,
+          total: sql<number>`sum(${transactions.amount})`,
+        })
+        .from(transactions)
+        .where(
+          and(
+            inArray(transactions.userId, coupleUserIds),
+            eq(transactions.type, "EXPENSE"),
+            gte(transactions.date, new Date(year, m - 1, 1)),
+            lt(transactions.date, new Date(year, m, 1)),
+          ),
+        )
+        .groupBy(transactions.category),
     ]);
 
     const spentMap = new Map<string, number>(
-      spentByCategory.map(
-        (s: { category: string; _sum: { amount: number | null } }) => [
-          s.category,
-          s._sum.amount ?? 0,
-        ],
-      ),
+      budgetSpentData.map((s) => [s.category, s.total ?? 0]),
     );
 
-    const data = budgets.map((budget) => ({
+    const data = budgetRows.map((budget) => ({
       ...budget,
       spent: spentMap.get(budget.category) ?? 0,
     }));
@@ -101,23 +101,20 @@ async function postHandler(request: Request) {
     const body = await request.json();
     const validated = budgetSchema.parse(body);
 
-    const budget = await prisma.budget.upsert({
-      where: {
-        userId_category_month: {
-          userId: userId,
-          category: validated.category,
-          month: validated.month,
-        },
-      },
-      update: { limit: validated.limit },
-      create: {
-        userId: userId,
+    const [budget] = await db
+      .insert(budgets)
+      .values({
+        userId,
         ...(coupleId ? { coupleId } : {}),
         category: validated.category,
         limit: validated.limit,
         month: validated.month,
-      },
-    });
+      })
+      .onConflictDoUpdate({
+        target: [budgets.userId, budgets.category, budgets.month],
+        set: { limit: validated.limit },
+      })
+      .returning();
 
     await CacheInvalidation.onBudgetChange(userId);
 

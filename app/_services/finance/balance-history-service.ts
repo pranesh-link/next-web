@@ -1,4 +1,6 @@
-import prisma from '@/_lib/prisma';
+import { db } from '@db';
+import { balanceHistory } from '@db/schema';
+import { eq, inArray, and, desc, lt } from 'drizzle-orm';
 
 export async function recordBalanceChange(
   accountId: string,
@@ -9,16 +11,15 @@ export async function recordBalanceChange(
   note?: string,
 ) {
   const change = newBalance - oldBalance;
-  return prisma.balanceHistory.create({
-    data: {
-      accountId,
-      balance: newBalance,
-      change,
-      note: note || null,
-      userId,
-      coupleId: coupleId || null,
-    },
-  });
+  const [record] = await db.insert(balanceHistory).values({
+    accountId,
+    balance: newBalance,
+    change,
+    note: note || null,
+    userId,
+    coupleId: coupleId || null,
+  }).returning();
+  return record;
 }
 
 export async function getHistoryForAccount(
@@ -27,14 +28,23 @@ export async function getHistoryForAccount(
   limit = 20,
   cursor?: string,
 ) {
-  const items = await prisma.balanceHistory.findMany({
-    where: {
-      accountId,
-      userId: { in: coupleUserIds },
-    },
-    orderBy: { createdAt: 'desc' },
-    take: limit + 1,
-    ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+  let cursorCreatedAt: Date | undefined;
+  if (cursor) {
+    const cursorRecord = await db.query.balanceHistory.findFirst({
+      where: eq(balanceHistory.id, cursor),
+      columns: { createdAt: true },
+    });
+    cursorCreatedAt = cursorRecord?.createdAt;
+  }
+
+  const items = await db.query.balanceHistory.findMany({
+    where: and(
+      eq(balanceHistory.accountId, accountId),
+      inArray(balanceHistory.userId, coupleUserIds),
+      cursorCreatedAt ? lt(balanceHistory.createdAt, cursorCreatedAt) : undefined,
+    ),
+    orderBy: desc(balanceHistory.createdAt),
+    limit: limit + 1,
   });
 
   const hasMore = items.length > limit;

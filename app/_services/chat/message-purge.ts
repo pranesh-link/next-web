@@ -1,4 +1,6 @@
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { coupleMessages } from "@db/schema";
+import { and, isNull, isNotNull, lt } from "drizzle-orm";
 
 /**
  * Purges undelivered messages older than 30 days. Called by a cron job
@@ -9,18 +11,18 @@ import prisma from "@/_lib/prisma";
 export async function purgeExpiredMessages(): Promise<number> {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-  const result = await prisma.coupleMessage.deleteMany({
-    where: {
-      deliveredAt: null,
-      createdAt: { lt: thirtyDaysAgo },
-    },
-  });
+  const deleted = await db
+    .delete(coupleMessages)
+    .where(
+      and(isNull(coupleMessages.deliveredAt), lt(coupleMessages.createdAt, thirtyDaysAgo))
+    )
+    .returning({ id: coupleMessages.id });
 
-  if (result.count > 0) {
-    console.log(`[message-purge] Purged ${result.count} undelivered messages older than 30 days`);
+  if (deleted.length > 0) {
+    console.log(`[message-purge] Purged ${deleted.length} undelivered messages older than 30 days`);
   }
 
-  return result.count;
+  return deleted.length;
 }
 
 /**
@@ -32,15 +34,16 @@ export async function purgeExpiredMessages(): Promise<number> {
 export async function cleanupDeliveredMessages(): Promise<number> {
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 
-  const result = await prisma.coupleMessage.deleteMany({
-    where: {
-      deliveredAt: { not: null, lt: oneHourAgo },
-    },
-  });
+  const deleted = await db
+    .delete(coupleMessages)
+    .where(
+      and(isNotNull(coupleMessages.deliveredAt), lt(coupleMessages.deliveredAt, oneHourAgo))
+    )
+    .returning({ id: coupleMessages.id });
 
-  if (result.count > 0) {
-    console.log(`[message-purge] Cleaned up ${result.count} delivered messages older than 1 hour`);
+  if (deleted.length > 0) {
+    console.log(`[message-purge] Cleaned up ${deleted.length} delivered messages older than 1 hour`);
   }
 
-  return result.count;
+  return deleted.length;
 }

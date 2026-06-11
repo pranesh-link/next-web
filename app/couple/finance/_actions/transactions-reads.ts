@@ -1,7 +1,9 @@
 "use server";
 
 import { unstable_noStore as noStore } from "next/cache";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { transactions, financialAccounts } from "@db/schema";
+import { eq, and, inArray, gte, lt, desc, sum } from "drizzle-orm";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { getUserIdsForCouple } from "@/_services/finance/couple-service";
 import {
@@ -87,14 +89,19 @@ export async function getTransaction(id: string) {
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
 
-    const transaction = await prisma.transaction.findFirst({
-      where: { id, userId: { in: coupleUserIds } },
-      include: { account: { select: { name: true } } },
+    const txRow = await db.query.transactions.findFirst({
+      where: and(eq(transactions.id, id), inArray(transactions.userId, coupleUserIds)),
     });
 
-    if (!transaction) {
+    if (!txRow) {
       return { success: false as const, error: "Transaction not found" };
     }
+
+    const acct = await db.query.financialAccounts.findFirst({
+      where: eq(financialAccounts.id, txRow.accountId),
+      columns: { name: true },
+    });
+    const transaction = { ...txRow, account: acct ? { name: acct.name } : null };
 
     return { success: true as const, data: transaction };
   } catch (error) {
@@ -121,16 +128,27 @@ export async function getTransactionsByMonth(month: string) {
     const [year, m] = month.split("-").map(Number);
     const coupleUserIds = await getUserIdsForCouple(user.id);
 
-    const transactions = await prisma.transaction.findMany({
-      where: {
-        userId: { in: coupleUserIds },
-        date: { gte: new Date(year, m - 1, 1), lt: new Date(year, m, 1) },
-      },
-      orderBy: { date: "desc" },
-      include: { account: { select: { name: true } } },
+    const txRows = await db.query.transactions.findMany({
+      where: and(
+        inArray(transactions.userId, coupleUserIds),
+        gte(transactions.date, new Date(year, m - 1, 1)),
+        lt(transactions.date, new Date(year, m, 1)),
+      ),
+      orderBy: [desc(transactions.date)],
     });
 
-    return { success: true as const, data: transactions };
+    const accountIds = [...new Set(txRows.map((t) => t.accountId))];
+    const accts =
+      accountIds.length > 0
+        ? await db.query.financialAccounts.findMany({
+            where: inArray(financialAccounts.id, accountIds),
+            columns: { id: true, name: true },
+          })
+        : [];
+    const accountMap = new Map(accts.map((a) => [a.id, a.name]));
+    const transactionList = txRows.map((t) => ({ ...t, account: { name: accountMap.get(t.accountId) ?? "" } }));
+
+    return { success: true as const, data: transactionList };
   } catch (error) {
     return {
       success: false as const,
@@ -160,23 +178,27 @@ export async function getCategoryAggregation(month?: string) {
     const [year, m] = targetMonth.split("-").map(Number);
     const coupleUserIds = await getUserIdsForCouple(user.id);
 
-    const aggregation = await prisma.transaction.groupBy({
-      by: ["category"],
-      where: {
-        userId: { in: coupleUserIds },
-        type: "EXPENSE",
-        date: { gte: new Date(year, m - 1, 1), lt: new Date(year, m, 1) },
-      },
-      _sum: { amount: true },
-      orderBy: { _sum: { amount: "desc" } },
-    });
+    const aggregation = await db
+      .select({
+        category: transactions.category,
+        total: sum(transactions.amount),
+      })
+      .from(transactions)
+      .where(
+        and(
+          inArray(transactions.userId, coupleUserIds),
+          eq(transactions.type, "EXPENSE"),
+          gte(transactions.date, new Date(year, m - 1, 1)),
+          lt(transactions.date, new Date(year, m, 1)),
+        ),
+      )
+      .groupBy(transactions.category)
+      .orderBy(desc(sum(transactions.amount)));
 
-    const data = aggregation.map(
-      (item: { category: string; _sum: { amount: number | null } }) => ({
-        category: item.category,
-        total: item._sum.amount ?? 0,
-      }),
-    );
+    const data = aggregation.map((item) => ({
+      category: item.category,
+      total: Number(item.total ?? 0),
+    }));
 
     return { success: true as const, data };
   } catch (error) {

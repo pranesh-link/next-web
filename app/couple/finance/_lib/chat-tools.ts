@@ -1,10 +1,20 @@
 /**
  * Finance AI chat — tool definitions and executors.
  * Uses the OpenAI function-calling format directly (no ai-sdk dependency).
- * All Prisma queries are read-only and scoped to couple member IDs.
+ * All Drizzle queries are read-only and scoped to couple member IDs.
  */
 
-import { prisma } from "@/_lib/prisma";
+import { db } from "@db";
+import {
+  transactions,
+  financialAccounts,
+  loans,
+  savingsGoals,
+  investmentHoldings,
+  depositInstruments,
+  budgets,
+} from "@db/schema";
+import { and, inArray, eq, gte, lt, desc, sql } from "drizzle-orm";
 
 // ─── Minimal types for OpenAI tool format ────────────────────────────────────
 
@@ -159,51 +169,81 @@ export async function executeToolCall(
       const [y, m] = month.split("-").map(Number);
       const start = new Date(y, m - 1, 1);
       const end = new Date(y, m, 1);
-      const rows = await prisma.transaction.groupBy({
-        by: ["category"],
-        where: { userId: { in: coupleUserIds }, type: "EXPENSE", date: { gte: start, lt: end } },
-        _sum: { amount: true },
-        orderBy: { _sum: { amount: "desc" } },
-      });
+      const rows = await db
+        .select({
+          category: transactions.category,
+          total: sql<number>`sum(${transactions.amount})`,
+        })
+        .from(transactions)
+        .where(
+          and(
+            inArray(transactions.userId, coupleUserIds),
+            eq(transactions.type, "EXPENSE"),
+            gte(transactions.date, start),
+            lt(transactions.date, end),
+          ),
+        )
+        .groupBy(transactions.category)
+        .orderBy(desc(sql`sum(${transactions.amount})`));
       if (rows.length > 0) {
-        return rows.map((r) => ({ category: r.category, total: r._sum.amount ?? 0 }));
+        return rows.map((r) => ({ category: r.category, total: r.total ?? 0 }));
       }
       // No data for requested month — find the most recent month that has data
-      const latestTx = await prisma.transaction.findFirst({
-        where: { userId: { in: coupleUserIds }, type: "EXPENSE" },
-        orderBy: { date: "desc" },
-        select: { date: true },
+      const latestTx = await db.query.transactions.findFirst({
+        where: and(inArray(transactions.userId, coupleUserIds), eq(transactions.type, "EXPENSE")),
+        orderBy: [desc(transactions.date)],
+        columns: { date: true },
       });
       if (!latestTx) return [];
       const ly = latestTx.date.getFullYear();
       const lm = latestTx.date.getMonth();
       const fallbackStart = new Date(ly, lm, 1);
       const fallbackEnd = new Date(ly, lm + 1, 1);
-      const fallbackRows = await prisma.transaction.groupBy({
-        by: ["category"],
-        where: { userId: { in: coupleUserIds }, type: "EXPENSE", date: { gte: fallbackStart, lt: fallbackEnd } },
-        _sum: { amount: true },
-        orderBy: { _sum: { amount: "desc" } },
-      });
+      const fallbackRows = await db
+        .select({
+          category: transactions.category,
+          total: sql<number>`sum(${transactions.amount})`,
+        })
+        .from(transactions)
+        .where(
+          and(
+            inArray(transactions.userId, coupleUserIds),
+            eq(transactions.type, "EXPENSE"),
+            gte(transactions.date, fallbackStart),
+            lt(transactions.date, fallbackEnd),
+          ),
+        )
+        .groupBy(transactions.category)
+        .orderBy(desc(sql`sum(${transactions.amount})`));
       const fallbackMonth = `${ly}-${String(lm + 1).padStart(2, "0")}`;
-      return { note: `No data for ${month}. Showing ${fallbackMonth} instead.`, data: fallbackRows.map((r) => ({ category: r.category, total: r._sum.amount ?? 0 })) };
+      return { note: `No data for ${month}. Showing ${fallbackMonth} instead.`, data: fallbackRows.map((r) => ({ category: r.category, total: r.total ?? 0 })) };
     }
 
     case "getMonthlyTrend": {
       const months = Math.min(Math.max(Number(args.months) || 6, 1), 12);
       // Anchor to the most recent transaction date so historical data is never missed
-      const latestTx = await prisma.transaction.findFirst({
-        where: { userId: { in: coupleUserIds } },
-        orderBy: { date: "desc" },
-        select: { date: true },
+      const latestTx = await db.query.transactions.findFirst({
+        where: inArray(transactions.userId, coupleUserIds),
+        orderBy: [desc(transactions.date)],
+        columns: { date: true },
       });
       const anchor = latestTx?.date ?? new Date();
       const endDate = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 1);
       const startDate = new Date(anchor.getFullYear(), anchor.getMonth() - months + 1, 1);
-      const txs = await prisma.transaction.findMany({
-        where: { userId: { in: coupleUserIds }, date: { gte: startDate, lt: endDate } },
-        select: { date: true, type: true, amount: true },
-      });
+      const txs = await db
+        .select({
+          date: transactions.date,
+          type: transactions.type,
+          amount: transactions.amount,
+        })
+        .from(transactions)
+        .where(
+          and(
+            inArray(transactions.userId, coupleUserIds),
+            gte(transactions.date, startDate),
+            lt(transactions.date, endDate),
+          ),
+        );
       const map: Record<string, { income: number; expense: number }> = {};
       for (const tx of txs) {
         const key = `${tx.date.getFullYear()}-${String(tx.date.getMonth() + 1).padStart(2, "0")}`;
@@ -217,35 +257,54 @@ export async function executeToolCall(
     }
 
     case "getAccountBalances":
-      return prisma.financialAccount.findMany({
-        where: { userId: { in: coupleUserIds } },
-        select: { name: true, type: true, balance: true },
-        orderBy: { balance: "desc" },
-      });
+      return db
+        .select({ name: financialAccounts.name, type: financialAccounts.type, balance: financialAccounts.balance })
+        .from(financialAccounts)
+        .where(inArray(financialAccounts.userId, coupleUserIds))
+        .orderBy(desc(financialAccounts.balance));
 
     case "getTopMerchants": {
       const limit = Math.min(Math.max(Number(args.limit) || 10, 1), 20);
-      const rows = await prisma.transaction.groupBy({
-        by: ["description"],
-        where: { userId: { in: coupleUserIds }, type: "EXPENSE", description: { not: null } },
-        _sum: { amount: true },
-        orderBy: { _sum: { amount: "desc" } },
-        take: limit,
-      });
-      return rows.map((r) => ({ merchant: r.description ?? "Unknown", total: r._sum.amount ?? 0 }));
+      const rows = await db
+        .select({
+          description: transactions.description,
+          total: sql<number>`sum(${transactions.amount})`,
+        })
+        .from(transactions)
+        .where(
+          and(
+            inArray(transactions.userId, coupleUserIds),
+            eq(transactions.type, "EXPENSE"),
+            sql`${transactions.description} is not null`,
+          ),
+        )
+        .groupBy(transactions.description)
+        .orderBy(desc(sql`sum(${transactions.amount})`))
+        .limit(limit);
+      return rows.map((r) => ({ merchant: r.description ?? "Unknown", total: r.total ?? 0 }));
     }
 
     case "getLoanSummary":
-      return prisma.loan.findMany({
-        where: { userId: { in: coupleUserIds } },
-        select: { name: true, remainingBalance: true, emiAmount: true, interestRate: true },
-      });
+      return db
+        .select({
+          name: loans.name,
+          remainingBalance: loans.remainingBalance,
+          emiAmount: loans.emiAmount,
+          interestRate: loans.interestRate,
+        })
+        .from(loans)
+        .where(inArray(loans.userId, coupleUserIds));
 
     case "getGoalProgress": {
-      const goals = await prisma.savingsGoal.findMany({
-        where: { userId: { in: coupleUserIds } },
-        select: { name: true, currentAmount: true, targetAmount: true, deadline: true },
-      });
+      const goals = await db
+        .select({
+          name: savingsGoals.name,
+          currentAmount: savingsGoals.currentAmount,
+          targetAmount: savingsGoals.targetAmount,
+          deadline: savingsGoals.deadline,
+        })
+        .from(savingsGoals)
+        .where(inArray(savingsGoals.userId, coupleUserIds));
       return goals.map((g) => ({
         name: g.name,
         currentAmount: g.currentAmount,
@@ -256,28 +315,19 @@ export async function executeToolCall(
     }
 
     case "getNetWorth": {
-      const [accounts, loans, investments, deposits] = await Promise.all([
-        prisma.financialAccount.findMany({
-          where: { userId: { in: coupleUserIds } },
-          select: { balance: true },
-        }),
-        prisma.loan.findMany({
-          where: { userId: { in: coupleUserIds } },
-          select: { remainingBalance: true },
-        }),
-        prisma.investmentHolding.findMany({
-          where: { userId: { in: coupleUserIds } },
-          select: { currentValue: true },
-        }),
-        prisma.depositInstrument.findMany({
-          where: { userId: { in: coupleUserIds }, status: "ACTIVE" },
-          select: { principalAmount: true },
-        }),
+      const [accountRows, loanRows, investmentRows, depositRows] = await Promise.all([
+        db.select({ balance: financialAccounts.balance }).from(financialAccounts).where(inArray(financialAccounts.userId, coupleUserIds)),
+        db.select({ remainingBalance: loans.remainingBalance }).from(loans).where(inArray(loans.userId, coupleUserIds)),
+        db.select({ currentValue: investmentHoldings.currentValue }).from(investmentHoldings).where(inArray(investmentHoldings.userId, coupleUserIds)),
+        db
+          .select({ principalAmount: depositInstruments.principalAmount })
+          .from(depositInstruments)
+          .where(and(inArray(depositInstruments.userId, coupleUserIds), eq(depositInstruments.status, "ACTIVE"))),
       ]);
-      const totalAccounts = accounts.reduce((s, a) => s + a.balance, 0);
-      const totalInvestments = investments.reduce((s, i) => s + (i.currentValue ?? 0), 0);
-      const totalDeposits = deposits.reduce((s, d) => s + d.principalAmount, 0);
-      const totalLiabilities = loans.reduce((s, l) => s + l.remainingBalance, 0);
+      const totalAccounts = accountRows.reduce((s, a) => s + a.balance, 0);
+      const totalInvestments = investmentRows.reduce((s, i) => s + (i.currentValue ?? 0), 0);
+      const totalDeposits = depositRows.reduce((s, d) => s + d.principalAmount, 0);
+      const totalLiabilities = loanRows.reduce((s, l) => s + l.remainingBalance, 0);
       const totalAssets = totalAccounts + totalInvestments + totalDeposits;
       return { totalAssets, totalLiabilities, netWorth: totalAssets - totalLiabilities };
     }
@@ -287,19 +337,29 @@ export async function executeToolCall(
       const [y, m] = month.split("-").map(Number);
       const start = new Date(y, m - 1, 1);
       const end = new Date(y, m, 1);
-      const [budgets, spent] = await Promise.all([
-        prisma.budget.findMany({
-          where: { userId: { in: coupleUserIds }, month },
-          select: { category: true, limit: true },
-        }),
-        prisma.transaction.groupBy({
-          by: ["category"],
-          where: { userId: { in: coupleUserIds }, type: "EXPENSE", date: { gte: start, lt: end } },
-          _sum: { amount: true },
-        }),
+      const [budgetRows, spent] = await Promise.all([
+        db
+          .select({ category: budgets.category, limit: budgets.limit })
+          .from(budgets)
+          .where(and(inArray(budgets.userId, coupleUserIds), eq(budgets.month, month))),
+        db
+          .select({
+            category: transactions.category,
+            total: sql<number>`sum(${transactions.amount})`,
+          })
+          .from(transactions)
+          .where(
+            and(
+              inArray(transactions.userId, coupleUserIds),
+              eq(transactions.type, "EXPENSE"),
+              gte(transactions.date, start),
+              lt(transactions.date, end),
+            ),
+          )
+          .groupBy(transactions.category),
       ]);
-      const spentMap = Object.fromEntries(spent.map((s) => [s.category, s._sum.amount ?? 0]));
-      return budgets.map((b) => ({
+      const spentMap = Object.fromEntries(spent.map((s) => [s.category, s.total ?? 0]));
+      return budgetRows.map((b) => ({
         category: b.category,
         limit: b.limit,
         spent: spentMap[b.category] ?? 0,
@@ -310,15 +370,25 @@ export async function executeToolCall(
     case "getRecentTransactions": {
       const txType = (args.type as string | undefined)?.toUpperCase();
       const limit = Math.min(Math.max(Number(args.limit) || 20, 1), 50);
-      const txs = await prisma.transaction.findMany({
-        where: {
-          userId: { in: coupleUserIds },
-          ...(txType === "INCOME" || txType === "EXPENSE" ? { type: txType } : {}),
-        },
-        orderBy: { date: "desc" },
-        take: limit,
-        select: { date: true, amount: true, type: true, category: true, description: true },
-      });
+      const txs = await db
+        .select({
+          date: transactions.date,
+          amount: transactions.amount,
+          type: transactions.type,
+          category: transactions.category,
+          description: transactions.description,
+        })
+        .from(transactions)
+        .where(
+          and(
+            inArray(transactions.userId, coupleUserIds),
+            ...(txType === "INCOME" || txType === "EXPENSE"
+              ? [eq(transactions.type, txType as "INCOME" | "EXPENSE")]
+              : []),
+          ),
+        )
+        .orderBy(desc(transactions.date))
+        .limit(limit);
       return txs.map((t) => ({
         date: t.date.toISOString().split("T")[0],
         amount: t.amount,

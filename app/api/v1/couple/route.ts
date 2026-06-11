@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { couples, coupleMembers, users } from "@db/schema";
+import { eq, inArray } from "drizzle-orm";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 
 export async function OPTIONS() {
@@ -27,53 +29,68 @@ export async function GET() {
     );
   }
 
-  const membership = await prisma.coupleMember.findFirst({
-    where: { userId },
-    include: {
-      couple: {
-        include: {
-          members: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                  image: true,
-                },
-              },
-            },
-          },
-        },
-      },
-    },
+  const membership = await db.query.coupleMembers.findFirst({
+    where: eq(coupleMembers.userId, userId),
   });
 
-  console.log("[GET /api/v1/couple] membership found:", !!membership, membership?.couple?.members?.length, "members");
+  console.log("[GET /api/v1/couple] membership found:", !!membership);
 
   if (!membership) {
     // Debug: check if user exists and if they have any couple memberships
-    const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
-    const allMemberships = await prisma.coupleMember.findMany({
-      where: { user: { email: user?.email } },
-      select: { userId: true, user: { select: { email: true } } },
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+      columns: { email: true },
     });
+    const allMemberships = user?.email
+      ? await db
+          .select({ userId: coupleMembers.userId, email: users.email })
+          .from(coupleMembers)
+          .innerJoin(users, eq(coupleMembers.userId, users.id))
+          .where(eq(users.email, user.email))
+      : [];
     console.log("[GET /api/v1/couple] user email:", user?.email, "memberships by email:", allMemberships);
     return NextResponse.json({ data: null }, { headers: corsHeaders() });
   }
 
-  const couple = membership.couple;
+  const couple = await db.query.couples.findFirst({
+    where: eq(couples.id, membership.coupleId),
+  });
+
+  if (!couple) {
+    return NextResponse.json({ data: null }, { headers: corsHeaders() });
+  }
+
+  const members = await db.query.coupleMembers.findMany({
+    where: eq(coupleMembers.coupleId, membership.coupleId),
+  });
+
+  const memberUserIds = members.map((m) => m.userId);
+  const memberUsers =
+    memberUserIds.length > 0
+      ? await db
+          .select({
+            id: users.id,
+            name: users.name,
+            email: users.email,
+            image: users.image,
+          })
+          .from(users)
+          .where(inArray(users.id, memberUserIds))
+      : [];
+
+  const userMap = new Map(memberUsers.map((u) => [u.id, u]));
+
   return NextResponse.json(
     {
       data: {
         id: couple.id,
         name: couple.name,
         createdAt: couple.createdAt.toISOString(),
-        members: couple.members.map((m) => ({
+        members: members.map((m) => ({
           id: m.id,
           userId: m.userId,
           role: m.role,
-          user: m.user,
+          user: userMap.get(m.userId) ?? null,
         })),
       },
     },
@@ -107,7 +124,9 @@ export async function POST(req: Request) {
   }
 
   // Check if already in a couple
-  const existing = await prisma.coupleMember.findFirst({ where: { userId } });
+  const existing = await db.query.coupleMembers.findFirst({
+    where: eq(coupleMembers.userId, userId),
+  });
   if (existing) {
     return NextResponse.json(
       { error: "Already in a couple" },
@@ -115,36 +134,40 @@ export async function POST(req: Request) {
     );
   }
 
-  const couple = await prisma.couple.create({
-    data: {
-      name,
-      members: {
-        create: { userId, role: "OWNER" },
-      },
-    },
-    include: {
-      members: {
-        include: {
-          user: {
-            select: { id: true, name: true, email: true, image: true },
-          },
-        },
-      },
-    },
+  const { coupleRow, memberRow } = await db.transaction(async (tx) => {
+    const [newCouple] = await tx.insert(couples).values({ name }).returning();
+    const [newMember] = await tx
+      .insert(coupleMembers)
+      .values({ coupleId: newCouple.id, userId, role: "OWNER" })
+      .returning();
+    return { coupleRow: newCouple, memberRow: newMember };
   });
+
+  const memberUserRows = await db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      image: users.image,
+    })
+    .from(users)
+    .where(eq(users.id, userId));
+  const memberUser = memberUserRows[0] ?? null;
 
   return NextResponse.json(
     {
       data: {
-        id: couple.id,
-        name: couple.name,
-        createdAt: couple.createdAt.toISOString(),
-        members: couple.members.map((m) => ({
-          id: m.id,
-          userId: m.userId,
-          role: m.role,
-          user: m.user,
-        })),
+        id: coupleRow.id,
+        name: coupleRow.name,
+        createdAt: coupleRow.createdAt.toISOString(),
+        members: [
+          {
+            id: memberRow.id,
+            userId: memberRow.userId,
+            role: memberRow.role,
+            user: memberUser,
+          },
+        ],
       },
     },
     { status: 201, headers: corsHeaders() },

@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath, unstable_noStore as noStore } from "next/cache";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { loans } from "@db/schema";
+import { eq, and, inArray } from "drizzle-orm";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { loanSchema } from "@/_lib/validations/finance";
 import { calculateEMI } from "@/_services/finance";
@@ -40,17 +42,17 @@ export async function createLoan(data: {
     const coupleUserIds = await getUserIdsForCouple(user.id);
 
     const duplicate = data.loanAccountNumber
-      ? await prisma.loan.findFirst({
-          where: { userId: { in: coupleUserIds }, loanAccountNumber: data.loanAccountNumber },
+      ? await db.query.loans.findFirst({
+          where: and(inArray(loans.userId, coupleUserIds), eq(loans.loanAccountNumber, data.loanAccountNumber)),
         })
-      : await prisma.loan.findFirst({
-          where: {
-            userId: { in: coupleUserIds },
-            name: data.name,
-            principal: data.principal,
-            interestRate: data.interestRate,
-            tenureMonths: data.tenureMonths,
-          },
+      : await db.query.loans.findFirst({
+          where: and(
+            inArray(loans.userId, coupleUserIds),
+            eq(loans.name, data.name),
+            eq(loans.principal, data.principal),
+            eq(loans.interestRate, data.interestRate),
+            eq(loans.tenureMonths, data.tenureMonths),
+          ),
         });
 
     if (duplicate) {
@@ -70,8 +72,9 @@ export async function createLoan(data: {
     const validated = loanSchema.parse({ ...data, emiAmount });
     const coupleId = await getCoupleIdForUser(user.id);
 
-    const loan = await prisma.loan.create({
-      data: {
+    const [loan] = await db
+      .insert(loans)
+      .values({
         userId: user.id,
         name: validated.name,
         loanProvider: validated.loanProvider || null,
@@ -90,8 +93,8 @@ export async function createLoan(data: {
           ? { schedule: validated.schedule }
           : {}),
         ...(coupleId ? { coupleId } : {}),
-      },
-    });
+      })
+      .returning();
 
     invalidateAfterLoanChange();
     revalidatePath("/couple/finance");
@@ -136,8 +139,8 @@ export async function updateLoan(
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
 
-    const existing = await prisma.loan.findFirst({
-      where: { id, userId: { in: await getUserIdsForCouple(user.id) } },
+    const existing = await db.query.loans.findFirst({
+      where: and(eq(loans.id, id), inArray(loans.userId, await getUserIdsForCouple(user.id))),
     });
 
     if (!existing) {
@@ -169,9 +172,9 @@ export async function updateLoan(
 
     const validated = loanSchema.parse(merged);
 
-    const loan = await prisma.loan.update({
-      where: { id },
-      data: {
+    const [loan] = await db
+      .update(loans)
+      .set({
         name: validated.name,
         loanProvider: validated.loanProvider || null,
         loanAccountNumber: validated.loanAccountNumber || null,
@@ -190,8 +193,9 @@ export async function updateLoan(
           validated.schedule && validated.schedule.length > 0
             ? validated.schedule
             : undefined,
-      },
-    });
+      })
+      .where(eq(loans.id, id))
+      .returning();
 
     invalidateAfterLoanChange();
     revalidatePath("/couple/finance");
@@ -219,15 +223,15 @@ export async function deleteLoan(id: string) {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
 
-    const existing = await prisma.loan.findFirst({
-      where: { id, userId: { in: await getUserIdsForCouple(user.id) } },
+    const existing = await db.query.loans.findFirst({
+      where: and(eq(loans.id, id), inArray(loans.userId, await getUserIdsForCouple(user.id))),
     });
 
     if (!existing) {
       return { success: false as const, error: "Loan not found" };
     }
 
-    await prisma.loan.delete({ where: { id } });
+    await db.delete(loans).where(eq(loans.id, id));
 
     invalidateAfterLoanChange();
     revalidatePath("/couple/finance");

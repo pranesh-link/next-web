@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { users, authAccounts } from "@db/schema";
+import { eq } from "drizzle-orm";
 import { signMobileToken, signMobileRefreshToken } from "@/api/v1/_lib/auth";
 
 /**
@@ -65,28 +67,30 @@ export async function GET(request: NextRequest) {
     }
 
     // Find or create user
-    let user = await prisma.user.findUnique({ where: { email } });
+    let user = await db.query.users.findFirst({ where: eq(users.email, email) });
 
     if (!user) {
-      user = await prisma.user.create({
-        data: { email, name: name || null, image: picture || null },
-      });
-      await prisma.account.create({
-        data: {
-          userId: user.id,
-          type: "oauth",
-          provider: "google",
-          providerAccountId: googleId,
-        },
+      const [newUser] = await db
+        .insert(users)
+        .values({ email, name: name || null, image: picture || null })
+        .returning();
+      user = newUser;
+      await db.insert(authAccounts).values({
+        userId: user.id,
+        type: "oauth",
+        provider: "google",
+        providerAccountId: googleId,
       });
     } else if (name || picture) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
+      const [updated] = await db
+        .update(users)
+        .set({
           ...(name && { name }),
           ...(picture && { image: picture }),
-        },
-      });
+        })
+        .where(eq(users.id, user.id))
+        .returning();
+      user = updated;
     }
 
     // Sign JWT for mobile

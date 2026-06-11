@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { coupleMembers, coupleMessages } from "@db/schema";
+import { eq, and } from "drizzle-orm";
 
 /**
  * PATCH — Update a message's payload (e.g., toggling list items).
@@ -22,13 +23,13 @@ export async function PATCH(
 
     const { id: messageId } = await params;
 
-    const member = await prisma.coupleMember.findFirst({ where: { userId } });
+    const member = await db.query.coupleMembers.findFirst({ where: eq(coupleMembers.userId, userId) });
     if (!member) {
       return NextResponse.json({ success: false, error: "No couple found" }, { status: 404 });
     }
 
-    const message = await prisma.coupleMessage.findFirst({
-      where: { id: messageId, coupleId: member.coupleId },
+    const message = await db.query.coupleMessages.findFirst({
+      where: and(eq(coupleMessages.id, messageId), eq(coupleMessages.coupleId, member.coupleId)),
     });
     if (!message) {
       return NextResponse.json({ success: false, error: "Message not found" }, { status: 404 });
@@ -56,10 +57,10 @@ export async function PATCH(
       Object.assign(existingPayload, patchPayload);
     }
 
-    const updated = await prisma.coupleMessage.update({
-      where: { id: messageId },
-      data: { payload: existingPayload as unknown as Prisma.InputJsonValue },
-    });
+    const [updated] = await db.update(coupleMessages)
+      .set({ payload: existingPayload })
+      .where(eq(coupleMessages.id, messageId))
+      .returning();
 
     return NextResponse.json({ success: true, data: updated });
   } catch (error) {
@@ -88,19 +89,23 @@ export async function DELETE(
 
     const { id: messageId } = await params;
 
-    const member = await prisma.coupleMember.findFirst({ where: { userId } });
+    const member = await db.query.coupleMembers.findFirst({ where: eq(coupleMembers.userId, userId) });
     if (!member) {
       return NextResponse.json({ success: false, error: "No couple found" }, { status: 404 });
     }
 
-    const message = await prisma.coupleMessage.findFirst({
-      where: { id: messageId, coupleId: member.coupleId, senderId: userId },
+    const message = await db.query.coupleMessages.findFirst({
+      where: and(
+        eq(coupleMessages.id, messageId),
+        eq(coupleMessages.coupleId, member.coupleId),
+        eq(coupleMessages.senderId, userId),
+      ),
     });
     if (!message) {
       return NextResponse.json({ success: false, error: "Message not found or not yours" }, { status: 404 });
     }
 
-    await prisma.coupleMessage.delete({ where: { id: messageId } });
+    await db.delete(coupleMessages).where(eq(coupleMessages.id, messageId));
 
     return NextResponse.json({ success: true });
   } catch (error) {

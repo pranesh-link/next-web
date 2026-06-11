@@ -1,8 +1,9 @@
 "use server";
 
 import { revalidatePath, unstable_noStore as noStore } from "next/cache";
-import prisma from "@/_lib/prisma";
-import { AccountType } from "@prisma/client";
+import { db } from "@db";
+import { financialAccounts, balanceHistory } from "@db/schema";
+import { eq, and, inArray, count } from "drizzle-orm";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { accountSchema } from "@/_lib/validations/finance";
 import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
@@ -70,10 +71,11 @@ export async function createAccount(
     }
 
     if (isEmergencyFund) {
-      const efCount = await prisma.financialAccount.count({
-        where: { userId: { in: coupleUserIds }, isEmergencyFund: true },
-      });
-      if (efCount >= 2) {
+      const [{ n }] = await db
+        .select({ n: count() })
+        .from(financialAccounts)
+        .where(and(inArray(financialAccounts.userId, coupleUserIds), eq(financialAccounts.isEmergencyFund, true)));
+      if (n >= 2) {
         return {
           success: false as const,
           error: "Maximum 2 emergency fund accounts allowed per couple",
@@ -81,26 +83,28 @@ export async function createAccount(
       }
     }
 
-    const account = await prisma.$transaction(async (tx) => {
+    const account = await db.transaction(async (tx) => {
       if (isSalaryAccount) {
-        await tx.financialAccount.updateMany({
-          where: { userId: { in: coupleUserIds }, isSalaryAccount: true },
-          data: { isSalaryAccount: false },
-        });
+        await tx
+          .update(financialAccounts)
+          .set({ isSalaryAccount: false })
+          .where(and(inArray(financialAccounts.userId, coupleUserIds), eq(financialAccounts.isSalaryAccount, true)));
       }
 
-      return tx.financialAccount.create({
-        data: {
+      const [created] = await tx
+        .insert(financialAccounts)
+        .values({
           userId: ownerId,
           name: validated.name,
           nickname: validated.nickname || null,
-          type: validated.type as AccountType,
+          type: validated.type,
           balance: validated.balance,
           isSalaryAccount,
           isEmergencyFund,
           ...(coupleId ? { coupleId } : {}),
-        },
-      });
+        })
+        .returning();
+      return created;
     });
 
     if (validated.balance !== 0) {
@@ -145,8 +149,8 @@ export async function updateAccount(
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
 
-    const existing = await prisma.financialAccount.findFirst({
-      where: { id, userId: { in: coupleUserIds } },
+    const existing = await db.query.financialAccounts.findFirst({
+      where: and(eq(financialAccounts.id, id), inArray(financialAccounts.userId, coupleUserIds)),
     });
 
     if (!existing) {
@@ -162,15 +166,16 @@ export async function updateAccount(
 
     const validated = accountSchema.parse(merged);
 
-    const account = await prisma.financialAccount.update({
-      where: { id },
-      data: {
+    const [account] = await db
+      .update(financialAccounts)
+      .set({
         name: validated.name,
         nickname: validated.nickname || null,
-        type: validated.type as AccountType,
+        type: validated.type,
         balance: validated.balance,
-      },
-    });
+      })
+      .where(eq(financialAccounts.id, id))
+      .returning();
 
     invalidateAfterAccountChange();
     revalidatePath("/couple/finance");
@@ -199,18 +204,18 @@ export async function deleteAccount(id: string) {
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
 
-    const existing = await prisma.financialAccount.findFirst({
-      where: { id, userId: { in: coupleUserIds } },
+    const existingAcct = await db.query.financialAccounts.findFirst({
+      where: and(eq(financialAccounts.id, id), inArray(financialAccounts.userId, coupleUserIds)),
     });
 
-    if (!existing) {
+    if (!existingAcct) {
       return { success: false as const, error: "Account not found" };
     }
 
-    const deletedName = existing.name;
-    const deletedBalance = existing.balance;
+    const deletedName = existingAcct.name;
+    const deletedBalance = existingAcct.balance;
 
-    await prisma.financialAccount.delete({ where: { id } });
+    await db.delete(financialAccounts).where(eq(financialAccounts.id, id));
 
     const coupleId = await getCoupleIdForUser(user.id);
     await logOverallBalanceChange(
@@ -251,40 +256,42 @@ export async function updateAccountBalance(
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
 
-    const existing = await prisma.financialAccount.findFirst({
-      where: { id, userId: { in: coupleUserIds } },
+    const existingBal = await db.query.financialAccounts.findFirst({
+      where: and(eq(financialAccounts.id, id), inArray(financialAccounts.userId, coupleUserIds)),
     });
 
-    if (!existing) {
+    if (!existingBal) {
       return { success: false as const, error: "Account not found" };
     }
 
-    if (existing.balance === newBalance) {
+    if (existingBal.balance === newBalance) {
       return { success: false as const, error: "Balance is the same" };
     }
 
     const coupleId = await getCoupleIdForUser(user.id);
 
-    const [account] = await prisma.$transaction([
-      prisma.financialAccount.update({
-        where: { id },
-        data: { balance: newBalance },
-      }),
-      prisma.balanceHistory.create({
-        data: {
-          accountId: id,
-          balance: newBalance,
-          change: newBalance - existing.balance,
-          note: note || null,
-          userId: user.id,
-          coupleId: coupleId || null,
-        },
-      }),
-    ]);
+    const [account] = await db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(financialAccounts)
+        .set({ balance: newBalance })
+        .where(eq(financialAccounts.id, id))
+        .returning();
+
+      await tx.insert(balanceHistory).values({
+        accountId: id,
+        balance: newBalance,
+        change: newBalance - existingBal.balance,
+        note: note || null,
+        userId: user.id,
+        coupleId: coupleId || null,
+      });
+
+      return [updated];
+    });
 
     await logOverallBalanceChange(
       coupleUserIds, user.id, coupleId, id,
-      existing.name, "BALANCE_UPDATED", newBalance - existing.balance,
+      existingBal.name, "BALANCE_UPDATED", newBalance - existingBal.balance,
     );
 
     invalidateAfterAccountChange();

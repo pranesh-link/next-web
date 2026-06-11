@@ -1,15 +1,21 @@
-import prisma from '@/_lib/prisma';
+import { db } from '@db';
+import { coupleMembers } from '@db/schema';
+import { eq } from 'drizzle-orm';
 import { unstable_cache } from 'next/cache';
 import { CACHE_TAGS } from '@/_lib/cache';
 
 const getCoupleUserIdsCached = unstable_cache(
   async (userId: string) => {
-    const membership = await prisma.coupleMember.findFirst({
-      where: { userId },
-      include: { couple: { include: { members: true } } },
+    const membership = await db.query.coupleMembers.findFirst({
+      where: eq(coupleMembers.userId, userId),
+      columns: { coupleId: true },
     });
-    if (!membership || !membership.couple) return [userId];
-    return membership.couple.members.map((m) => m.userId);
+    if (!membership) return [userId];
+    const members = await db.query.coupleMembers.findMany({
+      where: eq(coupleMembers.coupleId, membership.coupleId),
+      columns: { userId: true },
+    });
+    return members.map((m) => m.userId);
   },
   ["couple-user-ids"],
   { revalidate: 300, tags: [CACHE_TAGS.COUPLE_MEMBERS] },
@@ -17,9 +23,9 @@ const getCoupleUserIdsCached = unstable_cache(
 
 const getCoupleIdCached = unstable_cache(
   async (userId: string) => {
-    const membership = await prisma.coupleMember.findFirst({
-      where: { userId },
-      select: { coupleId: true },
+    const membership = await db.query.coupleMembers.findFirst({
+      where: eq(coupleMembers.userId, userId),
+      columns: { coupleId: true },
     });
     return membership?.coupleId ?? null;
   },
