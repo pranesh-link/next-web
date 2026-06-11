@@ -70,9 +70,3 @@ export type DB = typeof db;
 
 // Re-export schema for convenience
 export * from "./schema";
-
-export const db = drizzle(pool as unknown as pg.Pool, { schema });
-export type DB = typeof db;
-
-// Re-export schema for convenience
-export * from "./schema";
