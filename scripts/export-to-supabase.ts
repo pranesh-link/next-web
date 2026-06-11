@@ -94,10 +94,15 @@ async function main() {
 
       const params = batch.flatMap(row =>
         Object.entries(row).map(([col, v]) => {
-          if (v === null || v === undefined || v instanceof Date || typeof v !== "object") return v;
+          if (v === null || v === undefined || v instanceof Date) return v;
           const colType = colTypes.get(col.toLowerCase()) ?? "other";
-          if (colType === "array") return v;        // Postgres array column → pass JS array
-          return JSON.stringify(v);                  // json/jsonb column → serialize
+          if (colType === "array") {
+            // Source may return arrays as JSON strings — parse them first
+            if (typeof v === "string") { try { return JSON.parse(v); } catch { return v; } }
+            return v; // already a JS array
+          }
+          if (typeof v !== "object") return v;
+          return JSON.stringify(v); // json/jsonb column — serialize object
         })
       );
 
