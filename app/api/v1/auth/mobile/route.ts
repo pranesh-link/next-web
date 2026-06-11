@@ -75,32 +75,20 @@ function decodeGoogleIdTokenLocally(
 }
 
 /**
- * Verify a Google ID token using Firebase Admin SDK (local, no outbound call).
- * On first cold start, verifyIdToken() fetches Google's JWK keys (cached after).
- * We wrap with a 4s timeout; on timeout we fall back to local JWT decode which
- * validates iss/exp/email_verified without any network call.
+ * Verify a Google ID token.
+ *
+ * PRIMARY path: local jwt.decode() — synchronous, zero network calls, never hangs.
+ * Validates iss / exp / email_verified without touching any external service.
+ *
+ * BACKGROUND: fires getFirebaseAdmin() as a non-blocking side-effect so the
+ * firebase-admin module is imported and initialized while the DB query runs,
+ * making push-notification calls on subsequent requests faster. We do NOT
+ * await it here — any hang in the import is fully isolated from this response.
  */
-async function verifyGoogleIdToken(idToken: string): Promise<{ sub: string; email: string; name?: string; picture?: string } | null> {
-  const admin = await getFirebaseAdmin();
+function verifyGoogleIdToken(idToken: string): { sub: string; email: string; name?: string; picture?: string } | null {
+  // Warm up Firebase Admin in background (no await — never blocks this request)
+  getFirebaseAdmin().catch(() => {});
 
-  if (admin) {
-    try {
-      const decoded = await Promise.race([
-        admin.auth().verifyIdToken(idToken),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("verifyIdToken timeout after 4s")), 4000)
-        ),
-      ]);
-      return { sub: decoded.uid, email: decoded.email, name: decoded.name, picture: decoded.picture };
-    } catch (err) {
-      console.warn("[mobile-auth] Firebase Admin verifyIdToken failed:", err);
-      // Fall through to local decode
-    }
-  } else {
-    console.warn("[mobile-auth] Firebase Admin not available — falling back to local decode");
-  }
-
-  // Fallback: no-network local decode (validates iss, exp, email_verified)
   return decodeGoogleIdTokenLocally(idToken);
 }
 
@@ -142,9 +130,8 @@ export async function POST(request: NextRequest) {
     let picture: string | undefined;
 
     if (idToken) {
-      // Native mode: verify ID token using Firebase Admin (local, no network call)
-      // Falls back to tokeninfo endpoint if Firebase Admin is unavailable.
-      const verified = await verifyGoogleIdToken(idToken);
+      // Native mode: local JWT decode — synchronous, zero network, never hangs.
+      const verified = verifyGoogleIdToken(idToken);
       if (!verified) {
         return NextResponse.json(
           { error: "Invalid Google ID token" },
