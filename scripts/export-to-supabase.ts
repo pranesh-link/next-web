@@ -30,6 +30,23 @@ const TABLES = [
   "notifications", "device_tokens", "app_config", "app_errors",
 ];
 
+/** Returns a map of column_name → 'json' | 'array' | 'other' for a table. */
+async function getColumnTypes(client: Client, table: string): Promise<Map<string, string>> {
+  const result = await client.query(
+    `SELECT column_name, data_type, udt_name
+     FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = $1`,
+    [table]
+  );
+  const map = new Map<string, string>();
+  for (const row of result.rows) {
+    if (row.data_type === "ARRAY") map.set(row.column_name, "array");
+    else if (row.udt_name === "json" || row.udt_name === "jsonb") map.set(row.column_name, "json");
+    else map.set(row.column_name, "other");
+  }
+  return map;
+}
+
 async function main() {
   const src = new Client({ connectionString: BACKING_DB_URL, ssl: { rejectUnauthorized: false } });
   const dst = new Client({ connectionString: SUPABASE_URL, ssl: { rejectUnauthorized: false } });
@@ -39,17 +56,13 @@ async function main() {
   console.log("Connecting to destination (Supabase)...");
   await dst.connect();
 
-  // Disable FK checks during import
   await dst.query("SET session_replication_role = replica");
 
-  // Truncate all tables in reverse order (children before parents) for clean re-import
+  // Truncate all tables in reverse order for clean re-import
   console.log("\nTruncating Supabase tables...");
-  const truncateOrder = [...TABLES].reverse();
-  for (const table of truncateOrder) {
-    try {
-      await dst.query(`TRUNCATE TABLE "${table}" CASCADE`);
-      process.stdout.write(".");
-    } catch { /* table may not exist yet, skip */ }
+  for (const table of [...TABLES].reverse()) {
+    try { await dst.query(`TRUNCATE TABLE "${table}" CASCADE`); process.stdout.write("."); }
+    catch { /* skip if not found */ }
   }
   console.log(" done\n");
 
@@ -59,33 +72,35 @@ async function main() {
     process.stdout.write(`  ${table}... `);
     let rows: Record<string, unknown>[];
     try {
-      const result = await src.query(`SELECT * FROM "${table}"`);
-      rows = result.rows;
+      rows = (await src.query(`SELECT * FROM "${table}"`)).rows;
     } catch {
       console.log("(skip — not found in source)");
       continue;
     }
-
     if (rows.length === 0) { console.log("0 rows"); continue; }
+
+    // Get destination column types so we know how to serialize each value
+    const colTypes = await getColumnTypes(dst, table.toLowerCase());
 
     const cols = Object.keys(rows[0]).map(c => `"${c}"`).join(", ");
     let inserted = 0;
+
     for (let i = 0; i < rows.length; i += 100) {
       const batch = rows.slice(i, i + 100);
       const numCols = Object.keys(batch[0]).length;
-      const values = batch.map((_, ri) => {
-        const placeholders = Array.from({ length: numCols }, (__, ci) => `$${ri * numCols + ci + 1}`).join(", ");
-        return `(${placeholders})`;
-      }).join(", ");
-      // Pass arrays as-is (pg handles JS arrays as Postgres arrays natively).
-      // Only JSON.stringify plain objects (not arrays, not Dates).
+      const values = batch.map((_, ri) =>
+        `(${Array.from({ length: numCols }, (__, ci) => `$${ri * numCols + ci + 1}`).join(", ")})`
+      ).join(", ");
+
       const params = batch.flatMap(row =>
-        Object.values(row).map(v => {
+        Object.entries(row).map(([col, v]) => {
           if (v === null || v === undefined || v instanceof Date || typeof v !== "object") return v;
-          if (Array.isArray(v)) return v; // pg serializes JS arrays → Postgres arrays
-          return JSON.stringify(v);       // plain objects → jsonb
+          const colType = colTypes.get(col.toLowerCase()) ?? "other";
+          if (colType === "array") return v;        // Postgres array column → pass JS array
+          return JSON.stringify(v);                  // json/jsonb column → serialize
         })
       );
+
       try {
         await dst.query(
           `INSERT INTO "${table}" (${cols}) VALUES ${values} ON CONFLICT DO NOTHING`,
@@ -104,7 +119,6 @@ async function main() {
   await dst.query("SET session_replication_role = DEFAULT");
   await src.end();
   await dst.end();
-
   console.log(`\n✅ Done — ${totalRows} total rows imported to Supabase`);
 }
 
