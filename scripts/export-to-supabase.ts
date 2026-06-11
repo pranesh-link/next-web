@@ -42,6 +42,17 @@ async function main() {
   // Disable FK checks during import
   await dst.query("SET session_replication_role = replica");
 
+  // Truncate all tables in reverse order (children before parents) for clean re-import
+  console.log("\nTruncating Supabase tables...");
+  const truncateOrder = [...TABLES].reverse();
+  for (const table of truncateOrder) {
+    try {
+      await dst.query(`TRUNCATE TABLE "${table}" CASCADE`);
+      process.stdout.write(".");
+    } catch { /* table may not exist yet, skip */ }
+  }
+  console.log(" done\n");
+
   let totalRows = 0;
 
   for (const table of TABLES) {
@@ -57,20 +68,23 @@ async function main() {
 
     if (rows.length === 0) { console.log("0 rows"); continue; }
 
-    // Insert in batches of 100
     const cols = Object.keys(rows[0]).map(c => `"${c}"`).join(", ");
     let inserted = 0;
     for (let i = 0; i < rows.length; i += 100) {
       const batch = rows.slice(i, i + 100);
-      const values = batch.map((row, ri) => {
-        const placeholders = Object.keys(row).map((_, ci) => `$${ri * Object.keys(row).length + ci + 1}`).join(", ");
+      const numCols = Object.keys(batch[0]).length;
+      const values = batch.map((_, ri) => {
+        const placeholders = Array.from({ length: numCols }, (__, ci) => `$${ri * numCols + ci + 1}`).join(", ");
         return `(${placeholders})`;
       }).join(", ");
-      // Serialize objects/arrays to JSON strings for pg parameterized queries
+      // Pass arrays as-is (pg handles JS arrays as Postgres arrays natively).
+      // Only JSON.stringify plain objects (not arrays, not Dates).
       const params = batch.flatMap(row =>
-        Object.values(row).map(v =>
-          (v !== null && typeof v === "object" && !(v instanceof Date)) ? JSON.stringify(v) : v
-        )
+        Object.values(row).map(v => {
+          if (v === null || v === undefined || v instanceof Date || typeof v !== "object") return v;
+          if (Array.isArray(v)) return v; // pg serializes JS arrays → Postgres arrays
+          return JSON.stringify(v);       // plain objects → jsonb
+        })
       );
       try {
         await dst.query(
