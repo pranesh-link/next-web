@@ -3,11 +3,6 @@ import { signMobileToken, findOrCreateGoogleUser } from "@/api/v1/_lib/auth";
 import { corsHeaders } from "@/api/v1/_lib/cors";
 
 export const maxDuration = 25;
-
-async function fetchWT(url: string, opts: RequestInit = {}, ms = 7000): Promise<Response> {
-  const c = new AbortController();
-  const t = setTimeout(() => c.abort(), ms);
-  try { return await fetch(url, { ...opts, signal: c.signal }); } finally { clearTimeout(t); }
 }
 
 /**
