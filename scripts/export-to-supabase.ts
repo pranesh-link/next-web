@@ -42,7 +42,7 @@ function rowsToInserts(table: string, rows: Record<string, unknown>[]): string {
 }
 
 async function main() {
-  const prisma = new PrismaClient({ datasourceUrl: BACKING_DB_URL });
+  const prisma = new PrismaClient({ datasources: { db: { url: BACKING_DB_URL } } });
   const lines: string[] = [
     "-- LuvVerse data export",
     `-- Generated: ${new Date().toISOString()}`,
