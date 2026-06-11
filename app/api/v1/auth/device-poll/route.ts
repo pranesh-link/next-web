@@ -2,6 +2,18 @@ import { NextResponse } from "next/server";
 import { signMobileToken, findOrCreateGoogleUser } from "@/api/v1/_lib/auth";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 
+export const maxDuration = 25;
+
+async function fetchWithTimeout(url: string, options: RequestInit = {}, ms = 7000): Promise<Response> {
+  const controller = new AbortController();
+  const timerId = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timerId);
+  }
+}
+
 export async function OPTIONS() {
   return handleOptions();
 }
@@ -79,9 +91,9 @@ export async function POST(request: Request) {
     );
   }
 
-  const userRes = await fetch(
+  const userRes = await fetchWithTimeout(
     "https://www.googleapis.com/oauth2/v3/userinfo",
-    { headers: { Authorization: `Bearer ${data.access_token}` }, signal: AbortSignal.timeout(8000) },
+    { headers: { Authorization: `Bearer ${data.access_token}` } },
   );
 
   if (!userRes.ok) {

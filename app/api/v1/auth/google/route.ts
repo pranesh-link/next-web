@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { signMobileToken, findOrCreateGoogleUser } from "@/api/v1/_lib/auth";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 
+export const maxDuration = 25;
+
 export async function OPTIONS() {
   return handleOptions();
 }

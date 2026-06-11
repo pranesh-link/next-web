@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
         redirect_uri: redirectUri,
         grant_type: "authorization_code",
       }),
-      signal: AbortSignal.timeout(8000),
+      
     });
 
     if (!tokenRes.ok) {
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
     // Get user info from Google
     const userRes = await fetch(GOOGLE_USERINFO_URL, {
       headers: { Authorization: `Bearer ${tokens.access_token}` },
-      signal: AbortSignal.timeout(8000),
+      
     });
 
     if (!userRes.ok) {

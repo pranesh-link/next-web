@@ -5,6 +5,24 @@ import { eq } from "drizzle-orm";
 import jwt from "jsonwebtoken";
 import { signMobileToken, signMobileRefreshToken, findOrCreateGoogleUser } from "@/api/v1/_lib/auth";
 
+// Give this route 25 seconds — enough for Google API cold starts + DB query.
+// Default Vercel serverless limit is 10s which is too tight for external APIs.
+export const maxDuration = 25;
+
+/**
+ * Fetch with an explicit timeout using AbortController.
+ * More reliable than AbortSignal.timeout() in Node.js 22 on Vercel.
+ */
+async function fetchWithTimeout(url: string, options: RequestInit = {}, ms = 7000): Promise<Response> {
+  const controller = new AbortController();
+  const timerId = setTimeout(() => controller.abort(new Error(`Timeout after ${ms}ms`)), ms);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timerId);
+  }
+}
+
 /**
  * POST /api/v1/auth/mobile
  *
@@ -28,9 +46,8 @@ export async function POST(request: NextRequest) {
 
     if (idToken) {
       // Native mode: verify ID token directly
-      const verifyRes = await fetch(
+      const verifyRes = await fetchWithTimeout(
         `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`,
-        { signal: AbortSignal.timeout(8000) },
       );
 
       if (!verifyRes.ok) {
@@ -63,7 +80,7 @@ export async function POST(request: NextRequest) {
       picture = payload.picture;
     } else if (code && redirectUri) {
       // Web mode: exchange auth code for tokens
-      const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+      const tokenRes = await fetchWithTimeout("https://oauth2.googleapis.com/token", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
@@ -73,7 +90,6 @@ export async function POST(request: NextRequest) {
           redirect_uri: redirectUri,
           grant_type: "authorization_code",
         }),
-        signal: AbortSignal.timeout(8000),
       });
 
       if (!tokenRes.ok) {
@@ -88,9 +104,9 @@ export async function POST(request: NextRequest) {
       const tokens = await tokenRes.json();
 
       // Fetch user info with access token
-      const userRes = await fetch(
+      const userRes = await fetchWithTimeout(
         "https://www.googleapis.com/oauth2/v3/userinfo",
-        { headers: { Authorization: `Bearer ${tokens.access_token}` }, signal: AbortSignal.timeout(8000) },
+        { headers: { Authorization: `Bearer ${tokens.access_token}` } },
       );
 
       if (!userRes.ok) {
@@ -114,9 +130,13 @@ export async function POST(request: NextRequest) {
           type?: string;
         } | null;
         if (decoded?.sub && decoded.type === "access") {
-          const existingUser = await db.query.users.findFirst({
-            where: eq(users.id, decoded.sub),
-          });
+          // DB query with a race-based timeout to avoid hanging
+          const existingUser = await Promise.race([
+            db.query.users.findFirst({ where: eq(users.id, decoded.sub) }),
+            new Promise<undefined>((_, reject) =>
+              setTimeout(() => reject(new Error("DB timeout")), 5000)
+            ),
+          ]);
           if (existingUser?.email) {
             // It's our own JWT — skip Google verification, re-issue tokens
             const token = signMobileToken(existingUser.id);
@@ -134,13 +154,13 @@ export async function POST(request: NextRequest) {
           }
         }
       } catch {
-        // Not a JWT — fall through to Google verification
+        // Not a JWT or DB timeout — fall through to Google verification
       }
 
       // Access token mode: verify with Google userinfo endpoint
-      const userRes = await fetch(
+      const userRes = await fetchWithTimeout(
         "https://www.googleapis.com/oauth2/v3/userinfo",
-        { headers: { Authorization: `Bearer ${body.accessToken}` }, signal: AbortSignal.timeout(8000) },
+        { headers: { Authorization: `Bearer ${body.accessToken}` } },
       );
 
       if (!userRes.ok) {

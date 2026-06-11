@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { signMobileToken, findOrCreateGoogleUser } from "@/api/v1/_lib/auth";
 
+export const maxDuration = 25;
+
+async function fetchWithTimeout(url: string, options: RequestInit = {}, ms = 7000): Promise<Response> {
+  const controller = new AbortController();
+  const timerId = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timerId);
+  }
+}
+
 /**
  * GET /api/v1/auth/mobile-callback?code=XXX&state=BASE64
  *
@@ -64,9 +76,9 @@ export async function GET(request: NextRequest) {
   const tokens = await tokenRes.json();
 
   // Fetch Google user info
-  const userRes = await fetch(
+  const userRes = await fetchWithTimeout(
     "https://www.googleapis.com/oauth2/v3/userinfo",
-    { headers: { Authorization: `Bearer ${tokens.access_token}` }, signal: AbortSignal.timeout(8000) },
+    { headers: { Authorization: `Bearer ${tokens.access_token}` } },
   );
 
   if (!userRes.ok) {
