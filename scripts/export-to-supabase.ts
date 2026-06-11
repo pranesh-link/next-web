@@ -19,7 +19,7 @@ if (!SUPABASE_URL) { console.error("Set SUPABASE_DIRECT_URL env var first"); pro
 // Tables in dependency order (parents before children)
 const TABLES = [
   "users", "auth_accounts", "sessions", "verification_tokens",
-  "couples", "couple_members", "couple_invites",
+  "Couple", "couple_members", "couple_invites",
   "financial_accounts", "balance_history", "overall_balance_log",
   "transactions", "investment_holdings", "deposit_instruments",
   "deposit_installments", "budgets", "budget_plans", "loans",
@@ -66,7 +66,12 @@ async function main() {
         const placeholders = Object.keys(row).map((_, ci) => `$${ri * Object.keys(row).length + ci + 1}`).join(", ");
         return `(${placeholders})`;
       }).join(", ");
-      const params = batch.flatMap(row => Object.values(row));
+      // Serialize objects/arrays to JSON strings for pg parameterized queries
+      const params = batch.flatMap(row =>
+        Object.values(row).map(v =>
+          (v !== null && typeof v === "object" && !(v instanceof Date)) ? JSON.stringify(v) : v
+        )
+      );
       try {
         await dst.query(
           `INSERT INTO "${table}" (${cols}) VALUES ${values} ON CONFLICT DO NOTHING`,
