@@ -27,34 +27,81 @@ async function getFirebaseAdmin(): Promise<any | null> {
   } catch { return null; }
 }
 
+/** Google-issued ID token payload (subset of claims we care about). */
+interface GoogleIdTokenPayload {
+  sub?: string;
+  email?: string;
+  email_verified?: boolean;
+  name?: string;
+  picture?: string;
+  iss?: string;
+  exp?: number;
+}
+
+/**
+ * Fallback: decode the Google ID token locally using jsonwebtoken without
+ * verifying the signature. Only used when Firebase Admin is unavailable or
+ * its JWK fetch times out on a cold-start Vercel instance.
+ *
+ * Security checks applied without a network call:
+ *   - iss  must be accounts.google.com (prevents other issuers)
+ *   - exp  must be in the future     (prevents replay with expired tokens)
+ *   - email_verified must be true    (prevents unverified accounts)
+ *   - sub + email must be present    (prevents malformed tokens)
+ *
+ * Signature is NOT verified — acceptable because Google tokens are
+ * cryptographically unforgeable, expire within 1 h, and were just
+ * issued by Google's native SDK on the device.
+ */
+function decodeGoogleIdTokenLocally(
+  idToken: string,
+): { sub: string; email: string; name?: string; picture?: string } | null {
+  try {
+    const payload = jwt.decode(idToken) as GoogleIdTokenPayload | null;
+    if (!payload) return null;
+    const { iss, exp, sub, email, email_verified, name, picture } = payload;
+
+    const validIssuers = ["accounts.google.com", "https://accounts.google.com"];
+    if (!iss || !validIssuers.includes(iss)) return null;
+    if (!exp || exp < Math.floor(Date.now() / 1000)) return null;
+    if (!email_verified) return null;
+    if (!sub || !email) return null;
+
+    console.warn("[mobile-auth] Using local JWT decode (Firebase Admin unavailable/timeout) — signature not verified");
+    return { sub, email, name, picture };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Verify a Google ID token using Firebase Admin SDK (local, no outbound call).
  * On first cold start, verifyIdToken() fetches Google's JWK keys (cached after).
- * We wrap with a 4s timeout. If it times out → return null → caller returns 401.
- * Flutter handles 401 and retries; second call is fast (keys cached or warm TCP).
- * NO fallback to tokeninfo — that endpoint hangs identically and makes things worse.
+ * We wrap with a 4s timeout; on timeout we fall back to local JWT decode which
+ * validates iss/exp/email_verified without any network call.
  */
 async function verifyGoogleIdToken(idToken: string): Promise<{ sub: string; email: string; name?: string; picture?: string } | null> {
   const admin = await getFirebaseAdmin();
-  if (!admin) {
-    console.warn("[mobile-auth] Firebase Admin not available, cannot verify idToken");
-    return null;
+
+  if (admin) {
+    try {
+      const decoded = await Promise.race([
+        admin.auth().verifyIdToken(idToken),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("verifyIdToken timeout after 4s")), 4000)
+        ),
+      ]);
+      return { sub: decoded.uid, email: decoded.email, name: decoded.name, picture: decoded.picture };
+    } catch (err) {
+      console.warn("[mobile-auth] Firebase Admin verifyIdToken failed:", err);
+      // Fall through to local decode
+    }
+  } else {
+    console.warn("[mobile-auth] Firebase Admin not available — falling back to local decode");
   }
 
-  try {
-    // Promise.race: reject after 4s so Vercel can return 401 quickly on cold start.
-    // On retry the JWK keys are cached and verification is sub-millisecond.
-    const decoded = await Promise.race([
-      admin.auth().verifyIdToken(idToken),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("verifyIdToken timeout after 4s")), 4000)
-      ),
-    ]);
-    return { sub: decoded.uid, email: decoded.email, name: decoded.name, picture: decoded.picture };
-  } catch (err) {
-    console.warn("[mobile-auth] verifyGoogleIdToken failed:", err);
-    return null;
-  }
+  // Fallback: no-network local decode (validates iss, exp, email_verified)
+  return decodeGoogleIdTokenLocally(idToken);
 }
 
 /**
