@@ -1,16 +1,17 @@
 /**
- * Drizzle database client.
+ * Drizzle database client — tuned for Vercel serverless + Supabase pooler.
  *
- * DATABASE_URL points to Supabase direct or Transaction Pooler.
- * search_path cannot be set via URL options on the Prisma proxy, so
- * SchemaPool.connect() issues SET search_path TO public on each new
- * physical connection (tracked via WeakSet to avoid redundant round-trips).
+ * search_path is set via the PostgreSQL `options` startup parameter in the
+ * connection URL (zero round-trip, no extra query). This replaces the old
+ * SchemaPool subclass which issued SET search_path TO public as a separate
+ * query after connect — that query had no timeout and caused 20s hangs.
  *
- * Pool config is tuned for Vercel serverless:
- * - max:1                      — one connection per function instance
- * - connectionTimeoutMillis:12000 — covers cold TCP + SSL + SET search_path
- * - idleTimeoutMillis:20000    — keep warm between requests
- * - connect_timeout=10         — PostgreSQL-level TCP timeout (seconds)
+ * Pool config:
+ * - max:1                       — one connection per serverless instance
+ * - connectionTimeoutMillis:12000 — covers cold TCP + SSL handshake
+ * - idleTimeoutMillis:20000     — keep warm between requests
+ * - connect_timeout=10          — PostgreSQL-level TCP timeout (seconds)
+ * - options=-c search_path=public — set at protocol level, no round-trip
  */
 
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -19,53 +20,32 @@ import * as schema from "./schema";
 
 const { Pool } = pg;
 
-// Strip Prisma-specific ?schema= param that pg driver doesn't understand.
-// Add connect_timeout=10 (PostgreSQL protocol-level TCP timeout) so the OS
-// doesn't hold the socket open for 30s+ on a cold Supabase connection.
-// Use sslmode=verify-full to silence the pg SSL deprecation warning.
+// Build the final connection string from DATABASE_URL:
+// 1. Strip Prisma-specific ?schema= param (pg driver doesn't understand it)
+// 2. Add connect_timeout=10 — PostgreSQL-level TCP timeout in seconds
+// 3. Add options=-c search_path=public — sets search_path at protocol level
+//    (replaces the old SET search_path round-trip that could hang 20s+)
+// 4. Add sslmode=verify-full if no sslmode is present (silences pg v8 warning)
 const rawUrl = process.env.DATABASE_URL ?? "";
 const connectionString = (() => {
   let url = rawUrl
     .replace(/[?&]schema=[^&]*/g, "")
     .replace(/[?&]$/, "");
-  if (!url.includes("connect_timeout")) {
-    url += (url.includes("?") ? "&" : "?") + "connect_timeout=10";
-  }
-  if (!url.includes("sslmode")) {
-    url += "&sslmode=verify-full";
-  }
+  const sep = url.includes("?") ? "&" : "?";
+  if (!url.includes("connect_timeout")) url += sep + "connect_timeout=10";
+  if (!url.includes("options=")) url += "&options=-c%20search_path%3Dpublic";
+  if (!url.includes("sslmode")) url += "&sslmode=verify-full";
   return url;
 })();
 
-// Track which physical connections have already had search_path set.
-// WeakSet allows GC when the client is destroyed.
-const initializedClients = new WeakSet<pg.PoolClient>();
-
-class SchemaPool extends Pool {
-  async connect(): Promise<pg.PoolClient> {
-    const client = await super.connect();
-    // Only SET search_path on new physical connections, not every checkout.
-    if (!initializedClients.has(client)) {
-      try {
-        await client.query("SET search_path TO public");
-        initializedClients.add(client);
-      } catch {
-        // Non-fatal: downstream query will fail with a clearer error
-      }
-    }
-    return client;
-  }
-}
-
-const pool = new SchemaPool({
+const pool = new Pool({
   connectionString: connectionString || undefined,
-  // Serverless-optimised pool config:
-  max: 1,                         // one connection per cold-start instance
-  connectionTimeoutMillis: 12000, // covers cold TCP + SSL handshake + SET search_path
-  idleTimeoutMillis: 20000,       // keep connection warm between requests
+  max: 1,                         // one connection per serverless instance
+  connectionTimeoutMillis: 12000, // covers cold TCP + SSL handshake
+  idleTimeoutMillis: 20000,       // keep warm between requests
 });
 
-export const db = drizzle(pool as unknown as pg.Pool, { schema });
+export const db = drizzle(pool, { schema });
 export type DB = typeof db;
 
 // Re-export schema for convenience
