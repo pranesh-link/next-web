@@ -10,16 +10,26 @@ import { signMobileToken, signMobileRefreshToken, findOrCreateGoogleUser } from 
 export const maxDuration = 25;
 
 /**
- * Fetch with an explicit timeout using AbortController.
- * More reliable than AbortSignal.timeout() in Node.js 22 on Vercel.
+ * Fetch with a hard timeout using Promise.race.
+ *
+ * AbortController.abort() does NOT reliably cancel fetch() in Node.js 22
+ * on Vercel — the underlying TCP connection keeps running and the function
+ * hangs until the Vercel limit. Promise.race rejects immediately when the
+ * timeout fires, letting the function return a 401/502 while the background
+ * fetch drains on its own (acceptable in serverless — the instance recycles).
  */
-async function fetchWithTimeout(url: string, options: RequestInit = {}, ms = 7000): Promise<Response> {
-  const controller = new AbortController();
-  const timerId = setTimeout(() => controller.abort(new Error(`Timeout after ${ms}ms`)), ms);
+async function fetchWithTimeout(url: string, options: RequestInit = {}, ms = 6000): Promise<Response> {
+  let timerId: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timerId = setTimeout(() => reject(new Error(`Request timed out after ${ms}ms: ${url}`)), ms);
+  });
   try {
-    return await fetch(url, { ...options, signal: controller.signal });
-  } finally {
-    clearTimeout(timerId);
+    const response = await Promise.race([fetch(url, options), timeout]);
+    clearTimeout(timerId!);
+    return response;
+  } catch (err) {
+    clearTimeout(timerId!);
+    throw err;
   }
 }
 
