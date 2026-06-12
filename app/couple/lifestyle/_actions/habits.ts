@@ -17,10 +17,10 @@ export type HabitLogRow = {
   id: string;
   habitId: string;
   userId: string;
-  loggedOn: Date;
+  loggedOn: string;
   completed: boolean;
   note: string | null;
-  createdAt: Date;
+  createdAt: Date | string;
 };
 
 /** Exported shape of a Habit row with today's logs included. */
