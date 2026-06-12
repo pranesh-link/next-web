@@ -619,11 +619,14 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
         _lastSendError = Exception('Upload returned no URL — storage may not be configured.');
         return;
       }
+      // uploadFile returns { url, path } — path needed for server-side deletion
+      final path = await _repo.getLastUploadPath();
       _lastSendError = null;
       await _sendTypedMessage(
         url,
         type: MessageType.image,
         payload: {'contentType': _mimeFromExt(file.path.split('.').last)},
+        fileStoragePath: path,
       );
     } catch (e) {
       _lastSendError = e;
@@ -639,6 +642,7 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
         _lastSendError = Exception('Upload returned no URL.');
         return;
       }
+      final path = _repo.getLastUploadPath();
       _lastSendError = null;
       await _sendTypedMessage(
         url,
@@ -647,6 +651,7 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
           'durationMs': durationMs,
           'contentType': _mimeFromExt(file.path.split('.').last),
         },
+        fileStoragePath: path,
       );
     } catch (e) {
       _lastSendError = e;
@@ -789,6 +794,7 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
     String content, {
     required String type,
     Map<String, dynamic>? payload,
+    String? fileStoragePath,
   }) async {
     final now = DateTime.now();
     final optimistic = ChatMessage(
@@ -811,6 +817,7 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
         content: content,
         type: type,
         payload: payload,
+        fileStoragePath: fileStoragePath,
       );
       _lastSendError = null;
       if (sent != null) {

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 import crypto from "crypto";
@@ -8,34 +9,19 @@ const ALLOWED_TYPES = new Set([
   "image/jpeg",
   "image/png",
   "image/webp",
+  "image/jpg",
   "audio/mpeg",
   "audio/mp4",
   "audio/webm",
   "application/octet-stream",
 ]);
+const CHAT_BUCKET = "chat-media";
 
-/**
- * Lazily loads firebase-admin and returns the storage bucket.
- */
-async function getStorageBucket() {
-  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-  if (!serviceAccountJson) return null;
-
-  const moduleName = "firebase-admin";
-  const adminModule = await (import(/* webpackIgnore: true */ moduleName) as Promise<any>);
-  const firebaseAdmin = adminModule.default || adminModule;
-
-  if (!firebaseAdmin.apps || firebaseAdmin.apps.length === 0) {
-    const credential = JSON.parse(
-      Buffer.from(serviceAccountJson, "base64").toString("utf-8"),
-    );
-    firebaseAdmin.initializeApp({
-      credential: firebaseAdmin.credential.cert(credential),
-      storageBucket: "luvverse-pranaish.firebasestorage.app",
-    });
-  }
-
-  return firebaseAdmin.storage().bucket();
+function getSupabaseAdmin() {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key, { auth: { persistSession: false } });
 }
 
 export function OPTIONS() {
@@ -43,87 +29,106 @@ export function OPTIONS() {
 }
 
 /**
- * POST /api/v1/files — Upload a file (image or audio) to Firebase Storage.
+ * POST /api/v1/files — Upload a file (image or audio) to Supabase Storage.
  *
  * @param request - Multipart form data with a `file` field.
- * @returns JSON `{ url, filename }`.
+ * @returns JSON `{ url, path, filename }`.
  * @remarks Auth: requires session or Bearer JWT. Max 10MB.
  */
 export async function POST(request: Request) {
   try {
     const userId = await getAuthUserId();
     if (!userId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401, headers: corsHeaders() },
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: corsHeaders() });
     }
 
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
 
     if (!file) {
-      return NextResponse.json(
-        { error: "No file provided" },
-        { status: 400, headers: corsHeaders() },
-      );
+      return NextResponse.json({ error: "No file provided" }, { status: 400, headers: corsHeaders() });
     }
-
     if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json(
-        { error: "File too large. Maximum 10MB." },
-        { status: 413, headers: corsHeaders() },
-      );
+      return NextResponse.json({ error: "File too large. Maximum 10MB." }, { status: 413, headers: corsHeaders() });
     }
 
-    if (!ALLOWED_TYPES.has(file.type)) {
+    // Normalise content type — image_picker on Android sometimes sends empty type
+    const contentType = file.type || "application/octet-stream";
+    if (!ALLOWED_TYPES.has(contentType)) {
       return NextResponse.json(
-        { error: `Unsupported file type: ${file.type}` },
+        { error: `Unsupported file type: ${contentType}` },
         { status: 415, headers: corsHeaders() },
       );
     }
 
-    const bucket = await getStorageBucket();
-    if (!bucket) {
+    const supabase = getSupabaseAdmin();
+    if (!supabase) {
+      return NextResponse.json({ error: "Storage not configured" }, { status: 503, headers: corsHeaders() });
+    }
+
+    const ext = file.name.split(".").pop()?.toLowerCase() || "bin";
+    const uniqueName = `${crypto.randomUUID()}.${ext}`;
+    const storagePath = `${userId}/${uniqueName}`;
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const { error: uploadError } = await supabase.storage
+      .from(CHAT_BUCKET)
+      .upload(storagePath, buffer, {
+        contentType,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error("[files] Supabase upload error:", uploadError);
       return NextResponse.json(
-        { error: "Storage not configured" },
-        { status: 503, headers: corsHeaders() },
+        { error: uploadError.message },
+        { status: 500, headers: corsHeaders() },
       );
     }
 
-    const ext = file.name.split(".").pop() || "bin";
-    const uniqueName = `${crypto.randomUUID()}.${ext}`;
-    const filePath = `chat/${userId}/${uniqueName}`;
-
-    const originalContentType =
-      (formData.get("contentType") as string | null) || file.type;
-
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const fileRef = bucket.file(filePath);
-
-    await fileRef.save(buffer, {
-      metadata: {
-        contentType: file.type,
-        metadata: {
-          uploadedBy: userId,
-          originalContentType,
-        },
-      },
-    });
-
-    const [signedUrl] = await fileRef.getSignedUrl({
-      action: "read" as const,
-      expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
-    });
+    const { data: urlData } = supabase.storage
+      .from(CHAT_BUCKET)
+      .getPublicUrl(storagePath);
 
     return NextResponse.json(
-      { url: signedUrl, filename: uniqueName, path: filePath },
+      { url: urlData.publicUrl, path: storagePath, filename: uniqueName },
       { status: 201, headers: corsHeaders() },
     );
   } catch (error) {
     console.error("[files] Upload error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Upload failed" },
+      { status: 500, headers: corsHeaders() },
+    );
+  }
+}
+
+/**
+ * DELETE /api/v1/files — Delete a file from Supabase Storage by path.
+ * Used internally by purge/ACK flows.
+ */
+export async function DELETE(request: Request) {
+  try {
+    const userId = await getAuthUserId();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: corsHeaders() });
+    }
+    const { path } = await request.json() as { path: string };
+    if (!path || !path.startsWith(`${userId}/`)) {
+      return NextResponse.json({ error: "Invalid path" }, { status: 400, headers: corsHeaders() });
+    }
+    const supabase = getSupabaseAdmin();
+    if (!supabase) {
+      return NextResponse.json({ error: "Storage not configured" }, { status: 503, headers: corsHeaders() });
+    }
+    const { error } = await supabase.storage.from(CHAT_BUCKET).remove([path]);
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500, headers: corsHeaders() });
+    }
+    return NextResponse.json({ success: true }, { headers: corsHeaders() });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Delete failed" },
       { status: 500, headers: corsHeaders() },
     );
   }

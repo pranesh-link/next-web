@@ -13,6 +13,7 @@ const sendMessageSchema = z.object({
   encrypted: z.boolean().optional().default(false),
   payload: z.record(z.string(), z.unknown()).optional(),
   reminderAt: z.string().datetime().optional(),
+  fileStoragePath: z.string().max(512).optional(),
 });
 
 /**
@@ -103,6 +104,9 @@ export async function POST(request: Request) {
       payload: validated.payload ?? null,
       reminderAt: validated.reminderAt ? new Date(validated.reminderAt) : undefined,
       readBy: [userId],
+      fileStoragePath: validated.fileStoragePath ?? null,
+      // Sender already has the file locally — mark as downloaded by sender
+      fileDownloadedBy: validated.fileStoragePath ? [userId] : [],
     }).returning();
 
     // Fire-and-forget push notification to partner

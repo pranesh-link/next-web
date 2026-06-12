@@ -5,14 +5,30 @@ import { db } from "@db";
 import { coupleMembers, coupleMessages } from "@db/schema";
 import { eq, and, ne, inArray, isNull } from "drizzle-orm";
 import { sendPushToUser } from "@/_services/finance/push-service";
+import { createClient } from "@supabase/supabase-js";
 
 const ackSchema = z.object({
   messageIds: z.array(z.string().uuid()).min(1).max(100),
 });
 
+const CHAT_BUCKET = "chat-media";
+
+function getSupabaseAdmin() {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key, { auth: { persistSession: false } });
+}
+
 /**
- * POST — Acknowledge delivery of messages. Marks them as delivered and
- * schedules deletion from the server (ephemeral relay model).
+ * POST — Acknowledge delivery of messages.
+ *
+ * - Sets deliveredAt on the messages.
+ * - For TEXT/VOICE/REMINDER/MILESTONE messages: deletes them from the server
+ *   immediately (both sender stored on send, receiver stores on ACK).
+ * - For IMAGE messages: marks deliveredAt but does NOT delete yet — deletion
+ *   happens after both parties have downloaded the image
+ *   (POST /api/v1/couple/chat/[id]/file-downloaded).
  *
  * @returns JSON with count of messages acknowledged.
  */
@@ -29,7 +45,6 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { messageIds } = ackSchema.parse(body);
 
-    // Verify user is in a couple and only ACKs messages from their couple
     const member = await db.query.coupleMembers.findFirst({
       where: eq(coupleMembers.userId, userId),
       columns: { coupleId: true },
@@ -41,39 +56,56 @@ export async function POST(request: Request) {
       );
     }
 
-    // Mark as delivered (only messages in this couple, not already delivered)
-    const updated = await db.update(coupleMessages)
-      .set({ deliveredAt: new Date() })
+    // Fetch messages to know their type and senderId
+    const messages = await db.select({
+      id: coupleMessages.id,
+      senderId: coupleMessages.senderId,
+      type: coupleMessages.type,
+      deliveredAt: coupleMessages.deliveredAt,
+    })
+      .from(coupleMessages)
       .where(and(
         inArray(coupleMessages.id, messageIds),
         eq(coupleMessages.coupleId, member.coupleId),
         ne(coupleMessages.senderId, userId),
-        isNull(coupleMessages.deliveredAt),
-      ))
-      .returning({ id: coupleMessages.id });
+      ));
 
-    // Silent push to sender: notify their device to show double-tick
-    if (updated.length > 0) {
-      const senderIds = await db.selectDistinct({ senderId: coupleMessages.senderId })
-        .from(coupleMessages)
-        .where(and(inArray(coupleMessages.id, messageIds), eq(coupleMessages.coupleId, member.coupleId)));
-      for (const { senderId } of senderIds) {
-        sendPushToUser(senderId, '', '', {
-          type: 'MESSAGE_DELIVERED',
-          messageIds: messageIds.join(','),
-          silent: 'true',
+    const toUpdate = messages.filter((m) => m.deliveredAt === null);
+
+    if (toUpdate.length > 0) {
+      await db.update(coupleMessages)
+        .set({ deliveredAt: new Date() })
+        .where(inArray(coupleMessages.id, toUpdate.map((m) => m.id)));
+
+      // Silent push to sender: show double-tick
+      const senderIds = [...new Set(toUpdate.map((m) => m.senderId))];
+      for (const senderId of senderIds) {
+        sendPushToUser(senderId, "", "", {
+          type: "MESSAGE_DELIVERED",
+          messageIds: toUpdate.map((m) => m.id).join(","),
+          silent: "true",
         }).catch(() => {});
       }
     }
 
-    // Ephemeral relay model — deliveredAt is now stamped. The cron job at
-    // /api/v1/couple/chat/purge handles deletion of delivered messages after
-    // a 1-hour grace window, giving any device time to re-fetch history
-    // if its local DB was reset. Do NOT delete immediately here.
-    // (Previous behaviour: deleteMany immediately after ACK — this caused
-    // permanent history loss on reinstall / local DB reset.)
+    // Ephemeral relay: delete non-image messages immediately.
+    // Both parties have a local copy — sender stored on send, receiver just ACKed.
+    const deletableTypes = new Set(["TEXT", "VOICE", "REMINDER", "MILESTONE", "LIST"]);
+    const toDelete = messages.filter((m) => deletableTypes.has(m.type));
 
-    return NextResponse.json({ success: true, acknowledged: updated.length });
+    if (toDelete.length > 0) {
+      await db.delete(coupleMessages)
+        .where(inArray(coupleMessages.id, toDelete.map((m) => m.id)));
+    }
+
+    // IMAGE messages: mark delivered but keep until both download the file.
+    // (Handled by POST /api/v1/couple/chat/[id]/file-downloaded)
+
+    return NextResponse.json({
+      success: true,
+      acknowledged: toUpdate.length,
+      deleted: toDelete.length,
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -87,3 +119,4 @@ export async function POST(request: Request) {
     );
   }
 }
+

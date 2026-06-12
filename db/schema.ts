@@ -649,6 +649,8 @@ export const coupleMessages = pgTable(
     readBy: text("readBy").array().notNull().default(sql`'{}'::text[]`),
     deliveredAt: timestamp("deliveredAt"),
     pinnedAt: timestamp("pinnedAt"),
+    fileStoragePath: text("fileStoragePath"),
+    fileDownloadedBy: text("fileDownloadedBy").array().notNull().default(sql`'{}'::text[]`),
     createdAt: timestamp("createdAt").notNull().default(sql`now()`),
     updatedAt: timestamp("updatedAt").notNull().default(sql`now()`),
   },

@@ -586,7 +586,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         if (isEncryptedFile) {
           return EncryptedImageBubble(filePath: message.content, isMe: isMe);
         }
-        return ImageBubble(imageUrl: message.content, isMe: isMe);
+        return ImageBubble(imageUrl: message.content, isMe: isMe, messageId: message.id);
       case MessageType.voice:
         final durationMs = message.payload?['durationMs'] as int? ?? 0;
         final isEncryptedFile = message.payload?['encrypted'] == true;
