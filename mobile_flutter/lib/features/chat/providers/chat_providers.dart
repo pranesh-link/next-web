@@ -614,15 +614,19 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
   /// Upload an image file and send as IMAGE message.
   Future<void> sendImage(File file) async {
     try {
-      // Use plain uploadFile (encryption decommissioned — files stored as-is).
       final url = await _repo.uploadFile(file);
-      if (url == null) return;
+      if (url == null) {
+        _lastSendError = Exception('Upload returned no URL — storage may not be configured.');
+        return;
+      }
+      _lastSendError = null;
       await _sendTypedMessage(
         url,
         type: MessageType.image,
         payload: {'contentType': _mimeFromExt(file.path.split('.').last)},
       );
     } catch (e) {
+      _lastSendError = e;
       debugPrint('[ChatNotifier] sendImage failed: $e');
     }
   }
@@ -630,9 +634,12 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
   /// Upload a voice file and send as VOICE message.
   Future<void> sendVoice(File file, int durationMs) async {
     try {
-      // Use plain uploadFile (encryption decommissioned).
       final url = await _repo.uploadFile(file);
-      if (url == null) return;
+      if (url == null) {
+        _lastSendError = Exception('Upload returned no URL.');
+        return;
+      }
+      _lastSendError = null;
       await _sendTypedMessage(
         url,
         type: MessageType.voice,
@@ -642,6 +649,7 @@ class ChatNotifier extends AsyncNotifier<List<ChatMessage>> {
         },
       );
     } catch (e) {
+      _lastSendError = e;
       debugPrint('[ChatNotifier] sendVoice failed: $e');
     }
   }
