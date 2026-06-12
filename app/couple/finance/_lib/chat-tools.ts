@@ -195,8 +195,8 @@ export async function executeToolCall(
         columns: { date: true },
       });
       if (!latestTx) return [];
-      const ly = new Date(latestTx.date as string).getFullYear();
-      const lm = new Date(latestTx.date as string).getMonth();
+      const ly = new Date(latestTx.date as unknown as string).getFullYear();
+      const lm = new Date(latestTx.date as unknown as string).getMonth();
       const fallbackStart = new Date(ly, lm, 1);
       const fallbackEnd = new Date(ly, lm + 1, 1);
       const fallbackRows = await db
@@ -246,7 +246,7 @@ export async function executeToolCall(
         );
       const map: Record<string, { income: number; expense: number }> = {};
       for (const tx of txs) {
-        const key = `${new Date(tx.date as string).getFullYear()}-${String(new Date(tx.date as string).getMonth() + 1).padStart(2, "0")}`;
+        const key = `${new Date(tx.date as unknown as string).getFullYear()}-${String(new Date(tx.date as unknown as string).getMonth() + 1).padStart(2, "0")}`;
         if (!map[key]) map[key] = { income: 0, expense: 0 };
         if (tx.type === "INCOME") map[key].income += tx.amount;
         else map[key].expense += tx.amount;
@@ -390,7 +390,7 @@ export async function executeToolCall(
         .orderBy(desc(transactions.date))
         .limit(limit);
       return txs.map((t) => ({
-        date: String(t.date).split("T")[0],
+        date: (typeof t.date === 'string' ? t.date : (t.date as Date).toISOString()).split("T")[0],
         amount: t.amount,
         type: t.type,
         category: t.category,

@@ -335,7 +335,7 @@ export async function executeCoupleDataToolCall(
       });
       const map: Record<string, { income: number; expense: number }> = {};
       for (const tx of txs) {
-        const key = `${new Date(tx.date as string).getFullYear()}-${String(new Date(tx.date as string).getMonth() + 1).padStart(2, "0")}`;
+        const key = `${new Date(tx.date as unknown as string).getFullYear()}-${String(new Date(tx.date as unknown as string).getMonth() + 1).padStart(2, "0")}`;
         if (!map[key]) map[key] = { income: 0, expense: 0 };
         if (tx.type === "INCOME") map[key].income += tx.amount;
         else map[key].expense += tx.amount;
@@ -467,7 +467,7 @@ export async function executeCoupleDataToolCall(
         columns: { date: true, type: true, amount: true, category: true, description: true },
       });
       return txs.map((t) => ({
-        date: String(t.date).split("T")[0],
+        date: (typeof t.date === 'string' ? t.date : (t.date as Date).toISOString()).split("T")[0],
         type: t.type,
         amount: t.amount,
         category: t.category,
