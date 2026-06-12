@@ -49,12 +49,14 @@ export async function getCoupleSubjects(userId: string): Promise<CoupleSubject[]
     return [{ id: self.id, name: self.name, image: self.image, isSelf: true }];
   }
   const members = await getCoupleMembers(coupleId);
-  return members.map((m) => ({
-    id: m.user.id,
-    name: m.user.name,
-    image: m.user.image,
-    isSelf: m.user.id === userId,
-  }));
+  return members
+    .filter((m) => m.user != null)
+    .map((m) => ({
+      id: m.user!.id,
+      name: m.user!.name,
+      image: m.user!.image,
+      isSelf: m.user!.id === userId,
+    }));
 }
 
 async function assertSubjectAuthorized(
