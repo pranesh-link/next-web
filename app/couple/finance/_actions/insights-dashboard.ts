@@ -82,7 +82,6 @@ const fetchDashboardData = unstable_cache(
       where: inArray(transactions.userId, coupleUserIds),
       orderBy: [desc(transactions.date)],
       limit: 5,
-      with: { account: { columns: { name: true } } },
     });
 
     const accounts = await accountsP;
