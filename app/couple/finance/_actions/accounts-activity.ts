@@ -131,7 +131,7 @@ export async function getAccountActivity(accountId: string, cursor?: string) {
     const hasMore = filtered.length > pageSize;
     const lastItem = page[page.length - 1];
     const nextCursor =
-      hasMore && lastItem ? `${lastItem.date.toISOString()}|${lastItem.id}` : null;
+      hasMore && lastItem ? `${String(lastItem.date)}|${lastItem.id}` : null;
 
     return { success: true as const, data: { items: page, nextCursor } };
   } catch (error) {

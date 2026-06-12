@@ -94,8 +94,8 @@ export function computeTrend(metrics: BodyMetricRow[]): WellnessTrend {
   const daysTracked = new Set(sorted.map((m) => dayKey(m.measuredOn))).size;
   const current = sorted[sorted.length - 1];
   const currentWeight = toNumber(current.weightInKg);
-  const weekTarget = new Date(current.measuredOn.getTime() - 7 * MS_PER_DAY);
-  const monthTarget = new Date(current.measuredOn.getTime() - 30 * MS_PER_DAY);
+  const weekTarget = new Date(new Date(current.measuredOn).getTime() - 7 * MS_PER_DAY);
+  const monthTarget = new Date(new Date(current.measuredOn).getTime() - 30 * MS_PER_DAY);
   const weekRef = nearestPriorTo(sorted, weekTarget);
   const monthRef = nearestPriorTo(sorted, monthTarget);
   const deltaWeek = weekRef ? currentWeight - toNumber(weekRef.weightInKg) : 0;

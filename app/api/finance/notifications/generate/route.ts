@@ -122,7 +122,7 @@ async function generateSipReminders(
   let created = 0;
   for (const holding of sipHoldings) {
     if (!holding.nextSipDate) continue;
-    const featureId = `${holding.id}:${holding.nextSipDate.toISOString().slice(0, 10)}`;
+    const featureId = `${holding.id}:${String(holding.nextSipDate).slice(0, 10)}`;
     const existing = await db.query.notifications.findFirst({
       where: and(
         eq(notifications.userId, userId),
@@ -140,7 +140,7 @@ async function generateSipReminders(
         holdingId: holding.id,
         name: holding.name,
         sipAmount: holding.sipAmount,
-        nextSipDate: holding.nextSipDate.toISOString().slice(0, 10),
+        nextSipDate: String(holding.nextSipDate).slice(0, 10),
       },
     });
     created++;
@@ -183,7 +183,7 @@ async function generateDepositReminders(
 
   let created = 0;
   for (const installment of pendingInstallments) {
-    const featureId = `${installment.id}:${installment.dueDate.toISOString().slice(0, 10)}`;
+    const featureId = `${installment.id}:${String(installment.dueDate).slice(0, 10)}`;
     const existing = await db.query.notifications.findFirst({
       where: and(
         eq(notifications.userId, userId),
@@ -201,7 +201,7 @@ async function generateDepositReminders(
         installmentId: installment.id,
         depositName: installment.depositName,
         amount: installment.amount,
-        dueDate: installment.dueDate.toISOString().slice(0, 10),
+        dueDate: String(installment.dueDate).slice(0, 10),
       },
     });
     created++;
