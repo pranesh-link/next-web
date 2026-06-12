@@ -27,6 +27,7 @@ const rawUrl = process.env.DATABASE_URL ?? "";
 const connectionString = (() => {
   let url = rawUrl
     .replace(/[?&]schema=[^&]*/g, "")
+    .replace(/[?&]sslmode=[^&]*/g, "")  // handled via pool ssl: option
     .replace(/[?&]$/, "");
   if (!url.includes("connect_timeout")) {
     url += (url.includes("?") ? "&" : "?") + "connect_timeout=10";
