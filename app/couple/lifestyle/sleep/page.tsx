@@ -79,12 +79,12 @@ const SummaryRow = styled.div`
 `;
 
 /** Format a Date as a human-readable time string (HH:MM). */
-function formatTime(d: Date): string {
+function formatTime(d: Date | string): string {
   return new Date(d).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-/** Format a Date as a short date string. */
-function formatDate(d: Date): string {
+/** Format a Date or date string as a short date string. */
+function formatDate(d: Date | string): string {
   return new Date(d).toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
