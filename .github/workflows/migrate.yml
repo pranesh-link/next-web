@@ -31,26 +31,17 @@ jobs:
       - name: Run SQL migrations (scripts/migrations/)
         if: ${{ env.DIRECT_DATABASE_URL != '' }}
         run: |
-          # Strip sslmode (psql doesn't support no-verify) and force IPv4
-          # by resolving the hostname to its IPv4 address before connecting.
-          RAW_URL="${DIRECT_DATABASE_URL//sslmode=no-verify/}"
-          RAW_URL="${RAW_URL//sslmode=verify-full/}"
-          RAW_URL="${RAW_URL//&&/}"
+          # Strip unsupported sslmode values
+          RAW_URL=$(echo "$DIRECT_DATABASE_URL" | sed 's/sslmode=[^&?]*//g' | sed 's/[?&]$//g')
 
-          HOSTNAME=$(python3 -c "
-          import re, sys
-          m = re.search(r'@([^:/]+)', '$RAW_URL')
-          print(m.group(1) if m else '')
-          ")
-          IPV4=$(python3 -c "
-          import socket
-          try:
-            info = socket.getaddrinfo('$HOSTNAME', 5432, socket.AF_INET)
-            print(info[0][4][0])
-          except:
-            print('$HOSTNAME')
-          ")
-          PSQL_URL="${RAW_URL//$HOSTNAME/$IPV4}"
+          # Resolve hostname to IPv4 — GitHub Actions can't reach Supabase over IPv6
+          HOSTNAME=$(echo "$RAW_URL" | python3 -c "import sys,re; m=re.search(r'@([^:/]+)', sys.stdin.read()); print(m.group(1) if m else '')" )
+          IPV4=$(getent ahostsv4 "$HOSTNAME" 2>/dev/null | head -1 | awk '{print $1}')
+          if [ -n "$IPV4" ]; then
+            PSQL_URL="${RAW_URL/$HOSTNAME/$IPV4}"
+          else
+            PSQL_URL="$RAW_URL"
+          fi
 
           for f in scripts/migrations/*.sql; do
             echo "Running $f..."
