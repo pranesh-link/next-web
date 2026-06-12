@@ -47,8 +47,8 @@ const fetchDashboardData = unstable_cache(
     const currentMonthTxP = db.query.transactions.findMany({
       where: (t, { and }) => and(
         inArray(t.userId, coupleUserIds),
-        gte(t.date, monthStart.toISOString()),
-        lt(t.date, monthEnd.toISOString()),
+        gte(t.date, monthStart),
+        lt(t.date, monthEnd),
       ),
     });
     const budgetsP = db.query.budgets.findMany({
@@ -61,7 +61,7 @@ const fetchDashboardData = unstable_cache(
       })
       .from(transactions)
       .where(
-        sql`${inArray(transactions.userId, coupleUserIds)} AND ${eq(transactions.type, "EXPENSE")} AND ${transactions.date} >= ${monthStart.toISOString()} AND ${transactions.date} < ${monthEnd.toISOString()}`
+        sql`${inArray(transactions.userId, coupleUserIds)} AND ${eq(transactions.type, "EXPENSE")} AND ${transactions.date} >= ${monthStart} AND ${transactions.date} < ${monthEnd}`
       )
       .groupBy(transactions.category);
     const loansP = db.query.loans.findMany({
