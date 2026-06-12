@@ -1,6 +1,11 @@
 "use server";
 
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import {
+  financialAccounts, transactions, budgets, loans,
+  savingsGoals, investmentHoldings, depositInstruments,
+} from "@db/schema";
+import { eq, inArray, gte, lt, desc, sql } from "drizzle-orm";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import {
   calculateMonthlyCashFlow,
@@ -11,13 +16,6 @@ import {
   calculateGoalProgress,
 } from "@/_services/finance";
 import type { TransactionData } from "@/_services/finance";
-import type {
-  FinancialAccount,
-  Transaction,
-  Budget,
-  Loan,
-  SavingsGoal,
-} from "@prisma/client";
 import { getUserIdsForCouple } from "@/_services/finance/couple-service";
 import { unstable_cache } from "next/cache";
 import { CACHE_TAGS } from "@/_lib/cache";
@@ -39,63 +37,73 @@ const fetchDashboardData = unstable_cache(
     const monthStart = new Date(year, m - 1, 1);
     const monthEnd = new Date(year, m, 1);
 
-    const accountsP = prisma.financialAccount.findMany({ where: { userId: { in: coupleUserIds } } });
-    const allTransactionsP = prisma.transaction.findMany({
-      where: { userId: { in: coupleUserIds } },
-      orderBy: { date: "desc" as const },
+    const accountsP = db.query.financialAccounts.findMany({
+      where: inArray(financialAccounts.userId, coupleUserIds),
     });
-    const currentMonthTxP = prisma.transaction.findMany({
-      where: {
-        userId: { in: coupleUserIds },
-        date: { gte: monthStart, lt: monthEnd },
-      },
+    const allTransactionsP = db.query.transactions.findMany({
+      where: inArray(transactions.userId, coupleUserIds),
+      orderBy: [desc(transactions.date)],
     });
-    const budgetsP = prisma.budget.findMany({ where: { userId: { in: coupleUserIds }, month } });
-    const budgetSpentP = prisma.transaction.groupBy({
-      by: ["category"] as const,
-      where: {
-        userId: { in: coupleUserIds },
-        type: "EXPENSE" as const,
-        date: { gte: monthStart, lt: monthEnd },
-      },
-      _sum: { amount: true },
+    const currentMonthTxP = db.query.transactions.findMany({
+      where: (t, { and }) => and(
+        inArray(t.userId, coupleUserIds),
+        gte(t.date, monthStart.toISOString()),
+        lt(t.date, monthEnd.toISOString()),
+      ),
     });
-    const loansP = prisma.loan.findMany({ where: { userId: { in: coupleUserIds } } });
-    const goalsP = prisma.savingsGoal.findMany({ where: { userId: { in: coupleUserIds } } });
-    const investmentsP = prisma.investmentHolding.findMany({
-      where: { userId: { in: coupleUserIds } },
-      select: { id: true, investedAmount: true, currentValue: true },
+    const budgetsP = db.query.budgets.findMany({
+      where: (b, { and }) => and(inArray(b.userId, coupleUserIds), eq(b.month, month)),
     });
-    const depositsP = prisma.depositInstrument.findMany({
-      where: { userId: { in: coupleUserIds } },
-      select: { id: true, status: true, principalAmount: true, maturityAmount: true },
+    const budgetSpentP = db
+      .select({
+        category: transactions.category,
+        total: sql<number>`sum(${transactions.amount})`,
+      })
+      .from(transactions)
+      .where(
+        sql`${inArray(transactions.userId, coupleUserIds)} AND ${eq(transactions.type, "EXPENSE")} AND ${transactions.date} >= ${monthStart.toISOString()} AND ${transactions.date} < ${monthEnd.toISOString()}`
+      )
+      .groupBy(transactions.category);
+    const loansP = db.query.loans.findMany({
+      where: inArray(loans.userId, coupleUserIds),
     });
-    const recentTxP = prisma.transaction.findMany({
-      where: { userId: { in: coupleUserIds } },
-      orderBy: { date: "desc" as const },
-      take: 5,
-      include: { account: { select: { name: true } } },
+    const goalsP = db.query.savingsGoals.findMany({
+      where: inArray(savingsGoals.userId, coupleUserIds),
+    });
+    const investmentsP = db
+      .select({ id: investmentHoldings.id, investedAmount: investmentHoldings.investedAmount, currentValue: investmentHoldings.currentValue })
+      .from(investmentHoldings)
+      .where(inArray(investmentHoldings.userId, coupleUserIds));
+    const depositsP = db
+      .select({ id: depositInstruments.id, status: depositInstruments.status, principalAmount: depositInstruments.principalAmount, maturityAmount: depositInstruments.maturityAmount })
+      .from(depositInstruments)
+      .where(inArray(depositInstruments.userId, coupleUserIds));
+    const recentTxP = db.query.transactions.findMany({
+      where: inArray(transactions.userId, coupleUserIds),
+      orderBy: [desc(transactions.date)],
+      limit: 5,
+      with: { account: { columns: { name: true } } },
     });
 
-    const accounts: FinancialAccount[] = await accountsP;
-    const allTransactions: Transaction[] = await allTransactionsP;
-    const currentMonthTransactions: Transaction[] = await currentMonthTxP;
-    const budgets: Budget[] = await budgetsP;
+    const accounts = await accountsP;
+    const allTransactions = await allTransactionsP;
+    const currentMonthTransactions = await currentMonthTxP;
+    const budgets_ = await budgetsP;
     const budgetSpent = await budgetSpentP;
-    const loans: Loan[] = await loansP;
-    const goals: SavingsGoal[] = await goalsP;
+    const loans_ = await loansP;
+    const goals = await goalsP;
     const investments = await investmentsP;
     const deposits = await depositsP;
     const recentTransactions = await recentTxP;
 
-    const totalBalance = accounts.reduce((sum, a) => sum + a.balance, 0);
+    const totalBalance = accounts.reduce((sum, a) => sum + Number(a.balance), 0);
 
     const txData: TransactionData[] = currentMonthTransactions.map((t) => ({
       id: t.id,
-      amount: t.amount,
+      amount: Number(t.amount),
       type: t.type,
       category: t.category,
-      date: t.date,
+      date: new Date(t.date),
       description: t.description ?? undefined,
     }));
     const cashFlow = calculateMonthlyCashFlow(txData, month);
@@ -103,41 +111,42 @@ const fetchDashboardData = unstable_cache(
     const expenseBreakdown = calculateExpenseBreakdown(txData);
 
     const spentMap = new Map<string, number>(
-      budgetSpent.map((s: { category: string; _sum: { amount: number | null } }) => [s.category, s._sum.amount ?? 0]),
+      budgetSpent.map((s) => [s.category, Number(s.total ?? 0)]),
     );
-    const budgetStatus = budgets.map((budget) => {
+    const budgetStatus = budgets_.map((budget) => {
       const spent = spentMap.get(budget.category) ?? 0;
-      return { budget, spent, remaining: budget.limit - spent, exceeded: spent > budget.limit };
+      const limit = Number(budget.limit);
+      return { budget, spent, remaining: limit - spent, exceeded: spent > limit };
     });
 
     const loansSummary = {
-      count: loans.length,
-      totalRemaining: loans.reduce((sum, l) => sum + l.remainingBalance, 0),
-      totalEMI: loans.reduce((sum, l) => sum + getNextEmiAmount(l), 0),
+      count: loans_.length,
+      totalRemaining: loans_.reduce((sum, l) => sum + Number(l.remainingBalance), 0),
+      totalEMI: loans_.reduce((sum, l) => sum + getNextEmiAmount(l), 0),
     };
-    const loanDetails = computeLoanDetails(loans);
+    const loanDetails = computeLoanDetails(loans_);
 
     const goalsWithProgress = goals.map((g) => ({
       ...g,
       progress: calculateGoalProgress({
         id: g.id,
         name: g.name,
-        targetAmount: g.targetAmount,
-        currentAmount: g.currentAmount,
-        deadline: g.deadline ?? undefined,
+        targetAmount: Number(g.targetAmount),
+        currentAmount: Number(g.currentAmount),
+        deadline: g.deadline ? new Date(g.deadline) : undefined,
       }),
     }));
     const goalsSummary = {
       count: goals.length,
-      totalTarget: goals.reduce((sum, g) => sum + g.targetAmount, 0),
-      totalSaved: goals.reduce((sum, g) => sum + g.currentAmount, 0),
+      totalTarget: goals.reduce((sum, g) => sum + Number(g.targetAmount), 0),
+      totalSaved: goals.reduce((sum, g) => sum + Number(g.currentAmount), 0),
     };
 
     const investmentsSummary = {
       count: investments.length,
-      totalInvested: investments.reduce((sum, item) => sum + item.investedAmount, 0),
+      totalInvested: investments.reduce((sum, item) => sum + Number(item.investedAmount), 0),
       currentValue: investments.reduce(
-        (sum, item) => sum + (item.currentValue ?? item.investedAmount),
+        (sum, item) => sum + Number(item.currentValue ?? item.investedAmount),
         0,
       ),
     };
@@ -146,8 +155,8 @@ const fetchDashboardData = unstable_cache(
     const depositsSummary = {
       count: deposits.length,
       activeCount: activeDeposits.length,
-      totalPrincipal: activeDeposits.reduce((sum, item) => sum + item.principalAmount, 0),
-      totalMaturity: activeDeposits.reduce((sum, item) => sum + item.maturityAmount, 0),
+      totalPrincipal: activeDeposits.reduce((sum, item) => sum + Number(item.principalAmount), 0),
+      totalMaturity: activeDeposits.reduce((sum, item) => sum + Number(item.maturityAmount), 0),
     };
 
     const totalMonthlyEMI = loansSummary.totalEMI;
@@ -155,8 +164,8 @@ const fetchDashboardData = unstable_cache(
     const debtToIncomeRatio = (totalMonthlyEMI / monthlyIncome) * 100;
     const emergencyFundMonths = cashFlow.expenses > 0 ? totalBalance / cashFlow.expenses : 0;
 
-    const totalBudgetLimit = budgets.reduce((sum, b) => sum + b.limit, 0);
-    const totalBudgetSpent = budgets.reduce(
+    const totalBudgetLimit = budgets_.reduce((sum, b) => sum + Number(b.limit), 0);
+    const totalBudgetSpent = budgets_.reduce(
       (sum, b) => sum + (spentMap.get(b.category) ?? 0),
       0,
     );
@@ -184,7 +193,7 @@ const fetchDashboardData = unstable_cache(
       hasExpenses: cashFlow.expenses > 0,
       debtToIncomeRatio,
       atRiskGoalCount: goalsWithTimeline.filter((g) => g.isAtRisk).length,
-      emiDueSoon: hasEmiDueSoon(loans),
+      emiDueSoon: hasEmiDueSoon(loans_),
     });
 
     const healthScore = calculateFinancialHealthScore({
@@ -196,10 +205,10 @@ const fetchDashboardData = unstable_cache(
 
     const allTxData: TransactionData[] = allTransactions.map((t) => ({
       id: t.id,
-      amount: t.amount,
+      amount: Number(t.amount),
       type: t.type,
       category: t.category,
-      date: t.date,
+      date: new Date(t.date),
       description: t.description ?? undefined,
     }));
     const monthlyTrends = calculateMonthlyTrends(allTxData, 6);
