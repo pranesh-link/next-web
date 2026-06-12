@@ -61,6 +61,7 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       - name: Run SQL migrations (scripts/migrations/)
+        if: env.DIRECT_DATABASE_URL != ''
         run: |
           for f in scripts/migrations/*.sql; do
             echo "Running $f..."
