@@ -8,7 +8,9 @@ import { NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 import { getCoupleIdForUser } from "@/_services/finance/couple-service";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { coupleChats, coupleChatMessages } from "@db/schema";
+import { eq, and } from "drizzle-orm";
 
 export function OPTIONS() {
   return handleOptions();
@@ -28,8 +30,8 @@ async function getAuthorizedChat(chatId: string) {
   const coupleId = await getCoupleIdForUser(userId);
   if (!coupleId) return { error: "No couple found" as const, status: 404 };
 
-  const chat = await prisma.coupleChat.findFirst({
-    where: { id: chatId, coupleId },
+  const chat = await db.query.coupleChats.findFirst({
+    where: and(eq(coupleChats.id, chatId), eq(coupleChats.coupleId, coupleId)),
   });
   if (!chat) return { error: "Not found" as const, status: 404 };
 
@@ -61,9 +63,9 @@ export async function GET(
       );
     }
 
-    const messages = await prisma.coupleChatMsg.findMany({
-      where: { chatId },
-      orderBy: { createdAt: "asc" },
+    const messages = await db.query.coupleChatMessages.findMany({
+      where: eq(coupleChatMessages.chatId, chatId),
+      orderBy: (t, { asc }) => [asc(t.createdAt)],
     });
 
     return NextResponse.json(
@@ -103,7 +105,7 @@ export async function DELETE(
       );
     }
 
-    await prisma.coupleChat.delete({ where: { id: chatId } });
+    await db.delete(coupleChats).where(eq(coupleChats.id, chatId));
 
     return NextResponse.json({ success: true }, { headers: corsHeaders() });
   } catch (error) {
@@ -148,10 +150,11 @@ export async function PATCH(
       );
     }
 
-    const updated = await prisma.coupleChat.update({
-      where: { id: chatId },
-      data: { title: body.title.trim().slice(0, 100) },
-    });
+    const [updated] = await db
+      .update(coupleChats)
+      .set({ title: body.title.trim().slice(0, 100), updatedAt: new Date() })
+      .where(eq(coupleChats.id, chatId))
+      .returning();
 
     return NextResponse.json(
       { id: updated.id, title: updated.title },

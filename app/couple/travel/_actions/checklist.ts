@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { unstable_noStore as noStore } from "next/cache";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { trips, tripChecklist } from "@db/schema";
+import { eq, and, inArray, asc } from "drizzle-orm";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { getUserIdsForCouple } from "@/_services/finance/couple-service";
 
@@ -20,17 +22,17 @@ export async function getChecklist(tripId: string) {
     if (!user) return { success: false as const, error: "Not authenticated" };
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
-    const trip = await prisma.trip.findFirst({
-      where: { id: tripId, userId: { in: coupleUserIds } },
+    const trip = await db.query.trips.findFirst({
+      where: and(eq(trips.id, tripId), inArray(trips.userId, coupleUserIds)),
     });
     if (!trip) return { success: false as const, error: "Trip not found" };
 
-    const items = await prisma.tripChecklist.findMany({
-      where: { tripId },
-      orderBy: { createdAt: "asc" },
+    const data = await db.query.tripChecklist.findMany({
+      where: eq(tripChecklist.tripId, tripId),
+      orderBy: [asc(tripChecklist.createdAt)],
     });
 
-    return { success: true as const, data: items };
+    return { success: true as const, data };
   } catch (error) {
     return {
       success: false as const,
@@ -60,19 +62,20 @@ export async function addChecklistItem(
     if (!user) return { success: false as const, error: "Not authenticated" };
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
-    const trip = await prisma.trip.findFirst({
-      where: { id: tripId, userId: { in: coupleUserIds } },
+    const trip = await db.query.trips.findFirst({
+      where: and(eq(trips.id, tripId), inArray(trips.userId, coupleUserIds)),
     });
     if (!trip) return { success: false as const, error: "Trip not found" };
 
-    const checklistItem = await prisma.tripChecklist.create({
-      data: {
+    const [checklistItem] = await db
+      .insert(tripChecklist)
+      .values({
         tripId,
         userId: user.id,
         item: item.trim(),
         assignedTo: assignedTo ?? null,
-      },
-    });
+      })
+      .returning();
 
     revalidatePath(`/couple/travel/${tripId}`);
     return { success: true as const, data: checklistItem };
@@ -100,21 +103,24 @@ export async function toggleChecklistItem(id: string) {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
 
-    const existing = await prisma.tripChecklist.findFirst({
-      where: { id },
-      include: { trip: true },
+    const existing = await db.query.tripChecklist.findFirst({
+      where: eq(tripChecklist.id, id),
     });
     if (!existing) return { success: false as const, error: "Item not found" };
 
+    const trip = await db.query.trips.findFirst({
+      where: eq(trips.id, existing.tripId),
+    });
     const coupleUserIds = await getUserIdsForCouple(user.id);
-    if (!coupleUserIds.includes(existing.trip.userId)) {
+    if (!trip || !coupleUserIds.includes(trip.userId)) {
       return { success: false as const, error: "Not authorized" };
     }
 
-    const updated = await prisma.tripChecklist.update({
-      where: { id },
-      data: { packed: !existing.packed },
-    });
+    const [updated] = await db
+      .update(tripChecklist)
+      .set({ packed: !existing.packed })
+      .where(eq(tripChecklist.id, id))
+      .returning();
 
     revalidatePath(`/couple/travel/${existing.tripId}`);
     return { success: true as const, data: updated };
@@ -139,18 +145,20 @@ export async function deleteChecklistItem(id: string) {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
 
-    const existing = await prisma.tripChecklist.findFirst({
-      where: { id },
-      include: { trip: true },
+    const existing = await db.query.tripChecklist.findFirst({
+      where: eq(tripChecklist.id, id),
     });
     if (!existing) return { success: false as const, error: "Item not found" };
 
+    const trip = await db.query.trips.findFirst({
+      where: eq(trips.id, existing.tripId),
+    });
     const coupleUserIds = await getUserIdsForCouple(user.id);
-    if (!coupleUserIds.includes(existing.trip.userId)) {
+    if (!trip || !coupleUserIds.includes(trip.userId)) {
       return { success: false as const, error: "Not authorized" };
     }
 
-    await prisma.tripChecklist.delete({ where: { id } });
+    await db.delete(tripChecklist).where(eq(tripChecklist.id, id));
     revalidatePath(`/couple/travel/${existing.tripId}`);
     return { success: true as const };
   } catch (error) {

@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath, unstable_noStore as noStore } from "next/cache";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { investmentHoldings } from "@db/schema";
+import { eq, and, inArray, desc, lte, isNotNull } from "drizzle-orm";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { investmentSchema } from "@/_lib/validations/finance";
 import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
@@ -21,9 +23,9 @@ export async function getInvestments() {
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
 
-    const investments = await prisma.investmentHolding.findMany({
-      where: { userId: { in: coupleUserIds } },
-      orderBy: { createdAt: "desc" },
+    const investments = await db.query.investmentHoldings.findMany({
+      where: inArray(investmentHoldings.userId, coupleUserIds),
+      orderBy: [desc(investmentHoldings.createdAt)],
     });
 
     return { success: true as const, data: investments };
@@ -59,8 +61,9 @@ export async function createInvestment(data: {
     const validated = investmentSchema.parse(data);
     const coupleId = await getCoupleIdForUser(user.id);
 
-    const holding = await prisma.investmentHolding.create({
-      data: {
+    const [holding] = await db
+      .insert(investmentHoldings)
+      .values({
         userId: user.id,
         name: validated.name,
         assetType: validated.assetType,
@@ -77,8 +80,8 @@ export async function createInvestment(data: {
         startDate: validated.startDate,
         nextSipDate: validated.nextSipDate,
         ...(coupleId ? { coupleId } : {}),
-      },
-    });
+      })
+      .returning();
 
     invalidateAfterInvestmentChange();
     revalidatePath("/couple/finance");
@@ -116,8 +119,8 @@ export async function updateInvestment(
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
 
-    const existing = await prisma.investmentHolding.findFirst({
-      where: { id, userId: { in: await getUserIdsForCouple(user.id) } },
+    const existing = await db.query.investmentHoldings.findFirst({
+      where: and(eq(investmentHoldings.id, id), inArray(investmentHoldings.userId, await getUserIdsForCouple(user.id))),
     });
 
     if (!existing) {
@@ -143,9 +146,9 @@ export async function updateInvestment(
 
     const validated = investmentSchema.parse(merged);
 
-    const updated = await prisma.investmentHolding.update({
-      where: { id },
-      data: {
+    const [updated] = await db
+      .update(investmentHoldings)
+      .set({
         name: validated.name,
         assetType: validated.assetType,
         mode: validated.mode,
@@ -160,8 +163,9 @@ export async function updateInvestment(
         sipDayOfMonth: validated.sipDayOfMonth,
         startDate: validated.startDate,
         nextSipDate: validated.nextSipDate,
-      },
-    });
+      })
+      .where(eq(investmentHoldings.id, id))
+      .returning();
 
     invalidateAfterInvestmentChange();
     revalidatePath("/couple/finance");
@@ -181,15 +185,15 @@ export async function deleteInvestment(id: string) {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
 
-    const existing = await prisma.investmentHolding.findFirst({
-      where: { id, userId: { in: await getUserIdsForCouple(user.id) } },
+    const existingToDelete = await db.query.investmentHoldings.findFirst({
+      where: and(eq(investmentHoldings.id, id), inArray(investmentHoldings.userId, await getUserIdsForCouple(user.id))),
     });
 
-    if (!existing) {
+    if (!existingToDelete) {
       return { success: false as const, error: "Investment not found" };
     }
 
-    await prisma.investmentHolding.delete({ where: { id } });
+    await db.delete(investmentHoldings).where(eq(investmentHoldings.id, id));
 
     invalidateAfterInvestmentChange();
     revalidatePath("/couple/finance");
@@ -211,17 +215,17 @@ export async function getInvestmentsSummary() {
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
 
-    const holdings = await prisma.investmentHolding.findMany({
-      where: { userId: { in: coupleUserIds } },
-      select: {
+    const holdingRows = await db.query.investmentHoldings.findMany({
+      where: inArray(investmentHoldings.userId, coupleUserIds),
+      columns: {
         id: true,
         investedAmount: true,
         currentValue: true,
       },
     });
 
-    const invested = holdings.reduce((sum, h) => sum + h.investedAmount, 0);
-    const current = holdings.reduce(
+    const invested = holdingRows.reduce((sum, h) => sum + h.investedAmount, 0);
+    const current = holdingRows.reduce(
       (sum, h) => sum + (h.currentValue ?? h.investedAmount),
       0,
     );
@@ -229,7 +233,7 @@ export async function getInvestmentsSummary() {
     return {
       success: true as const,
       data: {
-        count: holdings.length,
+        count: holdingRows.length,
         totalInvested: invested,
         currentValue: current,
         gainLoss: current - invested,
@@ -249,13 +253,14 @@ export async function syncInvestmentReminders(userId: string) {
   const coupleUserIds = await getUserIdsForCouple(userId);
   const today = new Date();
 
-  const sipHoldings = await prisma.investmentHolding.findMany({
-    where: {
-      userId: { in: coupleUserIds },
-      mode: "SIP",
-      nextSipDate: { not: null, lte: today },
-    },
-    select: { id: true },
+  const sipHoldings = await db.query.investmentHoldings.findMany({
+    where: and(
+      inArray(investmentHoldings.userId, coupleUserIds),
+      eq(investmentHoldings.mode, "SIP"),
+      isNotNull(investmentHoldings.nextSipDate),
+      lte(investmentHoldings.nextSipDate, today),
+    ),
+    columns: { id: true },
   });
 
   if (sipHoldings.length === 0) {

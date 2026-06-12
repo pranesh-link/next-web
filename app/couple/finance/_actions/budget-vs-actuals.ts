@@ -1,7 +1,9 @@
 "use server";
 
 import { unstable_noStore as noStore } from "next/cache";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { budgets, transactions } from "@db/schema";
+import { and, inArray, eq, gte, lt, sql } from "drizzle-orm";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { getUserIdsForCouple } from "@/_services/finance/couple-service";
 
@@ -40,27 +42,34 @@ export async function getBudgetVsActuals(month: string): Promise<BudgetActualRow
 
   const coupleUserIds = await getUserIdsForCouple(user.id);
 
-  const [budgets, spentGroups] = await Promise.all([
-    prisma.budget.findMany({
-      where: { userId: { in: coupleUserIds }, month },
-    }),
-    prisma.transaction.groupBy({
-      by: ["category"] as const,
-      where: {
-        userId: { in: coupleUserIds },
-        type: "EXPENSE" as const,
-        date: { gte: monthStart, lt: monthEnd },
-      },
-      _sum: { amount: true },
-    }),
+  const [budgetRows, spentGroups] = await Promise.all([
+    db
+      .select()
+      .from(budgets)
+      .where(and(inArray(budgets.userId, coupleUserIds), eq(budgets.month, month))),
+    db
+      .select({
+        category: transactions.category,
+        total: sql<number>`sum(${transactions.amount})`,
+      })
+      .from(transactions)
+      .where(
+        and(
+          inArray(transactions.userId, coupleUserIds),
+          eq(transactions.type, "EXPENSE"),
+          gte(transactions.date, monthStart),
+          lt(transactions.date, monthEnd),
+        ),
+      )
+      .groupBy(transactions.category),
   ]);
 
   const limitMap = new Map<string, number>(
-    budgets.map((b) => [b.category, b.limit])
+    budgetRows.map((b) => [b.category, b.limit])
   );
 
   const spentMap = new Map<string, number>(
-    spentGroups.map((g) => [g.category, g._sum.amount ?? 0])
+    spentGroups.map((g) => [g.category, g.total ?? 0])
   );
 
   // Merge categories from both sources

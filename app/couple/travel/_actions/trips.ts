@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { unstable_noStore as noStore } from "next/cache";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { trips, tripItineraryItems, tripExpenses, tripChecklist } from "@db/schema";
+import { eq, and, inArray, desc, asc } from "drizzle-orm";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import {
   getUserIdsForCouple,
@@ -23,12 +25,12 @@ export async function getTrips() {
     if (!user) return { success: false as const, error: "Not authenticated" };
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
-    const trips = await prisma.trip.findMany({
-      where: { userId: { in: coupleUserIds } },
-      orderBy: { startDate: "desc" },
+    const data = await db.query.trips.findMany({
+      where: inArray(trips.userId, coupleUserIds),
+      orderBy: [desc(trips.startDate)],
     });
 
-    return { success: true as const, data: trips };
+    return { success: true as const, data };
   } catch (error) {
     return {
       success: false as const,
@@ -51,17 +53,28 @@ export async function getTrip(id: string) {
     if (!user) return { success: false as const, error: "Not authenticated" };
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
-    const trip = await prisma.trip.findFirst({
-      where: { id, userId: { in: coupleUserIds } },
-      include: {
-        itineraryItems: { orderBy: [{ day: "asc" }, { time: "asc" }] },
-        expenses: { orderBy: { date: "desc" } },
-        checklistItems: { orderBy: { createdAt: "asc" } },
-      },
+    const trip = await db.query.trips.findFirst({
+      where: and(eq(trips.id, id), inArray(trips.userId, coupleUserIds)),
     });
 
     if (!trip) return { success: false as const, error: "Trip not found" };
-    return { success: true as const, data: trip };
+
+    const [itineraryItems, expenses, checklistItems] = await Promise.all([
+      db.query.tripItineraryItems.findMany({
+        where: eq(tripItineraryItems.tripId, id),
+        orderBy: [asc(tripItineraryItems.day), asc(tripItineraryItems.time)],
+      }),
+      db.query.tripExpenses.findMany({
+        where: eq(tripExpenses.tripId, id),
+        orderBy: [desc(tripExpenses.date)],
+      }),
+      db.query.tripChecklist.findMany({
+        where: eq(tripChecklist.tripId, id),
+        orderBy: [asc(tripChecklist.createdAt)],
+      }),
+    ]);
+
+    return { success: true as const, data: { ...trip, itineraryItems, expenses, checklistItems } };
   } catch (error) {
     return {
       success: false as const,
@@ -91,18 +104,19 @@ export async function createTrip(data: {
     if (!user) return { success: false as const, error: "Not authenticated" };
 
     const coupleId = await getCoupleIdForUser(user.id);
-    const trip = await prisma.trip.create({
-      data: {
+    const [trip] = await db
+      .insert(trips)
+      .values({
         userId: user.id,
         name: data.name.trim(),
         destination: data.destination.trim(),
-        startDate: new Date(data.startDate),
-        endDate: new Date(data.endDate),
+        startDate: data.startDate,
+        endDate: data.endDate,
         budget: data.budget ?? null,
         notes: data.notes?.trim() ?? null,
         ...(coupleId ? { coupleId } : {}),
-      },
-    });
+      })
+      .returning();
 
     revalidatePath("/couple/travel");
     return { success: true as const, data: trip };
@@ -129,15 +143,16 @@ export async function updateTripStatus(id: string, status: TripStatus) {
     if (!user) return { success: false as const, error: "Not authenticated" };
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
-    const existing = await prisma.trip.findFirst({
-      where: { id, userId: { in: coupleUserIds } },
+    const existing = await db.query.trips.findFirst({
+      where: and(eq(trips.id, id), inArray(trips.userId, coupleUserIds)),
     });
     if (!existing) return { success: false as const, error: "Trip not found" };
 
-    const trip = await prisma.trip.update({
-      where: { id },
-      data: { status },
-    });
+    const [trip] = await db
+      .update(trips)
+      .set({ status })
+      .where(eq(trips.id, id))
+      .returning();
 
     revalidatePath("/couple/travel");
     revalidatePath(`/couple/travel/${id}`);
@@ -164,12 +179,12 @@ export async function deleteTrip(id: string) {
     if (!user) return { success: false as const, error: "Not authenticated" };
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
-    const existing = await prisma.trip.findFirst({
-      where: { id, userId: { in: coupleUserIds } },
+    const existing = await db.query.trips.findFirst({
+      where: and(eq(trips.id, id), inArray(trips.userId, coupleUserIds)),
     });
     if (!existing) return { success: false as const, error: "Trip not found" };
 
-    await prisma.trip.delete({ where: { id } });
+    await db.delete(trips).where(eq(trips.id, id));
 
     revalidatePath("/couple/travel");
     return { success: true as const };

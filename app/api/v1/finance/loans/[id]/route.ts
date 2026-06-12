@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { loans } from "@db/schema";
+import { and, eq, inArray } from "drizzle-orm";
 import { loanSchema } from "@/_lib/validations/finance";
 import { getLoanInsights } from "@/_services/finance";
 import type { LoanData } from "@/_services/finance";
@@ -51,8 +53,8 @@ async function getHandler(_request: NextRequest, context: RouteContext) {
     const coupleUserIds = await getUserIdsForCouple(userId);
     const { id } = await context.params;
 
-    const loan = await prisma.loan.findFirst({
-      where: { id, userId: { in: coupleUserIds } },
+    const loan = await db.query.loans.findFirst({
+      where: and(eq(loans.id, id), inArray(loans.userId, coupleUserIds)),
     });
 
     if (!loan) {
@@ -98,8 +100,8 @@ async function putHandler(request: NextRequest, context: RouteContext) {
     const coupleUserIds = await getUserIdsForCouple(userId);
     const { id } = await context.params;
 
-    const existing = await prisma.loan.findFirst({
-      where: { id, userId: { in: coupleUserIds } },
+    const existing = await db.query.loans.findFirst({
+      where: and(eq(loans.id, id), inArray(loans.userId, coupleUserIds)),
     });
 
     if (!existing) {
@@ -122,18 +124,15 @@ async function putHandler(request: NextRequest, context: RouteContext) {
 
     const validated = loanSchema.parse(merged);
 
-    const loan = await prisma.loan.update({
-      where: { id },
-      data: {
-        name: validated.name,
-        principal: validated.principal,
-        interestRate: validated.interestRate,
-        tenureMonths: validated.tenureMonths,
-        emiAmount: validated.emiAmount,
-        startDate: validated.startDate,
-        remainingBalance: validated.remainingBalance,
-      },
-    });
+    const [loan] = await db.update(loans).set({
+      name: validated.name,
+      principal: validated.principal,
+      interestRate: validated.interestRate,
+      tenureMonths: validated.tenureMonths,
+      emiAmount: validated.emiAmount,
+      startDate: validated.startDate,
+      remainingBalance: validated.remainingBalance,
+    }).where(eq(loans.id, id)).returning();
 
     await CacheInvalidation.onLoanChange(userId);
 
@@ -174,18 +173,18 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
     const coupleUserIds = await getUserIdsForCouple(userId);
     const { id } = await context.params;
 
-    const existing = await prisma.loan.findFirst({
-      where: { id, userId: { in: coupleUserIds } },
+    const existing2 = await db.query.loans.findFirst({
+      where: and(eq(loans.id, id), inArray(loans.userId, coupleUserIds)),
     });
 
-    if (!existing) {
+    if (!existing2) {
       return NextResponse.json(
         { success: false, error: "Loan not found" },
         { status: 404, headers: corsHeaders() },
       );
     }
 
-    await prisma.loan.delete({ where: { id } });
+    await db.delete(loans).where(eq(loans.id, id));
 
     return NextResponse.json(
       { success: true, data: { id } },

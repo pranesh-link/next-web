@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { depositInstruments, depositInstallments } from "@db/schema";
+import { and, eq, inArray } from "drizzle-orm";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 import { getUserIdsForCouple } from "@/_services/finance/couple-service";
 
@@ -23,17 +25,23 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     const coupleUserIds = await getUserIdsForCouple(userId);
     const { id } = await context.params;
 
-    const deposit = await prisma.depositInstrument.findFirst({
-      where: { id, userId: { in: coupleUserIds } },
-      include: { installments: { orderBy: { dueDate: "asc" } } },
+    const depositRow = await db.query.depositInstruments.findFirst({
+      where: and(eq(depositInstruments.id, id), inArray(depositInstruments.userId, coupleUserIds)),
     });
 
-    if (!deposit) {
+    if (!depositRow) {
       return NextResponse.json(
         { success: false, error: "Deposit not found" },
         { status: 404, headers: corsHeaders() },
       );
     }
+
+    const installmentRows = await db.query.depositInstallments.findMany({
+      where: eq(depositInstallments.depositId, id),
+      orderBy: (t, { asc: a }) => [a(t.dueDate)],
+    });
+
+    const deposit = { ...depositRow, installments: installmentRows };
 
     return NextResponse.json(
       { success: true, data: deposit },
@@ -64,11 +72,11 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     const coupleUserIds = await getUserIdsForCouple(userId);
     const { id } = await context.params;
 
-    const existing = await prisma.depositInstrument.findFirst({
-      where: { id, userId: { in: coupleUserIds } },
+    const existingDeposit = await db.query.depositInstruments.findFirst({
+      where: and(eq(depositInstruments.id, id), inArray(depositInstruments.userId, coupleUserIds)),
     });
 
-    if (!existing) {
+    if (!existingDeposit) {
       return NextResponse.json(
         { success: false, error: "Deposit not found" },
         { status: 404, headers: corsHeaders() },
@@ -77,9 +85,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
     const body = await request.json();
 
-    const deposit = await prisma.depositInstrument.update({
-      where: { id },
-      data: {
+    const [deposit] = await db.update(depositInstruments).set({
         ...(body.name !== undefined && { name: body.name }),
         ...(body.provider !== undefined && { provider: body.provider }),
         ...(body.type !== undefined && { type: body.type }),
@@ -105,8 +111,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
         ...(body.maturityDate !== undefined && {
           maturityDate: new Date(body.maturityDate),
         }),
-      },
-    });
+      }).where(eq(depositInstruments.id, id)).returning();
 
     return NextResponse.json(
       { success: true, data: deposit },
@@ -137,18 +142,18 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
     const coupleUserIds = await getUserIdsForCouple(userId);
     const { id } = await context.params;
 
-    const existing = await prisma.depositInstrument.findFirst({
-      where: { id, userId: { in: coupleUserIds } },
+    const existing2 = await db.query.depositInstruments.findFirst({
+      where: and(eq(depositInstruments.id, id), inArray(depositInstruments.userId, coupleUserIds)),
     });
 
-    if (!existing) {
+    if (!existing2) {
       return NextResponse.json(
         { success: false, error: "Deposit not found" },
         { status: 404, headers: corsHeaders() },
       );
     }
 
-    await prisma.depositInstrument.delete({ where: { id } });
+    await db.delete(depositInstruments).where(eq(depositInstruments.id, id));
 
     return NextResponse.json(
       { success: true, data: { deleted: true } },

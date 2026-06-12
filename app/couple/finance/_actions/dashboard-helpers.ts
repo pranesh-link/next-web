@@ -1,4 +1,6 @@
-import type { Loan } from "@prisma/client";
+import type { loans } from "@db/schema";
+
+type Loan = typeof loans.$inferSelect;
 
 /** Account balance grouped by account type. */
 export interface AccountBreakdownItem {

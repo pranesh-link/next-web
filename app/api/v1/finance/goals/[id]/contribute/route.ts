@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { savingsGoals } from "@db/schema";
+import { and, eq, inArray } from "drizzle-orm";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 import { getUserIdsForCouple } from "@/_services/finance/couple-service";
 
@@ -26,8 +28,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const coupleUserIds = await getUserIdsForCouple(userId);
     const { id } = await context.params;
 
-    const goal = await prisma.savingsGoal.findFirst({
-      where: { id, userId: { in: coupleUserIds } },
+    const goal = await db.query.savingsGoals.findFirst({
+      where: and(eq(savingsGoals.id, id), inArray(savingsGoals.userId, coupleUserIds)),
     });
 
     if (!goal) {
@@ -47,10 +49,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
-    const updated = await prisma.savingsGoal.update({
-      where: { id },
-      data: { currentAmount: goal.currentAmount + amount },
-    });
+    const [updated] = await db.update(savingsGoals).set({
+      currentAmount: goal.currentAmount + amount,
+    }).where(eq(savingsGoals.id, id)).returning();
 
     return NextResponse.json(
       { success: true, data: updated },

@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath, unstable_noStore as noStore } from "next/cache";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { depositInstruments } from "@db/schema";
+import { eq, and, inArray } from "drizzle-orm";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { depositSchema } from "@/_lib/validations/finance";
 import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
@@ -60,8 +62,9 @@ export async function createDeposit(data: {
         })
       : validated.nextInstallmentDate;
 
-    const deposit = await prisma.depositInstrument.create({
-      data: {
+    const [deposit] = await db
+      .insert(depositInstruments)
+      .values({
         userId: user.id,
         name: validated.name,
         provider: validated.provider,
@@ -79,8 +82,8 @@ export async function createDeposit(data: {
         nextInstallmentDate,
         sourceAccountId: validated.sourceAccountId,
         ...(coupleId ? { coupleId } : {}),
-      },
-    });
+      })
+      .returning();
 
     invalidateAfterDepositChange();
     revalidatePath("/couple/finance");
@@ -125,8 +128,8 @@ export async function updateDeposit(
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
 
-    const existing = await prisma.depositInstrument.findFirst({
-      where: { id, userId: { in: await getUserIdsForCouple(user.id) } },
+    const existing = await db.query.depositInstruments.findFirst({
+      where: and(eq(depositInstruments.id, id), inArray(depositInstruments.userId, await getUserIdsForCouple(user.id))),
     });
 
     if (!existing) {
@@ -169,9 +172,9 @@ export async function updateDeposit(
 
     const status = parseDate(validated.maturityDate) <= new Date() ? "MATURED" : "ACTIVE";
 
-    const updated = await prisma.depositInstrument.update({
-      where: { id },
-      data: {
+    const [updated] = await db
+      .update(depositInstruments)
+      .set({
         name: validated.name,
         provider: validated.provider,
         type: validated.type,
@@ -187,8 +190,9 @@ export async function updateDeposit(
         maturityAmount,
         nextInstallmentDate,
         status,
-      },
-    });
+      })
+      .where(eq(depositInstruments.id, id))
+      .returning();
 
     invalidateAfterDepositChange();
     revalidatePath("/couple/finance");
@@ -215,15 +219,15 @@ export async function deleteDeposit(id: string) {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
 
-    const existing = await prisma.depositInstrument.findFirst({
-      where: { id, userId: { in: await getUserIdsForCouple(user.id) } },
+    const existingToDelete = await db.query.depositInstruments.findFirst({
+      where: and(eq(depositInstruments.id, id), inArray(depositInstruments.userId, await getUserIdsForCouple(user.id))),
     });
 
-    if (!existing) {
+    if (!existingToDelete) {
       return { success: false as const, error: "Deposit not found" };
     }
 
-    await prisma.depositInstrument.delete({ where: { id } });
+    await db.delete(depositInstruments).where(eq(depositInstruments.id, id));
 
     invalidateAfterDepositChange();
     revalidatePath("/couple/finance");

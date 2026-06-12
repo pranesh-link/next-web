@@ -1,7 +1,9 @@
 "use server";
 
 import { unstable_noStore as noStore } from "next/cache";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { depositInstruments, depositInstallments } from "@db/schema";
+import { inArray, asc } from "drizzle-orm";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { getUserIdsForCouple } from "@/_services/finance/couple-service";
 import {
@@ -26,11 +28,27 @@ export async function getDeposits() {
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
 
-    const deposits = await prisma.depositInstrument.findMany({
-      where: { userId: { in: coupleUserIds } },
-      orderBy: { maturityDate: "asc" },
-      include: { installments: { orderBy: { dueDate: "asc" } } },
+    const depositRows = await db.query.depositInstruments.findMany({
+      where: inArray(depositInstruments.userId, coupleUserIds),
+      orderBy: [asc(depositInstruments.maturityDate)],
     });
+
+    const depositIds = depositRows.map((d) => d.id);
+    const allInstallments =
+      depositIds.length > 0
+        ? await db.query.depositInstallments.findMany({
+            where: inArray(depositInstallments.depositId, depositIds),
+            orderBy: [asc(depositInstallments.dueDate)],
+          })
+        : [];
+    const installmentsByDeposit = new Map<string, typeof allInstallments>();
+    for (const inst of allInstallments) {
+      if (!installmentsByDeposit.has(inst.depositId)) {
+        installmentsByDeposit.set(inst.depositId, []);
+      }
+      installmentsByDeposit.get(inst.depositId)!.push(inst);
+    }
+    const deposits = depositRows.map((d) => ({ ...d, installments: installmentsByDeposit.get(d.id) ?? [] }));
 
     const enrichedDeposits = deposits.map((deposit) => {
       if (deposit.type !== "RECURRING_DEPOSIT") {
@@ -87,9 +105,9 @@ export async function getDepositsSummary() {
     if (!user) return { success: false as const, error: "Not authenticated" };
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
-    const deposits = await prisma.depositInstrument.findMany({
-      where: { userId: { in: coupleUserIds } },
-      select: {
+    const depositSummaryRows = await db.query.depositInstruments.findMany({
+      where: inArray(depositInstruments.userId, coupleUserIds),
+      columns: {
         id: true,
         status: true,
         principalAmount: true,
@@ -99,12 +117,12 @@ export async function getDepositsSummary() {
       },
     });
 
-    const active = deposits.filter((d) => d.status === "ACTIVE");
+    const active = depositSummaryRows.filter((d) => d.status === "ACTIVE");
 
     return {
       success: true as const,
       data: {
-        count: deposits.length,
+        count: depositSummaryRows.length,
         activeCount: active.length,
         totalPrincipal: active.reduce((sum, d) => sum + d.principalAmount, 0),
         totalMaturity: active.reduce((sum, d) => sum + d.maturityAmount, 0),

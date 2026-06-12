@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { unstable_noStore as noStore } from "next/cache";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { transactions, budgetPlans, loans, users } from "@db/schema";
+import { eq, and, inArray, gte, lt, gt, asc, desc, sum } from "drizzle-orm";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { budgetPlanSchema } from "@/_lib/validations/finance";
 import {
@@ -40,16 +42,19 @@ export async function getIncome(monthAndYear: string, mode: "monthly" | "yearly"
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
 
-    const result = await prisma.transaction.aggregate({
-      where: {
-        userId: { in: coupleUserIds },
-        type: "INCOME" as const,
-        date: dateFilter,
-      },
-      _sum: { amount: true },
-    });
+    const [{ total }] = await db
+      .select({ total: sum(transactions.amount) })
+      .from(transactions)
+      .where(
+        and(
+          inArray(transactions.userId, coupleUserIds),
+          eq(transactions.type, "INCOME"),
+          gte(transactions.date, dateFilter.gte),
+          lt(transactions.date, dateFilter.lt),
+        ),
+      );
 
-    return { success: true as const, income: result._sum.amount ?? 0 };
+    return { success: true as const, income: Number(total ?? 0) };
   } catch (error) {
     return {
       success: false as const,
@@ -69,17 +74,23 @@ export async function getBudgetPlan(monthAndYear: string, mode: "monthly" | "yea
 
     const coupleId = await getCoupleIdForUser(user.id);
 
-    // Couple-shared lookup: prefer coupleId match (single shared row),
-    // fall back to solo lookup by current user.
-    const plan = await prisma.budgetPlan.findFirst({
+    const planRow = await db.query.budgetPlans.findFirst({
       where: coupleId
-        ? { coupleId, monthAndYear, mode }
-        : { userId: user.id, coupleId: null, monthAndYear, mode },
-      include: {
-        lastUpdatedBy: { select: { id: true, name: true, email: true } },
-      },
-      orderBy: { updatedAt: "desc" },
+        ? and(eq(budgetPlans.coupleId, coupleId), eq(budgetPlans.monthAndYear, monthAndYear), eq(budgetPlans.mode, mode))
+        : and(eq(budgetPlans.userId, user.id), eq(budgetPlans.monthAndYear, monthAndYear), eq(budgetPlans.mode, mode)),
+      orderBy: [desc(budgetPlans.updatedAt)],
     });
+
+    let plan: typeof planRow & { lastUpdatedBy: { id: string; name: string | null; email: string } | null } | null = null;
+    if (planRow) {
+      const updater = planRow.lastUpdatedById
+        ? await db.query.users.findFirst({
+            where: eq(users.id, planRow.lastUpdatedById),
+            columns: { id: true, name: true, email: true },
+          })
+        : null;
+      plan = { ...planRow, lastUpdatedBy: updater ?? null };
+    }
 
     return { success: true as const, data: plan };
   } catch (error) {
@@ -109,42 +120,51 @@ export async function saveBudgetPlan(input: {
 
     // Find any existing couple-wide row first so either partner updates the
     // same record instead of creating a parallel one.
-    const existing = await prisma.budgetPlan.findFirst({
+    const existing = await db.query.budgetPlans.findFirst({
       where: coupleId
-        ? { coupleId, monthAndYear: validated.monthAndYear, mode: validated.mode }
-        : { userId: user.id, coupleId: null, monthAndYear: validated.monthAndYear, mode: validated.mode },
-      orderBy: { updatedAt: "desc" },
-      select: { id: true },
+        ? and(eq(budgetPlans.coupleId, coupleId), eq(budgetPlans.monthAndYear, validated.monthAndYear), eq(budgetPlans.mode, validated.mode))
+        : and(eq(budgetPlans.userId, user.id), eq(budgetPlans.monthAndYear, validated.monthAndYear), eq(budgetPlans.mode, validated.mode)),
+      orderBy: [desc(budgetPlans.updatedAt)],
+      columns: { id: true },
     });
 
-    const plan = existing
-      ? await prisma.budgetPlan.update({
-          where: { id: existing.id },
-          data: {
-            income: validated.income,
-            lineItems: validated.lineItems,
-            mode: validated.mode,
-            lastUpdatedById: user.id,
-            ...(coupleId ? { coupleId } : {}),
-          },
-          include: {
-            lastUpdatedBy: { select: { id: true, name: true, email: true } },
-          },
+    let planRow: typeof budgetPlans.$inferSelect | undefined;
+    if (existing) {
+      const [updated] = await db
+        .update(budgetPlans)
+        .set({
+          income: validated.income,
+          lineItems: validated.lineItems,
+          mode: validated.mode,
+          lastUpdatedById: user.id,
+          ...(coupleId ? { coupleId } : {}),
         })
-      : await prisma.budgetPlan.create({
-          data: {
-            userId: user.id,
-            monthAndYear: validated.monthAndYear,
-            income: validated.income,
-            mode: validated.mode,
-            lineItems: validated.lineItems,
-            lastUpdatedById: user.id,
-            ...(coupleId ? { coupleId } : {}),
-          },
-          include: {
-            lastUpdatedBy: { select: { id: true, name: true, email: true } },
-          },
-        });
+        .where(eq(budgetPlans.id, existing.id))
+        .returning();
+      planRow = updated;
+    } else {
+      const [created] = await db
+        .insert(budgetPlans)
+        .values({
+          userId: user.id,
+          monthAndYear: validated.monthAndYear,
+          income: validated.income,
+          mode: validated.mode,
+          lineItems: validated.lineItems,
+          lastUpdatedById: user.id,
+          ...(coupleId ? { coupleId } : {}),
+        })
+        .returning();
+      planRow = created;
+    }
+
+    const updater = planRow?.lastUpdatedById
+      ? await db.query.users.findFirst({
+          where: eq(users.id, planRow.lastUpdatedById),
+          columns: { id: true, name: true, email: true },
+        })
+      : null;
+    const plan = { ...planRow!, lastUpdatedBy: updater ?? null };
 
     revalidatePath("/couple/finance/budget-planner");
     return { success: true as const, data: plan };
@@ -167,15 +187,15 @@ export async function deleteBudgetPlan(id: string) {
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
 
-    const existing = await prisma.budgetPlan.findFirst({
-      where: { id, userId: { in: coupleUserIds } },
+    const existingPlan = await db.query.budgetPlans.findFirst({
+      where: and(eq(budgetPlans.id, id), inArray(budgetPlans.userId, coupleUserIds)),
     });
 
-    if (!existing) {
+    if (!existingPlan) {
       return { success: false as const, error: "Budget plan not found" };
     }
 
-    await prisma.budgetPlan.delete({ where: { id } });
+    await db.delete(budgetPlans).where(eq(budgetPlans.id, id));
 
     revalidatePath("/couple/finance/budget-planner");
     return { success: true as const };
@@ -197,12 +217,9 @@ export async function getActiveLoans() {
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
 
-    const loans = await prisma.loan.findMany({
-      where: {
-        userId: { in: coupleUserIds },
-        remainingBalance: { gt: 0 },
-      },
-      select: {
+    const loanRows = await db.query.loans.findMany({
+      where: and(inArray(loans.userId, coupleUserIds), gt(loans.remainingBalance, 0)),
+      columns: {
         name: true,
         emiAmount: true,
         principal: true,
@@ -212,14 +229,14 @@ export async function getActiveLoans() {
         remainingBalance: true,
         schedule: true,
       },
-      orderBy: { name: "asc" },
+      orderBy: [asc(loans.name)],
     });
 
     // Compute next EMI for each loan from schedule
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const data = loans.map((loan) => {
+    const data = loanRows.map((loan) => {
       let nextEmiAmount = loan.emiAmount;
 
       // Try to get next EMI from stored schedule

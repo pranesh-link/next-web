@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { users } from "@db/schema";
+import { eq } from "drizzle-orm";
 
 const vaultSchema = z.object({
   vault: z.string().min(1).max(10_000),
@@ -22,9 +24,9 @@ export async function GET() {
       );
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { encryptedKeyVault: true },
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+      columns: { encryptedKeyVault: true },
     });
 
     const vault = user?.encryptedKeyVault
@@ -61,12 +63,9 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { vault } = vaultSchema.parse(body);
 
-    const vaultBytes = Uint8Array.from(Buffer.from(vault, "base64"));
+    const vaultBuffer = Buffer.from(vault, "base64");
 
-    await prisma.user.update({
-      where: { id: userId },
-      data: { encryptedKeyVault: vaultBytes },
-    });
+    await db.update(users).set({ encryptedKeyVault: vaultBuffer }).where(eq(users.id, userId));
 
     return NextResponse.json({ success: true });
   } catch (error) {

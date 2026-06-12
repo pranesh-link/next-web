@@ -26,7 +26,7 @@ export default function RecentTransactionsSection({
               typeof tx.date === "string"
                 ? tx.date
                 : new Date(tx.date).toISOString(),
-            accountName: tx.account?.name,
+            accountName: undefined,
           })
         )}
       />

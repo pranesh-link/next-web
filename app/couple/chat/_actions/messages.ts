@@ -1,9 +1,10 @@
 "use server";
 
 import { unstable_noStore as noStore } from "next/cache";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { coupleMembers, coupleMessages, messageTypeEnum } from "@db/schema";
+import { eq, and, lt, inArray, sql, count } from "drizzle-orm";
 import { requireAuthForAction } from "@/_lib/auth-utils";
-import { MessageType } from "@prisma/client";
 import { sendChatPushNotification } from "@/_services/chat/push-service";
 
 /**
@@ -13,7 +14,7 @@ import { sendChatPushNotification } from "@/_services/chat/push-service";
  * @returns The coupleId string, or null if the user is not in a couple.
  */
 async function getMemberCoupleId(userId: string): Promise<string | null> {
-  const member = await prisma.coupleMember.findFirst({ where: { userId } });
+  const member = await db.query.coupleMembers.findFirst({ where: eq(coupleMembers.userId, userId) });
   return member?.coupleId ?? null;
 }
 
@@ -37,11 +38,22 @@ export async function getMessages(limit = 50, cursor?: string) {
 
     const take = Math.min(limit, 100);
 
-    const messages = await prisma.coupleMessage.findMany({
-      where: { coupleId },
-      orderBy: { createdAt: "desc" },
-      take,
-      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+    let cursorCreatedAt: Date | undefined;
+    if (cursor) {
+      const cursorMsg = await db.query.coupleMessages.findFirst({
+        where: eq(coupleMessages.id, cursor),
+        columns: { createdAt: true },
+      });
+      cursorCreatedAt = cursorMsg?.createdAt;
+    }
+
+    const messages = await db.query.coupleMessages.findMany({
+      where: and(
+        eq(coupleMessages.coupleId, coupleId),
+        cursorCreatedAt ? lt(coupleMessages.createdAt, cursorCreatedAt) : undefined,
+      ),
+      orderBy: (t, { desc: d }) => [d(t.createdAt)],
+      limit: take,
     });
 
     return { success: true as const, data: messages };
@@ -82,17 +94,15 @@ export async function sendMessage(
     const coupleId = await getMemberCoupleId(user.id);
     if (!coupleId) return { success: false as const, error: "No couple found" };
 
-    const message = await prisma.coupleMessage.create({
-      data: {
-        coupleId,
-        senderId: user.id,
-        type: type as MessageType,
-        content: encrypted ? content : content.trim(),
-        iv: encrypted ? iv : undefined,
-        encrypted,
-        readBy: [user.id],
-      },
-    });
+    const [message] = await db.insert(coupleMessages).values({
+      coupleId,
+      senderId: user.id,
+      type: type as typeof messageTypeEnum.enumValues[number],
+      content: encrypted ? content : content.trim(),
+      iv: encrypted ? iv : undefined,
+      encrypted,
+      readBy: [user.id],
+    }).returning();
 
     // Fire-and-forget push notification to partner
     sendChatPushNotification(user.id, coupleId).catch(() => {});
@@ -125,17 +135,15 @@ export async function markAllRead(coupleId: string) {
       return { success: false as const, error: "Forbidden" };
     }
 
-    const result = await prisma.coupleMessage.updateMany({
-      where: {
-        coupleId,
-        NOT: { readBy: { has: user.id } },
-      },
-      data: {
-        readBy: { push: user.id },
-      },
-    });
+    const updated = await db.update(coupleMessages)
+      .set({ readBy: sql`array_append(${coupleMessages.readBy}, ${user.id})` })
+      .where(and(
+        eq(coupleMessages.coupleId, coupleId),
+        sql`NOT (${user.id} = ANY(${coupleMessages.readBy}))`,
+      ))
+      .returning({ id: coupleMessages.id });
 
-    return { success: true as const, data: result };
+    return { success: true as const, data: { count: updated.length } };
   } catch (error) {
     return {
       success: false as const,
@@ -159,14 +167,15 @@ export async function getUnreadCount() {
     const coupleId = await getMemberCoupleId(user.id);
     if (!coupleId) return { success: true as const, data: 0 };
 
-    const count = await prisma.coupleMessage.count({
-      where: {
-        coupleId,
-        NOT: { readBy: { has: user.id } },
-      },
-    });
+    const result = await db.select({ value: count() })
+      .from(coupleMessages)
+      .where(and(
+        eq(coupleMessages.coupleId, coupleId),
+        sql`NOT (${user.id} = ANY(${coupleMessages.readBy}))`,
+      ));
+    const unreadCount = result[0]?.value ?? 0;
 
-    return { success: true as const, data: count };
+    return { success: true as const, data: unreadCount };
   } catch (error) {
     return {
       success: false as const,
@@ -190,10 +199,14 @@ export async function getUnencryptedMessages() {
     const coupleId = await getMemberCoupleId(user.id);
     if (!coupleId) return { success: false as const, error: "No couple found" };
 
-    const messages = await prisma.coupleMessage.findMany({
-      where: { coupleId, senderId: user.id, encrypted: false },
-      select: { id: true, content: true },
-      orderBy: { createdAt: "asc" },
+    const messages = await db.query.coupleMessages.findMany({
+      where: and(
+        eq(coupleMessages.coupleId, coupleId),
+        eq(coupleMessages.senderId, user.id),
+        eq(coupleMessages.encrypted, false),
+      ),
+      columns: { id: true, content: true },
+      orderBy: (t, { asc: a }) => [a(t.createdAt)],
     });
 
     return { success: true as const, data: messages };
@@ -232,19 +245,23 @@ export async function encryptExistingMessages(
     const ids = batch.map((m) => m.id);
 
     // Verify ownership: all messages must belong to this user in this couple
-    const owned = await prisma.coupleMessage.findMany({
-      where: { id: { in: ids }, coupleId, senderId: user.id, encrypted: false },
-      select: { id: true },
+    const owned = await db.query.coupleMessages.findMany({
+      where: and(
+        inArray(coupleMessages.id, ids),
+        eq(coupleMessages.coupleId, coupleId),
+        eq(coupleMessages.senderId, user.id),
+        eq(coupleMessages.encrypted, false),
+      ),
+      columns: { id: true },
     });
     const ownedIds = new Set(owned.map((m) => m.id));
 
     let updated = 0;
     for (const item of batch) {
       if (!ownedIds.has(item.id)) continue;
-      await prisma.coupleMessage.update({
-        where: { id: item.id },
-        data: { content: item.content, iv: item.iv, encrypted: true },
-      });
+      await db.update(coupleMessages)
+        .set({ content: item.content, iv: item.iv, encrypted: true })
+        .where(eq(coupleMessages.id, item.id));
       updated++;
     }
 

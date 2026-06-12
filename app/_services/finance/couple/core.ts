@@ -1,4 +1,6 @@
-import prisma from '@/_lib/prisma';
+import { db } from '@db';
+import { couples, coupleMembers, coupleInvites, users } from '@db/schema';
+import { eq, and, asc, desc, sql } from 'drizzle-orm';
 import { revalidateTag } from 'next/cache';
 import { CACHE_TAGS } from '@/_lib/cache';
 
@@ -10,25 +12,22 @@ import { CACHE_TAGS } from '@/_lib/cache';
  * @returns The newly created couple including its members.
  */
 export async function createCouple(userId: string, name?: string) {
-  const couple = await prisma.couple.create({
-    data: {
-      name: name || null,
-      members: {
-        create: { userId, role: 'OWNER' },
-      },
-    },
-    include: {
-      members: {
-        include: {
-          user: {
-            select: { id: true, name: true, email: true, image: true },
-          },
-        },
-      },
-    },
+  const [couple] = await db.insert(couples).values({ name: name || null }).returning();
+  await db.insert(coupleMembers).values({ coupleId: couple.id, userId, role: 'OWNER' });
+  const members = await db.query.coupleMembers.findMany({
+    where: eq(coupleMembers.coupleId, couple.id),
   });
+  const membersWithUser = await Promise.all(
+    members.map(async (m) => {
+      const user = await db.query.users.findFirst({
+        where: eq(users.id, m.userId),
+        columns: { id: true, name: true, email: true, image: true },
+      });
+      return { ...m, user };
+    })
+  );
   revalidateTag(CACHE_TAGS.COUPLE_MEMBERS);
-  return couple;
+  return { ...couple, members: membersWithUser };
 }
 
 /**
@@ -39,27 +38,35 @@ export async function createCouple(userId: string, name?: string) {
  * @returns The couple record (with members + pending invites) or `null`.
  */
 export async function getCoupleForUser(userId: string) {
-  const membership = await prisma.coupleMember.findFirst({
-    where: { userId },
-    include: {
-      couple: {
-        include: {
-          members: {
-            include: {
-              user: {
-                select: { id: true, name: true, email: true, image: true },
-              },
-            },
-          },
-          invites: {
-            where: { status: 'PENDING' },
-            orderBy: { createdAt: 'desc' },
-          },
-        },
-      },
-    },
+  const membership = await db.query.coupleMembers.findFirst({
+    where: eq(coupleMembers.userId, userId),
+    columns: { coupleId: true },
   });
-  return membership?.couple ?? null;
+  if (!membership) return null;
+
+  const couple = await db.query.couples.findFirst({
+    where: eq(couples.id, membership.coupleId),
+  });
+  if (!couple) return null;
+
+  const members = await db.query.coupleMembers.findMany({
+    where: eq(coupleMembers.coupleId, couple.id),
+  });
+  const membersWithUser = await Promise.all(
+    members.map(async (m) => {
+      const user = await db.query.users.findFirst({
+        where: eq(users.id, m.userId),
+        columns: { id: true, name: true, email: true, image: true },
+      });
+      return { ...m, user };
+    })
+  );
+  const invites = await db.query.coupleInvites.findMany({
+    where: and(eq(coupleInvites.coupleId, couple.id), eq(coupleInvites.status, 'PENDING')),
+    orderBy: desc(coupleInvites.createdAt),
+  });
+
+  return { ...couple, members: membersWithUser, invites };
 }
 
 /**
@@ -69,15 +76,19 @@ export async function getCoupleForUser(userId: string) {
  * @returns Members with their user `id`, `name`, `email`, `image`.
  */
 export async function getCoupleMembers(coupleId: string) {
-  return prisma.coupleMember.findMany({
-    where: { coupleId },
-    include: {
-      user: {
-        select: { id: true, name: true, email: true, image: true },
-      },
-    },
-    orderBy: { joinedAt: 'asc' },
+  const members = await db.query.coupleMembers.findMany({
+    where: eq(coupleMembers.coupleId, coupleId),
+    orderBy: asc(coupleMembers.joinedAt),
   });
+  return Promise.all(
+    members.map(async (m) => {
+      const user = await db.query.users.findFirst({
+        where: eq(users.id, m.userId),
+        columns: { id: true, name: true, email: true, image: true },
+      });
+      return { ...m, user };
+    })
+  );
 }
 
 /**
@@ -89,18 +100,18 @@ export async function getCoupleMembers(coupleId: string) {
  * @throws {Error} when the user is not in a couple.
  */
 export async function leaveCouple(userId: string) {
-  const membership = await prisma.coupleMember.findFirst({
-    where: { userId },
+  const membership = await db.query.coupleMembers.findFirst({
+    where: eq(coupleMembers.userId, userId),
   });
   if (!membership) throw new Error('Not in a couple');
 
-  await prisma.coupleMember.delete({ where: { id: membership.id } });
+  await db.delete(coupleMembers).where(eq(coupleMembers.id, membership.id));
 
-  const remaining = await prisma.coupleMember.count({
-    where: { coupleId: membership.coupleId },
-  });
-  if (remaining === 0) {
-    await prisma.couple.delete({ where: { id: membership.coupleId } });
+  const remaining = await db.select({ count: sql<number>`count(*)` })
+    .from(coupleMembers)
+    .where(eq(coupleMembers.coupleId, membership.coupleId));
+  if (Number(remaining[0]?.count ?? 0) === 0) {
+    await db.delete(couples).where(eq(couples.id, membership.coupleId));
   }
 
   revalidateTag(CACHE_TAGS.COUPLE_MEMBERS);
@@ -117,15 +128,16 @@ export async function leaveCouple(userId: string) {
  * @throws {Error} when the user is not in a couple.
  */
 export async function renameCouple(userId: string, newName: string) {
-  const membership = await prisma.coupleMember.findFirst({
-    where: { userId },
+  const membership = await db.query.coupleMembers.findFirst({
+    where: eq(coupleMembers.userId, userId),
+    columns: { coupleId: true },
   });
   if (!membership) throw new Error('Not in a couple');
 
-  const couple = await prisma.couple.update({
-    where: { id: membership.coupleId },
-    data: { name: newName || null },
-  });
+  const [couple] = await db.update(couples)
+    .set({ name: newName || null })
+    .where(eq(couples.id, membership.coupleId))
+    .returning();
   return couple;
 }
 
@@ -138,12 +150,13 @@ export async function renameCouple(userId: string, newName: string) {
  * @throws {Error} when the user is not in a couple.
  */
 export async function disbandCouple(userId: string) {
-  const membership = await prisma.coupleMember.findFirst({
-    where: { userId },
+  const membership = await db.query.coupleMembers.findFirst({
+    where: eq(coupleMembers.userId, userId),
+    columns: { coupleId: true },
   });
   if (!membership) throw new Error('Not in a couple');
 
-  await prisma.couple.delete({ where: { id: membership.coupleId } });
+  await db.delete(couples).where(eq(couples.id, membership.coupleId));
 
   revalidateTag(CACHE_TAGS.COUPLE_MEMBERS);
 

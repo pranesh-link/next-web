@@ -1,11 +1,17 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
-import { PrismaAdapter } from "@auth/prisma-adapter";
-import { prismaBase } from "@/_lib/prisma";
+import { DrizzleAdapter } from "@auth/drizzle-adapter";
+import { db } from "@db";
+import { users, authAccounts, verificationTokens } from "@db/schema";
+import { eq } from "drizzle-orm";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: {
-    ...PrismaAdapter(prismaBase),
+    ...DrizzleAdapter(db, {
+      usersTable: users,
+      accountsTable: authAccounts,
+      verificationTokensTable: verificationTokens,
+    }),
     // Override createSession to capture deviceInfo from the request context.
     // NextAuth doesn't pass request headers into adapter methods directly, so
     // we stamp it asynchronously after session creation via the session callback.
@@ -40,13 +46,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // is captured separately in the couple layout via the x-ua header set by
       // middleware, since NextAuth events don't expose request headers.
       if (user?.id) {
-        prismaBase.user.update({
-          where: { id: user.id },
-          data: {
+        db.update(users)
+          .set({
             lastSeenAt: new Date(),
             lastDeviceInfo: `web | ${account?.provider ?? 'unknown'}`,
-          },
-        }).catch(() => {});
+          })
+          .where(eq(users.id, user.id))
+          .catch(() => {});
       }
     },
   },

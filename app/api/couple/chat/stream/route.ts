@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { coupleMembers, coupleMessages } from "@db/schema";
+import { eq, and, ne, count as drizzleCount } from "drizzle-orm";
 
 /** SSE streams are capped at 30 s on Vercel Hobby. */
 export const maxDuration = 30;
@@ -17,7 +19,7 @@ export async function GET() {
     return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 });
   }
 
-  const member = await prisma.coupleMember.findFirst({ where: { userId } });
+  const member = await db.query.coupleMembers.findFirst({ where: eq(coupleMembers.userId, userId) });
   if (!member) {
     return NextResponse.json({ success: false, error: "No couple found" }, { status: 404 });
   }
@@ -25,9 +27,9 @@ export async function GET() {
   const { coupleId } = member;
 
   // Find the partner's userId for typing key lookups
-  const partnerMember = await prisma.coupleMember.findFirst({
-    where: { coupleId: member.coupleId, userId: { not: userId } },
-    select: { userId: true },
+  const partnerMember = await db.query.coupleMembers.findFirst({
+    where: and(eq(coupleMembers.coupleId, member.coupleId), ne(coupleMembers.userId, userId)),
+    columns: { userId: true },
   });
   const partnerUserId = partnerMember?.userId ?? null;
 
@@ -40,12 +42,12 @@ export async function GET() {
 
       while (Date.now() < deadline) {
         try {
-          const [count, latest, partnerMemberSnapshot] = await Promise.all([
-            prisma.coupleMessage.count({ where: { coupleId } }),
-            prisma.coupleMessage.findFirst({
-              where: { coupleId },
-              orderBy: { createdAt: "desc" },
-              select: {
+          const [countResult, latest, partnerMemberSnapshot] = await Promise.all([
+            db.select({ value: drizzleCount() }).from(coupleMessages).where(eq(coupleMessages.coupleId, coupleId)),
+            db.query.coupleMessages.findFirst({
+              where: eq(coupleMessages.coupleId, coupleId),
+              orderBy: (t, { desc: d }) => [d(t.createdAt)],
+              columns: {
                 id: true,
                 senderId: true,
                 content: true,
@@ -57,12 +59,13 @@ export async function GET() {
               },
             }),
             partnerUserId
-              ? prisma.coupleMember.findFirst({
-                  where: { coupleId, userId: partnerUserId },
-                  select: { typingAt: true },
+              ? db.query.coupleMembers.findFirst({
+                  where: and(eq(coupleMembers.coupleId, coupleId), eq(coupleMembers.userId, partnerUserId)),
+                  columns: { typingAt: true },
                 })
               : Promise.resolve(null),
           ]);
+          const count = Number(countResult[0]?.value ?? 0);
 
           const TYPING_TTL_MS = 6_000;
           const isTyping =

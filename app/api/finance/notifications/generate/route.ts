@@ -1,5 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import {
+  users,
+  coupleMembers,
+  budgets,
+  transactions,
+  notifications,
+  investmentHoldings,
+  depositInstallments,
+  depositInstruments,
+} from "@db/schema";
+import { eq, and, inArray, gte, lte, lt, sum } from "drizzle-orm";
 import { sendPushToUser } from "@/_services/finance/push-service";
 
 /** Current month string in "YYYY-MM" format. */
@@ -27,51 +38,56 @@ async function generateBudgetAlerts(
   monthStart: Date,
   monthEnd: Date
 ): Promise<number> {
-  const [budgets, spentGroups] = await Promise.all([
-    prisma.budget.findMany({
-      where: { userId: { in: coupleUserIds }, month },
+  const [budgetRows, spentGroups] = await Promise.all([
+    db.query.budgets.findMany({
+      where: and(inArray(budgets.userId, coupleUserIds), eq(budgets.month, month)),
     }),
-    prisma.transaction.groupBy({
-      by: ["category"] as const,
-      where: {
-        userId: { in: coupleUserIds },
-        type: "EXPENSE" as const,
-        date: { gte: monthStart, lt: monthEnd },
-      },
-      _sum: { amount: true },
-    }),
+    db
+      .select({ category: transactions.category, total: sum(transactions.amount) })
+      .from(transactions)
+      .where(
+        and(
+          inArray(transactions.userId, coupleUserIds),
+          eq(transactions.type, "EXPENSE"),
+          gte(transactions.date, monthStart),
+          lt(transactions.date, monthEnd),
+        ),
+      )
+      .groupBy(transactions.category),
   ]);
 
   const spentMap = new Map<string, number>(
-    spentGroups.map((g) => [g.category, g._sum.amount ?? 0])
+    spentGroups.map((g) => [g.category, Number(g.total ?? 0)])
   );
 
   let created = 0;
-  for (const budget of budgets) {
+  for (const budget of budgetRows) {
     const spent = spentMap.get(budget.category) ?? 0;
     const pct = budget.limit > 0 ? (spent / budget.limit) * 100 : 0;
     if (pct < 80) continue;
 
     // Dedup: one alert per budget per month
     const featureId = `${budget.id}:${month}`;
-    const existing = await prisma.notification.findFirst({
-      where: { userId, type: "BUDGET_ALERT", featureId },
+    const existing = await db.query.notifications.findFirst({
+      where: and(
+        eq(notifications.userId, userId),
+        eq(notifications.type, "BUDGET_ALERT"),
+        eq(notifications.featureId, featureId),
+      ),
     });
     if (existing) continue;
 
-    await prisma.notification.create({
-      data: {
-        userId,
-        type: "BUDGET_ALERT",
-        featureId,
-        payload: {
-          budgetId: budget.id,
-          category: budget.category,
-          limit: budget.limit,
-          spent,
-          pct: Math.round(pct),
-          month,
-        },
+    await db.insert(notifications).values({
+      userId,
+      type: "BUDGET_ALERT",
+      featureId,
+      payload: {
+        budgetId: budget.id,
+        category: budget.category,
+        limit: budget.limit,
+        spent,
+        pct: Math.round(pct),
+        month,
       },
     });
     created++;
@@ -94,34 +110,37 @@ async function generateSipReminders(
 ): Promise<number> {
   const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
 
-  const sipHoldings = await prisma.investmentHolding.findMany({
-    where: {
-      userId: { in: coupleUserIds },
-      mode: "SIP",
-      nextSipDate: { gte: now, lte: threeDaysFromNow },
-    },
+  const sipHoldings = await db.query.investmentHoldings.findMany({
+    where: and(
+      inArray(investmentHoldings.userId, coupleUserIds),
+      eq(investmentHoldings.mode, "SIP"),
+      gte(investmentHoldings.nextSipDate, now),
+      lte(investmentHoldings.nextSipDate, threeDaysFromNow),
+    ),
   });
 
   let created = 0;
   for (const holding of sipHoldings) {
     if (!holding.nextSipDate) continue;
-    const featureId = `${holding.id}:${holding.nextSipDate.toISOString().slice(0, 10)}`;
-    const existing = await prisma.notification.findFirst({
-      where: { userId, type: "SIP_REMINDER", featureId },
+    const featureId = `${holding.id}:${String(holding.nextSipDate).slice(0, 10)}`;
+    const existing = await db.query.notifications.findFirst({
+      where: and(
+        eq(notifications.userId, userId),
+        eq(notifications.type, "SIP_REMINDER"),
+        eq(notifications.featureId, featureId),
+      ),
     });
     if (existing) continue;
 
-    await prisma.notification.create({
-      data: {
-        userId,
-        type: "SIP_REMINDER",
-        featureId,
-        payload: {
-          holdingId: holding.id,
-          name: holding.name,
-          sipAmount: holding.sipAmount,
-          nextSipDate: holding.nextSipDate.toISOString().slice(0, 10),
-        },
+    await db.insert(notifications).values({
+      userId,
+      type: "SIP_REMINDER",
+      featureId,
+      payload: {
+        holdingId: holding.id,
+        name: holding.name,
+        sipAmount: holding.sipAmount,
+        nextSipDate: String(holding.nextSipDate).slice(0, 10),
       },
     });
     created++;
@@ -144,36 +163,45 @@ async function generateDepositReminders(
 ): Promise<number> {
   const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
 
-  const pendingInstallments = await prisma.depositInstallment.findMany({
-    where: {
-      status: "PENDING",
-      dueDate: { gte: now, lte: threeDaysFromNow },
-      deposit: { userId: { in: coupleUserIds } },
-    },
-    include: {
-      deposit: { select: { name: true, userId: true } },
-    },
-  });
+  const pendingInstallments = await db
+    .select({
+      id: depositInstallments.id,
+      amount: depositInstallments.amount,
+      dueDate: depositInstallments.dueDate,
+      depositName: depositInstruments.name,
+    })
+    .from(depositInstallments)
+    .innerJoin(depositInstruments, eq(depositInstallments.depositId, depositInstruments.id))
+    .where(
+      and(
+        eq(depositInstallments.status, "PENDING"),
+        gte(depositInstallments.dueDate, now),
+        lte(depositInstallments.dueDate, threeDaysFromNow),
+        inArray(depositInstruments.userId, coupleUserIds),
+      ),
+    );
 
   let created = 0;
   for (const installment of pendingInstallments) {
-    const featureId = `${installment.id}:${installment.dueDate.toISOString().slice(0, 10)}`;
-    const existing = await prisma.notification.findFirst({
-      where: { userId, type: "DEPOSIT_REMINDER", featureId },
+    const featureId = `${installment.id}:${String(installment.dueDate).slice(0, 10)}`;
+    const existing = await db.query.notifications.findFirst({
+      where: and(
+        eq(notifications.userId, userId),
+        eq(notifications.type, "DEPOSIT_REMINDER"),
+        eq(notifications.featureId, featureId),
+      ),
     });
     if (existing) continue;
 
-    await prisma.notification.create({
-      data: {
-        userId,
-        type: "DEPOSIT_REMINDER",
-        featureId,
-        payload: {
-          installmentId: installment.id,
-          depositName: installment.deposit.name,
-          amount: installment.amount,
-          dueDate: installment.dueDate.toISOString().slice(0, 10),
-        },
+    await db.insert(notifications).values({
+      userId,
+      type: "DEPOSIT_REMINDER",
+      featureId,
+      payload: {
+        installmentId: installment.id,
+        depositName: installment.depositName,
+        amount: installment.amount,
+        dueDate: String(installment.dueDate).slice(0, 10),
       },
     });
     created++;
@@ -203,33 +231,34 @@ export async function GET(request: NextRequest) {
   const monthStart = new Date(year, m - 1, 1);
   const monthEnd = new Date(year, m, 1);
 
-  // Get all users with their couple members
-  const users = await prisma.user.findMany({
-    select: {
-      id: true,
-      coupleMembers: {
-        select: {
-          couple: {
-            select: {
-              members: { select: { userId: true } },
-            },
-          },
-        },
-      },
-    },
-  });
+  // Get all users and couple memberships upfront for efficient couple resolution
+  const allUsers = await db.select({ id: users.id }).from(users);
+  const allCoupleMembers = await db
+    .select({ coupleId: coupleMembers.coupleId, userId: coupleMembers.userId })
+    .from(coupleMembers);
+
+  // Build lookup maps: coupleId → [userIds], userId → [coupleIds]
+  const coupleIdToUserIds = new Map<string, string[]>();
+  const userIdToCoupleIds = new Map<string, string[]>();
+  for (const m of allCoupleMembers) {
+    if (!coupleIdToUserIds.has(m.coupleId)) coupleIdToUserIds.set(m.coupleId, []);
+    coupleIdToUserIds.get(m.coupleId)!.push(m.userId);
+    if (!userIdToCoupleIds.has(m.userId)) userIdToCoupleIds.set(m.userId, []);
+    userIdToCoupleIds.get(m.userId)!.push(m.coupleId);
+  }
 
   let totalCreated = 0;
 
-  for (const user of users) {
+  for (const user of allUsers) {
     // Resolve couple user IDs (self + partner)
-    const coupleUserIds = new Set<string>([user.id]);
-    for (const membership of user.coupleMembers) {
-      for (const member of membership.couple.members) {
-        coupleUserIds.add(member.userId);
+    const coupleUserIdSet = new Set<string>([user.id]);
+    const userCoupleIds = userIdToCoupleIds.get(user.id) ?? [];
+    for (const coupleId of userCoupleIds) {
+      for (const memberId of coupleIdToUserIds.get(coupleId) ?? []) {
+        coupleUserIdSet.add(memberId);
       }
     }
-    const ids = Array.from(coupleUserIds);
+    const ids = Array.from(coupleUserIdSet);
 
     const [budgetCount, sipCount, depositCount] = await Promise.all([
       generateBudgetAlerts(user.id, ids, month, monthStart, monthEnd),

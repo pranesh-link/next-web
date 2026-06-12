@@ -1,6 +1,8 @@
 import { NextResponse, NextRequest } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { budgetPlans, users } from "@db/schema";
+import { and, eq, isNull, desc } from "drizzle-orm";
 import { budgetPlanSchema } from "@/_lib/validations/finance";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 import { getCoupleIdForUser } from "@/_services/finance/couple-service";
@@ -33,15 +35,39 @@ export async function GET(request: NextRequest) {
 
     const coupleId = await getCoupleIdForUser(userId);
 
-    const plan = await prisma.budgetPlan.findFirst({
-      where: coupleId
-        ? { coupleId, monthAndYear, mode }
-        : { userId, coupleId: null, monthAndYear, mode },
-      include: {
-        lastUpdatedBy: { select: { id: true, name: true, email: true } },
-      },
-      orderBy: { updatedAt: "desc" },
-    });
+    const planRows = await db
+      .select({
+        id: budgetPlans.id,
+        userId: budgetPlans.userId,
+        monthAndYear: budgetPlans.monthAndYear,
+        mode: budgetPlans.mode,
+        income: budgetPlans.income,
+        lineItems: budgetPlans.lineItems,
+        coupleId: budgetPlans.coupleId,
+        lastUpdatedById: budgetPlans.lastUpdatedById,
+        createdAt: budgetPlans.createdAt,
+        updatedAt: budgetPlans.updatedAt,
+        lastUpdatedBy: { id: users.id, name: users.name, email: users.email },
+      })
+      .from(budgetPlans)
+      .leftJoin(users, eq(budgetPlans.lastUpdatedById, users.id))
+      .where(
+        coupleId
+          ? and(
+              eq(budgetPlans.coupleId, coupleId),
+              eq(budgetPlans.monthAndYear, monthAndYear),
+              eq(budgetPlans.mode, mode),
+            )
+          : and(
+              eq(budgetPlans.userId, userId),
+              isNull(budgetPlans.coupleId),
+              eq(budgetPlans.monthAndYear, monthAndYear),
+              eq(budgetPlans.mode, mode),
+            ),
+      )
+      .orderBy(desc(budgetPlans.updatedAt))
+      .limit(1);
+    const plan = planRows[0] ?? null;
 
     return NextResponse.json(
       { success: true, data: plan },
@@ -73,42 +99,64 @@ export async function POST(request: Request) {
     const validated = budgetPlanSchema.parse(body);
     const coupleId = await getCoupleIdForUser(userId);
 
-    const existing = await prisma.budgetPlan.findFirst({
-      where: coupleId
-        ? { coupleId, monthAndYear: validated.monthAndYear, mode: validated.mode }
-        : { userId, coupleId: null, monthAndYear: validated.monthAndYear, mode: validated.mode },
-      orderBy: { updatedAt: "desc" },
-      select: { id: true },
-    });
+    const existingRows = await db
+      .select({ id: budgetPlans.id })
+      .from(budgetPlans)
+      .where(
+        coupleId
+          ? and(
+              eq(budgetPlans.coupleId, coupleId),
+              eq(budgetPlans.monthAndYear, validated.monthAndYear),
+              eq(budgetPlans.mode, validated.mode),
+            )
+          : and(
+              eq(budgetPlans.userId, userId),
+              isNull(budgetPlans.coupleId),
+              eq(budgetPlans.monthAndYear, validated.monthAndYear),
+              eq(budgetPlans.mode, validated.mode),
+            ),
+      )
+      .orderBy(desc(budgetPlans.updatedAt))
+      .limit(1);
+    const existing = existingRows[0] ?? null;
 
-    const plan = existing
-      ? await prisma.budgetPlan.update({
-          where: { id: existing.id },
-          data: {
-            income: validated.income,
-            lineItems: validated.lineItems,
-            mode: validated.mode,
-            lastUpdatedById: userId,
-            ...(coupleId ? { coupleId } : {}),
-          },
-          include: {
-            lastUpdatedBy: { select: { id: true, name: true, email: true } },
-          },
+    let planRow;
+    if (existing) {
+      const [updated] = await db
+        .update(budgetPlans)
+        .set({
+          income: validated.income,
+          lineItems: validated.lineItems,
+          mode: validated.mode,
+          lastUpdatedById: userId,
+          ...(coupleId ? { coupleId } : {}),
         })
-      : await prisma.budgetPlan.create({
-          data: {
-            userId,
-            monthAndYear: validated.monthAndYear,
-            income: validated.income,
-            mode: validated.mode,
-            lineItems: validated.lineItems,
-            lastUpdatedById: userId,
-            ...(coupleId ? { coupleId } : {}),
-          },
-          include: {
-            lastUpdatedBy: { select: { id: true, name: true, email: true } },
-          },
-        });
+        .where(eq(budgetPlans.id, existing.id))
+        .returning();
+      planRow = updated;
+    } else {
+      const [created] = await db
+        .insert(budgetPlans)
+        .values({
+          userId,
+          monthAndYear: validated.monthAndYear,
+          income: validated.income,
+          mode: validated.mode,
+          lineItems: validated.lineItems,
+          lastUpdatedById: userId,
+          ...(coupleId ? { coupleId } : {}),
+        })
+        .returning();
+      planRow = created;
+    }
+
+    const lastUser = planRow.lastUpdatedById
+      ? await db.query.users.findFirst({
+          where: eq(users.id, planRow.lastUpdatedById),
+          columns: { id: true, name: true, email: true },
+        })
+      : null;
+    const plan = { ...planRow, lastUpdatedBy: lastUser ?? null };
 
     return NextResponse.json(
       { success: true, data: plan },

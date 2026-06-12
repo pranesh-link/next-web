@@ -1,5 +1,7 @@
 import { sendPushToUser } from "@/_services/finance/push-service";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { coupleMembers, users } from "@db/schema";
+import { and, eq, ne } from "drizzle-orm";
 
 /**
  * Sends an FCM push notification to the sender's partner when a new chat
@@ -14,16 +16,16 @@ export async function sendChatPushNotification(
 ): Promise<void> {
   try {
     // Find partner
-    const partner = await prisma.coupleMember.findFirst({
-      where: { coupleId, userId: { not: senderId } },
-      select: { userId: true },
+    const partner = await db.query.coupleMembers.findFirst({
+      where: and(eq(coupleMembers.coupleId, coupleId), ne(coupleMembers.userId, senderId)),
+      columns: { userId: true },
     });
     if (!partner) return;
 
     // Get sender name for notification title
-    const sender = await prisma.user.findUnique({
-      where: { id: senderId },
-      select: { name: true },
+    const sender = await db.query.users.findFirst({
+      where: eq(users.id, senderId),
+      columns: { name: true },
     });
 
     await sendPushToUser(partner.userId, sender?.name ?? "Partner", "New message", {

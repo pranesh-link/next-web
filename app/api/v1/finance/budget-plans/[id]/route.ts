@@ -1,6 +1,8 @@
 import { NextResponse, NextRequest } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { budgetPlans, users } from "@db/schema";
+import { and, eq, isNull } from "drizzle-orm";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 import { getCoupleIdForUser } from "@/_services/finance/couple-service";
 
@@ -25,10 +27,10 @@ export async function PUT(
     const { id } = await params;
     const coupleId = await getCoupleIdForUser(userId);
 
-    const existing = await prisma.budgetPlan.findFirst({
+    const existing = await db.query.budgetPlans.findFirst({
       where: coupleId
-        ? { id, coupleId }
-        : { id, userId, coupleId: null },
+        ? and(eq(budgetPlans.id, id), eq(budgetPlans.coupleId, coupleId))
+        : and(eq(budgetPlans.id, id), eq(budgetPlans.userId, userId), isNull(budgetPlans.coupleId)),
     });
 
     if (!existing) {
@@ -39,18 +41,24 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const plan = await prisma.budgetPlan.update({
-      where: { id },
-      data: {
+    const [planRow] = await db
+      .update(budgetPlans)
+      .set({
         ...(body.income !== undefined && { income: body.income }),
         ...(body.lineItems !== undefined && { lineItems: body.lineItems }),
         ...(body.mode !== undefined && { mode: body.mode }),
         lastUpdatedById: userId,
-      },
-      include: {
-        lastUpdatedBy: { select: { id: true, name: true, email: true } },
-      },
-    });
+      })
+      .where(eq(budgetPlans.id, id))
+      .returning();
+
+    const lastUser = planRow.lastUpdatedById
+      ? await db.query.users.findFirst({
+          where: eq(users.id, planRow.lastUpdatedById),
+          columns: { id: true, name: true, email: true },
+        })
+      : null;
+    const plan = { ...planRow, lastUpdatedBy: lastUser ?? null };
 
     return NextResponse.json(
       { success: true, data: plan },
@@ -84,10 +92,10 @@ export async function DELETE(
     const { id } = await params;
     const coupleId = await getCoupleIdForUser(userId);
 
-    const existing = await prisma.budgetPlan.findFirst({
+    const existing = await db.query.budgetPlans.findFirst({
       where: coupleId
-        ? { id, coupleId }
-        : { id, userId, coupleId: null },
+        ? and(eq(budgetPlans.id, id), eq(budgetPlans.coupleId, coupleId))
+        : and(eq(budgetPlans.id, id), eq(budgetPlans.userId, userId), isNull(budgetPlans.coupleId)),
     });
 
     if (!existing) {
@@ -97,7 +105,7 @@ export async function DELETE(
       );
     }
 
-    await prisma.budgetPlan.delete({ where: { id } });
+    await db.delete(budgetPlans).where(eq(budgetPlans.id, id));
 
     return NextResponse.json(
       { success: true },

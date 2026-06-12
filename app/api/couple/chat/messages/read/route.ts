@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { coupleMembers, coupleMessages } from "@db/schema";
+import { eq, and, ne, sql } from "drizzle-orm";
 
 /**
  * POST — Mark all unread messages from the partner as read by the current user.
@@ -15,20 +17,19 @@ export async function POST() {
       return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 });
     }
 
-    const member = await prisma.coupleMember.findFirst({ where: { userId } });
+    const member = await db.query.coupleMembers.findFirst({ where: eq(coupleMembers.userId, userId) });
     if (!member) {
       return NextResponse.json({ success: false, error: "No couple found" }, { status: 404 });
     }
 
     // Find messages sent by partner that the current user hasn't read
-    const unreadMessages = await prisma.coupleMessage.findMany({
-      where: {
-        coupleId: member.coupleId,
-        senderId: { not: userId },
-        NOT: { readBy: { has: userId } },
-      },
-      select: { id: true, readBy: true },
-    });
+    const unreadMessages = await db.select({ id: coupleMessages.id, readBy: coupleMessages.readBy })
+      .from(coupleMessages)
+      .where(and(
+        eq(coupleMessages.coupleId, member.coupleId),
+        ne(coupleMessages.senderId, userId),
+        sql`NOT (${userId} = ANY(${coupleMessages.readBy}))`,
+      ));
 
     if (unreadMessages.length === 0) {
       return NextResponse.json({ success: true, updated: 0 });
@@ -37,10 +38,9 @@ export async function POST() {
     // Update each message to add current user to readBy array
     await Promise.all(
       unreadMessages.map((msg) =>
-        prisma.coupleMessage.update({
-          where: { id: msg.id },
-          data: { readBy: [...msg.readBy, userId] },
-        })
+        db.update(coupleMessages)
+          .set({ readBy: [...msg.readBy, userId] })
+          .where(eq(coupleMessages.id, msg.id))
       )
     );
 

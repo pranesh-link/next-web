@@ -1,4 +1,5 @@
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { appErrors } from "@db/schema";
 
 /**
  * Fire-and-forget error logger. Writes a row to app_errors.
@@ -29,18 +30,16 @@ export function logApiError({
         : `HTTP ${statusCode}`;
   const stack = error instanceof Error ? (error.stack ?? null) : null;
 
-  prisma.appError
-    .create({
-      data: {
-        userId: userId ?? null,
-        route,
-        method,
-        statusCode,
-        message,
-        stack,
-        platform: platform ?? null,
-        appVersion: appVersion ?? null,
-      },
+  db.insert(appErrors)
+    .values({
+      userId: userId ?? null,
+      route,
+      method,
+      statusCode,
+      message,
+      stack,
+      platform: platform ?? null,
+      appVersion: appVersion ?? null,
     })
     .catch(() => {
       // Silently swallow — error logging must never break the API

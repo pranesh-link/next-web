@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/_lib/auth";
-import { prisma } from "@/_lib/prisma";
+import { db } from "@db";
+import { habits, habitLogs } from "@db/schema";
+import { eq, and, inArray, asc } from "drizzle-orm";
 import {
   getCoupleIdForUser,
   getUserIdsForCouple,
@@ -15,10 +17,10 @@ export type HabitLogRow = {
   id: string;
   habitId: string;
   userId: string;
-  loggedOn: Date;
+  loggedOn: string;
   completed: boolean;
   note: string | null;
-  createdAt: Date;
+  createdAt: Date | string;
 };
 
 /** Exported shape of a Habit row with today's logs included. */
@@ -71,20 +73,23 @@ export async function getHabits(): Promise<HabitWithTodayLog[]> {
   const coupleUserIds = await getUserIdsForCouple(userId);
 
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
-  return prisma.habit.findMany({
-    where: {
-      userId: { in: coupleUserIds },
-      isActive: true,
-    },
-    include: {
-      logs: {
-        where: { loggedOn: today },
-      },
-    },
-    orderBy: { createdAt: "asc" },
-  }) as Promise<HabitWithTodayLog[]>;
+  const habitsList = await db.query.habits.findMany({
+    where: and(inArray(habits.userId, coupleUserIds), eq(habits.isActive, true)),
+    orderBy: [asc(habits.createdAt)],
+  });
+  if (habitsList.length === 0) return [];
+
+  const habitIds = habitsList.map((h) => h.id);
+  const todayLogs = await db.query.habitLogs.findMany({
+    where: and(inArray(habitLogs.habitId, habitIds), eq(habitLogs.loggedOn, todayStr)),
+  });
+
+  return habitsList.map((h) => ({
+    ...h,
+    logs: todayLogs.filter((l) => l.habitId === h.id),
+  })) as HabitWithTodayLog[];
 }
 
 /**
@@ -99,19 +104,19 @@ export async function createHabit(
 ): Promise<HabitWithTodayLog> {
   const userId = await requireUserId();
   const coupleId = await getCoupleIdForUser(userId);
-  const habit = await prisma.habit.create({
-    data: {
+  const [habit] = await db
+    .insert(habits)
+    .values({
       userId,
       ...(coupleId ? { coupleId } : {}),
       name: data.name,
       description: data.description ?? null,
       targetDays: data.targetDays ?? 7,
       isShared: data.isShared ?? false,
-    },
-    include: { logs: true },
-  });
+    })
+    .returning();
   revalidatePath(HABITS_PATH);
-  return habit as HabitWithTodayLog;
+  return { ...habit, logs: [] } as HabitWithTodayLog;
 }
 
 /**
@@ -130,19 +135,18 @@ export async function toggleHabitLog(
 ): Promise<void> {
   const userId = await requireUserId();
 
-  const loggedOn = new Date(date);
-  loggedOn.setHours(0, 0, 0, 0);
-
-  const existing = await prisma.habitLog.findFirst({
-    where: { habitId, userId, loggedOn },
+  const existing = await db.query.habitLogs.findFirst({
+    where: and(
+      eq(habitLogs.habitId, habitId),
+      eq(habitLogs.userId, userId),
+      eq(habitLogs.loggedOn, date),
+    ),
   });
 
   if (existing) {
-    await prisma.habitLog.delete({ where: { id: existing.id } });
+    await db.delete(habitLogs).where(eq(habitLogs.id, existing.id));
   } else {
-    await prisma.habitLog.create({
-      data: { habitId, userId, loggedOn },
-    });
+    await db.insert(habitLogs).values({ habitId, userId, loggedOn: date });
   }
 
   revalidatePath(HABITS_PATH);
@@ -158,8 +162,10 @@ export async function toggleHabitLog(
  */
 export async function archiveHabit(id: string): Promise<void> {
   const userId = await requireUserId();
-  const habit = await prisma.habit.findFirst({ where: { id, userId } });
+  const habit = await db.query.habits.findFirst({
+    where: and(eq(habits.id, id), eq(habits.userId, userId)),
+  });
   if (!habit) throw new Error("Habit not found");
-  await prisma.habit.update({ where: { id }, data: { isActive: false } });
+  await db.update(habits).set({ isActive: false }).where(eq(habits.id, id));
   revalidatePath(HABITS_PATH);
 }

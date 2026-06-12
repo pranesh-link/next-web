@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { savingsGoals } from "@db/schema";
+import { and, eq, inArray } from "drizzle-orm";
 import { goalSchema } from "@/_lib/validations/finance";
 import { calculateGoalProgress } from "@/_services/finance";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
@@ -28,8 +30,8 @@ async function getHandler(_request: NextRequest, context: RouteContext) {
     const coupleUserIds = await getUserIdsForCouple(userId);
     const { id } = await context.params;
 
-    const goal = await prisma.savingsGoal.findFirst({
-      where: { id, userId: { in: coupleUserIds } },
+    const goal = await db.query.savingsGoals.findFirst({
+      where: and(eq(savingsGoals.id, id), inArray(savingsGoals.userId, coupleUserIds)),
     });
 
     if (!goal) {
@@ -81,8 +83,8 @@ async function putHandler(request: NextRequest, context: RouteContext) {
     const coupleUserIds = await getUserIdsForCouple(userId);
     const { id } = await context.params;
 
-    const existing = await prisma.savingsGoal.findFirst({
-      where: { id, userId: { in: coupleUserIds } },
+    const existing = await db.query.savingsGoals.findFirst({
+      where: and(eq(savingsGoals.id, id), inArray(savingsGoals.userId, coupleUserIds)),
     });
 
     if (!existing) {
@@ -102,15 +104,12 @@ async function putHandler(request: NextRequest, context: RouteContext) {
 
     const validated = goalSchema.parse(merged);
 
-    const goal = await prisma.savingsGoal.update({
-      where: { id },
-      data: {
-        name: validated.name,
-        targetAmount: validated.targetAmount,
-        currentAmount: validated.currentAmount,
-        deadline: validated.deadline,
-      },
-    });
+    const [goal] = await db.update(savingsGoals).set({
+      name: validated.name,
+      targetAmount: validated.targetAmount,
+      currentAmount: validated.currentAmount,
+      deadline: validated.deadline,
+    }).where(eq(savingsGoals.id, id)).returning();
 
     await CacheInvalidation.onGoalChange(userId);
 
@@ -151,18 +150,18 @@ async function deleteHandler(_request: NextRequest, context: RouteContext) {
     const coupleUserIds = await getUserIdsForCouple(userId);
     const { id } = await context.params;
 
-    const existing = await prisma.savingsGoal.findFirst({
-      where: { id, userId: { in: coupleUserIds } },
+    const existing2 = await db.query.savingsGoals.findFirst({
+      where: and(eq(savingsGoals.id, id), inArray(savingsGoals.userId, coupleUserIds)),
     });
 
-    if (!existing) {
+    if (!existing2) {
       return NextResponse.json(
         { success: false, error: "Goal not found" },
         { status: 404, headers: corsHeaders() },
       );
     }
 
-    await prisma.savingsGoal.delete({ where: { id } });
+    await db.delete(savingsGoals).where(eq(savingsGoals.id, id));
 
     await CacheInvalidation.onGoalChange(userId);
 

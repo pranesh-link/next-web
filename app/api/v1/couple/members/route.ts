@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { coupleMembers, users } from "@db/schema";
+import { eq, inArray } from "drizzle-orm";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 
 export async function OPTIONS() {
@@ -22,20 +24,32 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: corsHeaders() });
   }
 
-  const membership = await prisma.coupleMember.findFirst({
-    where: { userId },
-    include: { couple: { include: { members: { include: { user: { select: { id: true, name: true, email: true } } } } } } },
+  const membership = await db.query.coupleMembers.findFirst({
+    where: eq(coupleMembers.userId, userId),
   });
 
   if (!membership) {
     return NextResponse.json([], { headers: corsHeaders() });
   }
 
-  const members = membership.couple.members.map((m) => ({
-    id: m.user.id,
-    name: m.user.name,
-    email: m.user.email,
+  const members = await db.query.coupleMembers.findMany({
+    where: eq(coupleMembers.coupleId, membership.coupleId),
+  });
+
+  const memberUserIds = members.map((m) => m.userId);
+  const memberUsers =
+    memberUserIds.length > 0
+      ? await db
+          .select({ id: users.id, name: users.name, email: users.email })
+          .from(users)
+          .where(inArray(users.id, memberUserIds))
+      : [];
+
+  const result = memberUsers.map((u) => ({
+    id: u.id,
+    name: u.name,
+    email: u.email,
   }));
 
-  return NextResponse.json(members, { headers: corsHeaders() });
+  return NextResponse.json(result, { headers: corsHeaders() });
 }

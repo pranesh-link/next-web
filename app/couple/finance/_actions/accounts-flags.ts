@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath, unstable_noStore as noStore } from "next/cache";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { financialAccounts } from "@db/schema";
+import { eq, and, inArray, count } from "drizzle-orm";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { getUserIdsForCouple } from "@/_services/finance/couple-service";
 import { invalidateAfterAccountChange } from "@/_lib/cache";
@@ -21,24 +23,31 @@ export async function setSalaryAccount(accountId: string) {
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
 
-    const existing = await prisma.financialAccount.findFirst({
-      where: { id: accountId, userId: { in: coupleUserIds } },
+    const existing = await db.query.financialAccounts.findFirst({
+      where: and(eq(financialAccounts.id, accountId), inArray(financialAccounts.userId, coupleUserIds)),
     });
 
     if (!existing) {
       return { success: false as const, error: "Account not found" };
     }
 
-    const updatedAccount = await prisma.$transaction(async (tx) => {
-      await tx.financialAccount.updateMany({
-        where: { userId: { in: coupleUserIds }, isSalaryAccount: true },
-        data: { isSalaryAccount: false },
-      });
+    const updatedAccount = await db.transaction(async (tx) => {
+      await tx
+        .update(financialAccounts)
+        .set({ isSalaryAccount: false })
+        .where(
+          and(
+            inArray(financialAccounts.userId, coupleUserIds),
+            eq(financialAccounts.isSalaryAccount, true),
+          ),
+        );
 
-      return tx.financialAccount.update({
-        where: { id: accountId },
-        data: { isSalaryAccount: true },
-      });
+      const [account] = await tx
+        .update(financialAccounts)
+        .set({ isSalaryAccount: true })
+        .where(eq(financialAccounts.id, accountId))
+        .returning();
+      return account;
     });
 
     invalidateAfterAccountChange();
@@ -68,18 +77,19 @@ export async function togglePinAccount(accountId: string) {
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
 
-    const existing = await prisma.financialAccount.findFirst({
-      where: { id: accountId, userId: { in: coupleUserIds } },
+    const existing = await db.query.financialAccounts.findFirst({
+      where: and(eq(financialAccounts.id, accountId), inArray(financialAccounts.userId, coupleUserIds)),
     });
 
     if (!existing) {
       return { success: false as const, error: "Account not found" };
     }
 
-    const account = await prisma.financialAccount.update({
-      where: { id: accountId },
-      data: { isPinned: !existing.isPinned },
-    });
+    const [account] = await db
+      .update(financialAccounts)
+      .set({ isPinned: !existing.isPinned })
+      .where(eq(financialAccounts.id, accountId))
+      .returning();
 
     invalidateAfterAccountChange();
     revalidatePath("/couple/finance");
@@ -108,8 +118,8 @@ export async function setEmergencyFundAccount(accountId: string) {
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
 
-    const existing = await prisma.financialAccount.findFirst({
-      where: { id: accountId, userId: { in: coupleUserIds } },
+    const existing = await db.query.financialAccounts.findFirst({
+      where: and(eq(financialAccounts.id, accountId), inArray(financialAccounts.userId, coupleUserIds)),
     });
 
     if (!existing) {
@@ -120,17 +130,24 @@ export async function setEmergencyFundAccount(accountId: string) {
       return { success: false as const, error: "Already tagged as emergency fund" };
     }
 
-    const efCount = await prisma.financialAccount.count({
-      where: { userId: { in: coupleUserIds }, isEmergencyFund: true },
-    });
+    const [{ efCount }] = await db
+      .select({ efCount: count() })
+      .from(financialAccounts)
+      .where(
+        and(
+          inArray(financialAccounts.userId, coupleUserIds),
+          eq(financialAccounts.isEmergencyFund, true),
+        ),
+      );
     if (efCount >= 2) {
       return { success: false as const, error: "Maximum 2 emergency fund accounts allowed" };
     }
 
-    const account = await prisma.financialAccount.update({
-      where: { id: accountId },
-      data: { isEmergencyFund: true },
-    });
+    const [account] = await db
+      .update(financialAccounts)
+      .set({ isEmergencyFund: true })
+      .where(eq(financialAccounts.id, accountId))
+      .returning();
 
     invalidateAfterAccountChange();
     revalidatePath("/couple/finance");
@@ -159,18 +176,19 @@ export async function unsetEmergencyFundAccount(accountId: string) {
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
 
-    const existing = await prisma.financialAccount.findFirst({
-      where: { id: accountId, userId: { in: coupleUserIds } },
+    const existing = await db.query.financialAccounts.findFirst({
+      where: and(eq(financialAccounts.id, accountId), inArray(financialAccounts.userId, coupleUserIds)),
     });
 
     if (!existing) {
       return { success: false as const, error: "Account not found" };
     }
 
-    const account = await prisma.financialAccount.update({
-      where: { id: accountId },
-      data: { isEmergencyFund: false },
-    });
+    const [account] = await db
+      .update(financialAccounts)
+      .set({ isEmergencyFund: false })
+      .where(eq(financialAccounts.id, accountId))
+      .returning();
 
     invalidateAfterAccountChange();
     revalidatePath("/couple/finance");

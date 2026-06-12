@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { appConfig } from "@db/schema";
+import { eq } from "drizzle-orm";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 
 export async function OPTIONS() {
@@ -17,23 +19,24 @@ export async function OPTIONS() {
  */
 export async function GET() {
   try {
-    let config = await prisma.appConfig.findUnique({
-      where: { id: "singleton" },
+    let config = await db.query.appConfig.findFirst({
+      where: eq(appConfig.id, "singleton"),
     });
 
     if (!config) {
       // Auto-create the singleton row if it doesn't exist yet.
-      config = await prisma.appConfig.upsert({
-        where: { id: "singleton" },
-        create: {
+      const [created] = await db
+        .insert(appConfig)
+        .values({
           id: "singleton",
           minAppVersion: "1.0.0",
           enabledFeatures: ["finance", "chat"],
           maintenanceMode: false,
           maintenanceMessage: "",
-        },
-        update: {},
-      });
+        })
+        .onConflictDoNothing()
+        .returning();
+      config = created;
     }
 
     return NextResponse.json(

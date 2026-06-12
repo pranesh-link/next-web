@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { investmentHoldings } from "@db/schema";
+import { inArray } from "drizzle-orm";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 import {
   getUserIdsForCouple,
@@ -26,9 +28,9 @@ export async function GET() {
 
     const coupleUserIds = await getUserIdsForCouple(userId);
 
-    const investments = await prisma.investmentHolding.findMany({
-      where: { userId: { in: coupleUserIds } },
-      orderBy: { createdAt: "desc" },
+    const investments = await db.query.investmentHoldings.findMany({
+      where: inArray(investmentHoldings.userId, coupleUserIds),
+      orderBy: (t, { desc: d }) => [d(t.createdAt)],
     });
 
     return NextResponse.json(
@@ -65,26 +67,24 @@ export async function POST(request: Request) {
     const coupleId = await getCoupleIdForUser(userId);
     const body = await request.json();
 
-    const investment = await prisma.investmentHolding.create({
-      data: {
-        userId,
-        ...(coupleId ? { coupleId } : {}),
-        name: body.name,
-        assetType: body.assetType,
-        mode: body.mode || "LUMPSUM",
-        ticker: body.ticker || null,
-        exchange: body.exchange || null,
-        quantity: body.quantity || null,
-        quantityGrams: body.quantityGrams || null,
-        investedAmount: body.investedAmount,
-        currentPrice: body.currentPrice || null,
-        currentValue: body.currentValue || null,
-        sipAmount: body.sipAmount || null,
-        sipDayOfMonth: body.sipDayOfMonth || null,
-        startDate: new Date(body.startDate),
-        nextSipDate: body.nextSipDate ? new Date(body.nextSipDate) : null,
-      },
-    });
+    const [investment] = await db.insert(investmentHoldings).values({
+      userId,
+      ...(coupleId ? { coupleId } : {}),
+      name: body.name,
+      assetType: body.assetType,
+      mode: body.mode || "LUMPSUM",
+      ticker: body.ticker || null,
+      exchange: body.exchange || null,
+      quantity: body.quantity || null,
+      quantityGrams: body.quantityGrams || null,
+      investedAmount: body.investedAmount,
+      currentPrice: body.currentPrice || null,
+      currentValue: body.currentValue || null,
+      sipAmount: body.sipAmount || null,
+      sipDayOfMonth: body.sipDayOfMonth || null,
+      startDate: new Date(body.startDate),
+      nextSipDate: body.nextSipDate ? new Date(body.nextSipDate) : null,
+    }).returning();
 
     return NextResponse.json(
       { success: true, data: investment },

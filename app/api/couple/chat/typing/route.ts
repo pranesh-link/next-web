@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { coupleMembers } from "@db/schema";
+import { eq, and } from "drizzle-orm";
 
 /**
  * PATCH /api/couple/chat/typing
@@ -18,15 +20,14 @@ export async function PATCH() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const member = await prisma.coupleMember.findFirst({ where: { userId } });
+  const member = await db.query.coupleMembers.findFirst({ where: eq(coupleMembers.userId, userId) });
   if (!member) {
     return NextResponse.json({ error: "No couple found" }, { status: 404 });
   }
 
-  await prisma.coupleMember.update({
-    where: { coupleId_userId: { coupleId: member.coupleId, userId } },
-    data: { typingAt: new Date() },
-  });
+  await db.update(coupleMembers)
+    .set({ typingAt: new Date() })
+    .where(and(eq(coupleMembers.coupleId, member.coupleId), eq(coupleMembers.userId, userId)));
 
   return new NextResponse(null, { status: 204 });
 }

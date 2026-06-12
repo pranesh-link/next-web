@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { unstable_noStore as noStore } from "next/cache";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { savingsGoals } from "@db/schema";
+import { eq, and, inArray, desc } from "drizzle-orm";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { goalSchema } from "@/_lib/validations/finance";
 import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
@@ -16,9 +18,9 @@ export async function getGoals() {
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
 
-    const goals = await prisma.savingsGoal.findMany({
-      where: { userId: { in: coupleUserIds } },
-      orderBy: { createdAt: "desc" },
+    const goals = await db.query.savingsGoals.findMany({
+      where: inArray(savingsGoals.userId, coupleUserIds),
+      orderBy: [desc(savingsGoals.createdAt)],
     });
 
     return { success: true as const, data: goals };
@@ -36,8 +38,8 @@ export async function getGoal(id: string) {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
 
-    const goal = await prisma.savingsGoal.findFirst({
-      where: { id, userId: { in: await getUserIdsForCouple(user.id) } },
+    const goal = await db.query.savingsGoals.findFirst({
+      where: and(eq(savingsGoals.id, id), inArray(savingsGoals.userId, await getUserIdsForCouple(user.id))),
     });
 
     if (!goal) {
@@ -67,16 +69,17 @@ export async function createGoal(data: {
     const validated = goalSchema.parse(data);
     const coupleId = await getCoupleIdForUser(user.id);
 
-    const goal = await prisma.savingsGoal.create({
-      data: {
+    const [goal] = await db
+      .insert(savingsGoals)
+      .values({
         userId: user.id,
         name: validated.name,
         targetAmount: validated.targetAmount,
         currentAmount: validated.currentAmount,
         deadline: validated.deadline,
         ...(coupleId ? { coupleId } : {}),
-      },
-    });
+      })
+      .returning();
 
     invalidateAfterGoalChange();
     revalidatePath("/couple/finance");
@@ -104,8 +107,8 @@ export async function updateGoal(
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
 
-    const existing = await prisma.savingsGoal.findFirst({
-      where: { id, userId: { in: await getUserIdsForCouple(user.id) } },
+    const existing = await db.query.savingsGoals.findFirst({
+      where: and(eq(savingsGoals.id, id), inArray(savingsGoals.userId, await getUserIdsForCouple(user.id))),
     });
 
     if (!existing) {
@@ -121,15 +124,16 @@ export async function updateGoal(
 
     const validated = goalSchema.parse(merged);
 
-    const goal = await prisma.savingsGoal.update({
-      where: { id },
-      data: {
+    const [goal] = await db
+      .update(savingsGoals)
+      .set({
         name: validated.name,
         targetAmount: validated.targetAmount,
         currentAmount: validated.currentAmount,
         deadline: validated.deadline,
-      },
-    });
+      })
+      .where(eq(savingsGoals.id, id))
+      .returning();
 
     invalidateAfterGoalChange();
     revalidatePath("/couple/finance");
@@ -149,15 +153,15 @@ export async function deleteGoal(id: string) {
     const user = await requireAuthForAction();
     if (!user) return { success: false as const, error: "Not authenticated" };
 
-    const existing = await prisma.savingsGoal.findFirst({
-      where: { id, userId: { in: await getUserIdsForCouple(user.id) } },
+    const existing = await db.query.savingsGoals.findFirst({
+      where: and(eq(savingsGoals.id, id), inArray(savingsGoals.userId, await getUserIdsForCouple(user.id))),
     });
 
     if (!existing) {
       return { success: false as const, error: "Goal not found" };
     }
 
-    await prisma.savingsGoal.delete({ where: { id } });
+    await db.delete(savingsGoals).where(eq(savingsGoals.id, id));
 
     invalidateAfterGoalChange();
     revalidatePath("/couple/finance");
@@ -181,8 +185,8 @@ export async function contributeToGoal(id: string, amount: number) {
       return { success: false as const, error: "Contribution amount must be positive" };
     }
 
-    const existing = await prisma.savingsGoal.findFirst({
-      where: { id, userId: { in: await getUserIdsForCouple(user.id) } },
+    const existing = await db.query.savingsGoals.findFirst({
+      where: and(eq(savingsGoals.id, id), inArray(savingsGoals.userId, await getUserIdsForCouple(user.id))),
     });
 
     if (!existing) {
@@ -198,10 +202,11 @@ export async function contributeToGoal(id: string, amount: number) {
       };
     }
 
-    const goal = await prisma.savingsGoal.update({
-      where: { id },
-      data: { currentAmount: newAmount },
-    });
+    const [goal] = await db
+      .update(savingsGoals)
+      .set({ currentAmount: newAmount })
+      .where(eq(savingsGoals.id, id))
+      .returning();
 
     invalidateAfterGoalChange();
     revalidatePath("/couple/finance");

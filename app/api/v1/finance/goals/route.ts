@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { savingsGoals } from "@db/schema";
+import { inArray } from "drizzle-orm";
 import { goalSchema } from "@/_lib/validations/finance";
 import { calculateGoalProgress } from "@/_services/finance";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
@@ -25,9 +27,9 @@ async function getHandler() {
 
     const coupleUserIds = await getUserIdsForCouple(userId);
 
-    const goals = await prisma.savingsGoal.findMany({
-      where: { userId: { in: coupleUserIds } },
-      orderBy: { createdAt: "desc" },
+    const goals = await db.query.savingsGoals.findMany({
+      where: inArray(savingsGoals.userId, coupleUserIds),
+      orderBy: (t, { desc: d }) => [d(t.createdAt)],
     });
 
     const data = goals.map((g) => ({
@@ -77,16 +79,14 @@ async function postHandler(request: Request) {
     const body = await request.json();
     const validated = goalSchema.parse(body);
 
-    const goal = await prisma.savingsGoal.create({
-      data: {
-        userId: userId,
-        ...(coupleId ? { coupleId } : {}),
-        name: validated.name,
-        targetAmount: validated.targetAmount,
-        currentAmount: validated.currentAmount,
-        deadline: validated.deadline,
-      },
-    });
+    const [goal] = await db.insert(savingsGoals).values({
+      userId,
+      ...(coupleId ? { coupleId } : {}),
+      name: validated.name,
+      targetAmount: validated.targetAmount,
+      currentAmount: validated.currentAmount,
+      deadline: validated.deadline,
+    }).returning();
 
     await CacheInvalidation.onGoalChange(userId);
 

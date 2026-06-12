@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { investmentHoldings } from "@db/schema";
+import { eq, inArray } from "drizzle-orm";
 
 const EXCHANGE_SUFFIX: Record<string, string> = {
   NSE: ".NS",
@@ -71,8 +73,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const holdings = await prisma.investmentHolding.findMany({
-    where: { assetType: { in: ["STOCK", "MUTUAL_FUND"] } },
+  const holdings = await db.query.investmentHoldings.findMany({
+    where: inArray(investmentHoldings.assetType, ["STOCK", "MUTUAL_FUND"]),
   });
 
   let updated = 0;
@@ -85,10 +87,10 @@ export async function GET(request: NextRequest) {
         if (price === null) continue;
         const currentValue =
           holding.quantity != null ? holding.quantity * price : holding.currentValue;
-        await prisma.investmentHolding.update({
-          where: { id: holding.id },
-          data: { currentPrice: price, currentValue: currentValue ?? undefined },
-        });
+        await db
+          .update(investmentHoldings)
+          .set({ currentPrice: price, currentValue: currentValue ?? undefined })
+          .where(eq(investmentHoldings.id, holding.id));
         updated++;
       } else if (holding.assetType === "MUTUAL_FUND") {
         if (!holding.ticker) continue;
@@ -96,10 +98,10 @@ export async function GET(request: NextRequest) {
         if (nav === null) continue;
         const currentValue =
           holding.quantity != null ? holding.quantity * nav : holding.currentValue;
-        await prisma.investmentHolding.update({
-          where: { id: holding.id },
-          data: { currentPrice: nav, currentValue: currentValue ?? undefined },
-        });
+        await db
+          .update(investmentHoldings)
+          .set({ currentPrice: nav, currentValue: currentValue ?? undefined })
+          .where(eq(investmentHoldings.id, holding.id));
         updated++;
       }
     } catch {

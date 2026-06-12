@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { loans } from "@db/schema";
+import { inArray } from "drizzle-orm";
 import { loanSchema } from "@/_lib/validations/finance";
 import { calculateEMI } from "@/_services/finance";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
@@ -25,13 +27,13 @@ async function getHandler() {
 
     const coupleUserIds = await getUserIdsForCouple(userId);
 
-    const loans = await prisma.loan.findMany({
-      where: { userId: { in: coupleUserIds } },
-      orderBy: { createdAt: "desc" },
+    const loanRows = await db.query.loans.findMany({
+      where: inArray(loans.userId, coupleUserIds),
+      orderBy: (t, { desc: d }) => [d(t.createdAt)],
     });
 
     return NextResponse.json(
-      { success: true, data: loans },
+      { success: true, data: loanRows },
       { headers: corsHeaders("private, max-age=30") },
     );
   } catch (error) {
@@ -76,19 +78,17 @@ async function postHandler(request: Request) {
 
     const validated = loanSchema.parse({ ...body, emiAmount });
 
-    const loan = await prisma.loan.create({
-      data: {
-        userId: userId,
-        ...(coupleId ? { coupleId } : {}),
-        name: validated.name,
-        principal: validated.principal,
-        interestRate: validated.interestRate,
-        tenureMonths: validated.tenureMonths,
-        emiAmount: validated.emiAmount,
-        startDate: validated.startDate,
-        remainingBalance: validated.remainingBalance,
-      },
-    });
+    const [loan] = await db.insert(loans).values({
+      userId,
+      ...(coupleId ? { coupleId } : {}),
+      name: validated.name,
+      principal: validated.principal,
+      interestRate: validated.interestRate,
+      tenureMonths: validated.tenureMonths,
+      emiAmount: validated.emiAmount,
+      startDate: validated.startDate,
+      remainingBalance: validated.remainingBalance,
+    }).returning();
 
     await CacheInvalidation.onLoanChange(userId);
 

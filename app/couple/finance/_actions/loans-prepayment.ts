@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath, unstable_noStore as noStore } from "next/cache";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { loans } from "@db/schema";
+import { eq, and, inArray } from "drizzle-orm";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { getUserIdsForCouple } from "@/_services/finance/couple-service";
 import { invalidateAfterLoanChange } from "@/_lib/cache";
@@ -24,8 +26,8 @@ export async function addPrepayment(loanId: string, data: { date: string; amount
     if (!user) return { success: false as const, error: "Not authenticated" };
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
-    const loan = await prisma.loan.findFirst({
-      where: { id: loanId, userId: { in: coupleUserIds } },
+    const loan = await db.query.loans.findFirst({
+      where: and(eq(loans.id, loanId), inArray(loans.userId, coupleUserIds)),
     });
 
     if (!loan) return { success: false as const, error: "Loan not found" };
@@ -66,13 +68,13 @@ export async function addPrepayment(loanId: string, data: { date: string; amount
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
 
-    await prisma.loan.update({
-      where: { id: loanId },
-      data: {
+    await db
+      .update(loans)
+      .set({
         prepayments: updated,
         remainingBalance: Math.round(newBalance * 100) / 100,
-      },
-    });
+      })
+      .where(eq(loans.id, loanId));
 
     invalidateAfterLoanChange();
     revalidatePath("/couple/finance");
@@ -102,14 +104,14 @@ export async function removePrepayment(loanId: string, index: number) {
     if (!user) return { success: false as const, error: "Not authenticated" };
 
     const coupleUserIds = await getUserIdsForCouple(user.id);
-    const loan = await prisma.loan.findFirst({
-      where: { id: loanId, userId: { in: coupleUserIds } },
+    const loanForRemove = await db.query.loans.findFirst({
+      where: and(eq(loans.id, loanId), inArray(loans.userId, coupleUserIds)),
     });
 
-    if (!loan) return { success: false as const, error: "Loan not found" };
+    if (!loanForRemove) return { success: false as const, error: "Loan not found" };
 
-    const existing = Array.isArray(loan.prepayments)
-      ? (loan.prepayments as StoredPrepayment[])
+    const existing = Array.isArray(loanForRemove.prepayments)
+      ? (loanForRemove.prepayments as StoredPrepayment[])
       : [];
 
     if (index < 0 || index >= existing.length) {
@@ -125,16 +127,16 @@ export async function removePrepayment(loanId: string, index: number) {
       };
     }
 
-    const restoredBalance = loan.remainingBalance + target.amount;
-    const updated = existing.filter((_, i) => i !== index);
+    const restoredBalance = loanForRemove.remainingBalance + target.amount;
+    const updatedList = existing.filter((_, i) => i !== index);
 
-    await prisma.loan.update({
-      where: { id: loanId },
-      data: {
-        prepayments: updated.length > 0 ? updated : [],
+    await db
+      .update(loans)
+      .set({
+        prepayments: updatedList.length > 0 ? updatedList : [],
         remainingBalance: Math.round(restoredBalance * 100) / 100,
-      },
-    });
+      })
+      .where(eq(loans.id, loanId));
 
     invalidateAfterLoanChange();
     revalidatePath("/couple/finance");

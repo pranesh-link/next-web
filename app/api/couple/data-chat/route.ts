@@ -17,7 +17,9 @@ import fs from "fs";
 import OpenAI from "openai";
 import type { ChatCompletionMessageToolCall } from "openai/resources/chat/completions";
 import { auth } from "@/_lib/auth";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { users, coupleChats, coupleChatMessages } from "@db/schema";
+import { eq, inArray } from "drizzle-orm";
 import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
 import { NL_TO_SQL_TOOL, NL_TO_SQL_TOOL_LABELS, validateAndExecuteQuery } from "@/couple/_lib/nl-to-sql-tool";
 import { extractSchemaForPrompt } from "@/couple/_lib/schema-extractor";
@@ -55,10 +57,9 @@ export async function POST(req: Request): Promise<Response> {
   const { systemPrompt } = loadCmsChatConfig();
 
   // Fetch real names for couple members so the LLM can refer to them by name
-  const members = await prisma.user.findMany({
-    where: { id: { in: coupleUserIds } },
-    select: { id: true, name: true, email: true },
-  });
+  const members = await db.select({ id: users.id, name: users.name, email: users.email })
+    .from(users)
+    .where(inArray(users.id, coupleUserIds));
   const memberNames = members
     .map((m) => `  '${m.id}' → ${m.name ?? m.email}`)
     .join("\n");
@@ -111,12 +112,10 @@ SQL Rules:
         const firstUserMsg = messages.findLast((m) => m.role === "user")?.content ?? "";
 
         if (!activeChatId && coupleId) {
-          const newChat = await prisma.coupleChat.create({
-            data: {
-              coupleId,
-              title: firstUserMsg.slice(0, 60) || "New chat",
-            },
-          });
+          const [newChat] = await db.insert(coupleChats).values({
+            coupleId,
+            title: firstUserMsg.slice(0, 60) || "New chat",
+          }).returning();
           activeChatId = newChat.id;
         }
 
@@ -228,16 +227,13 @@ SQL Rules:
         // Persist messages to DB
         if (activeChatId) {
           try {
-            await prisma.coupleChatMsg.createMany({
-              data: [
-                { chatId: activeChatId, role: "user", content: firstUserMsg },
-                { chatId: activeChatId, role: "assistant", content: finalAssistantContent },
-              ],
-            });
-            await prisma.coupleChat.update({
-              where: { id: activeChatId },
-              data: { updatedAt: new Date() },
-            });
+            await db.insert(coupleChatMessages).values([
+              { chatId: activeChatId, role: "user", content: firstUserMsg },
+              { chatId: activeChatId, role: "assistant", content: finalAssistantContent },
+            ]);
+            await db.update(coupleChats)
+              .set({ updatedAt: new Date() })
+              .where(eq(coupleChats.id, activeChatId));
           } catch {
             // Non-fatal — don't fail the response if DB write fails
           }

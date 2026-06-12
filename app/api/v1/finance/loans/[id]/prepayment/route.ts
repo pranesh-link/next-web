@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { loans } from "@db/schema";
+import { and, eq, inArray } from "drizzle-orm";
 import { simulatePrepayment } from "@/_services/finance";
 import type { LoanData } from "@/_services/finance";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
@@ -47,8 +49,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const coupleUserIds = await getUserIdsForCouple(userId);
     const { id } = await context.params;
 
-    const loan = await prisma.loan.findFirst({
-      where: { id, userId: { in: coupleUserIds } },
+    const loan = await db.query.loans.findFirst({
+      where: and(eq(loans.id, id), inArray(loans.userId, coupleUserIds)),
     });
 
     if (!loan) {

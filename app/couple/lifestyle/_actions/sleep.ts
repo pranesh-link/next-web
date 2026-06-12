@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/_lib/auth";
-import { prisma } from "@/_lib/prisma";
+import { db } from "@db";
+import { sleepLogs } from "@db/schema";
+import { eq, and, inArray, desc } from "drizzle-orm";
 import {
   getCoupleIdForUser,
   getUserIdsForCouple,
@@ -15,13 +17,13 @@ export type SleepLogRow = {
   id: string;
   userId: string;
   coupleId: string | null;
-  date: Date;
-  bedtimeAt: Date;
-  wakeAt: Date;
+  date: string;
+  bedtimeAt: Date | string;
+  wakeAt: Date | string;
   durationMins: number;
   quality: number;
   note: string | null;
-  createdAt: Date;
+  createdAt: Date | string;
 };
 
 /** Input for {@link logSleep}. */
@@ -60,11 +62,12 @@ async function requireUserId(): Promise<string> {
 export async function getSleepLogs(limit = 7): Promise<SleepLogRow[]> {
   const userId = await requireUserId();
   const coupleUserIds = await getUserIdsForCouple(userId);
-  return prisma.sleepLog.findMany({
-    where: { userId: { in: coupleUserIds } },
-    orderBy: { date: "desc" },
-    take: limit,
-  }) as Promise<SleepLogRow[]>;
+  const rows = await db.query.sleepLogs.findMany({
+    where: inArray(sleepLogs.userId, coupleUserIds),
+    orderBy: [desc(sleepLogs.date)],
+    limit,
+  });
+  return rows as unknown as SleepLogRow[];
 }
 
 /**
@@ -87,20 +90,18 @@ export async function logSleep(data: SleepLogInput): Promise<SleepLogRow> {
   );
   if (durationMins <= 0) throw new Error("Wake time must be after bedtime");
 
-  const record = await prisma.sleepLog.create({
-    data: {
-      userId,
-      ...(coupleId ? { coupleId } : {}),
-      date: new Date(data.date),
-      bedtimeAt: bedtime,
-      wakeAt: wake,
-      durationMins,
-      quality: data.quality,
-      note: data.note ?? null,
-    },
-  });
+  const [record] = await db.insert(sleepLogs).values({
+    userId,
+    ...(coupleId ? { coupleId } : {}),
+    date: data.date,
+    bedtimeAt: bedtime,
+    wakeAt: wake,
+    durationMins,
+    quality: data.quality,
+    note: data.note ?? null,
+  }).returning();
   revalidatePath(SLEEP_PATH);
-  return record as SleepLogRow;
+  return record as unknown as SleepLogRow;
 }
 
 /**
@@ -113,8 +114,10 @@ export async function logSleep(data: SleepLogInput): Promise<SleepLogRow> {
  */
 export async function deleteSleepLog(id: string): Promise<void> {
   const userId = await requireUserId();
-  const log = await prisma.sleepLog.findFirst({ where: { id, userId } });
+  const log = await db.query.sleepLogs.findFirst({
+    where: and(eq(sleepLogs.id, id), eq(sleepLogs.userId, userId)),
+  });
   if (!log) throw new Error("Sleep log not found");
-  await prisma.sleepLog.delete({ where: { id } });
+  await db.delete(sleepLogs).where(eq(sleepLogs.id, id));
   revalidatePath(SLEEP_PATH);
 }

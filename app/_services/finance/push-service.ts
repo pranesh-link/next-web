@@ -1,4 +1,6 @@
-import prisma from '@/_lib/prisma';
+import { db } from '@db';
+import { deviceTokens } from '@db/schema';
+import { eq, and, inArray } from 'drizzle-orm';
 
 let firebaseAdmin: any = null;
 let messagingInstance: any = null;
@@ -152,9 +154,9 @@ function sleep(ms: number): Promise<void> {
  * Gets all active device tokens for a user.
  */
 async function getActiveTokens(userId: string): Promise<string[]> {
-  const devices = await prisma.deviceToken.findMany({
-    where: { userId, active: true },
-    select: { token: true },
+  const devices = await db.query.deviceTokens.findMany({
+    where: and(eq(deviceTokens.userId, userId), eq(deviceTokens.active, true)),
+    columns: { token: true },
   });
   return devices.map((d) => d.token);
 }
@@ -164,10 +166,7 @@ async function getActiveTokens(userId: string): Promise<string[]> {
  */
 async function deactivateTokens(tokens: string[]) {
   if (tokens.length === 0) return;
-  await prisma.deviceToken.updateMany({
-    where: { token: { in: tokens } },
-    data: { active: false },
-  });
+  await db.update(deviceTokens).set({ active: false }).where(inArray(deviceTokens.token, tokens));
 }
 
 /**
@@ -268,9 +267,9 @@ export async function sendPushToUsers(
     const messaging = await getMessaging();
     if (!messaging) return { sent: 0, failed: 0 };
 
-    const devices = await prisma.deviceToken.findMany({
-      where: { userId: { in: userIds }, active: true },
-      select: { token: true },
+    const devices = await db.query.deviceTokens.findMany({
+      where: and(inArray(deviceTokens.userId, userIds), eq(deviceTokens.active, true)),
+      columns: { token: true },
     });
     const tokens = devices.map((d) => d.token);
     if (tokens.length === 0) return { sent: 0, failed: 0 };

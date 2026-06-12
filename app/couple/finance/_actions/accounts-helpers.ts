@@ -1,8 +1,11 @@
-import prisma from "@/_lib/prisma";
-import { BalanceChangeReason } from "@prisma/client";
+import { db } from "@db";
+import { financialAccounts, overallBalanceLog } from "@db/schema";
+import { inArray, sum } from "drizzle-orm";
+
+type BalanceChangeReason = "ACCOUNT_ADDED" | "ACCOUNT_REMOVED" | "BALANCE_UPDATED";
 
 /**
- * Aggregate the couple's total balance and append an entry to {@link prisma.overallBalanceLog}.
+ * Aggregate the couple's total balance and append an entry to overallBalanceLog.
  *
  * Internal helper used by account mutations to keep an audit trail of the
  * couple-wide balance whenever an account is added, removed, or its balance
@@ -26,21 +29,19 @@ export async function logOverallBalanceChange(
   reason: BalanceChangeReason,
   change: number,
 ) {
-  const totalResult = await prisma.financialAccount.aggregate({
-    where: { userId: { in: coupleUserIds } },
-    _sum: { balance: true },
-  });
-  const totalBalance = totalResult._sum.balance ?? 0;
+  const [{ total }] = await db
+    .select({ total: sum(financialAccounts.balance) })
+    .from(financialAccounts)
+    .where(inArray(financialAccounts.userId, coupleUserIds));
+  const totalBalance = Number(total ?? 0);
 
-  await prisma.overallBalanceLog.create({
-    data: {
-      coupleId: coupleId || null,
-      userId,
-      accountId,
-      accountName,
-      reason,
-      change,
-      totalBalance,
-    },
+  await db.insert(overallBalanceLog).values({
+    coupleId: coupleId || null,
+    userId,
+    accountId,
+    accountName,
+    reason,
+    change,
+    totalBalance,
   });
 }

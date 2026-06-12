@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath, unstable_noStore as noStore } from "next/cache";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { financialAccounts, depositInstruments } from "@db/schema";
+import { and, inArray, eq } from "drizzle-orm";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { getUserIdsForCouple, getCoupleIdForUser } from "@/_services/finance/couple-service";
 import { invalidateAfterDepositChange } from "@/_lib/cache";
@@ -24,19 +26,22 @@ export async function migrateLegacyDepositAccounts() {
     const coupleUserIds = await getUserIdsForCouple(user.id);
     const coupleId = await getCoupleIdForUser(user.id);
 
-    const legacyAccounts = await prisma.financialAccount.findMany({
-      where: {
-        userId: { in: coupleUserIds },
-        type: { in: ["RECURRING_DEPOSIT", "FIXED_DEPOSIT"] },
-      },
-    });
+    const legacyAccounts = await db
+      .select()
+      .from(financialAccounts)
+      .where(
+        and(
+          inArray(financialAccounts.userId, coupleUserIds),
+          inArray(financialAccounts.type, ["RECURRING_DEPOSIT", "FIXED_DEPOSIT"]),
+        ),
+      );
 
     let created = 0;
 
     for (const account of legacyAccounts) {
-      const existing = await prisma.depositInstrument.findFirst({
-        where: { sourceAccountId: account.id },
-        select: { id: true },
+      const existing = await db.query.depositInstruments.findFirst({
+        where: eq(depositInstruments.sourceAccountId, account.id),
+        columns: { id: true },
       });
 
       if (existing) continue;
@@ -46,29 +51,27 @@ export async function migrateLegacyDepositAccounts() {
       const rate = account.type === "FIXED_DEPOSIT" ? 6.5 : 7;
       const maturityAmount = Number((account.balance * (1 + rate / 100)).toFixed(2));
 
-      await prisma.depositInstrument.create({
-        data: {
-          userId: account.userId,
-          coupleId: account.coupleId ?? coupleId ?? undefined,
-          name: account.name,
-          provider: "",
-          type:
-            account.type === "FIXED_DEPOSIT"
-              ? "FIXED_DEPOSIT"
-              : "RECURRING_DEPOSIT",
-          principalAmount: account.balance,
-          interestRate: rate,
-          tenureMonths: 12,
-          installmentAmount: account.type === "RECURRING_DEPOSIT" ? Math.max(1, Math.round(account.balance / 12)) : null,
-          installmentFrequency: "MONTHLY",
-          paidInstallments: account.type === "RECURRING_DEPOSIT" ? 12 : 0,
-          totalInstallments: account.type === "RECURRING_DEPOSIT" ? 12 : null,
-          startDate,
-          maturityDate,
-          maturityAmount,
-          status: maturityDate <= new Date() ? "MATURED" : "ACTIVE",
-          sourceAccountId: account.id,
-        },
+      await db.insert(depositInstruments).values({
+        userId: account.userId,
+        coupleId: account.coupleId ?? coupleId ?? undefined,
+        name: account.name,
+        provider: "",
+        type:
+          account.type === "FIXED_DEPOSIT"
+            ? "FIXED_DEPOSIT"
+            : "RECURRING_DEPOSIT",
+        principalAmount: account.balance,
+        interestRate: rate,
+        tenureMonths: 12,
+        installmentAmount: account.type === "RECURRING_DEPOSIT" ? Math.max(1, Math.round(account.balance / 12)) : null,
+        installmentFrequency: "MONTHLY",
+        paidInstallments: account.type === "RECURRING_DEPOSIT" ? 12 : 0,
+        totalInstallments: account.type === "RECURRING_DEPOSIT" ? 12 : null,
+        startDate,
+        maturityDate,
+        maturityAmount,
+        status: maturityDate <= new Date() ? "MATURED" : "ACTIVE",
+        sourceAccountId: account.id,
       });
 
       created += 1;

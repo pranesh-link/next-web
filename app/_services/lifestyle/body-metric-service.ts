@@ -6,8 +6,9 @@
  * {@link assertSubjectAuthorized}: a user may only read/write their own
  * data or that of a partner in the same couple.
  */
-import type { Prisma } from "@prisma/client";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import { bodyMetrics, bodyProfiles, users } from "@db/schema";
+import { eq, and, inArray, gte, lte } from "drizzle-orm";
 import {
   getCoupleIdForUser,
   getCoupleMembers,
@@ -15,11 +16,11 @@ import {
 } from "@/_services/finance/couple-service";
 import { categoryFromBmi } from "./bmi";
 
-/** A persisted body metric row (Prisma payload). */
-export type BodyMetricRow = Prisma.BodyMetricGetPayload<{}>;
+/** A persisted body metric row. */
+export type BodyMetricRow = typeof bodyMetrics.$inferSelect;
 
-/** A persisted body profile row (Prisma payload). */
-export type BodyProfileRow = Prisma.BodyProfileGetPayload<{}>;
+/** A persisted body profile row. */
+export type BodyProfileRow = typeof bodyProfiles.$inferSelect;
 
 /** A trackable subject — either the signed-in user or a couple partner. */
 export interface CoupleSubject {
@@ -40,20 +41,22 @@ export interface CoupleSubject {
 export async function getCoupleSubjects(userId: string): Promise<CoupleSubject[]> {
   const coupleId = await getCoupleIdForUser(userId);
   if (!coupleId) {
-    const self = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, name: true, image: true },
+    const self = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+      columns: { id: true, name: true, image: true },
     });
     if (!self) return [];
     return [{ id: self.id, name: self.name, image: self.image, isSelf: true }];
   }
   const members = await getCoupleMembers(coupleId);
-  return members.map((m) => ({
-    id: m.user.id,
-    name: m.user.name,
-    image: m.user.image,
-    isSelf: m.user.id === userId,
-  }));
+  return members
+    .filter((m) => m.user != null)
+    .map((m) => ({
+      id: m.user!.id,
+      name: m.user!.name,
+      image: m.user!.image,
+      isSelf: m.user!.id === userId,
+    }));
 }
 
 async function assertSubjectAuthorized(
@@ -92,17 +95,13 @@ export async function listMetrics(args: ListMetricsArgs): Promise<BodyMetricRow[
   if (subjectId && !coupleUserIds.includes(subjectId)) {
     throw new Error("Forbidden: subject not authorized");
   }
-  const where: Prisma.BodyMetricWhereInput = {
-    subjectId: { in: subjectIds },
-  };
-  if (from || to) {
-    where.measuredOn = {};
-    if (from) (where.measuredOn as { gte?: Date; lte?: Date }).gte = from;
-    if (to) (where.measuredOn as { gte?: Date; lte?: Date }).lte = to;
-  }
-  return prisma.bodyMetric.findMany({
-    where,
-    orderBy: { measuredOn: "desc" },
+  const conditions = [inArray(bodyMetrics.subjectId, subjectIds)];
+  if (from) conditions.push(gte(bodyMetrics.measuredOn, from.toISOString().split("T")[0]));
+  if (to) conditions.push(lte(bodyMetrics.measuredOn, to.toISOString().split("T")[0]));
+
+  return db.query.bodyMetrics.findMany({
+    where: and(...conditions),
+    orderBy: (t, { desc }) => [desc(t.measuredOn)],
   });
 }
 
@@ -138,27 +137,32 @@ export async function upsertMetric(input: UpsertMetricInput): Promise<BodyMetric
   const bmi = computeBmi(weightInKg, heightInCm);
   const bmiCategory = categoryFromBmi(bmi);
   const coupleId = await getCoupleIdForUser(userId);
-  return prisma.bodyMetric.upsert({
-    where: { subjectId_measuredOn: { subjectId, measuredOn } },
-    create: {
+  const measuredOnStr = measuredOn.toISOString().split("T")[0];
+  const [row] = await db
+    .insert(bodyMetrics)
+    .values({
       userId,
       subjectId,
       coupleId: coupleId ?? null,
-      measuredOn,
-      weightInKg,
-      heightInCm,
-      bmi,
+      measuredOn: measuredOnStr,
+      weightInKg: String(weightInKg),
+      heightInCm: String(heightInCm),
+      bmi: String(bmi),
       bmiCategory,
       note,
-    },
-    update: {
-      weightInKg,
-      heightInCm,
-      bmi,
-      bmiCategory,
-      note,
-    },
-  });
+    })
+    .onConflictDoUpdate({
+      target: [bodyMetrics.subjectId, bodyMetrics.measuredOn],
+      set: {
+        weightInKg: String(weightInKg),
+        heightInCm: String(heightInCm),
+        bmi: String(bmi),
+        bmiCategory,
+        note,
+      },
+    })
+    .returning();
+  return row;
 }
 
 /**
@@ -169,10 +173,10 @@ export async function upsertMetric(input: UpsertMetricInput): Promise<BodyMetric
  * @throws {Error} when the metric does not exist or is not authorized.
  */
 export async function deleteMetric(userId: string, metricId: string): Promise<void> {
-  const metric = await prisma.bodyMetric.findUnique({ where: { id: metricId } });
+  const metric = await db.query.bodyMetrics.findFirst({ where: eq(bodyMetrics.id, metricId) });
   if (!metric) throw new Error("Metric not found");
   await assertSubjectAuthorized(userId, metric.subjectId);
-  await prisma.bodyMetric.delete({ where: { id: metricId } });
+  await db.delete(bodyMetrics).where(eq(bodyMetrics.id, metricId));
 }
 
 /**
@@ -189,11 +193,12 @@ export async function getOrCreateProfile(
 ): Promise<BodyProfileRow> {
   await assertSubjectAuthorized(userId, subjectId);
   const coupleId = await getCoupleIdForUser(userId);
-  return prisma.bodyProfile.upsert({
-    where: { subjectId },
-    create: { userId, subjectId, coupleId: coupleId ?? null },
-    update: {},
-  });
+  const [row] = await db
+    .insert(bodyProfiles)
+    .values({ userId, subjectId, coupleId: coupleId ?? null })
+    .onConflictDoUpdate({ target: bodyProfiles.subjectId, set: {} })
+    .returning();
+  return row;
 }
 
 /** Patchable fields for {@link updateProfile}. */
@@ -223,8 +228,15 @@ export async function updateProfile(
 ): Promise<BodyProfileRow> {
   await assertSubjectAuthorized(userId, subjectId);
   await getOrCreateProfile(userId, subjectId);
-  return prisma.bodyProfile.update({
-    where: { subjectId },
-    data: patch,
-  });
+  const set: Record<string, unknown> = {};
+  if (patch.defaultHeightInCm !== undefined) set.defaultHeightInCm = String(patch.defaultHeightInCm);
+  if (patch.targetWeightInKg !== undefined) set.targetWeightInKg = String(patch.targetWeightInKg);
+  if (patch.birthDate !== undefined) set.birthDate = patch.birthDate ? patch.birthDate.toISOString().split("T")[0] : null;
+  if (patch.sex !== undefined) set.sex = patch.sex;
+  const [row] = await db
+    .update(bodyProfiles)
+    .set(set)
+    .where(eq(bodyProfiles.subjectId, subjectId))
+    .returning();
+  return row;
 }

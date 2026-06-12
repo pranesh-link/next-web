@@ -4,7 +4,8 @@
  * we validate it, scope it to the couple, and execute it.
  */
 
-import { prisma } from "@/_lib/prisma";
+import { db } from "@db";
+import { sql } from "drizzle-orm";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -105,8 +106,8 @@ export async function validateAndExecuteQuery(
 
   // Step 7 — Execute
   try {
-    const rows = await prisma.$queryRawUnsafe<unknown[]>(finalQuery);
-    return { rows };
+    const result = await db.execute(sql.raw(finalQuery));
+    return { rows: result.rows as unknown[] };
   } catch (err) {
     return {
       rows: [],

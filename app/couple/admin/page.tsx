@@ -1,6 +1,17 @@
 import { auth } from "@/_lib/auth";
 import { redirect } from "next/navigation";
-import prisma from "@/_lib/prisma";
+import { db } from "@db";
+import {
+  users,
+  couples,
+  coupleMessages,
+  transactions,
+  loans,
+  financialAccounts,
+  deviceTokens,
+  appErrors,
+} from "@db/schema";
+import { eq, gte, and, count, desc, inArray, sql } from "drizzle-orm";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "prans1991@gmail.com";
 
@@ -9,60 +20,100 @@ async function getStats() {
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
   const [
-    totalUsers,
-    activeUsers7d,
-    totalCouples,
-    totalMessages,
-    messages7d,
-    totalTransactions,
-    totalLoans,
-    totalAccounts,
-    activeDevices,
-    expiredDevices,
+    [{ count: totalUsers }],
+    [{ count: activeUsers7d }],
+    [{ count: totalCouples }],
+    [{ count: totalMessages }],
+    [{ count: messages7d }],
+    [{ count: totalTransactions }],
+    [{ count: totalLoans }],
+    [{ count: totalAccounts }],
+    [{ count: activeDevices }],
+    [{ count: expiredDevices }],
     devicesByPlatform,
     recentUsers,
     recentErrors,
-    errors24h,
-    errors7d,
+    [{ count: errors24h }],
+    [{ count: errors7d }],
   ] = await Promise.all([
-    prisma.user.count(),
-    prisma.user.count({ where: { lastSeenAt: { gte: sevenDaysAgo } } }),
-    prisma.couple.count(),
-    prisma.coupleMessage.count(),
-    prisma.coupleMessage.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
-    prisma.transaction.count(),
-    prisma.loan.count(),
-    prisma.financialAccount.count(),
-    prisma.deviceToken.count({ where: { active: true } }),
-    prisma.deviceToken.count({ where: { active: false } }),
-    prisma.deviceToken.groupBy({ by: ["platform"], where: { active: true }, _count: true }),
-    prisma.user.findMany({
-      orderBy: { lastSeenAt: { sort: "desc", nulls: "last" } },
-      take: 50,
-      select: {
-        id: true, email: true, name: true,
-        createdAt: true, lastSeenAt: true, lastDeviceInfo: true,
-        deviceTokens: {
-          where: { active: true },
-          orderBy: { updatedAt: "desc" },
-          take: 1,
-          select: { platform: true, deviceInfo: true, updatedAt: true },
-        },
-      },
-    }),
-    prisma.appError.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 50,
-      select: { id: true, userId: true, route: true, method: true, statusCode: true, message: true, platform: true, appVersion: true, createdAt: true },
-    }),
-    prisma.appError.count({ where: { createdAt: { gte: oneDayAgo } } }),
-    prisma.appError.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
+    db.select({ count: count() }).from(users),
+    db.select({ count: count() }).from(users).where(gte(users.lastSeenAt, sevenDaysAgo)),
+    db.select({ count: count() }).from(couples),
+    db.select({ count: count() }).from(coupleMessages),
+    db.select({ count: count() }).from(coupleMessages).where(gte(coupleMessages.createdAt, sevenDaysAgo)),
+    db.select({ count: count() }).from(transactions),
+    db.select({ count: count() }).from(loans),
+    db.select({ count: count() }).from(financialAccounts),
+    db.select({ count: count() }).from(deviceTokens).where(eq(deviceTokens.active, true)),
+    db.select({ count: count() }).from(deviceTokens).where(eq(deviceTokens.active, false)),
+    db
+      .select({ platform: deviceTokens.platform, count: count() })
+      .from(deviceTokens)
+      .where(eq(deviceTokens.active, true))
+      .groupBy(deviceTokens.platform),
+    db
+      .select({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        createdAt: users.createdAt,
+        lastSeenAt: users.lastSeenAt,
+        lastDeviceInfo: users.lastDeviceInfo,
+      })
+      .from(users)
+      .orderBy(sql`${users.lastSeenAt} DESC NULLS LAST`)
+      .limit(50),
+    db
+      .select({
+        id: appErrors.id,
+        userId: appErrors.userId,
+        route: appErrors.route,
+        method: appErrors.method,
+        statusCode: appErrors.statusCode,
+        message: appErrors.message,
+        platform: appErrors.platform,
+        appVersion: appErrors.appVersion,
+        createdAt: appErrors.createdAt,
+      })
+      .from(appErrors)
+      .orderBy(desc(appErrors.createdAt))
+      .limit(50),
+    db.select({ count: count() }).from(appErrors).where(gte(appErrors.createdAt, oneDayAgo)),
+    db.select({ count: count() }).from(appErrors).where(gte(appErrors.createdAt, sevenDaysAgo)),
   ]);
+
+  // Fetch latest active device token per recent user
+  const recentUserIds = recentUsers.map((u) => u.id);
+  const allActiveTokens =
+    recentUserIds.length > 0
+      ? await db
+          .select({
+            userId: deviceTokens.userId,
+            platform: deviceTokens.platform,
+            deviceInfo: deviceTokens.deviceInfo,
+            updatedAt: deviceTokens.updatedAt,
+          })
+          .from(deviceTokens)
+          .where(and(inArray(deviceTokens.userId, recentUserIds), eq(deviceTokens.active, true)))
+          .orderBy(desc(deviceTokens.updatedAt))
+      : [];
+
+  const latestDeviceMap = new Map<string, { platform: string; deviceInfo: string | null; updatedAt: Date }>();
+  for (const token of allActiveTokens) {
+    if (!latestDeviceMap.has(token.userId)) {
+      latestDeviceMap.set(token.userId, { platform: token.platform, deviceInfo: token.deviceInfo ?? null, updatedAt: token.updatedAt });
+    }
+  }
 
   return {
     overview: { totalUsers, activeUsers7d, totalCouples, totalMessages, messages7d, totalTransactions, totalLoans, totalAccounts },
     push: { activeDevices, expiredDevices, byPlatform: devicesByPlatform },
-    users: recentUsers,
+    users: recentUsers.map((u) => ({
+      ...u,
+      deviceTokens: latestDeviceMap.has(u.id)
+        ? [latestDeviceMap.get(u.id)!]
+        : [],
+    })),
     errors: { recent: recentErrors, count24h: errors24h, count7d: errors7d },
   };
 }
@@ -163,7 +214,7 @@ export default async function AdminDashboard() {
           <StatCard label="Active Tokens" value={stats.push.activeDevices} />
           <StatCard label="Expired Tokens" value={stats.push.expiredDevices} sub="awaiting re-registration" />
           {stats.push.byPlatform.map((p) => (
-            <StatCard key={p.platform} label={p.platform.toUpperCase()} value={p._count} sub="active tokens" />
+            <StatCard key={p.platform} label={p.platform.toUpperCase()} value={p.count} sub="active tokens" />
           ))}
         </div>
       </div>
