@@ -83,7 +83,7 @@ export function computeTrend(metrics: BodyMetricRow[]): WellnessTrend {
     };
   }
   const sorted = [...metrics].sort(
-    (a, b) => a.measuredOn.getTime() - b.measuredOn.getTime(),
+    (a, b) => new Date(a.measuredOn).getTime() - new Date(b.measuredOn).getTime(),
   );
   let lowest = sorted[0];
   let highest = sorted[0];

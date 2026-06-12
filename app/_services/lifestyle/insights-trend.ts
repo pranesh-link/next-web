@@ -55,7 +55,7 @@ export function nearestPriorTo(
   let best: BodyMetricRow | null = null;
   let bestDiff = Infinity;
   for (const m of metrics) {
-    const diff = Math.abs(m.measuredOn.getTime() - target.getTime());
+    const diff = Math.abs(new Date(m.measuredOn).getTime() - target.getTime());
     if (diff < bestDiff) {
       bestDiff = diff;
       best = m;
@@ -76,13 +76,13 @@ export function nearestPriorTo(
 export function computeSlopePerWeek(samples: BodyMetricRow[]): number {
   if (samples.length < 2) return 0;
   const tail = samples.slice(-30);
-  const t0 = tail[0].measuredOn.getTime();
+  const t0 = new Date(tail[0].measuredOn).getTime();
   let sumX = 0;
   let sumY = 0;
   let sumXY = 0;
   let sumXX = 0;
   for (const m of tail) {
-    const x = (m.measuredOn.getTime() - t0) / (7 * MS_PER_DAY);
+    const x = (new Date(m.measuredOn).getTime() - t0) / (7 * MS_PER_DAY);
     const y = toNumber(m.weightInKg);
     sumX += x;
     sumY += y;

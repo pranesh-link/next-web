@@ -517,7 +517,7 @@ export async function executeCoupleDataToolCall(
         columns: { loggedOn: true, mealType: true, name: true, calories: true, proteinG: true },
       });
       return meals.map((m) => ({
-        date: m.loggedOn.toISOString().split("T")[0],
+        date: typeof m.loggedOn === 'string' ? m.loggedOn.split('T')[0] : (m.loggedOn as Date).toISOString().split('T')[0],
         mealType: m.mealType,
         name: m.name,
         calories: m.calories,
@@ -537,7 +537,7 @@ export async function executeCoupleDataToolCall(
         columns: { durationMins: true, caloriesBurned: true, loggedOn: true },
       });
       if (logs.length === 0) return { note: "No exercise logs found for this period." };
-      const uniqueDays = new Set(logs.map((l) => l.loggedOn.toISOString().split("T")[0])).size;
+      const uniqueDays = new Set(logs.map((l) => typeof l.loggedOn === 'string' ? l.loggedOn.split('T')[0] : (l.loggedOn as Date).toISOString().split('T')[0])).size;
       return {
         days,
         daysActive: uniqueDays,
