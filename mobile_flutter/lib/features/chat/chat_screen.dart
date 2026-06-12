@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import 'package:luvverse/core/notifications/push_notification_service.dart';
 import 'package:luvverse/core/notifications/push_providers.dart';
 import 'package:luvverse/core/theme/app_colors_extension.dart';
