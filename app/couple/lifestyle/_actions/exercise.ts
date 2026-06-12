@@ -17,13 +17,13 @@ export type ExerciseLogRow = {
   id: string;
   userId: string;
   coupleId: string | null;
-  loggedOn: Date;
+  loggedOn: string;
   type: string;
   name: string;
   durationMins: number;
   caloriesBurned: number | null;
   note: string | null;
-  createdAt: Date;
+  createdAt: Date | string;
 };
 
 /** Input for {@link logExercise}. */
@@ -77,7 +77,7 @@ export async function getExerciseLogs(date: string): Promise<ExerciseLogRow[]> {
       eq(exerciseLogs.loggedOn, date),
     ),
     orderBy: (t, { asc }) => [asc(t.createdAt)],
-  }) as Promise<ExerciseLogRow[]>;
+  }) as unknown as Promise<ExerciseLogRow[]>;
 }
 
 /**
@@ -104,7 +104,7 @@ export async function logExercise(data: ExerciseLogInput): Promise<ExerciseLogRo
     })
     .returning();
   revalidatePath(EXERCISE_PATH);
-  return record as ExerciseLogRow;
+  return record as unknown as ExerciseLogRow;
 }
 
 /**

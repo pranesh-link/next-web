@@ -17,7 +17,7 @@ export type NutritionLogRow = {
   id: string;
   userId: string;
   coupleId: string | null;
-  loggedOn: Date;
+  loggedOn: string;
   mealType: string;
   name: string;
   calories: number;
@@ -25,7 +25,7 @@ export type NutritionLogRow = {
   carbsG: number;
   fatG: number;
   note: string | null;
-  createdAt: Date;
+  createdAt: Date | string;
 };
 
 /** Input for {@link logNutrition}. */

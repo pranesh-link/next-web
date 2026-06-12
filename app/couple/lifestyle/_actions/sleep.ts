@@ -17,13 +17,13 @@ export type SleepLogRow = {
   id: string;
   userId: string;
   coupleId: string | null;
-  date: Date;
-  bedtimeAt: Date;
-  wakeAt: Date;
+  date: string;
+  bedtimeAt: Date | string;
+  wakeAt: Date | string;
   durationMins: number;
   quality: number;
   note: string | null;
-  createdAt: Date;
+  createdAt: Date | string;
 };
 
 /** Input for {@link logSleep}. */
