@@ -222,9 +222,9 @@ export async function getCoupleUsers() {
 
     const members = await getCoupleMembers(coupleId);
     const coupleUserList = members.map((m) => ({
-      id: m.user.id,
-      name: m.user.name,
-      email: m.user.email,
+      id: m.user!.id,
+      name: m.user!.name,
+      email: m.user!.email,
     }));
 
     return { success: true as const, data: coupleUserList, currentUserId: user.id };

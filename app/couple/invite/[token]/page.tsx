@@ -196,7 +196,7 @@ export default function InviteAcceptPage() {
   }
 
   const inviterName =
-    invite?.couple.members[0]?.user.name || "Your partner";
+    invite?.couple.members[0]?.user?.name || "Your partner";
   const coupleName = invite?.couple.name;
 
   return (

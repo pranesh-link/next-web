@@ -148,7 +148,7 @@ export default function NotificationsPage() {
             token: (invite as typeof invite & { token: string }).token,
             status: (invite as typeof invite & { status: string }).status,
             coupleName: invite.couple.name || null,
-            inviterName: inviter?.user.name || null,
+            inviterName: inviter?.user?.name || null,
           };
         }
         setInviteDetails((prev) => ({ ...prev, ...details }));

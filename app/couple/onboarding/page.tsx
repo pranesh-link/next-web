@@ -50,8 +50,8 @@ export default function OnboardingPage() {
     getCouple().then((res) => {
       if (!res.success || !res.data) return;
       const currentId = session?.user?.id;
-      const partner = res.data.members.find((m) => m.user.id !== currentId);
-      setPartnerName(partner?.user.name ?? null);
+      const partner = res.data.members.find((m) => m.user?.id !== currentId);
+      setPartnerName(partner?.user?.name ?? null);
     });
   }, [session?.user?.id]);
 
