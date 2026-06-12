@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
 import { db } from "@db";
 import { coupleMembers, coupleMessages, messageTypeEnum } from "@db/schema";
-import { eq, and, lt, desc } from "drizzle-orm";
+import { eq, and, lt } from "drizzle-orm";
 import { sendChatPushNotification } from "@/_services/chat/push-service";
 
 const sendMessageSchema = z.object({
