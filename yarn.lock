@@ -23,6 +23,13 @@
     preact "10.24.3"
     preact-render-to-string "6.5.11"
 
+"@auth/drizzle-adapter@^1.7.4":
+  version "1.11.2"
+  resolved "https://registry.yarnpkg.com/@auth/drizzle-adapter/-/drizzle-adapter-1.11.2.tgz#757e50d94ff5858cf3375969cb0cf9102bf14be5"
+  integrity sha512-VOuj7REI8jfJjpSbsYwDM/Zrn55T6lS9Yc+29V+EXMcel8eqG7x+7LodNfd1WHjakfkLYi+qsbYUHB3E6aDA4w==
+  dependencies:
+    "@auth/core" "0.41.2"
+
 "@auth/prisma-adapter@^2.11.1":
   version "2.11.2"
   resolved "https://registry.npmjs.org/@auth/prisma-adapter/-/prisma-adapter-2.11.2.tgz"
