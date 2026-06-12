@@ -63,9 +63,11 @@ jobs:
       - name: Run SQL migrations (scripts/migrations/)
         if: env.DIRECT_DATABASE_URL != ''
         run: |
+          # psql doesn't support sslmode=no-verify — replace with require
+          PSQL_URL="${DIRECT_DATABASE_URL//sslmode=no-verify/sslmode=require}"
           for f in scripts/migrations/*.sql; do
             echo "Running $f..."
-            psql "$DIRECT_DATABASE_URL" -f "$f"
+            psql "$PSQL_URL" -f "$f"
             echo "Done: $f"
           done
         env:
