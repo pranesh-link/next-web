@@ -1,16 +1,7 @@
-import { createClient } from "@supabase/supabase-js";
+import { deleteStorageFiles } from "@/_lib/supabase-storage";
 import { db } from "@db";
 import { coupleMessages } from "@db/schema";
-import { and, isNull, isNotNull, lt, not, inArray } from "drizzle-orm";
-
-const CHAT_BUCKET = "chat-media";
-
-function getSupabaseAdmin() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return null;
-  return createClient(url, key, { auth: { persistSession: false } });
-}
+import { and, isNull, isNotNull, lt, inArray } from "drizzle-orm";
 
 /**
  * Purges undelivered messages older than 30 days.
@@ -59,15 +50,10 @@ export async function cleanupDeliveredMessages(): Promise<number> {
 
   if (stale.length === 0) return 0;
 
-  // Delete storage files
-  const supabase = getSupabaseAdmin();
-  if (supabase) {
-    const paths = stale.map((m) => m.fileStoragePath).filter(Boolean) as string[];
-    if (paths.length > 0) {
-      await supabase.storage.from(CHAT_BUCKET).remove(paths).catch((e: Error) => {
-        console.error("[message-purge] Storage bulk delete failed:", e);
-      });
-    }
+  // Delete storage files via REST helper
+  const paths = stale.map((m) => m.fileStoragePath).filter(Boolean) as string[];
+  if (paths.length > 0) {
+    await deleteStorageFiles(paths);
   }
 
   // Delete message rows

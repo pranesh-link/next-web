@@ -3,22 +3,12 @@ import { z } from "zod";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
 import { db } from "@db";
 import { coupleMembers, coupleMessages } from "@db/schema";
-import { eq, and, ne, inArray, isNull } from "drizzle-orm";
+import { eq, and, ne, inArray } from "drizzle-orm";
 import { sendPushToUser } from "@/_services/finance/push-service";
-import { createClient } from "@supabase/supabase-js";
 
 const ackSchema = z.object({
   messageIds: z.array(z.string().uuid()).min(1).max(100),
 });
-
-const CHAT_BUCKET = "chat-media";
-
-function getSupabaseAdmin() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return null;
-  return createClient(url, key, { auth: { persistSession: false } });
-}
 
 /**
  * POST — Acknowledge delivery of messages.

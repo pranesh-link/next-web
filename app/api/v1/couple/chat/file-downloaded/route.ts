@@ -1,24 +1,15 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createClient } from "@supabase/supabase-js";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
 import { db } from "@db";
 import { coupleMembers, coupleMessages } from "@db/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
+import { deleteStorageFiles } from "@/_lib/supabase-storage";
 
 const schema = z.object({
   messageId: z.string().uuid(),
 });
-
-const CHAT_BUCKET = "chat-media";
-
-function getSupabaseAdmin() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return null;
-  return createClient(url, key, { auth: { persistSession: false } });
-}
 
 export function OPTIONS() {
   return handleOptions();
@@ -89,14 +80,10 @@ export async function POST(request: Request) {
     let messageDeleted = false;
 
     if (allDownloaded) {
-      // Delete from Supabase Storage
+      // Delete from Supabase Storage via REST helper
       if (message.fileStoragePath) {
-        const supabase = getSupabaseAdmin();
-        if (supabase) {
-          const { error } = await supabase.storage.from(CHAT_BUCKET).remove([message.fileStoragePath]);
-          if (!error) fileDeleted = true;
-          else console.error("[file-downloaded] Storage delete failed:", error);
-        }
+        await deleteStorageFiles([message.fileStoragePath]);
+        fileDeleted = true;
       }
 
       // Delete message row
