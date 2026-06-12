@@ -88,9 +88,9 @@ const fetchDashboardData = unstable_cache(
     const accounts = await accountsP;
     const allTransactions = await allTransactionsP;
     const currentMonthTransactions = await currentMonthTxP;
-    const budgets_ = await budgetsP;
+    const budgetRows = await budgetsP;
     const budgetSpent = await budgetSpentP;
-    const loans_ = await loansP;
+    const loanRows = await loansP;
     const goals = await goalsP;
     const investments = await investmentsP;
     const deposits = await depositsP;
@@ -113,18 +113,18 @@ const fetchDashboardData = unstable_cache(
     const spentMap = new Map<string, number>(
       budgetSpent.map((s) => [s.category, Number(s.total ?? 0)]),
     );
-    const budgetStatus = budgets_.map((budget) => {
+    const budgetStatus = budgetRows.map((budget) => {
       const spent = spentMap.get(budget.category) ?? 0;
       const limit = Number(budget.limit);
       return { budget, spent, remaining: limit - spent, exceeded: spent > limit };
     });
 
     const loansSummary = {
-      count: loans_.length,
-      totalRemaining: loans_.reduce((sum, l) => sum + Number(l.remainingBalance), 0),
-      totalEMI: loans_.reduce((sum, l) => sum + getNextEmiAmount(l), 0),
+      count: loanRows.length,
+      totalRemaining: loanRows.reduce((sum, l) => sum + Number(l.remainingBalance), 0),
+      totalEMI: loanRows.reduce((sum, l) => sum + getNextEmiAmount(l), 0),
     };
-    const loanDetails = computeLoanDetails(loans_);
+    const loanDetails = computeLoanDetails(loanRows);
 
     const goalsWithProgress = goals.map((g) => ({
       ...g,
@@ -164,8 +164,8 @@ const fetchDashboardData = unstable_cache(
     const debtToIncomeRatio = (totalMonthlyEMI / monthlyIncome) * 100;
     const emergencyFundMonths = cashFlow.expenses > 0 ? totalBalance / cashFlow.expenses : 0;
 
-    const totalBudgetLimit = budgets_.reduce((sum, b) => sum + Number(b.limit), 0);
-    const totalBudgetSpent = budgets_.reduce(
+    const totalBudgetLimit = budgetRows.reduce((sum, b) => sum + Number(b.limit), 0);
+    const totalBudgetSpent = budgetRows.reduce(
       (sum, b) => sum + (spentMap.get(b.category) ?? 0),
       0,
     );
@@ -193,7 +193,7 @@ const fetchDashboardData = unstable_cache(
       hasExpenses: cashFlow.expenses > 0,
       debtToIncomeRatio,
       atRiskGoalCount: goalsWithTimeline.filter((g) => g.isAtRisk).length,
-      emiDueSoon: hasEmiDueSoon(loans_),
+      emiDueSoon: hasEmiDueSoon(loanRows),
     });
 
     const healthScore = calculateFinancialHealthScore({
