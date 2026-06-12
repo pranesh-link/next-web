@@ -2,7 +2,7 @@
 
 import { db } from "@db";
 import {
-  financialAccounts, transactions, budgets, loans,
+  financialAccounts, transactions, loans,
   savingsGoals, investmentHoldings, depositInstruments,
 } from "@db/schema";
 import { eq, inArray, gte, lt, desc, sql } from "drizzle-orm";
