@@ -125,6 +125,7 @@ export async function POST(request: NextRequest) {
         token,
         platform,
         active: true,
+        updatedAt: new Date(),
         ...(deviceInfo ? { deviceInfo } : {}),
       })
       .onConflictDoUpdate({
