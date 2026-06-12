@@ -31,21 +31,21 @@ jobs:
       - name: Run SQL migrations (scripts/migrations/)
         if: ${{ env.DIRECT_DATABASE_URL != '' }}
         run: |
-          # Strip unsupported sslmode values
-          RAW_URL=$(echo "$DIRECT_DATABASE_URL" | sed 's/sslmode=[^&?]*//g' | sed 's/[?&]$//g')
+          # Strip unsupported sslmode values from URL
+          CLEAN_URL=$(echo "$DIRECT_DATABASE_URL" | sed 's/sslmode=[^&?]*//g' | sed 's/[?&]*$//')
 
-          # Resolve hostname to IPv4 — GitHub Actions can't reach Supabase over IPv6
-          HOSTNAME=$(echo "$RAW_URL" | python3 -c "import sys,re; m=re.search(r'@([^:/]+)', sys.stdin.read()); print(m.group(1) if m else '')" )
+          # Extract hostname for IPv4 resolution
+          HOSTNAME=$(echo "$CLEAN_URL" | grep -oP '(?<=@)[^:/]+')
+
+          # Resolve to IPv4 — PGHOSTADDR forces psql to use this IP directly,
+          # bypassing its own DNS lookup (which picks IPv6 on GitHub Actions).
           IPV4=$(getent ahostsv4 "$HOSTNAME" 2>/dev/null | head -1 | awk '{print $1}')
-          if [ -n "$IPV4" ]; then
-            PSQL_URL="${RAW_URL/$HOSTNAME/$IPV4}"
-          else
-            PSQL_URL="$RAW_URL"
-          fi
+
+          echo "Hostname: $HOSTNAME → IPv4: $IPV4"
 
           for f in scripts/migrations/*.sql; do
             echo "Running $f..."
-            PGSSLMODE=require psql "$PSQL_URL" -f "$f"
+            PGSSLMODE=require PGHOSTADDR="$IPV4" psql "$CLEAN_URL" -f "$f"
             echo "Done: $f"
           done
         env:
