@@ -20,34 +20,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install PostgreSQL client
-        run: |
-          sudo apt-get remove -y postgresql-client-* 2>/dev/null || true
-          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
-          sudo apt-get update -qq
-          sudo apt-get install -y postgresql-client-17
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
-      - name: Run SQL migrations (scripts/migrations/)
+      - name: Install pg
+        run: npm install pg @types/pg tsx --no-save
+
+      - name: Run SQL migrations
         if: ${{ env.DIRECT_DATABASE_URL != '' }}
-        run: |
-          # Strip unsupported sslmode values from URL
-          CLEAN_URL=$(echo "$DIRECT_DATABASE_URL" | sed 's/sslmode=[^&?]*//g' | sed 's/[?&]*$//')
-
-          # Extract hostname for IPv4 resolution
-          HOSTNAME=$(echo "$CLEAN_URL" | grep -oP '(?<=@)[^:/]+')
-
-          # Resolve to IPv4 — PGHOSTADDR forces psql to use this IP directly,
-          # bypassing its own DNS lookup (which picks IPv6 on GitHub Actions).
-          IPV4=$(getent ahostsv4 "$HOSTNAME" 2>/dev/null | head -1 | awk '{print $1}')
-
-          echo "Hostname: $HOSTNAME → IPv4: $IPV4"
-
-          for f in scripts/migrations/*.sql; do
-            echo "Running $f..."
-            PGSSLMODE=require PGHOSTADDR="$IPV4" psql "$CLEAN_URL" -f "$f"
-            echo "Done: $f"
-          done
+        run: npx tsx scripts/run-migrations.ts
         env:
           DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
+
 
