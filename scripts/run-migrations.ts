@@ -12,8 +12,10 @@ import { setDefaultResultOrder } from "dns";
 setDefaultResultOrder("ipv4first");
 
 async function main() {
+  // Use DATABASE_URL (transaction pooler, IPv4) — DIRECT_DATABASE_URL is IPv6 only
+  // and unreachable from GitHub Actions.
   const connectionString =
-    process.env.DIRECT_DATABASE_URL ?? process.env.DATABASE_URL ?? "";
+    process.env.DATABASE_URL ?? process.env.DIRECT_DATABASE_URL ?? "";
 
   if (!connectionString) {
     console.error("No DATABASE_URL or DIRECT_DATABASE_URL set");

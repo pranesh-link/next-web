@@ -28,9 +28,9 @@ jobs:
         run: npm install pg @types/pg tsx --no-save
 
       - name: Run SQL migrations
-        if: ${{ env.DIRECT_DATABASE_URL != '' }}
+        if: ${{ env.DATABASE_URL != '' }}
         run: npx tsx scripts/run-migrations.ts
         env:
-          DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
 
