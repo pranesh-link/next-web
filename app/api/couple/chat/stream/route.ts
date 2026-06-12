@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
 import { db } from "@db";
 import { coupleMembers, coupleMessages } from "@db/schema";
-import { eq, and, ne, sql, count as drizzleCount } from "drizzle-orm";
+import { eq, and, ne, count as drizzleCount } from "drizzle-orm";
 
 /** SSE streams are capped at 30 s on Vercel Hobby. */
 export const maxDuration = 30;
