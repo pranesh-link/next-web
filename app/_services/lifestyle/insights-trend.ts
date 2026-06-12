@@ -14,9 +14,10 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
  * @param date - The date to bucket.
  * @returns ISO date portion at UTC midnight.
  */
-export function dayKey(date: Date): string {
+export function dayKey(date: Date | string): string {
+  const d = typeof date === "string" ? new Date(date) : date;
   return new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()),
   )
     .toISOString()
     .slice(0, 10);

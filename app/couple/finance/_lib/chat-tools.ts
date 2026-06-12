@@ -195,8 +195,8 @@ export async function executeToolCall(
         columns: { date: true },
       });
       if (!latestTx) return [];
-      const ly = latestTx.date.getFullYear();
-      const lm = latestTx.date.getMonth();
+      const ly = new Date(latestTx.date as string).getFullYear();
+      const lm = new Date(latestTx.date as string).getMonth();
       const fallbackStart = new Date(ly, lm, 1);
       const fallbackEnd = new Date(ly, lm + 1, 1);
       const fallbackRows = await db

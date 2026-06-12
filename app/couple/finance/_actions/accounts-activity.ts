@@ -109,21 +109,21 @@ export async function getAccountActivity(accountId: string, cursor?: string) {
     ];
 
     items.sort((a, b) => {
-      const diff = b.date.getTime() - a.date.getTime();
+      const diff = new Date(b.date as string).getTime() - new Date(a.date as string).getTime();
       if (diff !== 0) return diff;
       return b.id.localeCompare(a.id);
     });
 
     let filtered = items;
     if (cursorDate && cursorId) {
-      const cursorTime = cursorDate.getTime();
+      const cursorTime = new Date(cursorDate as unknown as string).getTime();
       const idx = filtered.findIndex(
-        (item) => item.date.getTime() === cursorTime && item.id === cursorId,
+        (item) => new Date(item.date as string).getTime() === cursorTime && item.id === cursorId,
       );
       if (idx !== -1) {
         filtered = filtered.slice(idx + 1);
       } else {
-        filtered = filtered.filter((item) => item.date.getTime() < cursorTime);
+        filtered = filtered.filter((item) => new Date(item.date as string).getTime() < cursorTime);
       }
     }
 
