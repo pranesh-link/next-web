@@ -141,14 +141,14 @@ export async function GET() {
             id: u.id,
             email: u.email,
             name: u.name,
-            createdAt: u.createdAt.toISOString(),
-            lastSeenAt: u.lastSeenAt?.toISOString() ?? null,
+            createdAt: String(u.createdAt),
+            lastSeenAt: u.lastSeenAt ? String(u.lastSeenAt) : null,
             lastDeviceInfo: u.lastDeviceInfo ?? null,
             latestDevice: latestDeviceMap.has(u.id)
               ? {
                   platform: latestDeviceMap.get(u.id)!.platform,
                   deviceInfo: latestDeviceMap.get(u.id)!.deviceInfo,
-                  lastRegistered: latestDeviceMap.get(u.id)!.updatedAt.toISOString(),
+                  lastRegistered: String(latestDeviceMap.get(u.id)!.updatedAt),
                 }
               : null,
           })),

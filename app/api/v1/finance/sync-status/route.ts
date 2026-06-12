@@ -64,7 +64,7 @@ async function getHandler() {
         .limit(1),
     ]);
 
-  const toMs = (d: Date | null | undefined) => d?.getTime() ?? 0;
+  const toMs = (d: Date | string | null | undefined) => d ? new Date(d).getTime() : 0;
 
   return NextResponse.json({
     accounts: toMs(latestAccount[0]?.updatedAt),

@@ -63,7 +63,7 @@ async function getHandler(request: NextRequest) {
             reason: l.reason,
             change: l.change,
             totalBalance: l.totalBalance,
-            createdAt: l.createdAt.toISOString(),
+            createdAt: String(l.createdAt),
           })),
           nextCursor,
         },
