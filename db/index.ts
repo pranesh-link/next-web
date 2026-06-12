@@ -31,9 +31,6 @@ const connectionString = (() => {
   if (!url.includes("connect_timeout")) {
     url += (url.includes("?") ? "&" : "?") + "connect_timeout=10";
   }
-  if (!url.includes("sslmode")) {
-    url += "&sslmode=verify-full";
-  }
   return url;
 })();
 
@@ -59,6 +56,7 @@ class SchemaPool extends Pool {
 
 const pool = new SchemaPool({
   connectionString: connectionString || undefined,
+  ssl: { rejectUnauthorized: false },
   // Serverless-optimised pool config:
   max: 1,                         // one connection per cold-start instance
   connectionTimeoutMillis: 12000, // covers cold TCP + SSL handshake + SET search_path
