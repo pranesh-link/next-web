@@ -5,6 +5,7 @@ on:
     branches: [master]
     paths:
       - 'prisma/migrations/**'
+      - 'scripts/migrations/**'
 
   # Allow manual trigger for re-running failed migrations
   workflow_dispatch:
@@ -58,3 +59,13 @@ jobs:
         run: npx prisma migrate status
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Run SQL migrations (scripts/migrations/)
+        run: |
+          for f in scripts/migrations/*.sql; do
+            echo "Running $f..."
+            psql "$DIRECT_DATABASE_URL" -f "$f"
+            echo "Done: $f"
+          done
+        env:
+          DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
