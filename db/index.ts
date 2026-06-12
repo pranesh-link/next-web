@@ -1,16 +1,15 @@
 /**
  * Drizzle database client.
  *
- * DATABASE_URL points to Supabase direct or Transaction Pooler.
- * search_path cannot be set via URL options on the Prisma proxy, so
- * SchemaPool.connect() issues SET search_path TO public on each new
- * physical connection (tracked via WeakSet to avoid redundant round-trips).
+ * DATABASE_URL points to Supabase Transaction Pooler (port 6543).
+ * IMPORTANT: Do NOT run session-level SET commands (e.g. SET search_path)
+ * against the Transaction Pooler — each transaction may hit a different
+ * backend connection, and the pooler does not support session commands.
  *
- * Pool config is tuned for Vercel serverless:
- * - max:1                      — one connection per function instance
- * - connectionTimeoutMillis:12000 — covers cold TCP + SSL + SET search_path
- * - idleTimeoutMillis:20000    — keep warm between requests
- * - connect_timeout=10         — PostgreSQL-level TCP timeout (seconds)
+ * Pool config tuned for Vercel serverless:
+ * - max:1                       — one connection per function instance
+ * - connectionTimeoutMillis:10000 — covers cold TCP + TLS handshake
+ * - idleTimeoutMillis:20000     — keep warm between requests
  */
 
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -19,52 +18,22 @@ import * as schema from "./schema";
 
 const { Pool } = pg;
 
-// Strip Prisma-specific ?schema= param that pg driver doesn't understand.
-// Add connect_timeout=10 (PostgreSQL protocol-level TCP timeout) so the OS
-// doesn't hold the socket open for 30s+ on a cold Supabase connection.
-// Use sslmode=verify-full to silence the pg SSL deprecation warning.
+// Strip params that the pg driver doesn't understand.
 const rawUrl = process.env.DATABASE_URL ?? "";
-const connectionString = (() => {
-  let url = rawUrl
-    .replace(/[?&]schema=[^&]*/g, "")
-    .replace(/[?&]sslmode=[^&]*/g, "")  // handled via pool ssl: option
-    .replace(/[?&]$/, "");
-  if (!url.includes("connect_timeout")) {
-    url += (url.includes("?") ? "&" : "?") + "connect_timeout=10";
-  }
-  return url;
-})();
+const connectionString = rawUrl
+  .replace(/[?&]schema=[^&]*/g, "")
+  .replace(/[?&]sslmode=[^&]*/g, "")
+  .replace(/[?&]$/, "");
 
-// Track which physical connections have already had search_path set.
-// WeakSet allows GC when the client is destroyed.
-const initializedClients = new WeakSet<pg.PoolClient>();
-
-class SchemaPool extends Pool {
-  async connect(): Promise<pg.PoolClient> {
-    const client = await super.connect();
-    // Only SET search_path on new physical connections, not every checkout.
-    if (!initializedClients.has(client)) {
-      try {
-        await client.query("SET search_path TO public");
-        initializedClients.add(client);
-      } catch {
-        // Non-fatal: downstream query will fail with a clearer error
-      }
-    }
-    return client;
-  }
-}
-
-const pool = new SchemaPool({
+const pool = new Pool({
   connectionString: connectionString || undefined,
   ssl: { rejectUnauthorized: false },
-  // Serverless-optimised pool config:
-  max: 1,                         // one connection per cold-start instance
-  connectionTimeoutMillis: 12000, // covers cold TCP + SSL handshake + SET search_path
-  idleTimeoutMillis: 20000,       // keep connection warm between requests
+  max: 1,
+  connectionTimeoutMillis: 10000,
+  idleTimeoutMillis: 20000,
 });
 
-export const db = drizzle(pool as unknown as pg.Pool, { schema });
+export const db = drizzle(pool, { schema });
 export type DB = typeof db;
 
 // Re-export schema for convenience
