@@ -29,6 +29,19 @@ class AttachMenu extends ConsumerWidget {
     if (picked == null) return;
     final file = File(picked.path);
     await ref.read(chatNotifierProvider.notifier).sendImage(file);
+    // Surface any upload/send error to the user
+    final err = ref.read(chatNotifierProvider.notifier).lastSendError;
+    if (err != null && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            err.toString().replaceFirst('Exception: ', '').replaceFirst('ApiException: ', ''),
+          ),
+          backgroundColor: Colors.red.shade700,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
   }
 
   @override
