@@ -4,18 +4,14 @@ on:
   push:
     branches: [master]
     paths:
-      - 'prisma/migrations/**'
       - 'scripts/migrations/**'
 
-  # Allow manual trigger for re-running failed migrations
+  # Allow manual trigger
   workflow_dispatch:
 
 concurrency:
   group: migrate-db
   cancel-in-progress: false
-
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
   migrate:
@@ -24,51 +20,43 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: yarn
-
-      - uses: actions/cache@v4
-        id: node-modules
-        with:
-          path: node_modules
-          key: node-modules-${{ runner.os }}-${{ hashFiles('yarn.lock') }}
-
-      - name: Install dependencies
-        if: steps.node-modules.outputs.cache-hit != 'true'
-        run: yarn --frozen-lockfile --ignore-engines
-
-      - name: Install PostgreSQL 17 client
+      - name: Install PostgreSQL client
         run: |
-          sudo apt-get remove -y postgresql-client-16 || true
+          sudo apt-get remove -y postgresql-client-* 2>/dev/null || true
           sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
           curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
-          sudo apt-get update
+          sudo apt-get update -qq
           sudo apt-get install -y postgresql-client-17
 
-      - name: Generate Prisma client
-        run: npx prisma generate
-
-      - name: Run safe migration
-        run: npx tsx scripts/safe-migrate.ts
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-
-      - name: Verify migration status
-        run: npx prisma migrate status
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-
       - name: Run SQL migrations (scripts/migrations/)
-        if: env.DIRECT_DATABASE_URL != ''
+        if: ${{ env.DIRECT_DATABASE_URL != '' }}
         run: |
-          # psql doesn't support sslmode=no-verify — replace with require
-          PSQL_URL="${DIRECT_DATABASE_URL//sslmode=no-verify/sslmode=require}"
+          # Strip sslmode (psql doesn't support no-verify) and force IPv4
+          # by resolving the hostname to its IPv4 address before connecting.
+          RAW_URL="${DIRECT_DATABASE_URL//sslmode=no-verify/}"
+          RAW_URL="${RAW_URL//sslmode=verify-full/}"
+          RAW_URL="${RAW_URL//&&/}"
+
+          HOSTNAME=$(python3 -c "
+          import re, sys
+          m = re.search(r'@([^:/]+)', '$RAW_URL')
+          print(m.group(1) if m else '')
+          ")
+          IPV4=$(python3 -c "
+          import socket
+          try:
+            info = socket.getaddrinfo('$HOSTNAME', 5432, socket.AF_INET)
+            print(info[0][4][0])
+          except:
+            print('$HOSTNAME')
+          ")
+          PSQL_URL="${RAW_URL//$HOSTNAME/$IPV4}"
+
           for f in scripts/migrations/*.sql; do
             echo "Running $f..."
-            psql "$PSQL_URL" -f "$f"
+            PGSSLMODE=require psql "$PSQL_URL" -f "$f"
             echo "Done: $f"
           done
         env:
           DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
+
