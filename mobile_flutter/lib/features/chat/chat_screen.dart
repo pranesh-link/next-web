@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import 'package:luvverse/core/notifications/push_notification_service.dart';
 import 'package:luvverse/core/notifications/push_providers.dart';
 import 'package:luvverse/core/theme/app_colors_extension.dart';
@@ -277,21 +276,35 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget _buildOnlineStatus(BuildContext context) {
     final status = ref.watch(onlineStatusProvider);
     if (status.isOnline) {
-      return Text(
-        'Online',
-        style: TextStyle(
-          fontSize: 12,
-          color: context.colors.success,
-          fontWeight: FontWeight.w400,
-        ),
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(
+              color: context.colors.success,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'Online',
+            style: TextStyle(
+              fontSize: 12,
+              color: context.colors.success,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ],
       );
     }
     if (status.lastSeen != null) {
       return Text(
-        'Last seen ${DateFormat('h:mm a').format(status.lastSeen!.toLocal())}',
-        style: TextStyle(
+        'Last seen ${status.formattedLastSeen}',
+        style: const TextStyle(
           fontSize: 12,
-          color: context.colors.textMuted,
+          color: Color(0xFF8E8E93),
           fontWeight: FontWeight.w400,
         ),
       );
@@ -328,23 +341,26 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
 
     return Scaffold(
-      backgroundColor: wallpaperColor ?? (Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1B2836) : const Color(0xFFECE5DD)),
+      backgroundColor: wallpaperColor ?? (Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1B2836) : const Color(0xFFF2F2F7)),
       appBar: AppBar(
+        centerTitle: true,
         title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               'Chat',
               style: AppTypography.cardTitle.copyWith(
                 color: context.colors.text,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
               ),
             ),
             if (isPartnerTyping)
-              Text(
-                'typing...',
+              const Text(
+                'typing\u2026',
                 style: TextStyle(
                   fontSize: 12,
-                  color: context.colors.success,
+                  color: Color(0xFF1A73E8),
                   fontWeight: FontWeight.w400,
                 ),
               )
@@ -353,7 +369,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ],
         ),
         backgroundColor: context.colors.bgElevated,
-        elevation: 0.5,
+        elevation: 0,
+        scrolledUnderElevation: 0.5,
         actions: [
           const RetentionTooltip(),
           IconButton(
