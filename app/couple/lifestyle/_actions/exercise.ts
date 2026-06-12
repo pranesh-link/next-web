@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/_lib/auth";
 import { db } from "@db";
 import { exerciseLogs } from "@db/schema";
-import { eq, and, inArray, asc, gte, desc } from "drizzle-orm";
+import { eq, and, inArray, asc, gte } from "drizzle-orm";
 import {
   getCoupleIdForUser,
   getUserIdsForCouple,

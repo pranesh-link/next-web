@@ -3,7 +3,7 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { db } from "@db";
 import { coupleMembers, coupleMessages, messageTypeEnum } from "@db/schema";
-import { eq, and, ne, lt, inArray, sql, count } from "drizzle-orm";
+import { eq, and, lt, inArray, sql, count } from "drizzle-orm";
 import { requireAuthForAction } from "@/_lib/auth-utils";
 import { sendChatPushNotification } from "@/_services/chat/push-service";
 

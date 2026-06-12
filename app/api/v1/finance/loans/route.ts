@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getAuthUserId } from "@/api/v1/_lib/auth";
 import { db } from "@db";
 import { loans } from "@db/schema";
-import { inArray, desc } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 import { loanSchema } from "@/_lib/validations/finance";
 import { calculateEMI } from "@/_services/finance";
 import { corsHeaders, handleOptions } from "@/api/v1/_lib/cors";
