@@ -142,12 +142,12 @@ export default function NotificationsPage() {
       if (res.success && res.data) {
         const details: Record<string, InviteDetail> = {};
         for (const invite of res.data) {
-          const inviter = invite.couple.members.find(() => true);
+          const inviter = invite.couple?.members?.find(() => true);
           details[invite.id] = {
             id: invite.id,
             token: (invite as typeof invite & { token: string }).token,
             status: (invite as typeof invite & { status: string }).status,
-            coupleName: invite.couple.name || null,
+            coupleName: invite.couple?.name || null,
             inviterName: inviter?.user?.name || null,
           };
         }
