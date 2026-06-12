@@ -38,17 +38,19 @@ export async function POST(request: Request) {
 
     const member = await db.query.coupleMembers.findFirst({
       where: eq(coupleMembers.userId, userId),
-      with: {
-        couple: {
-          with: { members: { columns: { userId: true } } },
-        },
-      },
       columns: { coupleId: true },
     });
 
     if (!member) {
       return NextResponse.json({ error: "No couple found" }, { status: 404, headers: corsHeaders() });
     }
+
+    // Fetch all member IDs for this couple
+    const allMembers = await db
+      .select({ userId: coupleMembers.userId })
+      .from(coupleMembers)
+      .where(eq(coupleMembers.coupleId, member.coupleId));
+    const allMemberIds = allMembers.map((m) => m.userId);
 
     const message = await db.query.coupleMessages.findFirst({
       where: and(
@@ -73,8 +75,7 @@ export async function POST(request: Request) {
       .where(eq(coupleMessages.id, messageId));
 
     // All couple members have downloaded — clean up storage + DB
-    const allMemberIds = member.couple.members.map((m: { userId: string }) => m.userId);
-    const allDownloaded = allMemberIds.every((id: string) => updatedDownloadedBy.includes(id));
+    const allDownloaded = allMemberIds.every((id) => updatedDownloadedBy.includes(id));
 
     let fileDeleted = false;
     let messageDeleted = false;
