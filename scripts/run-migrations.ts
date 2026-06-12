@@ -6,6 +6,10 @@
 import { readFileSync, readdirSync } from "fs";
 import { join } from "path";
 import { Client } from "pg";
+import { setDefaultResultOrder } from "dns";
+
+// Force IPv4 — GitHub Actions has no IPv6 connectivity
+setDefaultResultOrder("ipv4first");
 
 async function main() {
   const connectionString =
