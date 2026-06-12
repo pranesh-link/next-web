@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Three animated bouncing dots in a received-style bubble.
+/// iMessage-style three-dot typing indicator in a received-style bubble.
 class TypingIndicator extends StatefulWidget {
   const TypingIndicator({super.key});
 
@@ -29,7 +29,6 @@ class _TypingIndicatorState extends State<TypingIndicator>
       );
     }).toList();
 
-    // Stagger the animations
     for (int i = 0; i < 3; i++) {
       Future.delayed(Duration(milliseconds: i * 180), () {
         if (mounted) _controllers[i].repeat(reverse: true);
@@ -50,24 +49,46 @@ class _TypingIndicatorState extends State<TypingIndicator>
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.only(left: 12, bottom: 4),
+        margin: const EdgeInsets.only(left: 8, bottom: 4),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(16),
-            topRight: Radius.circular(16),
-            bottomLeft: Radius.circular(4),
-            bottomRight: Radius.circular(16),
+        decoration: const BoxDecoration(
+          color: Color(0xFFE9E9EB), // matches received bubble
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(18),
+            topRight: Radius.circular(18),
+            bottomLeft: Radius.circular(2),
+            bottomRight: Radius.circular(18),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 3,
-              offset: const Offset(0, 1),
-            ),
-          ],
         ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(3, (i) {
+            return AnimatedBuilder(
+              animation: _animations[i],
+              builder: (context, child) {
+                return Container(
+                  margin: EdgeInsets.only(right: i < 2 ? 5 : 0),
+                  child: Transform.translate(
+                    offset: Offset(0, _animations[i].value),
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF8E8E93),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            );
+          }),
+        ),
+      ),
+    );
+  }
+}
+
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: List.generate(3, (i) {

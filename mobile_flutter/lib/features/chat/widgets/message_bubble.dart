@@ -5,7 +5,7 @@ import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/features/chat/models/chat_message.dart';
 
-/// WhatsApp-style message bubble with read receipts and reactions.
+/// iMessage-style message bubble with read receipts and reactions.
 class MessageBubble extends StatelessWidget {
   final ChatMessage message;
   final bool isMe;
@@ -14,6 +14,9 @@ class MessageBubble extends StatelessWidget {
   final VoidCallback? onDelete;
   final VoidCallback? onCopy;
   final VoidCallback? onReply;
+  /// Whether this bubble is the last consecutive message from this sender.
+  /// Controls whether the tail is drawn.
+  final bool isTail;
 
   const MessageBubble({
     super.key,
@@ -24,16 +27,33 @@ class MessageBubble extends StatelessWidget {
     this.onDelete,
     this.onCopy,
     this.onReply,
+    this.isTail = true,
   });
 
-  static const _sentColor = Color(0xFFDCF8C6);
-  static const _receivedColor = Colors.white;
+  // iMessage colours
+  static const _sentColor    = Color(0xFF1A73E8); // blue
+  static const _receivedColor = Color(0xFFE9E9EB); // light grey
+  static const _sentTextColor = Colors.white;
+  static const _receivedTextColor = Color(0xFF1A1A1A);
+  static const _receiptReadColor   = Color(0xFF4FC3F7); // blue double-tick
+  static const _receiptSentColor   = Color(0xFF8E8E93); // grey single tick
 
   @override
   Widget build(BuildContext context) {
-    final time = DateFormat('HH:mm').format(message.createdAt.toLocal());
+    final time = DateFormat('h:mm a').format(message.createdAt.toLocal());
     final reactions = message.reactions;
     final hasReactions = reactions.isNotEmpty;
+    final bubbleColor = isMe ? _sentColor : _receivedColor;
+    final textColor = isMe ? _sentTextColor : _receivedTextColor;
+
+    // Tail corner: 2px; non-tail corner: 18px
+    final tailRadius = isTail ? const Radius.circular(2) : const Radius.circular(18);
+    final borderRadius = BorderRadius.only(
+      topLeft: const Radius.circular(18),
+      topRight: const Radius.circular(18),
+      bottomLeft: isMe ? const Radius.circular(18) : tailRadius,
+      bottomRight: isMe ? tailRadius : const Radius.circular(18),
+    );
 
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
@@ -47,63 +67,61 @@ class MessageBubble extends StatelessWidget {
             crossAxisAlignment:
                 isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md,
-                  vertical: AppSpacing.sm,
-                ),
-                decoration: BoxDecoration(
-                  color: isMe ? _sentColor : _receivedColor,
-                  borderRadius: BorderRadius.only(
-                    topLeft: const Radius.circular(16),
-                    topRight: const Radius.circular(16),
-                    bottomLeft: Radius.circular(isMe ? 16 : 4),
-                    bottomRight: Radius.circular(isMe ? 4 : 16),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 3,
-                      offset: const Offset(0, 1),
+              // ── Bubble + floating reactions ──
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 9,
                     ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
+                    decoration: BoxDecoration(
+                      color: bubbleColor,
+                      borderRadius: borderRadius,
+                    ),
+                    child: Text(
                       message.content,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 15,
-                        color: Color(0xFF1A1A1A),
+                        color: textColor,
                         height: 1.35,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          time,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                        if (isMe) ...[
-                          const SizedBox(width: 3),
-                          _buildReadReceipt(),
-                        ],
-                      ],
+                  ),
+                  if (hasReactions)
+                    Positioned(
+                      bottom: -10,
+                      right: isMe ? 6 : null,
+                      left: isMe ? null : 6,
+                      child: _buildReactions(context),
                     ),
+                ],
+              ),
+              // ── Time + read receipt (outside bubble) ──
+              Padding(
+                padding: EdgeInsets.only(
+                  top: hasReactions ? 14 : 3,
+                  left: isMe ? 0 : 4,
+                  right: isMe ? 4 : 0,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      time,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF8E8E93),
+                      ),
+                    ),
+                    if (isMe) ...[
+                      const SizedBox(width: 3),
+                      _buildReadReceipt(),
+                    ],
                   ],
                 ),
               ),
-              if (hasReactions)
-                Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: _buildReactions(context),
-                ),
             ],
           ),
         ),
@@ -112,33 +130,37 @@ class MessageBubble extends StatelessWidget {
   }
 
   Widget _buildReadReceipt() {
-    // If readBy contains someone other than the sender, it's been read
+    // Blue double-tick = read; grey single tick = delivered/sent
     final isRead =
         message.readBy.any((id) => id != currentUserId && id.isNotEmpty);
-
     if (isRead) {
-      return const Icon(Icons.done_all, size: 14, color: Color(0xFF4FC3F7));
+      return const Icon(Icons.done_all, size: 14, color: _receiptReadColor);
     }
-    return Icon(Icons.done, size: 14, color: Colors.grey.shade500);
+    return const Icon(Icons.done, size: 14, color: _receiptSentColor);
   }
 
   Widget _buildReactions(BuildContext context) {
-    final reactions = message.reactions;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
         color: context.colors.bgElevated,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: context.colors.cardBorder),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
-        children: reactions.entries.map((entry) {
+        children: message.reactions.entries.map((entry) {
           return Padding(
             padding: const EdgeInsets.only(right: 2),
             child: Text(
-              '${entry.key} ${entry.value.length > 1 ? entry.value.length : ''}',
-              style: const TextStyle(fontSize: 12),
+              '${entry.key}${entry.value.length > 1 ? ' ${entry.value.length}' : ''}',
+              style: const TextStyle(fontSize: 13),
             ),
           );
         }).toList(),
@@ -151,7 +173,7 @@ class MessageBubble extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) => SafeArea(
         child: Column(
@@ -159,7 +181,7 @@ class MessageBubble extends StatelessWidget {
           children: [
             const SizedBox(height: AppSpacing.sm),
             Container(
-              width: 32,
+              width: 36,
               height: 4,
               decoration: BoxDecoration(
                 color: Colors.grey.shade300,
@@ -168,39 +190,25 @@ class MessageBubble extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.lg),
             ListTile(
-              leading: const Icon(Icons.copy),
+              leading: const Icon(Icons.copy_outlined),
               title: const Text('Copy'),
-              onTap: () {
-                Navigator.pop(ctx);
-                onCopy?.call();
-              },
+              onTap: () { Navigator.pop(ctx); onCopy?.call(); },
             ),
             ListTile(
               leading: const Icon(Icons.emoji_emotions_outlined),
               title: const Text('React'),
-              onTap: () {
-                Navigator.pop(ctx);
-                onReact?.call();
-              },
+              onTap: () { Navigator.pop(ctx); onReact?.call(); },
             ),
             ListTile(
-              leading: const Icon(Icons.reply),
+              leading: const Icon(Icons.reply_outlined),
               title: const Text('Reply'),
-              onTap: () {
-                Navigator.pop(ctx);
-                onReply?.call();
-              },
+              onTap: () { Navigator.pop(ctx); onReply?.call(); },
             ),
             if (isMe)
               ListTile(
-                leading: Icon(Icons.delete_outline,
-                    color: context.colors.danger),
-                title: Text('Delete',
-                    style: TextStyle(color: context.colors.danger)),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  onDelete?.call();
-                },
+                leading: Icon(Icons.delete_outline, color: context.colors.danger),
+                title: Text('Delete', style: TextStyle(color: context.colors.danger)),
+                onTap: () { Navigator.pop(ctx); onDelete?.call(); },
               ),
             const SizedBox(height: AppSpacing.sm),
           ],

@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:luvverse/core/theme/app_colors_extension.dart';
@@ -5,7 +6,7 @@ import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/features/chat/models/chat_message.dart';
 import 'package:luvverse/features/chat/widgets/reply_preview_bar.dart';
 
-/// Compose bar with text field, send button, and attach button.
+/// iMessage-style compose bar: frosted container, pill input, blue send button.
 class MessageInput extends StatefulWidget {
   final Function(String) onSend;
   final VoidCallback onTyping;
@@ -55,6 +56,7 @@ class _MessageInputState extends State<MessageInput> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -63,83 +65,119 @@ class _MessageInputState extends State<MessageInput> {
             message: widget.replyTo!,
             onCancel: () => widget.onCancelReply?.call(),
           ),
-        Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.sm,
-            vertical: AppSpacing.sm,
-          ),
-          decoration: BoxDecoration(
-            color: context.colors.bgElevated,
-            border: Border(
-              top: BorderSide(color: context.colors.cardBorder),
-            ),
-          ),
-          child: SafeArea(
-            top: false,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                IconButton(
-                  icon: Icon(
-                    Icons.attach_file,
-                    color: context.colors.textMuted,
-                  ),
-                  onPressed: widget.onAttach,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 40,
-                    minHeight: 40,
+        ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: 8,
+              ),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.black.withValues(alpha: 0.6)
+                    : Colors.white.withValues(alpha: 0.85),
+                border: Border(
+                  top: BorderSide(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Colors.black.withValues(alpha: 0.08),
                   ),
                 ),
-                Expanded(
-                  child: Container(
-                    constraints: const BoxConstraints(maxHeight: 150),
-                    decoration: BoxDecoration(
-                      color: context.colors.inputBg,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: context.colors.border),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    // Attach button — fades out when typing
+                    AnimatedOpacity(
+                      opacity: _hasText ? 0.0 : 1.0,
+                      duration: const Duration(milliseconds: 150),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        width: _hasText ? 0 : 40,
+                        child: _hasText
+                            ? const SizedBox.shrink()
+                            : IconButton(
+                                icon: Icon(
+                                  Icons.add_circle_outline,
+                                  color: const Color(0xFF1A73E8),
+                                  size: 26,
+                                ),
+                                onPressed: widget.onAttach,
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(
+                                  minWidth: 40,
+                                  minHeight: 40,
+                                ),
+                              ),
+                      ),
                     ),
-                    child: TextField(
-                      controller: _controller,
-                      onChanged: _onChanged,
-                      maxLines: 6,
-                      minLines: 1,
-                      textCapitalization: TextCapitalization.sentences,
-                      decoration: InputDecoration(
-                        hintText: 'Type a message...',
-                        hintStyle: TextStyle(color: context.colors.textMuted),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.lg,
-                          vertical: AppSpacing.sm,
+                    // Pill text field
+                    Expanded(
+                      child: Container(
+                        constraints: const BoxConstraints(maxHeight: 150),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.1)
+                              : const Color(0xFFE9E9EB),
+                          borderRadius: BorderRadius.circular(22),
                         ),
-                        border: InputBorder.none,
+                        child: TextField(
+                          controller: _controller,
+                          onChanged: _onChanged,
+                          maxLines: 6,
+                          minLines: 1,
+                          textCapitalization: TextCapitalization.sentences,
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: isDark ? Colors.white : const Color(0xFF1A1A1A),
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'iMessage',
+                            hintStyle: const TextStyle(
+                              color: Color(0xFF8E8E93),
+                              fontSize: 15,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                            border: InputBorder.none,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                AnimatedScale(
-                  scale: _hasText ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 150),
-                  child: AnimatedOpacity(
-                    opacity: _hasText ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 150),
-                    child: Container(
-                      width: 44,
-                      height: 44,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF25D366),
-                        shape: BoxShape.circle,
-                      ),
-                      child: IconButton(
-                        icon: const Icon(Icons.send, color: Colors.white, size: 20),
-                        onPressed: _send,
-                        padding: EdgeInsets.zero,
+                    const SizedBox(width: 8),
+                    // Send button — blue circle with up arrow
+                    AnimatedScale(
+                      scale: _hasText ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 150),
+                      child: AnimatedOpacity(
+                        opacity: _hasText ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 150),
+                        child: GestureDetector(
+                          onTap: _send,
+                          child: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF1A73E8),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.arrow_upward_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),
