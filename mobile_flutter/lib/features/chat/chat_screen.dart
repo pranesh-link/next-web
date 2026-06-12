@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:luvverse/core/notifications/push_notification_service.dart';
 import 'package:luvverse/core/notifications/push_providers.dart';
 import 'package:luvverse/core/theme/app_colors_extension.dart';
@@ -228,8 +230,40 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ),
       builder: (_) => AttachMenu(
         onVoiceRecord: () => setState(() => _isRecording = true),
+        onCamera: () => _pickImage(ImageSource.camera),
+        onGallery: () => _pickImage(ImageSource.gallery),
       ),
     );
+  }
+
+  /// Pick an image and upload. Runs in chat_screen context (always mounted)
+  /// so snackbar errors are reliably shown even after the bottom sheet closes.
+  Future<void> _pickImage(ImageSource source) async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: source,
+      maxWidth: 1920,
+      maxHeight: 1920,
+      imageQuality: 80,
+    );
+    if (picked == null || !mounted) return;
+    final file = File(picked.path);
+    await ref.read(chatNotifierProvider.notifier).sendImage(file);
+    if (!mounted) return;
+    final err = ref.read(chatNotifierProvider.notifier).lastSendError;
+    if (err != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            err.toString()
+                .replaceFirst('Exception: ', '')
+                .replaceFirst('ApiException: ', ''),
+          ),
+          backgroundColor: Colors.red.shade700,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
   }
 
   void _onMenuAction(String action) {

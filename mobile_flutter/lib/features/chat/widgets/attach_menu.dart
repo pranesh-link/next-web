@@ -1,51 +1,25 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
-import 'package:luvverse/features/chat/providers/chat_providers.dart';
 
 /// Bottom sheet with attachment options: Camera, Gallery, Voice Message.
-class AttachMenu extends ConsumerWidget {
+/// Image picking is handled by the parent via [onCamera] and [onGallery]
+/// callbacks so the parent's BuildContext (which stays mounted) can show
+/// snackbars after the async operation completes.
+class AttachMenu extends StatelessWidget {
   final VoidCallback onVoiceRecord;
+  final VoidCallback onCamera;
+  final VoidCallback onGallery;
 
-  const AttachMenu({super.key, required this.onVoiceRecord});
-
-  Future<void> _pickImage(
-    BuildContext context,
-    WidgetRef ref,
-    ImageSource source,
-  ) async {
-    Navigator.pop(context);
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: source,
-      maxWidth: 1920,
-      maxHeight: 1920,
-      imageQuality: 80,
-    );
-    if (picked == null) return;
-    final file = File(picked.path);
-    await ref.read(chatNotifierProvider.notifier).sendImage(file);
-    // Surface any upload/send error to the user
-    final err = ref.read(chatNotifierProvider.notifier).lastSendError;
-    if (err != null && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            err.toString().replaceFirst('Exception: ', '').replaceFirst('ApiException: ', ''),
-          ),
-          backgroundColor: Colors.red.shade700,
-          duration: const Duration(seconds: 4),
-        ),
-      );
-    }
-  }
+  const AttachMenu({
+    super.key,
+    required this.onVoiceRecord,
+    required this.onCamera,
+    required this.onGallery,
+  });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xl),
@@ -68,13 +42,19 @@ class AttachMenu extends ConsumerWidget {
                   icon: Icons.camera_alt,
                   label: 'Camera',
                   color: context.colors.accent,
-                  onTap: () => _pickImage(context, ref, ImageSource.camera),
+                  onTap: () {
+                    Navigator.pop(context);
+                    onCamera();
+                  },
                 ),
                 _AttachOption(
                   icon: Icons.photo_library,
                   label: 'Gallery',
                   color: context.colors.success,
-                  onTap: () => _pickImage(context, ref, ImageSource.gallery),
+                  onTap: () {
+                    Navigator.pop(context);
+                    onGallery();
+                  },
                 ),
                 _AttachOption(
                   icon: Icons.mic,
