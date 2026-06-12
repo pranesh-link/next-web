@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:luvverse/core/theme/app_colors_extension.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/features/chat/models/chat_message.dart';
 import 'package:luvverse/features/chat/widgets/reply_preview_bar.dart';

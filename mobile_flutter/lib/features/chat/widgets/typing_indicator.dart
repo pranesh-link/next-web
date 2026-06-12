@@ -88,32 +88,3 @@ class _TypingIndicatorState extends State<TypingIndicator>
     );
   }
 }
-
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: List.generate(3, (i) {
-            return AnimatedBuilder(
-              animation: _animations[i],
-              builder: (context, child) {
-                return Container(
-                  margin: EdgeInsets.only(right: i < 2 ? 4 : 0),
-                  child: Transform.translate(
-                    offset: Offset(0, _animations[i].value),
-                    child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade400,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            );
-          }),
-        ),
-      ),
-    );
-  }
-}
