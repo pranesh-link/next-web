@@ -89,30 +89,8 @@ class _MessageInputState extends State<MessageInput> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    // Attach button — fades out when typing
-                    AnimatedOpacity(
-                      opacity: _hasText ? 0.0 : 1.0,
-                      duration: const Duration(milliseconds: 150),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        width: _hasText ? 0 : 40,
-                        child: _hasText
-                            ? const SizedBox.shrink()
-                            : IconButton(
-                                icon: Icon(
-                                  Icons.add_circle_outline,
-                                  color: const Color(0xFF1A73E8),
-                                  size: 26,
-                                ),
-                                onPressed: widget.onAttach,
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(
-                                  minWidth: 40,
-                                  minHeight: 40,
-                                ),
-                              ),
-                      ),
-                    ),
+                    // Attach button hidden — media upload under development
+                    const SizedBox(width: 8),
                     // Pill text field
                     Expanded(
                       child: Container(

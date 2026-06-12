@@ -482,7 +482,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             MessageInput(
               onSend: _onSend,
               onTyping: _onTyping,
-              onAttach: _showAttachMenu,
+              onAttach: null,
               replyTo: _replyingTo,
               onCancelReply: () => setState(() => _replyingTo = null),
             ),
