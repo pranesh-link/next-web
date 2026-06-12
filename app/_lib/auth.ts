@@ -2,7 +2,7 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { db } from "@db";
-import { users, authAccounts, sessions, verificationTokens } from "@db/schema";
+import { users, authAccounts, verificationTokens } from "@db/schema";
 import { eq } from "drizzle-orm";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -10,7 +10,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     ...DrizzleAdapter(db, {
       usersTable: users,
       accountsTable: authAccounts,
-      sessionsTable: sessions,
       verificationTokensTable: verificationTokens,
     }),
     // Override createSession to capture deviceInfo from the request context.
