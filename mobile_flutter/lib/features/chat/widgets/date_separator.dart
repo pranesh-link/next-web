@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
 
-/// Centered pill showing date separator between message groups.
+/// iMessage-style date separator — transparent background, all-caps, grey text.
 class DateSeparator extends StatelessWidget {
   final DateTime date;
 
@@ -11,22 +11,15 @@ class DateSeparator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.xs,
-        ),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(12),
-        ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
         child: Text(
-          _formatDate(date),
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey.shade600,
-            fontWeight: FontWeight.w500,
+          _formatDate(date).toUpperCase(),
+          style: const TextStyle(
+            fontSize: 11,
+            color: Color(0xFF8E8E93),
+            fontWeight: FontWeight.w400,
+            letterSpacing: 0.5,
           ),
         ),
       ),
@@ -39,9 +32,11 @@ class DateSeparator extends StatelessWidget {
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
     final messageDate = DateTime(local.year, local.month, local.day);
+    final daysDiff = today.difference(messageDate).inDays;
 
     if (messageDate == today) return 'Today';
     if (messageDate == yesterday) return 'Yesterday';
-    return DateFormat('MMM d, yyyy').format(local);
+    if (daysDiff < 7) return DateFormat('EEEE').format(local); // e.g. WEDNESDAY
+    return DateFormat('MMM d, yyyy').format(local);            // e.g. JUN 5, 2025
   }
 }
