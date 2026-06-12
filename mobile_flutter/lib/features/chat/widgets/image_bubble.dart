@@ -1,16 +1,22 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:luvverse/core/theme/app_spacing.dart';
+import 'package:luvverse/features/chat/providers/chat_providers.dart';
 
 /// Displays an image message in a chat bubble with tap-to-fullscreen.
-class ImageBubble extends StatelessWidget {
+/// After the image loads successfully, notifies the server that this
+/// device has downloaded the file (triggering cleanup when both parties ACK).
+class ImageBubble extends ConsumerWidget {
   final String imageUrl;
   final bool isMe;
+  final String messageId;
 
   const ImageBubble({
     super.key,
     required this.imageUrl,
     required this.isMe,
+    required this.messageId,
   });
 
   void _openFullScreen(BuildContext context) {
@@ -22,7 +28,7 @@ class ImageBubble extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return GestureDetector(
       onTap: () => _openFullScreen(context),
       child: Hero(
@@ -42,6 +48,13 @@ class ImageBubble extends StatelessWidget {
             child: CachedNetworkImage(
               imageUrl: imageUrl,
               fit: BoxFit.cover,
+              imageBuilder: (ctx, imageProvider) {
+                // Fire-and-forget: tell server this device has the image cached
+                ref.read(chatRepositoryProvider)
+                    .acknowledgeFileDownloaded(messageId)
+                    .ignore();
+                return Image(image: imageProvider, fit: BoxFit.cover);
+              },
               placeholder: (_, _) => _buildShimmer(),
               errorWidget: (_, _, _) => _buildError(),
             ),

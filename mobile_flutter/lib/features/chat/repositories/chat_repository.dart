@@ -32,6 +32,7 @@ class ChatRepository {
     String? iv,
     bool encrypted = false,
     Map<String, dynamic>? payload,
+    String? fileStoragePath,
   }) async {
     final response = await _api.post<Map<String, dynamic>>(
       ApiEndpoints.chatMessages,
@@ -41,6 +42,7 @@ class ChatRepository {
         if (iv != null) 'iv': iv,
         'encrypted': encrypted,
         if (payload != null) 'payload': payload,
+        if (fileStoragePath != null) 'fileStoragePath': fileStoragePath,
       },
     );
     if (response['success'] != true) return null;
@@ -124,7 +126,10 @@ class ChatRepository {
     return response.cast<Map<String, dynamic>>();
   }
 
-  /// Upload a file (image/voice) to the server. Returns the URL.
+  String? _lastUploadPath;
+
+  /// Upload a file (image/voice) to the server. Returns the public URL.
+  /// The storage path is cached and retrievable via [getLastUploadPath].
   Future<String?> uploadFile(File file) async {
     final fileName = file.path.split('/').last;
     final formData = FormData.fromMap({
@@ -134,8 +139,12 @@ class ChatRepository {
       '/api/v1/files',
       data: formData,
     );
+    _lastUploadPath = response['path'] as String?;
     return response['url'] as String?;
   }
+
+  /// Returns the Supabase Storage path from the most recent [uploadFile] call.
+  String? getLastUploadPath() => _lastUploadPath;
 
   /// Patch a message's payload (e.g., toggling list items).
   Future<void> patchMessagePayload(
@@ -197,6 +206,19 @@ class ChatRepository {
       return response['success'] == true;
     } catch (_) {
       return false;
+    }
+  }
+
+  /// Notify server that this device has saved the image/voice file locally.
+  /// When both parties ACK, the server deletes the file from Supabase Storage.
+  Future<void> acknowledgeFileDownloaded(String messageId) async {
+    try {
+      await _api.post<Map<String, dynamic>>(
+        ApiEndpoints.chatFileDownloaded,
+        data: {'messageId': messageId},
+      );
+    } catch (_) {
+      // Non-critical — server cron will clean up after 24h
     }
   }
 

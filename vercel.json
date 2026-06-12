@@ -9,6 +9,7 @@
   },
   "crons": [
     { "path": "/api/finance/investments/sync-prices", "schedule": "0 9 * * 1-5" },
-    { "path": "/api/finance/notifications/generate", "schedule": "0 8 * * *" }
+    { "path": "/api/finance/notifications/generate", "schedule": "0 8 * * *" },
+    { "path": "/api/v1/couple/chat/purge", "schedule": "0 */6 * * *" }
   ]
 }
