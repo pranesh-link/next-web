@@ -1,6 +1,7 @@
 jest.mock("@db", () => {
   const mockFindFirstUser = jest.fn();
   const mockFindFirstMetric = jest.fn();
+  const mockFindManyMetrics = jest.fn().mockResolvedValue([]);
   const mockInsertReturning = jest.fn().mockResolvedValue([]);
   const mockOnConflictDoUpdate = jest.fn(() => ({ returning: mockInsertReturning }));
   const mockInsertValues = jest.fn(() => ({ onConflictDoUpdate: mockOnConflictDoUpdate }));
@@ -17,7 +18,7 @@ jest.mock("@db", () => {
     db: {
       query: {
         users: { findFirst: mockFindFirstUser },
-        bodyMetrics: { findFirst: mockFindFirstMetric },
+        bodyMetrics: { findFirst: mockFindFirstMetric, findMany: mockFindManyMetrics },
       },
       select: mockSelect,
       insert: mockInsert,
@@ -26,6 +27,7 @@ jest.mock("@db", () => {
     __mocks: {
       findFirstUser: mockFindFirstUser,
       findFirstMetric: mockFindFirstMetric,
+      findManyMetrics: mockFindManyMetrics,
       insertReturning: mockInsertReturning,
       onConflictDoUpdate: mockOnConflictDoUpdate,
       insertValues: mockInsertValues,
@@ -39,6 +41,22 @@ jest.mock("@db", () => {
     },
   };
 });
+
+jest.mock("@db/schema", () => ({
+  __esModule: true,
+  bodyMetrics: {},
+  bodyProfiles: {},
+  users: {},
+}));
+
+jest.mock("drizzle-orm", () => ({
+  __esModule: true,
+  eq: jest.fn((a, b) => ({ eq: [a, b] })),
+  and: jest.fn((...args) => ({ and: args })),
+  inArray: jest.fn((a, b) => ({ inArray: [a, b] })),
+  gte: jest.fn((a, b) => ({ gte: [a, b] })),
+  lte: jest.fn((a, b) => ({ lte: [a, b] })),
+}), { virtual: true });
 
 jest.mock("@/_services/finance/couple-service", () => ({
   __esModule: true,
@@ -215,11 +233,10 @@ describe("body-metric-service", () => {
   describe("listMetrics", () => {
     it("should query by all couple user ids when subjectId omitted", async () => {
       mockedGetCoupleUserIds.mockResolvedValue(["u1", "u2"]);
-      m.orderBy.mockResolvedValue([]);
+      m.findManyMetrics.mockResolvedValue([]);
 
       await listMetrics({ userId: "u1" });
-      expect(m.select).toHaveBeenCalledTimes(1);
-      expect(m.selectFrom).toHaveBeenCalledTimes(1);
+      expect(m.findManyMetrics).toHaveBeenCalledTimes(1);
     });
   });
 });
