@@ -89,8 +89,15 @@ class _MessageInputState extends State<MessageInput> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    // Attach button hidden — media upload under development
-                    const SizedBox(width: 8),
+                    // Attach button - media upload
+                    if (widget.onAttach != null)
+                      IconButton(
+                        icon: const Icon(Icons.add_circle_outline),
+                        onPressed: widget.onAttach,
+                        iconSize: 24,
+                      )
+                    else
+                      const SizedBox(width: 8),
                     // Pill text field
                     Expanded(
                       child: Container(
