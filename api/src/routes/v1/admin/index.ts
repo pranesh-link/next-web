@@ -6,8 +6,8 @@ import { eq, and, desc, lt } from "drizzle-orm";
 export async function registerAdminRoutes(app: FastifyInstance) {
   app.get("/stats", async (_req, reply) => {
     const [userCount, activeDevices] = await Promise.all([
-      db.select().from(users).then(r => r.length),
-      db.select().from(deviceTokens).where(and(eq(deviceTokens.active, true))).then(r => r.length),
+      db.select().from(users).then((r: unknown[]) => r.length),
+      db.select().from(deviceTokens).where(and(eq(deviceTokens.active, true))).then((r: unknown[]) => r.length),
     ]);
     return reply.send({ success: true, data: { userCount, activeDevices } });
   });

@@ -68,9 +68,9 @@ export async function registerChatLegacyRoutes(app: FastifyInstance) {
       partnerTyping: partnerSnapshot?.isTyping ?? false,
     }));
 
-    socket.on("message", async (rawData) => {
+    socket.on("message", async (rawData: Buffer | string) => {
       try {
-        const msg = JSON.parse(rawData.toString());
+        const msg = JSON.parse(rawData.toString()) as { type?: string };
         if (msg.type === "typing") {
           // Update typing state and notify partner
           await db.update(coupleMembers)
@@ -137,11 +137,11 @@ export async function registerChatLegacyRoutes(app: FastifyInstance) {
       coupleId: member.coupleId,
       senderId: userId,
       type: v.type,
-      content: v.encrypted ? v.content : v.content.trim(),
+      content: v.encrypted ? v.content as string : (v.content as string).trim(),
       iv: v.encrypted ? v.iv : undefined,
       encrypted: v.encrypted,
       payload: v.payload ?? null,
-      reminderAt: v.reminderAt ? new Date(v.reminderAt) : undefined,
+      reminderAt: v.reminderAt ? new Date(v.reminderAt as string) : undefined,
       readBy: [userId],
       fileStoragePath: v.fileStoragePath ?? null,
       fileDownloadedBy: v.fileStoragePath ? [userId] : [],
