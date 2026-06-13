@@ -43,11 +43,13 @@ export async function registerCoupleRoutes(app: FastifyInstance) {
     const { userId } = req as unknown as AuthReq & typeof req;
     const member = await db.query.coupleMembers.findFirst({ where: eq(coupleMembers.userId, userId) });
     if (!member) return reply.code(404).send({ success: false, error: "No couple" });
-    const partner = await db.query.coupleMembers.findFirst({
+    const partnerMember = await db.query.coupleMembers.findFirst({
       where: and(eq(coupleMembers.coupleId, member.coupleId), ne(coupleMembers.userId, userId)),
-      with: { user: { columns: { id: true, publicKey: true } } },
+      columns: { userId: true },
     });
-    return reply.send({ success: true, data: partner?.user?.publicKey ?? null });
+    if (!partnerMember) return reply.send({ success: true, data: null });
+    const partnerUser = await db.query.users.findFirst({ where: eq(users.id, partnerMember.userId), columns: { publicKey: true } });
+    return reply.send({ success: true, data: partnerUser?.publicKey ?? null });
   });
 
   // GET /api/v1/couple/security-code
