@@ -23,7 +23,7 @@ export async function registerFinanceRoutes(app: FastifyInstance) {
     if (qs.month) { const [y,m] = qs.month.split("-").map(Number); conditions.push(gte(transactions.date, new Date(y,m-1,1)) as never); conditions.push(lt(transactions.date, new Date(y,m,1)) as never); }
     if (qs.category) conditions.push(eq(transactions.category, qs.category) as never);
     if (qs.accountId) conditions.push(eq(transactions.accountId, qs.accountId) as never);
-    const rows = await db.select().from(transactions).where(and(...(conditions as Record<string, unknown>)[])).orderBy(desc(transactions.date)).limit(qs.limit ? parseInt(qs.limit) : 1000);
+    const rows = await db.select().from(transactions).where(and(...(conditions as never[]))).orderBy(desc(transactions.date)).limit(qs.limit ? parseInt(qs.limit) : 1000);
     return reply.send({ success: true, data: rows });
   });
 
