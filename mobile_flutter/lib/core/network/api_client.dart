@@ -16,7 +16,7 @@ final apiClientProvider = Provider<ApiClient>((ref) {
 final kApiBaseUrl = ApiEndpoints.base;
 
 class ApiClient {
-  static const _baseUrl = kApiBaseUrl;
+  static final _baseUrl = kApiBaseUrl;
 
   late final Dio _dio;
   final Ref _ref;
