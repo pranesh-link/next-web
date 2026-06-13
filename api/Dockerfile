@@ -1,27 +1,27 @@
 FROM node:22-alpine AS base
-WORKDIR /app
+WORKDIR /app/api
 
-# Copy only api/ — fully self-contained, no monorepo root needed
+# Install deps from api/package.json only — no postinstall, no prisma
 COPY api/package.json ./
+RUN npm install
+
+# Copy api source and config
 COPY api/src/ ./src/
 COPY api/tsconfig.json ./
 
-# Copy only the db schema (needed by src/shared/schema.ts re-export)
-COPY db/schema.ts ./db/schema.ts
-COPY db/index.ts ./db/index.ts
+# Overwrite shared/schema.ts with the actual db/schema.ts
+# This makes the Fastify server fully self-contained (no re-export paths needed)
+COPY db/schema.ts ./src/shared/schema.ts
 
-# Install dependencies (api/package.json only — no postinstall)
-RUN npm install
-
-# Build
+# Build TypeScript — rootDir=./src, outDir=./dist
 RUN npm run build
 
 FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
-COPY --from=base /app/dist ./dist
-COPY --from=base /app/node_modules ./node_modules
+COPY --from=base /app/api/dist ./dist
+COPY --from=base /app/api/node_modules ./node_modules
 
 EXPOSE 8080
 CMD ["node", "dist/index.js"]
