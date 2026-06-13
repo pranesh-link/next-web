@@ -63,3 +63,4 @@ mobile/android/
 mobile/node_modules/
 mobile/.env
 .envrc
+api/node_modules/
