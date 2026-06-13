@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
-import { requireAuth } from "../../../middleware/auth.js";
-import { db } from "../../../plugins/db.js";
+import { requireAuth } from "../../../../middleware/auth.js";
+import { db } from "../../../../plugins/db.js";
 import { coupleMembers, coupleMessages } from "../../../../shared/schema.js";
 import { eq, and, ne, inArray } from "drizzle-orm";
 import { z } from "zod";

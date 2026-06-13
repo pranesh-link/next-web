@@ -192,7 +192,7 @@ export async function registerFinanceRoutes(app: FastifyInstance) {
     const { userId } = req as unknown as AuthReq & typeof req;
     const { userIds } = await coupleCtx(userId);
     const { id } = req.params as { id: string };
-    const existing = await db.query.goals.findFirst({ where: and(eq(goals.id, id), inArray(goals.userId, userIds) as never) });
+    const existing = await db.query.savingsGoals.findFirst({ where: and(eq(goals.id, id), inArray(goals.userId, userIds) as never) });
     if (!existing) return reply.code(404).send({ success: false, error: "Not found" });
     const [updated] = await db.update(goals).set({ ...(req.body as Record<string, unknown>), updatedAt: new Date() }).where(eq(goals.id, id)).returning();
     return reply.send({ success: true, data: updated });
@@ -202,7 +202,7 @@ export async function registerFinanceRoutes(app: FastifyInstance) {
     const { userId } = req as unknown as AuthReq & typeof req;
     const { userIds } = await coupleCtx(userId);
     const { id } = req.params as { id: string };
-    const existing = await db.query.goals.findFirst({ where: and(eq(goals.id, id), inArray(goals.userId, userIds) as never) });
+    const existing = await db.query.savingsGoals.findFirst({ where: and(eq(goals.id, id), inArray(goals.userId, userIds) as never) });
     if (!existing) return reply.code(404).send({ success: false, error: "Not found" });
     await db.delete(goals).where(eq(goals.id, id));
     return reply.send({ success: true });
