@@ -55,4 +55,24 @@ export async function registerFilesRoute(app: FastifyInstance) {
     if (error) return reply.code(500).send({ error: error.message });
     return reply.send({ success: true });
   });
+
+  // GET /api/v1/files/signed-url?path=chat/userId/filename — replaces Firebase signed URL
+  app.get("/signed-url", { preHandler: requireAuth }, async (req, reply) => {
+    const qs = req.query as Record<string, string>;
+    const path = qs.path;
+
+    if (!path || !path.startsWith("chat/")) {
+      return reply.code(400).send({ error: "Invalid path" });
+    }
+
+    const supabase = getSupabase();
+    if (!supabase) return reply.code(503).send({ error: "Storage not configured" });
+
+    const { data, error } = await supabase.storage.from(CHAT_BUCKET).createSignedUrl(path, 3600);
+    if (error || !data?.signedUrl) {
+      return reply.code(500).send({ error: error?.message ?? "Failed to create signed URL" });
+    }
+
+    return reply.send({ url: data.signedUrl });
+  });
 }
