@@ -36,7 +36,7 @@ export async function registerFilesRoute(app: FastifyInstance) {
 
     const ext = (data.filename.split(".").pop() ?? "bin").toLowerCase();
     const uniqueName = `${crypto.randomUUID()}.${ext}`;
-    const storagePath = `${userId}/${uniqueName}`;
+    const storagePath = `chat/${userId}/${uniqueName}`;
 
     const { error: uploadError } = await supabase.storage.from(CHAT_BUCKET).upload(storagePath, buffer, { contentType, upsert: false });
     if (uploadError) return reply.code(500).send({ error: uploadError.message });
@@ -48,7 +48,7 @@ export async function registerFilesRoute(app: FastifyInstance) {
   app.delete("/", { preHandler: requireAuth }, async (req, reply) => {
     const { userId } = req as unknown as AuthReq & typeof req;
     const { path } = req.body as { path?: string };
-    if (!path || !path.startsWith(`${userId}/`)) return reply.code(400).send({ error: "Invalid path" });
+    if (!path || !path.startsWith(`chat/${userId}/`)) return reply.code(400).send({ error: "Invalid path" });
     const supabase = getSupabase();
     if (!supabase) return reply.code(503).send({ error: "Storage not configured" });
     const { error } = await supabase.storage.from(CHAT_BUCKET).remove([path]);
