@@ -1,5 +1,5 @@
 app = "luvverse-api"
-primary_region = "sin"
+primary_region = "nrt"
 
 [build]
   dockerfile = "api/Dockerfile"
