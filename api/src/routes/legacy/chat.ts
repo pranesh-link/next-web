@@ -145,6 +145,7 @@ export async function registerChatLegacyRoutes(app: FastifyInstance) {
       readBy: [userId],
       fileStoragePath: v.fileStoragePath ?? null,
       fileDownloadedBy: v.fileStoragePath ? [userId] : [],
+      updatedAt: new Date(),
     }).returning();
 
     // Notify partner via WebSocket if connected

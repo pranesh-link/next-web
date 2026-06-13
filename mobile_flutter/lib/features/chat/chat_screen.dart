@@ -12,6 +12,7 @@ import 'package:luvverse/core/theme/app_spacing.dart';
 import 'package:luvverse/core/theme/app_typography.dart';
 import 'package:luvverse/features/chat/models/chat_message.dart';
 import 'package:luvverse/features/chat/cache/chat_db_providers.dart';
+import 'package:luvverse/core/auth/auth_provider.dart';
 import 'package:luvverse/features/chat/providers/chat_providers.dart';
 import 'package:luvverse/features/chat/providers/online_status_provider.dart';
 import 'package:luvverse/features/chat/providers/wallpaper_provider.dart';
@@ -114,7 +115,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   /// ACK delivery for messages received from partner.
   void _acknowledgeReceivedMessages() {
     final messages = ref.read(chatNotifierProvider).valueOrNull ?? [];
-    final currentUserId = ref.read(dbUserIdProvider) ?? '';
+    final currentUserId = ref.read(authProvider).user?.id ?? ref.read(dbUserIdProvider) ?? '';
     final unacked = messages
         .where((m) => m.senderId != currentUserId && m.deliveredAt == null)
         .map((m) => m.id)
@@ -351,7 +352,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget build(BuildContext context) {
     final chatState = ref.watch(chatNotifierProvider);
     final isPartnerTyping = ref.watch(partnerTypingProvider);
-    final currentUserId = ref.watch(dbUserIdProvider) ?? '';
+    final currentUserId = ref.watch(authProvider).user?.id ?? ref.watch(dbUserIdProvider) ?? '';
     final wallpaperColor = ref.watch(wallpaperProvider);
     final isOffline = ref.watch(isOfflineProvider);
 
