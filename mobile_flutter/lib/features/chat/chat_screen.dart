@@ -223,7 +223,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return la.year == lb.year && la.month == lb.month && la.day == lb.day;
   }
 
-  // ignore: unused_element — re-enable when media upload is ready
   void _showAttachMenu() {
     showModalBottomSheet(
       context: context,
@@ -484,7 +483,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             MessageInput(
               onSend: _onSend,
               onTyping: _onTyping,
-              onAttach: null,
+              onAttach: _showAttachMenu,
               replyTo: _replyingTo,
               onCancelReply: () => setState(() => _replyingTo = null),
             ),
