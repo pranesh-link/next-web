@@ -53,7 +53,7 @@ export async function registerFinanceRoutes(app: FastifyInstance) {
     const body = req.body as Record<string, unknown>;
     const existing = await db.query.transactions.findFirst({ where: and(eq(transactions.id, id), inArray(transactions.userId, userIds) as never) });
     if (!existing) return reply.code(404).send({ success: false, error: "Not found" });
-    const [updated] = await db.update(transactions).set({ ...(body as Record<string, unknown>), updatedAt: new Date() }).where(eq(transactions.id, id)).returning();
+    const [updated] = await db.update(transactions).set({ ...(body as any), updatedAt: new Date() }).where(eq(transactions.id, id)).returning();
     return reply.send({ success: true, data: updated });
   });
 
@@ -79,7 +79,7 @@ export async function registerFinanceRoutes(app: FastifyInstance) {
     const { userId } = req as unknown as AuthReq & typeof req;
     const { coupleId } = await coupleCtx(userId);
     const body = req.body as Record<string, unknown>;
-    const [account] = await db.insert(financialAccounts).values({ userId, coupleId: coupleId ?? undefined, ...(body as Record<string, unknown>) }).returning();
+    const [account] = await db.insert(financialAccounts).values({ userId, coupleId: coupleId ?? undefined, ...(body as any) }).returning();
     return reply.code(201).send({ success: true, data: account });
   });
 
@@ -89,7 +89,7 @@ export async function registerFinanceRoutes(app: FastifyInstance) {
     const { id } = req.params as { id: string };
     const existing = await db.query.financialAccounts.findFirst({ where: and(eq(financialAccounts.id, id), inArray(financialAccounts.userId, userIds) as never) });
     if (!existing) return reply.code(404).send({ success: false, error: "Not found" });
-    const [updated] = await db.update(financialAccounts).set({ ...(req.body as Record<string, unknown>), updatedAt: new Date() }).where(eq(financialAccounts.id, id)).returning();
+    const [updated] = await db.update(financialAccounts).set({ ...(req.body as any), updatedAt: new Date() }).where(eq(financialAccounts.id, id)).returning();
     return reply.send({ success: true, data: updated });
   });
 
@@ -114,7 +114,7 @@ export async function registerFinanceRoutes(app: FastifyInstance) {
   app.post("/budgets", { preHandler: requireAuth }, async (req, reply) => {
     const { userId } = req as unknown as AuthReq & typeof req;
     const { coupleId } = await coupleCtx(userId);
-    const [row] = await db.insert(budgets).values({ userId, coupleId: coupleId ?? undefined, ...(req.body as Record<string, unknown>) }).returning();
+    const [row] = await db.insert(budgets).values({ userId, coupleId: coupleId ?? undefined, ...(req.body as any) }).returning();
     return reply.code(201).send({ success: true, data: row });
   });
 
@@ -124,7 +124,7 @@ export async function registerFinanceRoutes(app: FastifyInstance) {
     const { id } = req.params as { id: string };
     const existing = await db.query.budgets.findFirst({ where: and(eq(budgets.id, id), inArray(budgets.userId, userIds) as never) });
     if (!existing) return reply.code(404).send({ success: false, error: "Not found" });
-    const [updated] = await db.update(budgets).set({ ...(req.body as Record<string, unknown>), updatedAt: new Date() }).where(eq(budgets.id, id)).returning();
+    const [updated] = await db.update(budgets).set({ ...(req.body as any), updatedAt: new Date() }).where(eq(budgets.id, id)).returning();
     return reply.send({ success: true, data: updated });
   });
 
@@ -149,7 +149,7 @@ export async function registerFinanceRoutes(app: FastifyInstance) {
   app.post("/loans", { preHandler: requireAuth }, async (req, reply) => {
     const { userId } = req as unknown as AuthReq & typeof req;
     const { coupleId } = await coupleCtx(userId);
-    const [row] = await db.insert(loans).values({ userId, coupleId: coupleId ?? undefined, ...(req.body as Record<string, unknown>) }).returning();
+    const [row] = await db.insert(loans).values({ userId, coupleId: coupleId ?? undefined, ...(req.body as any) }).returning();
     return reply.code(201).send({ success: true, data: row });
   });
 
@@ -159,7 +159,7 @@ export async function registerFinanceRoutes(app: FastifyInstance) {
     const { id } = req.params as { id: string };
     const existing = await db.query.loans.findFirst({ where: and(eq(loans.id, id), inArray(loans.userId, userIds) as never) });
     if (!existing) return reply.code(404).send({ success: false, error: "Not found" });
-    const [updated] = await db.update(loans).set({ ...(req.body as Record<string, unknown>), updatedAt: new Date() }).where(eq(loans.id, id)).returning();
+    const [updated] = await db.update(loans).set({ ...(req.body as any), updatedAt: new Date() }).where(eq(loans.id, id)).returning();
     return reply.send({ success: true, data: updated });
   });
 
@@ -177,34 +177,34 @@ export async function registerFinanceRoutes(app: FastifyInstance) {
   app.get("/goals", { preHandler: requireAuth }, async (req, reply) => {
     const { userId } = req as unknown as AuthReq & typeof req;
     const { userIds } = await coupleCtx(userId);
-    const rows = await db.select().from(goals).where(inArray(goals.userId, userIds) as never).orderBy(desc(goals.createdAt));
+    const rows = await db.select().from(savingsGoals).where(inArray(savingsGoals.userId, userIds) as never).orderBy(desc(savingsGoals.createdAt));
     return reply.send({ success: true, data: rows });
   });
 
   app.post("/goals", { preHandler: requireAuth }, async (req, reply) => {
     const { userId } = req as unknown as AuthReq & typeof req;
     const { coupleId } = await coupleCtx(userId);
-    const [row] = await db.insert(goals).values({ userId, coupleId: coupleId ?? undefined, ...(req.body as Record<string, unknown>) }).returning();
+    const [row] = await db.insert(savingsGoals).values({ userId, coupleId: coupleId ?? undefined, ...(req.body as any) }).returning();
     return reply.code(201).send({ success: true, data: row });
   });
 
-  app.put("/goals/:id", { preHandler: requireAuth }, async (req, reply) => {
+  app.put("/savingsGoals/:id", { preHandler: requireAuth }, async (req, reply) => {
     const { userId } = req as unknown as AuthReq & typeof req;
     const { userIds } = await coupleCtx(userId);
     const { id } = req.params as { id: string };
-    const existing = await db.query.savingsGoals.findFirst({ where: and(eq(goals.id, id), inArray(goals.userId, userIds) as never) });
+    const existing = await db.query.savingsGoals.findFirst({ where: and(eq(savingsGoals.id, id), inArray(savingsGoals.userId, userIds) as never) });
     if (!existing) return reply.code(404).send({ success: false, error: "Not found" });
-    const [updated] = await db.update(goals).set({ ...(req.body as Record<string, unknown>), updatedAt: new Date() }).where(eq(goals.id, id)).returning();
+    const [updated] = await db.update(savingsGoals).set({ ...(req.body as any), updatedAt: new Date() }).where(eq(savingsGoals.id, id)).returning();
     return reply.send({ success: true, data: updated });
   });
 
-  app.delete("/goals/:id", { preHandler: requireAuth }, async (req, reply) => {
+  app.delete("/savingsGoals/:id", { preHandler: requireAuth }, async (req, reply) => {
     const { userId } = req as unknown as AuthReq & typeof req;
     const { userIds } = await coupleCtx(userId);
     const { id } = req.params as { id: string };
-    const existing = await db.query.savingsGoals.findFirst({ where: and(eq(goals.id, id), inArray(goals.userId, userIds) as never) });
+    const existing = await db.query.savingsGoals.findFirst({ where: and(eq(savingsGoals.id, id), inArray(savingsGoals.userId, userIds) as never) });
     if (!existing) return reply.code(404).send({ success: false, error: "Not found" });
-    await db.delete(goals).where(eq(goals.id, id));
+    await db.delete(savingsGoals).where(eq(savingsGoals.id, id));
     return reply.send({ success: true });
   });
 
@@ -212,14 +212,14 @@ export async function registerFinanceRoutes(app: FastifyInstance) {
   app.get("/deposits", { preHandler: requireAuth }, async (req, reply) => {
     const { userId } = req as unknown as AuthReq & typeof req;
     const { userIds } = await coupleCtx(userId);
-    const rows = await db.select().from(deposits).where(inArray(deposits.userId, userIds) as never).orderBy(desc(deposits.createdAt));
+    const rows = await db.select().from(depositInstruments).where(inArray(depositInstruments.userId, userIds) as never).orderBy(desc(depositInstruments.createdAt));
     return reply.send({ success: true, data: rows });
   });
 
   app.post("/deposits", { preHandler: requireAuth }, async (req, reply) => {
     const { userId } = req as unknown as AuthReq & typeof req;
     const { coupleId } = await coupleCtx(userId);
-    const [row] = await db.insert(deposits).values({ userId, coupleId: coupleId ?? undefined, ...(req.body as Record<string, unknown>) }).returning();
+    const [row] = await db.insert(depositInstruments).values({ userId, coupleId: coupleId ?? undefined, ...(req.body as any) }).returning();
     return reply.code(201).send({ success: true, data: row });
   });
 
@@ -227,14 +227,14 @@ export async function registerFinanceRoutes(app: FastifyInstance) {
   app.get("/investments", { preHandler: requireAuth }, async (req, reply) => {
     const { userId } = req as unknown as AuthReq & typeof req;
     const { userIds } = await coupleCtx(userId);
-    const rows = await db.select().from(investments).where(inArray(investments.userId, userIds) as never).orderBy(investments.name);
+    const rows = await db.select().from(investmentHoldings).where(inArray(investmentHoldings.userId, userIds) as never).orderBy(investments.name);
     return reply.send({ success: true, data: rows });
   });
 
   app.post("/investments", { preHandler: requireAuth }, async (req, reply) => {
     const { userId } = req as unknown as AuthReq & typeof req;
     const { coupleId } = await coupleCtx(userId);
-    const [row] = await db.insert(investments).values({ userId, coupleId: coupleId ?? undefined, ...(req.body as Record<string, unknown>) }).returning();
+    const [row] = await db.insert(investmentHoldings).values({ userId, coupleId: coupleId ?? undefined, ...(req.body as any) }).returning();
     return reply.code(201).send({ success: true, data: row });
   });
 
@@ -242,7 +242,7 @@ export async function registerFinanceRoutes(app: FastifyInstance) {
   app.get("/notifications", { preHandler: requireAuth }, async (req, reply) => {
     const { userId } = req as unknown as AuthReq & typeof req;
     const { userIds } = await coupleCtx(userId);
-    const rows = await db.select().from(financeNotifications).where(inArray(financeNotifications.userId, userIds) as never).orderBy(desc(financeNotifications.createdAt));
+    const rows = await db.select().from(notifications).where(inArray(notifications.userId, userIds) as never).orderBy(desc(notifications.createdAt));
     return reply.send({ success: true, data: rows });
   });
 
@@ -268,7 +268,7 @@ export async function registerFinanceRoutes(app: FastifyInstance) {
   app.post("/budget-plans", { preHandler: requireAuth }, async (req, reply) => {
     const { userId } = req as unknown as AuthReq & typeof req;
     const { coupleId } = await coupleCtx(userId);
-    const [row] = await db.insert(budgetPlans).values({ userId, coupleId: coupleId ?? undefined, ...(req.body as Record<string, unknown>) }).returning();
+    const [row] = await db.insert(budgetPlans).values({ userId, coupleId: coupleId ?? undefined, ...(req.body as any) }).returning();
     return reply.code(201).send({ success: true, data: row });
   });
 
