@@ -60,12 +60,12 @@ export async function registerChatLegacyRoutes(app: FastifyInstance) {
       columns: { id: true, senderId: true, type: true, readBy: true, createdAt: true },
     });
     const partnerSnapshot = partnerMember
-      ? await db.query.coupleMembers.findFirst({ where: eq(coupleMembers.userId, partnerMember.userId), columns: { isTyping: true, lastTypingAt: true } })
+      ? await db.query.coupleMembers.findFirst({ where: eq(coupleMembers.userId, partnerMember.userId), columns: { typingAt: true } })
       : null;
 
     socket.send(JSON.stringify({
       latest: latest ? { id: latest.id, senderId: latest.senderId } : null,
-      partnerTyping: partnerSnapshot?.isTyping ?? false,
+      partnerTyping: partnerSnapshot?.typingAt != null && (Date.now() - new Date(partnerSnapshot.typingAt).getTime()) < 30000,
     }));
 
     socket.on("message", async (rawData: Buffer | string) => {
@@ -74,7 +74,7 @@ export async function registerChatLegacyRoutes(app: FastifyInstance) {
         if (msg.type === "typing") {
           // Update typing state and notify partner
           await db.update(coupleMembers)
-            .set({ isTyping: true, lastTypingAt: new Date(), updatedAt: new Date() })
+            .set({ typingAt: new Date(), updatedAt: new Date() })
             .where(eq(coupleMembers.userId, userId));
           if (partnerMember) pushToUser(partnerMember.userId, { partnerTyping: true });
         }
@@ -84,7 +84,7 @@ export async function registerChatLegacyRoutes(app: FastifyInstance) {
     socket.on("close", async () => {
       chatClients.delete(userId);
       await db.update(coupleMembers)
-        .set({ isTyping: false, updatedAt: new Date() })
+        .set({ typingAt: null, updatedAt: new Date() })
         .where(eq(coupleMembers.userId, userId));
       if (partnerMember) pushToUser(partnerMember.userId, { partnerTyping: false });
     });
@@ -176,12 +176,12 @@ export async function registerChatLegacyRoutes(app: FastifyInstance) {
     if (!userId) return reply.code(401).send({ success: false });
     const member = await db.query.coupleMembers.findFirst({ where: eq(coupleMembers.userId, userId) });
     if (!member) return reply.send({ success: true });
-    await db.update(coupleMembers).set({ isTyping: true, lastTypingAt: new Date(), updatedAt: new Date() }).where(eq(coupleMembers.userId, userId));
-    const partnerMember = await db.query.coupleMembers.findFirst({
+    await db.update(coupleMembers).set({ typingAt: new Date(), updatedAt: new Date() }).where(eq(coupleMembers.userId, userId));
+    const partnerMember2 = await db.query.coupleMembers.findFirst({
       where: and(eq(coupleMembers.coupleId, member.coupleId), ne(coupleMembers.userId, userId)),
       columns: { userId: true },
     });
-    if (partnerMember) pushToUser(partnerMember.userId, { partnerTyping: true });
+    if (partnerMember2) pushToUser(partnerMember2.userId, { partnerTyping: true });
     return reply.send({ success: true });
   });
 }

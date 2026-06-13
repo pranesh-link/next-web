@@ -1,9 +1,9 @@
 import { FastifyInstance } from "fastify";
 import jwt from "jsonwebtoken";
-import { db } from "../../plugins/db.js";
+import { db } from "../../../plugins/db.js";
 import { users } from "../../../shared/schema.js";
 import { eq } from "drizzle-orm";
-import { signAccessToken, signRefreshToken } from "../../middleware/auth.js";
+import { signAccessToken, signRefreshToken } from "../../../middleware/auth.js";
 
 const JWT_SECRET = process.env.NEXTAUTH_SECRET ?? "fallback-dev-secret";
 
