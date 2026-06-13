@@ -15,7 +15,7 @@ export async function registerHealthRoutes(app: FastifyInstance) {
   });
   app.post("/body-metrics", { preHandler: requireAuth }, async (req, reply) => {
     const { userId } = req as unknown as AuthReq & typeof req;
-    const [row] = await db.insert(bodyMetrics).values({ userId, ...req.body as never }).returning();
+    const [row] = await db.insert(bodyMetrics).values({ userId, ...(req.body as Record<string, unknown>) }).returning();
     return reply.code(201).send({ success: true, data: row });
   });
 
@@ -27,7 +27,7 @@ export async function registerHealthRoutes(app: FastifyInstance) {
   });
   app.post("/nutrition", { preHandler: requireAuth }, async (req, reply) => {
     const { userId } = req as unknown as AuthReq & typeof req;
-    const [row] = await db.insert(nutritionLogs).values({ userId, ...req.body as never }).returning();
+    const [row] = await db.insert(nutritionLogs).values({ userId, ...(req.body as Record<string, unknown>) }).returning();
     return reply.code(201).send({ success: true, data: row });
   });
 
@@ -39,7 +39,7 @@ export async function registerHealthRoutes(app: FastifyInstance) {
   });
   app.post("/sleep", { preHandler: requireAuth }, async (req, reply) => {
     const { userId } = req as unknown as AuthReq & typeof req;
-    const [row] = await db.insert(sleepLogs).values({ userId, ...req.body as never }).returning();
+    const [row] = await db.insert(sleepLogs).values({ userId, ...(req.body as Record<string, unknown>) }).returning();
     return reply.code(201).send({ success: true, data: row });
   });
 
@@ -51,7 +51,7 @@ export async function registerHealthRoutes(app: FastifyInstance) {
   });
   app.post("/exercise", { preHandler: requireAuth }, async (req, reply) => {
     const { userId } = req as unknown as AuthReq & typeof req;
-    const [row] = await db.insert(exerciseLogs).values({ userId, ...req.body as never }).returning();
+    const [row] = await db.insert(exerciseLogs).values({ userId, ...(req.body as Record<string, unknown>) }).returning();
     return reply.code(201).send({ success: true, data: row });
   });
 
@@ -63,7 +63,7 @@ export async function registerHealthRoutes(app: FastifyInstance) {
   });
   app.post("/habits", { preHandler: requireAuth }, async (req, reply) => {
     const { userId } = req as unknown as AuthReq & typeof req;
-    const [row] = await db.insert(habitLogs).values({ userId, ...req.body as never }).returning();
+    const [row] = await db.insert(habitLogs).values({ userId, ...(req.body as Record<string, unknown>) }).returning();
     return reply.code(201).send({ success: true, data: row });
   });
 }
