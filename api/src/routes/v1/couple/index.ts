@@ -16,26 +16,38 @@ export async function registerCoupleRoutes(app: FastifyInstance) {
     const { userId } = req as unknown as AuthReq & typeof req;
     const member = await db.query.coupleMembers.findFirst({
       where: eq(coupleMembers.userId, userId),
-      with: {
-        couple: {
-          with: { members: { with: { user: { columns: { id: true, name: true, email: true, image: true } } } } },
-        },
-      },
+      columns: { coupleId: true },
     });
     if (!member) return reply.send({ success: true, data: null });
-    return reply.send({ success: true, data: member.couple });
+
+    const couple = await db.query.couples.findFirst({ where: eq(couples.id, member.coupleId) });
+    if (!couple) return reply.send({ success: true, data: null });
+
+    const allMembers = await db.query.coupleMembers.findMany({
+      where: eq(coupleMembers.coupleId, member.coupleId),
+      columns: { userId: true, role: true },
+    });
+    const memberUsers = await Promise.all(allMembers.map(async (m) => {
+      const u = await db.query.users.findFirst({ where: eq(users.id, m.userId), columns: { id: true, name: true, email: true, image: true } });
+      return { ...m, user: u ?? null };
+    }));
+    return reply.send({ success: true, data: { ...couple, members: memberUsers } });
   });
 
   // GET /api/v1/couple/members — list couple members
   app.get("/members", { preHandler: requireAuth }, async (req, reply) => {
     const { userId } = req as unknown as AuthReq & typeof req;
-    const member = await db.query.coupleMembers.findFirst({ where: eq(coupleMembers.userId, userId) });
+    const member = await db.query.coupleMembers.findFirst({ where: eq(coupleMembers.userId, userId), columns: { coupleId: true } });
     if (!member) return reply.code(404).send({ success: false, error: "No couple found" });
-    const members = await db.query.coupleMembers.findMany({
+    const allMembers = await db.query.coupleMembers.findMany({
       where: eq(coupleMembers.coupleId, member.coupleId),
-      with: { user: { columns: { id: true, name: true, email: true, image: true } } },
+      columns: { userId: true, role: true },
     });
-    return reply.send({ success: true, data: members });
+    const memberUsers = await Promise.all(allMembers.map(async (m) => {
+      const u = await db.query.users.findFirst({ where: eq(users.id, m.userId), columns: { id: true, name: true, email: true, image: true } });
+      return { ...m, user: u ?? null };
+    }));
+    return reply.send({ success: true, data: memberUsers });
   });
 
   // GET /api/v1/couple/partner-public-key
