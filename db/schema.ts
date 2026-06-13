@@ -600,7 +600,7 @@ export const habitLogs = pgTable(
 
 // ─── Couple Models ────────────────────────────────────────────
 
-export const couples = pgTable("couples", {
+export const couples = pgTable("Couple", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text("name"),
   createdAt: timestamp("createdAt").notNull().default(sql`now()`),
