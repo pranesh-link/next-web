@@ -1,7 +1,7 @@
 import { FastifyInstance } from "fastify";
 import jwt from "jsonwebtoken";
 import { db } from "../../plugins/db.js";
-import { users } from "../../../../db/schema.js";
+import { users } from "../../../shared/schema.js";
 import { eq } from "drizzle-orm";
 import { signAccessToken, signRefreshToken } from "../../middleware/auth.js";
 

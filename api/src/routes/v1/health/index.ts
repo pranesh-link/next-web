@@ -1,7 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { requireAuth } from "../../../middleware/auth.js";
 import { db } from "../../../plugins/db.js";
-import { bodyMetrics, nutritionLogs, sleepLogs, exerciseLogs, habitLogs } from "../../../../../db/schema.js";
+import { bodyMetrics, nutritionLogs, sleepLogs, exerciseLogs, habitLogs } from "../../../shared/schema.js";
 import { eq, and, desc, gte, lt } from "drizzle-orm";
 
 type AuthReq = { userId: string };

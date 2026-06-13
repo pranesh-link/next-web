@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { db } from "../../plugins/db.js";
-import { appConfig } from "../../../../db/schema.js";
+import { appConfig } from "../../shared/schema.js";
 import { eq } from "drizzle-orm";
 
 export async function registerConfigRoute(app: FastifyInstance) {

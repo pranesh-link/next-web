@@ -1,7 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { requireAuth } from "../../../middleware/auth.js";
 import { db } from "../../../plugins/db.js";
-import { users } from "../../../../../db/schema.js";
+import { users } from "../../../shared/schema.js";
 import { eq } from "drizzle-orm";
 
 type AuthReq = { userId: string };

@@ -1,9 +1,9 @@
 import { FastifyInstance } from "fastify";
 import { requireAuth } from "../../../middleware/auth.js";
 import { db } from "../../../plugins/db.js";
-import { transactions, financialAccounts, budgets, loans, goals, deposits, investments, budgetPlans, financeNotifications } from "../../../../../db/schema.js";
+import { transactions, financialAccounts, budgets, loans, goals, deposits, investments, budgetPlans, financeNotifications } from "../../../shared/schema.js";
 import { inArray, desc, eq, and, gte, lt, ne } from "drizzle-orm";
-import { getUserIdsForCouple, getCoupleIdForUser } from "../../../../../app/_services/finance/couple/core.js";
+import { getUserIdsForCouple, getCoupleIdForUser } from "../../../shared/couple-membership.js";
 
 type AuthReq = { userId: string };
 type Req = AuthReq & FastifyInstance;
