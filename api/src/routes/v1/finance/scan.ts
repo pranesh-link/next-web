@@ -263,16 +263,21 @@ export async function registerFinanceScanRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: "Image must be under 10MB" });
     }
 
+    const sizeKb = Math.round(buffer.length / 1024);
+    console.log(`[scan-receipt] started email=${(req as any).userEmail ?? "unknown"} size=${sizeKb}kb mime=${mimeType}`);
+    const t0 = Date.now();
     try {
       const text = await callGemini("gemini-flash-latest", mimeType, buffer.buffer as ArrayBuffer, RECEIPT_PROMPT);
       const parsed = JSON.parse(text);
       if (!parsed.totalAmount) {
+        console.log(`[scan-receipt] 422 no totalAmount latency=${Date.now()-t0}ms`);
         return reply.code(422).send({ error: "Could not extract total amount from receipt. Try a clearer image." });
       }
+      console.log(`[scan-receipt] ok latency=${Date.now()-t0}ms confidence=${parsed.confidence ?? "?"}`);
       return reply.send({ success: true, data: parsed, method: "gemini-js" });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error("[scan-receipt] error:", msg);
+      console.error(`[scan-receipt] error latency=${Date.now()-t0}ms msg=${msg}`);
       return reply.code(500).send({ error: `Scan failed: ${msg}` });
     }
   });
@@ -302,12 +307,16 @@ export async function registerFinanceScanRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: "File must be under 20MB" });
     }
 
+    const sizeMb = (buffer.length / (1024 * 1024)).toFixed(1);
+    console.log(`[scan-schedule] started email=${(req as any).userEmail ?? "unknown"} size=${sizeMb}mb mime=${mimeType} model=${GEMINI_SCHEDULE_MODEL}`);
+    const t0 = Date.now();
     try {
       const text = await callGemini(GEMINI_SCHEDULE_MODEL, mimeType, buffer.buffer as ArrayBuffer, buildSchedulePrompt());
       const rawParsed = JSON.parse(text) as ScheduleData;
       const parsed = normalizeScheduleData(rawParsed);
 
       if (!parsed.principal && !parsed.emiAmount && !parsed.tenureMonths) {
+        console.log(`[scan-schedule] 422 no loan data latency=${Date.now()-t0}ms`);
         return reply.code(422).send({ error: "Could not extract loan schedule data. Try a clearer document." });
       }
 
@@ -326,10 +335,11 @@ export async function registerFinanceScanRoutes(app: FastifyInstance) {
           : Math.max(0, Math.round(parsed.principal - parsed.emiAmount * n));
       }
 
+      console.log(`[scan-schedule] ok latency=${Date.now()-t0}ms rows=${parsed.totalScheduleRows ?? 0} confidence=${parsed.confidence}`);
       return reply.send({ success: true, data: parsed, method: "gemini-js", model: GEMINI_SCHEDULE_MODEL });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error("[scan-schedule] error:", msg);
+      console.error(`[scan-schedule] error latency=${Date.now()-t0}ms msg=${msg}`);
       return reply.code(500).send({ error: `Scan failed: ${msg}` });
     }
   });
