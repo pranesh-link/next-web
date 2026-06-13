@@ -1,8 +1,8 @@
 import { FastifyInstance } from "fastify";
 import { requireAuth } from "../../../middleware/auth.js";
 import { db } from "../../../plugins/db.js";
-import { coupleMembers, couples, users } from "../../../shared/schema.js";
-import { eq, and, ne } from "drizzle-orm";
+import { coupleMembers, couples, users, coupleChats, coupleChatMessages } from "../../../shared/schema.js";
+import { eq, and, ne, desc } from "drizzle-orm";
 import { z } from "zod";
 import { registerChatAckRoute } from "./chat/ack.js";
 import { registerFileDownloadedRoute } from "./chat/file-downloaded.js";
@@ -87,4 +87,84 @@ export async function registerCoupleRoutes(app: FastifyInstance) {
   await app.register(registerChatAckRoute, { prefix: "/chat/ack" });
   await app.register(registerFileDownloadedRoute, { prefix: "/chat/file-downloaded" });
   await app.register(registerCoupleChatPurgeRoute, { prefix: "/chat/purge" });
+
+  // ── Couple Chats (AI chat threads) ──
+  app.get("/chats", { preHandler: requireAuth }, async (req, reply) => {
+    const { userId } = req as unknown as { userId: string } & typeof req;
+    const member = await db.query.coupleMembers.findFirst({ where: eq(coupleMembers.userId, userId), columns: { coupleId: true } });
+    if (!member) return reply.code(404).send({ success: false, error: "No couple found" });
+    const chats = await db.query.coupleChats.findMany({
+      where: eq(coupleChats.coupleId, member.coupleId),
+      orderBy: (t, { desc: d }) => [d(t.updatedAt)],
+    });
+    const chatIds = chats.map((c) => c.id);
+    const lastMessages = chatIds.length > 0
+      ? await Promise.all(chatIds.map(async (cid) => {
+          const msg = await db.query.coupleChatMessages.findFirst({
+            where: eq(coupleChatMessages.chatId, cid),
+            orderBy: (m, { desc: d }) => [d(m.createdAt)],
+            columns: { chatId: true, content: true, createdAt: true },
+          });
+          return msg;
+        }))
+      : [];
+    const lastByChat = new Map(lastMessages.filter(Boolean).map((m) => [m!.chatId, m!]));
+    const result = chats.map((c) => {
+      const last = lastByChat.get(c.id);
+      return { ...c, lastMessage: last ? last.content.substring(0, 80) : null, lastMessageAt: last?.createdAt ?? null };
+    });
+    return reply.send({ success: true, data: result });
+  });
+
+  app.post("/chats", { preHandler: requireAuth }, async (req, reply) => {
+    const { userId } = req as unknown as { userId: string } & typeof req;
+    const member = await db.query.coupleMembers.findFirst({ where: eq(coupleMembers.userId, userId), columns: { coupleId: true } });
+    if (!member) return reply.code(404).send({ success: false, error: "No couple found" });
+    const body = req.body as Record<string, unknown>;
+    const title = (body.title as string)?.trim();
+    if (!title) return reply.code(400).send({ success: false, error: "title is required" });
+    const [chat] = await db.insert(coupleChats).values({ coupleId: member.coupleId, title } as any).returning();
+    return reply.code(201).send({ success: true, data: chat });
+  });
+
+  app.get("/chats/:chatId", { preHandler: requireAuth }, async (req, reply) => {
+    const { userId } = req as unknown as { userId: string } & typeof req;
+    const { chatId } = req.params as { chatId: string };
+    const member = await db.query.coupleMembers.findFirst({ where: eq(coupleMembers.userId, userId), columns: { coupleId: true } });
+    if (!member) return reply.code(404).send({ success: false, error: "No couple found" });
+    const chat = await db.query.coupleChats.findFirst({ where: and(eq(coupleChats.id, chatId), eq(coupleChats.coupleId, member.coupleId)) });
+    if (!chat) return reply.code(404).send({ success: false, error: "Chat not found" });
+    const messages = await db.query.coupleChatMessages.findMany({
+      where: eq(coupleChatMessages.chatId, chatId),
+      orderBy: (m, { asc: a }) => [a(m.createdAt)],
+    });
+    return reply.send({ success: true, data: { ...chat, messages } });
+  });
+
+  app.patch("/chats/:chatId", { preHandler: requireAuth }, async (req, reply) => {
+    const { userId } = req as unknown as { userId: string } & typeof req;
+    const { chatId } = req.params as { chatId: string };
+    const member = await db.query.coupleMembers.findFirst({ where: eq(coupleMembers.userId, userId), columns: { coupleId: true } });
+    if (!member) return reply.code(404).send({ success: false, error: "No couple found" });
+    const existing = await db.query.coupleChats.findFirst({ where: and(eq(coupleChats.id, chatId), eq(coupleChats.coupleId, member.coupleId)) });
+    if (!existing) return reply.code(404).send({ success: false, error: "Chat not found" });
+    const body = req.body as Record<string, unknown>;
+    const title = (body.title as string)?.trim();
+    if (!title) return reply.code(400).send({ success: false, error: "title is required" });
+    const [updated] = await db.update(coupleChats).set({ title, updatedAt: new Date() } as any).where(eq(coupleChats.id, chatId)).returning();
+    return reply.send({ success: true, data: updated });
+  });
+
+  app.delete("/chats/:chatId", { preHandler: requireAuth }, async (req, reply) => {
+    const { userId } = req as unknown as { userId: string } & typeof req;
+    const { chatId } = req.params as { chatId: string };
+    const member = await db.query.coupleMembers.findFirst({ where: eq(coupleMembers.userId, userId), columns: { coupleId: true } });
+    if (!member) return reply.code(404).send({ success: false, error: "No couple found" });
+    const existing = await db.query.coupleChats.findFirst({ where: and(eq(coupleChats.id, chatId), eq(coupleChats.coupleId, member.coupleId)) });
+    if (!existing) return reply.code(404).send({ success: false, error: "Chat not found" });
+    // Delete messages first (no FK cascade defined in schema)
+    await db.delete(coupleChatMessages).where(eq(coupleChatMessages.chatId, chatId));
+    await db.delete(coupleChats).where(eq(coupleChats.id, chatId));
+    return reply.send({ success: true });
+  });
 }
