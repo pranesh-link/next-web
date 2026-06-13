@@ -58,7 +58,7 @@ export async function registerHealthRoutes(app: FastifyInstance) {
   // Habits
   app.get("/habits", { preHandler: requireAuth }, async (req, reply) => {
     const { userId } = req as unknown as AuthReq & typeof req;
-    const rows = await db.select().from(habitLogs).where(eq(habitLogs.userId, userId)).orderBy(desc(habitLogs.date));
+    const rows = await db.select().from(habitLogs).where(eq(habitLogs.userId, userId)).orderBy(desc(habitLogs.loggedOn));
     return reply.send({ success: true, data: rows });
   });
   app.post("/habits", { preHandler: requireAuth }, async (req, reply) => {

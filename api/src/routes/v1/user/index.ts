@@ -31,7 +31,7 @@ export async function registerUserRoutes(app: FastifyInstance) {
   app.post("/key-vault", { preHandler: requireAuth }, async (req, reply) => {
     const { userId } = req as unknown as AuthReq & typeof req;
     const { vault } = req.body as { vault: string };
-    await db.update(users).set({ encryptedKeyVault: vault, updatedAt: new Date() }).where(eq(users.id, userId));
+    await db.update(users).set({ encryptedKeyVault: Buffer.from(vault) as any, updatedAt: new Date() }).where(eq(users.id, userId));
     return reply.send({ success: true });
   });
 }

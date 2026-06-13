@@ -33,7 +33,7 @@ export async function registerFinanceRoutes(app: FastifyInstance) {
     const body = req.body as Record<string, unknown>;
     const account = await db.query.financialAccounts.findFirst({ where: and(eq(financialAccounts.id, body.accountId as string), inArray(financialAccounts.userId, userIds) as never) });
     if (!account) return reply.code(404).send({ success: false, error: "Account not found" });
-    const [tx] = await db.insert(transactions).values({ userId, coupleId: coupleId ?? undefined, accountId: body.accountId as string, amount: body.amount as number, type: body.type as string, category: body.category as string, description: (body.description as string) ?? null, date: new Date(body.date as string) }).returning();
+    const [tx] = await db.insert(transactions).values({ userId, coupleId: coupleId ?? undefined, accountId: body.accountId as string, amount: body.amount as number, type: body.type as string, category: body.category as string, description: (body.description as string) ?? null, date: new Date(body.date as string) } as any).returning();
     return reply.code(201).send({ success: true, data: tx });
   });
 
@@ -227,7 +227,7 @@ export async function registerFinanceRoutes(app: FastifyInstance) {
   app.get("/investments", { preHandler: requireAuth }, async (req, reply) => {
     const { userId } = req as unknown as AuthReq & typeof req;
     const { userIds } = await coupleCtx(userId);
-    const rows = await db.select().from(investmentHoldings).where(inArray(investmentHoldings.userId, userIds) as never).orderBy(investments.name);
+    const rows = await db.select().from(investmentHoldings).where(inArray(investmentHoldings.userId, userIds) as never).orderBy(investmentHoldings.name);
     return reply.send({ success: true, data: rows });
   });
 
