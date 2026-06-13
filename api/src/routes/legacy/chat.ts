@@ -8,9 +8,9 @@ import { FastifyInstance } from "fastify";
 import { WebSocket } from "ws";
 import { extractUserId } from "../../middleware/auth.js";
 import { db } from "../../plugins/db.js";
-import { coupleMembers, coupleMessages, messageTypeEnum } from "../../../../db/schema.js";
+import { coupleMembers, coupleMessages, messageTypeEnum } from "../../../shared/schema.js";
 import { eq, and, ne, lt, desc } from "drizzle-orm";
-import { sendChatPushNotification } from "../../../../app/_services/chat/push-service.js";
+import { sendChatPushNotification } from "../../../shared/chat-push.js";
 import { z } from "zod";
 
 type AuthReq = { userId: string };

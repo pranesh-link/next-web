@@ -1,36 +1,27 @@
 FROM node:22-alpine AS base
 WORKDIR /app
 
-# Copy monorepo structure needed for build
-COPY package.json yarn.lock ./
-COPY api/package.json ./api/
-COPY db/ ./db/
-COPY app/_services/ ./app/_services/
-COPY app/_lib/ ./app/_lib/
+# Copy only api/ — fully self-contained, no monorepo root needed
+COPY api/package.json ./
+COPY api/src/ ./src/
+COPY api/tsconfig.json ./
 
-# Install root deps first (drizzle-orm, pg, zod, etc. needed by db/ and app/_services/)
-RUN yarn --frozen-lockfile --ignore-engines --production=false
+# Copy only the db schema (needed by src/shared/schema.ts re-export)
+COPY db/schema.ts ./db/schema.ts
+COPY db/index.ts ./db/index.ts
 
-# Install API-specific deps (fastify, @fastify/*, node-cron, etc.)
-RUN cd api && npm install
+# Install dependencies (api/package.json only — no postinstall)
+RUN npm install
 
-# Copy API source + shared config
-COPY api/src/ ./api/src/
-COPY api/tsconfig.json ./api/
-
-# Build TypeScript
-RUN cd api && npm run build
+# Build
+RUN npm run build
 
 FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
-COPY --from=base /app/api/dist ./api/dist
-COPY --from=base /app/api/node_modules ./node_modules
-COPY --from=base /app/db ./db
-COPY --from=base /app/app/_services ./app/_services
-COPY --from=base /app/app/_lib ./app/_lib
+COPY --from=base /app/dist ./dist
+COPY --from=base /app/node_modules ./node_modules
 
 EXPOSE 8080
-# With rootDir="..", tsc outputs api/src/index.ts → dist/api/src/index.js
-CMD ["node", "api/dist/api/src/index.js"]
+CMD ["node", "dist/index.js"]

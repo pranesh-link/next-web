@@ -5,18 +5,14 @@
     "moduleResolution": "bundler",
     "lib": ["ES2022"],
     "outDir": "./dist",
-    "rootDir": "..",
+    "rootDir": "./src",
     "strict": false,
     "noImplicitAny": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "paths": {
-      "@db": ["../db/index.ts"],
-      "@db/*": ["../db/*"]
-    }
+    "resolveJsonModule": true
   },
-  "include": ["src/**/*", "../db/**/*", "../app/_services/**/*", "../app/_lib/**/*"],
-  "exclude": ["node_modules", "dist", "../node_modules", "../app/_services/**/__tests__/**", "../app/**/*.test.ts", "../app/**/*.test.tsx"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
 }
 

@@ -1,7 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { requireAuth } from "../../middleware/auth.js";
 import { db } from "../../plugins/db.js";
-import { deviceTokens, users } from "../../../../db/schema.js";
+import { deviceTokens, users } from "../../shared/schema.js";
 import { eq, and, lt, not } from "drizzle-orm";
 import { z } from "zod";
 

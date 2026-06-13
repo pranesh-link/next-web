@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { purgeExpiredMessages, cleanupDeliveredMessages } from "../../../../../../app/_services/chat/message-purge.js";
+import { purgeExpiredMessages, cleanupDeliveredMessages } from "../../../../shared/message-purge.js";
 
 const CRON_SECRET = process.env.CRON_SECRET;
 

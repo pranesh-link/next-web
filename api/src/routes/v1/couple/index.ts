@@ -1,7 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { requireAuth } from "../../../middleware/auth.js";
 import { db } from "../../../plugins/db.js";
-import { coupleMembers, couples, users } from "../../../../../db/schema.js";
+import { coupleMembers, couples, users } from "../../../shared/schema.js";
 import { eq, and, ne } from "drizzle-orm";
 import { z } from "zod";
 import { registerChatAckRoute } from "./chat/ack.js";

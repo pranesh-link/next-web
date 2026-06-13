@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { db } from "../../../plugins/db.js";
-import { users, deviceTokens } from "../../../../../db/schema.js";
+import { users, deviceTokens } from "../../../shared/schema.js";
 import { eq, and, desc, lt } from "drizzle-orm";
 
 export async function registerAdminRoutes(app: FastifyInstance) {

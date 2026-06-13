@@ -1,5 +1,5 @@
 import cron from "node-cron";
-import { purgeExpiredMessages, cleanupDeliveredMessages } from "../../../../app/_services/chat/message-purge.js";
+import { purgeExpiredMessages, cleanupDeliveredMessages } from "../../shared/message-purge.js";
 
 export function startCrons() {
   // Chat purge every 6 hours
