@@ -13,7 +13,7 @@ final apiClientProvider = Provider<ApiClient>((ref) {
 });
 
 /// Base URL for all API requests.
-const kApiBaseUrl = ApiEndpoints.base;
+final kApiBaseUrl = ApiEndpoints.base;
 
 class ApiClient {
   static const _baseUrl = kApiBaseUrl;
