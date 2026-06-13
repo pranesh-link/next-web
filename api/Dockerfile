@@ -8,14 +8,17 @@ COPY db/ ./db/
 COPY app/_services/ ./app/_services/
 COPY app/_lib/ ./app/_lib/
 
-# Install API dependencies (includes devDeps for tsc build)
+# Install root deps first (drizzle-orm, pg, zod, etc. needed by db/ and app/_services/)
+RUN yarn --frozen-lockfile --ignore-engines --production=false
+
+# Install API-specific deps (fastify, @fastify/*, node-cron, etc.)
 RUN cd api && npm install
 
 # Copy API source + shared config
 COPY api/src/ ./api/src/
 COPY api/tsconfig.json ./api/
 
-# Build TypeScript — rootDir is /app so db/ and app/ are in scope
+# Build TypeScript
 RUN cd api && npm run build
 
 FROM node:22-alpine AS runner
