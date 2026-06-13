@@ -1,4 +1,11 @@
 abstract final class ApiEndpoints {
+  /// Switch API target via compile-time constant:
+  ///   flutter run --dart-define=API_TARGET=fly
+  static const _apiTarget = String.fromEnvironment('API_TARGET', defaultValue: 'vercel');
+  static const _vercelBase = 'https://www.pranesh.link';
+  static const _flyBase = String.fromEnvironment('FLY_API_URL', defaultValue: 'https://luvverse-api.fly.dev');
+  static String get base => _apiTarget == 'fly' ? _flyBase : _vercelBase;
+
   static const auth = '/api/v1/auth/mobile';
   static const refreshToken = '/api/v1/auth/refresh';
   static const accounts = '/api/v1/finance/accounts';

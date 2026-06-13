@@ -31,5 +31,5 @@
     "typeRoots" : ["node_modules/@types", "src/types"]
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules", "**/*.test.ts", "**/*.test.tsx", "**/__tests__/**", "prisma.config.ts", "mobile/**", "packages/**"]
+  "exclude": ["node_modules", "**/*.test.ts", "**/*.test.tsx", "**/__tests__/**", "prisma.config.ts", "mobile/**", "packages/**", "api/**"]
 }

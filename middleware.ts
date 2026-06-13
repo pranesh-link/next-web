@@ -30,6 +30,33 @@ export async function middleware(req: NextRequest) {
     return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
   }
 
+  // ── Fly.io proxy: forward /api/v1/* to Fly.io when API_TARGET=fly ──
+  const apiTarget = process.env.API_TARGET;
+  const flyApiUrl = process.env.FLY_API_URL;
+  if (
+    apiTarget === "fly" &&
+    flyApiUrl &&
+    pathname.startsWith("/api/v1/")
+  ) {
+    const targetUrl = `${flyApiUrl}${pathname}${req.nextUrl.search}`;
+    const proxyReq = new Request(targetUrl, {
+      method: req.method,
+      headers: req.headers,
+      body: req.method !== "GET" && req.method !== "HEAD" ? req.body : undefined,
+      // @ts-expect-error duplex required for streaming body
+      duplex: "half",
+    });
+    const res = await fetch(proxyReq);
+    const proxied = new NextResponse(res.body, {
+      status: res.status,
+      statusText: res.statusText,
+      headers: res.headers,
+    });
+    // Ensure CORS headers are present on proxied responses
+    Object.entries(CORS_HEADERS).forEach(([k, v]) => proxied.headers.set(k, v));
+    return proxied;
+  }
+
   // Add CORS headers to all API responses
   if (pathname.startsWith("/api/")) {
     const response = NextResponse.next();
