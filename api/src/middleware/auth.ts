@@ -83,11 +83,15 @@ export async function extractUserId(req: FastifyRequest): Promise<string | null>
 export async function requireAuth(req: FastifyRequest, reply: FastifyReply) {
   const userId = await extractUserId(req);
   if (!userId) {
+    console.log(`[auth] 401 method=${req.method} path=${req.url}`);
     reply.code(401).send({ success: false, error: "Not authenticated" });
     return;
   }
   // Attach to request for route handlers
   (req as FastifyRequest & { userId: string }).userId = userId;
+  // Attach email for structured logging (non-blocking, safe to fail)
+  const user = await db.query.users.findFirst({ where: eq(users.id, userId), columns: { email: true } }).catch(() => null);
+  (req as any).userEmail = user?.email ?? null;
 }
 
 export function signAccessToken(userId: string): string {

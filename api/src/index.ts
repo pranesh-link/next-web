@@ -5,6 +5,7 @@ import fastifyWebsocket from "@fastify/websocket";
 import { setDefaultResultOrder } from "dns";
 import { registerRoutes } from "./routes/index.js";
 import { startCrons } from "./crons/index.js";
+import { pingDb } from "./shared/db.js";
 
 // Force IPv4 DNS — avoids Supabase IPv6-only hosts
 setDefaultResultOrder("ipv4first");
@@ -42,4 +43,18 @@ startCrons();
 
 const port = Number(process.env.PORT ?? 8080);
 await app.listen({ port, host: "0.0.0.0" });
-console.log(`[luvverse-api] listening on :${port}`);
+
+// ── Startup banner ───────────────────────────────────────────────────────────
+const region = process.env.FLY_REGION ?? "local";
+const geminiOk = !!process.env.GEMINI_API_KEY;
+const supabaseOk = !!process.env.SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+console.log("[luvverse-api] ── STARTUP ──────────────────────────");
+console.log(`[luvverse-api] env       : ${process.env.NODE_ENV ?? "development"}`);
+console.log(`[luvverse-api] port      : ${port}`);
+console.log(`[luvverse-api] region    : ${region}`);
+console.log(`[luvverse-api] gemini    : ${geminiOk ? "configured ✓" : "NOT configured ✗"}`)
+console.log(`[luvverse-api] supabase  : ${supabaseOk ? "configured ✓" : "NOT configured ✗"}`);
+console.log("[luvverse-api] ─────────────────────────────────────");
+
+// DB ping (non-blocking — logs result when it resolves)
+pingDb();
